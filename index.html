@@ -286,7 +286,7 @@
           <h4>Mašine / rad po mašini</h4>
           <p class="hint">Dodaj svaku mašinu ili vozilo posebno. Ovo je bitno za čist Excel.</p>
           <div id="machineEntries" class="entry-list"></div>
-          <button id="addMachineBtn" class="secondary" type="button">+ Dodaj mašinu</button>
+          <button id="addMachineBtn" class="secondary" type="button" onclick="addMachineEntry()">+ Dodaj mašinu</button>
         </div>
 
         <div id="secVehicles" class="dyn-section">
@@ -307,7 +307,7 @@
           <h4>Sipanje goriva</h4>
           <p class="hint">Možeš dodati više sipanja goriva i povezati svako sipanje sa mašinom/vozilom.</p>
           <div id="fuelEntries" class="entry-list"></div>
-          <button id="addFuelBtn" class="secondary" type="button">+ Dodaj sipanje goriva</button>
+          <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
           <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
         </div>
 

@@ -368,6 +368,12 @@ function refreshFuelMachineOptions() {
   });
 }
 
+
+// Direktno izlaganje funkcija za onclick fallback
+window.addMachineEntry = addMachineEntry;
+window.addFuelEntry = addFuelEntry;
+window.refreshFuelMachineOptions = refreshFuelMachineOptions;
+
 function collectWorkerData() {
   const machines = getMachineEntries();
   const fuelEntries = getFuelEntries();
@@ -675,8 +681,7 @@ function bindEvents() {
 
   $("#exportCsvBtn").addEventListener("click", exportCsv);
 
-  if ($("#addMachineBtn")) $("#addMachineBtn").addEventListener("click", () => addMachineEntry());
-  if ($("#addFuelBtn")) $("#addFuelBtn").addEventListener("click", () => addFuelEntry());
+  // Add mašina / gorivo koriste onclick direktno u HTML-u zbog pouzdanosti na mobilnom/PWA cache-u.
   if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
 
   $("#workerLoginBtn").addEventListener("click", async () => {
@@ -732,9 +737,9 @@ function openWorkerForm() {
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
   workerSetSections(currentWorker.permissions || {});
   show("WorkerForm");
+  loadDraft();
   if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
   if ($("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
-  loadDraft();
 }
 
 async function boot() {

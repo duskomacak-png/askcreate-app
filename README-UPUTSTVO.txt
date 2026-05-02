@@ -42,3 +42,7 @@ U sekciji Kvar dodato je posebno dugme 'Pošalji kvar šefu mehanizacije odmah'.
 
 IZMENA v1.5:
 Dugme za kvar je preimenovano u 'Evidentiraj kvar odmah'. Dodato je polje da li je šef mehanizacije pozvan telefonom. Kvar sada dobija status 'prijavljen', a u Direkcija inbox-u može da se menja u 'primljeno', 'u popravci' i 'rešeno' radi praćenja brzine popravke.
+
+
+IZMENA v1.6:
+Popravljena dugmad '+ Dodaj mašinu' i '+ Dodaj sipanje goriva'. Dodati su direktni onclick fallback pozivi i promenjen cache name u sw.js na startwork-pro-v16.
