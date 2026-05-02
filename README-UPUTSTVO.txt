@@ -46,3 +46,7 @@ Dugme za kvar je preimenovano u 'Evidentiraj kvar odmah'. Dodato je polje da li 
 
 IZMENA v1.6:
 Popravljena dugmad '+ Dodaj mašinu' i '+ Dodaj sipanje goriva'. Dodati su direktni onclick fallback pozivi i promenjen cache name u sw.js na startwork-pro-v16.
+
+
+IZMENA v1.7:
+Svaka dodata mašina sada otvara kompletan blok: mašina/vozilo, početni sati/MTČ, završni sati/MTČ, ukupno sati rada i opis rada. Svako sipanje goriva sada otvara kompletan blok: za koju mašinu, litara, MTČ/KM pri sipanju i ko je sipao.

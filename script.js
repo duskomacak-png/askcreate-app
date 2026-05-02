@@ -278,25 +278,48 @@ function addMachineEntry(values = {}) {
       <strong>Mašina ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
+
     <label>Mašina / vozilo</label>
-    <input class="m-name" placeholder="CAT 330 / MAN kiper" value="${escapeHtml(values.name || "")}" />
+    <input class="m-name" placeholder="npr. CAT 330, D6R, MAN kiper" value="${escapeHtml(values.name || "")}" />
+
     <div class="mini-grid">
       <div>
-        <label>MTČ / KM početak</label>
-        <input class="m-start" type="number" step="0.1" value="${escapeHtml(values.start || "")}" />
+        <label>Početni sati / MTČ</label>
+        <input class="m-start" type="number" step="0.1" placeholder="npr. 1250.5" value="${escapeHtml(values.start || "")}" />
       </div>
       <div>
-        <label>MTČ / KM kraj</label>
-        <input class="m-end" type="number" step="0.1" value="${escapeHtml(values.end || "")}" />
+        <label>Završni sati / MTČ</label>
+        <input class="m-end" type="number" step="0.1" placeholder="npr. 1258.5" value="${escapeHtml(values.end || "")}" />
       </div>
     </div>
+
+    <label>Ukupno sati rada</label>
+    <input class="m-hours" type="number" step="0.1" placeholder="automatski ili ručno" value="${escapeHtml(values.hours || "")}" />
+
     <label>Opis rada za ovu mašinu</label>
     <input class="m-work" placeholder="iskop, utovar, ravnanje..." value="${escapeHtml(values.work || "")}" />
   `;
+
+  const startEl = div.querySelector(".m-start");
+  const endEl = div.querySelector(".m-end");
+  const hoursEl = div.querySelector(".m-hours");
+
+  function calcHours() {
+    const s = parseFloat(startEl.value);
+    const e = parseFloat(endEl.value);
+    if (!Number.isNaN(s) && !Number.isNaN(e) && e >= s) {
+      hoursEl.value = (Math.round((e - s) * 10) / 10).toString();
+    }
+  }
+
+  startEl.addEventListener("input", calcHours);
+  endEl.addEventListener("input", calcHours);
+
   div.querySelector(".remove-entry").addEventListener("click", () => {
     div.remove();
     refreshFuelMachineOptions();
   });
+
   div.querySelector(".m-name").addEventListener("input", refreshFuelMachineOptions);
   list.appendChild(div);
   refreshFuelMachineOptions();
@@ -308,8 +331,9 @@ function getMachineEntries() {
     name: el.querySelector(".m-name")?.value.trim() || "",
     start: el.querySelector(".m-start")?.value || "",
     end: el.querySelector(".m-end")?.value || "",
+    hours: el.querySelector(".m-hours")?.value || "",
     work: el.querySelector(".m-work")?.value.trim() || ""
-  })).filter(m => m.name || m.start || m.end || m.work);
+  })).filter(m => m.name || m.start || m.end || m.hours || m.work);
 }
 
 function addFuelEntry(values = {}) {
@@ -320,27 +344,37 @@ function addFuelEntry(values = {}) {
   div.className = "entry-card fuel-entry";
   div.innerHTML = `
     <div class="entry-card-head">
-      <strong>Sipanje ${idx}</strong>
+      <strong>Sipanje goriva ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
+
     <label>Za koju mašinu / vozilo</label>
     <select class="f-machine"></select>
-    <label>Ako nije u listi, upiši ručno</label>
+
+    <label>Ako mašina nije gore dodata, upiši ručno</label>
     <input class="f-machine-custom" placeholder="npr. agregat / druga mašina" value="${escapeHtml(values.machine_custom || "")}" />
+
     <div class="mini-grid">
       <div>
         <label>Litara</label>
-        <input class="f-liters" type="number" step="0.1" value="${escapeHtml(values.liters || "")}" />
+        <input class="f-liters" type="number" step="0.1" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
       </div>
       <div>
-        <label>Ko je sipao</label>
-        <input class="f-by" placeholder="Ime" value="${escapeHtml(values.by || "")}" />
+        <label>MTČ / KM pri sipanju</label>
+        <input class="f-reading" type="number" step="0.1" placeholder="npr. 1255.0" value="${escapeHtml(values.reading || "")}" />
       </div>
     </div>
+
+    <label>Ko je sipao</label>
+    <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
+
+    <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
   `;
+
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
   list.appendChild(div);
   refreshFuelMachineOptions();
+
   if (values.machine) div.querySelector(".f-machine").value = values.machine;
 }
 
@@ -353,10 +387,11 @@ function getFuelEntries() {
       machine: custom || selected,
       machine_custom: custom,
       liters: el.querySelector(".f-liters")?.value || "",
+      reading: el.querySelector(".f-reading")?.value || "",
       by: el.querySelector(".f-by")?.value.trim() || "",
       receiver: currentWorker?.full_name || ""
     };
-  }).filter(f => f.machine || f.liters || f.by);
+  }).filter(f => f.machine || f.liters || f.reading || f.by);
 }
 
 function refreshFuelMachineOptions() {
@@ -388,7 +423,9 @@ function collectWorkerData() {
     machine: machines.map(m => m.name).filter(Boolean).join(" | "),
     mtc_start: machines.map(m => m.start).filter(Boolean).join(" | "),
     mtc_end: machines.map(m => m.end).filter(Boolean).join(" | "),
+    machine_hours: machines.map(m => m.hours).filter(Boolean).join(" | "),
     fuel_liters: fuelEntries.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0) || "",
+    fuel_readings: fuelEntries.map(f => f.reading).filter(Boolean).join(" | "),
     fuel_by: fuelEntries.map(f => f.by).filter(Boolean).join(" | "),
     fuel_receiver: currentWorker?.full_name || "",
 
@@ -470,7 +507,7 @@ async function exportCsv() {
   const { data, error } = await q.order("report_date", { ascending: true });
   if (error) return toast(error.message, true);
 
-  const headers = ["Datum","Ime","Funkcija","Gradiliste","Sati","Masina","MTC pocetak","MTC kraj","Vozilo","KM pocetak","KM kraj","Relacija","Ture","Gorivo L","Materijal","Kolicina","Jedinica","Kvar","Status","Napomena"];
+  const headers = ["Datum","Ime","Funkcija","Gradiliste","Sati","Masina","MTC pocetak","MTC kraj","Sati masine","Vozilo","KM pocetak","KM kraj","Relacija","Ture","Gorivo L","MTC/KM pri sipanju","Materijal","Kolicina","Jedinica","Kvar","Status","Napomena"];
   const rows = (data || []).map(r => {
     const d = r.data || {};
     return [
@@ -482,12 +519,14 @@ async function exportCsv() {
       d.machine,
       d.mtc_start,
       d.mtc_end,
+      d.machine_hours,
       d.vehicle,
       d.km_start,
       d.km_end,
       d.route,
       d.tours,
       d.fuel_liters,
+      d.fuel_readings,
       d.material,
       d.quantity,
       d.unit,
