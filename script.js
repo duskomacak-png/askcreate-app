@@ -1,0 +1,549 @@
+/* START WORK PRO by AskCreate - MVP v1
+   VAŽNO:
+   1) SUPABASE_URL je već upisan.
+   2) SUPABASE_KEY zameni tvojim Publishable key iz supabase-podaci.txt.
+   3) Nikad ne ubacuj Secret key u ovaj fajl.
+*/
+
+const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
+
+let sb = null;
+let currentCompany = null;
+let currentWorker = null;
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+function initSupabase() {
+  if (!SUPABASE_KEY || SUPABASE_KEY.includes("OVDE_NALEPI")) {
+    toast("Nije ubačen Supabase Publishable key u script.js. Otvori script.js i zameni placeholder.", true);
+    return false;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return true;
+}
+
+function toast(msg, isError = false) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.style.borderColor = isError ? "rgba(211,47,47,.65)" : "rgba(245,185,66,.35)";
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 4500);
+}
+
+function show(view) {
+  $$(".view").forEach(v => v.classList.remove("active"));
+  const el = $("#view" + view);
+  if (el) el.classList.add("active");
+  $("#logoutBtn").classList.toggle("hidden", !["AdminDashboard", "DirectorDashboard"].includes(view));
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function normalizeCode(s) {
+  return (s || "").trim();
+}
+
+async function signUp(email, password) {
+  if (!initSupabase()) return null;
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+async function signIn(email, password) {
+  if (!initSupabase()) return null;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+async function signOut() {
+  if (sb) await sb.auth.signOut();
+  currentCompany = null;
+  localStorage.removeItem("swp_worker");
+  show("Home");
+}
+
+async function ensureAdmin() {
+  const { data, error } = await sb.from("app_admins").select("*").eq("email", "duskomacak@gmail.com").maybeSingle();
+  if (error || !data || !data.active) throw new Error("Ovaj nalog nema Super Admin dozvolu.");
+  return true;
+}
+
+async function loadAdmin() {
+  await ensureAdmin();
+  show("AdminDashboard");
+  await Promise.all([loadApprovedCompanies(), loadCompanies()]);
+}
+
+async function loadApprovedCompanies() {
+  const { data, error } = await sb.from("approved_companies").select("*").order("created_at", { ascending:false });
+  if (error) return toast(error.message, true);
+  $("#approvedCompaniesList").innerHTML = (data || []).map(c => `
+    <div class="item">
+      <strong>${escapeHtml(c.company_name)}</strong>
+      <small>${escapeHtml(c.approved_email)} · šifra: ${escapeHtml(c.company_code)} · pozivni: ${escapeHtml(c.invite_code)}</small><br/>
+      <span class="pill">${escapeHtml(c.status)}</span>
+      <span class="pill">registrovana: ${c.registered ? "DA" : "NE"}</span>
+      <div class="actions">
+        <button class="secondary" onclick="adminSetApprovedStatus('${c.id}','active')">Aktiviraj</button>
+        <button class="secondary" onclick="adminSetApprovedStatus('${c.id}','blocked')">Blokiraj</button>
+      </div>
+    </div>`).join("") || `<p class="muted">Nema odobrenih firmi.</p>`;
+}
+
+async function loadCompanies() {
+  const { data, error } = await sb.from("companies").select("*").order("created_at", { ascending:false });
+  if (error) return toast(error.message, true);
+  $("#companiesList").innerHTML = (data || []).map(c => `
+    <div class="item">
+      <strong>${escapeHtml(c.name)}</strong>
+      <small>${escapeHtml(c.owner_email)} · šifra: ${escapeHtml(c.company_code)}</small><br/>
+      <span class="pill">${escapeHtml(c.status)}</span>
+      <span class="pill">${escapeHtml(c.plan)}</span>
+      <div class="actions">
+        <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','active')">Active</button>
+        <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','expired')">Expired</button>
+        <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','blocked')">Blocked</button>
+      </div>
+    </div>`).join("") || `<p class="muted">Još nema registrovanih firmi.</p>`;
+}
+
+window.adminSetApprovedStatus = async (id, status) => {
+  const { error } = await sb.from("approved_companies").update({ status }).eq("id", id);
+  if (error) return toast(error.message, true);
+  toast("Status promenjen.");
+  loadApprovedCompanies();
+};
+
+window.adminSetCompanyStatus = async (id, status) => {
+  const { error } = await sb.from("companies").update({ status }).eq("id", id);
+  if (error) return toast(error.message, true);
+  toast("Status firme promenjen.");
+  loadCompanies();
+};
+
+async function loadDirectorCompany() {
+  const { data: userData } = await sb.auth.getUser();
+  const email = userData?.user?.email;
+  if (!email) throw new Error("Nema aktivnog Direkcija login-a.");
+
+  const { data, error } = await sb.from("companies").select("*").eq("owner_email", email).maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    show("DirectorLogin");
+    toast("Email je prijavljen, ali firma još nije aktivirana. Unesi šifru firme i pozivni kod.");
+    return null;
+  }
+  currentCompany = data;
+  $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
+  show("DirectorDashboard");
+  await Promise.all([loadPeople(), loadSites(), loadAssets(), loadReports()]);
+  return data;
+}
+
+async function loadPeople() {
+  if (!currentCompany) return;
+  const { data, error } = await sb.from("company_users").select("*").eq("company_id", currentCompany.id).order("created_at", { ascending:false });
+  if (error) return toast(error.message, true);
+  $("#peopleList").innerHTML = (data || []).map(p => `
+    <div class="item">
+      <strong>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</strong>
+      <small>${escapeHtml(p.function_title)} · kod: ${escapeHtml(p.access_code)}</small><br/>
+      <span class="pill">${p.active ? "Aktivan" : "Neaktivan"}</span>
+      <span class="pill">${Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length} rubrika</span>
+    </div>`).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
+}
+
+async function loadSites() {
+  if (!currentCompany) return;
+  const { data, error } = await sb.from("sites").select("*").eq("company_id", currentCompany.id).order("created_at", { ascending:false });
+  if (error) return toast(error.message, true);
+  $("#sitesList").innerHTML = (data || []).map(s => `
+    <div class="item"><strong>${escapeHtml(s.name)}</strong><small>${escapeHtml(s.location || "")}</small></div>
+  `).join("") || `<p class="muted">Nema gradilišta.</p>`;
+}
+
+async function loadAssets() {
+  if (!currentCompany) return;
+  const { data, error } = await sb.from("assets").select("*").eq("company_id", currentCompany.id).order("created_at", { ascending:false });
+  if (error) return toast(error.message, true);
+  $("#assetsList").innerHTML = (data || []).map(a => `
+    <div class="item"><strong>${escapeHtml(a.name)}</strong><small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(a.capacity || "")}</small></div>
+  `).join("") || `<p class="muted">Nema mašina/vozila.</p>`;
+}
+
+async function loadReports() {
+  if (!currentCompany) return;
+  const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).order("submitted_at", { ascending:false });
+  if (error) return toast(error.message, true);
+  $("#reportsList").innerHTML = (data || []).map(r => reportHtml(r)).join("") || `<p class="muted">Nema poslatih izveštaja.</p>`;
+}
+
+function reportHtml(r) {
+  const d = r.data || {};
+  const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "Nepoznat korisnik";
+  return `
+    <div class="item">
+      <strong>${escapeHtml(person)} · ${escapeHtml(r.report_date)}</strong>
+      <small>${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
+      <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
+      ${d.hours ? `<span class="pill">${escapeHtml(String(d.hours))} h</span>` : ""}
+      ${d.fuel_liters ? `<span class="pill">${escapeHtml(String(d.fuel_liters))} L</span>` : ""}
+      <p>${escapeHtml(d.description || d.note || "")}</p>
+      ${r.returned_reason ? `<p class="muted">Razlog vraćanja: ${escapeHtml(r.returned_reason)}</p>` : ""}
+      <details><summary>Detalji</summary><pre>${escapeHtml(JSON.stringify(d, null, 2))}</pre></details>
+      <div class="actions">
+        <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
+        <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
+        <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
+      </div>
+    </div>`;
+}
+
+window.setReportStatus = async (id, status) => {
+  const patch = { status };
+  if (status === "approved") patch.approved_at = new Date().toISOString();
+  if (status === "exported") patch.exported_at = new Date().toISOString();
+  const { error } = await sb.from("reports").update(patch).eq("id", id);
+  if (error) return toast(error.message, true);
+  toast("Status izveštaja promenjen.");
+  loadReports();
+};
+
+window.returnReport = async (id) => {
+  const reason = prompt("Razlog vraćanja na dopunu:");
+  if (!reason) return;
+  const { error } = await sb.from("reports").update({ status:"returned", returned_reason:reason }).eq("id", id);
+  if (error) return toast(error.message, true);
+  toast("Izveštaj vraćen.");
+  loadReports();
+};
+
+function collectPermissions() {
+  const obj = {};
+  $$(".perm").forEach(ch => obj[ch.value] = ch.checked);
+  return obj;
+}
+
+function workerSetSections(perms) {
+  const map = {
+    daily_work: "#secDailyWork",
+    machines: "#secMachines",
+    vehicles: "#secVehicles",
+    fuel: "#secFuel",
+    materials: "#secMaterials",
+    warehouse: "#secWarehouse",
+    defects: "#secDefects"
+  };
+  Object.entries(map).forEach(([key, sel]) => $(sel).classList.toggle("active", !!perms[key]));
+}
+
+function collectWorkerData() {
+  return {
+    site_name: $("#wrSiteName").value.trim(),
+    description: $("#wrDescription").value.trim(),
+    hours: $("#wrHours").value,
+    machine: $("#wrMachine").value.trim(),
+    mtc_start: $("#wrMtcStart").value,
+    mtc_end: $("#wrMtcEnd").value,
+    vehicle: $("#wrVehicle").value.trim(),
+    km_start: $("#wrKmStart").value,
+    km_end: $("#wrKmEnd").value,
+    route: $("#wrRoute").value.trim(),
+    tours: $("#wrTours").value,
+    fuel_liters: $("#wrFuelLiters").value,
+    fuel_by: $("#wrFuelBy").value.trim(),
+    fuel_receiver: $("#wrFuelReceiver").value.trim(),
+    material: $("#wrMaterial").value.trim(),
+    quantity: $("#wrQuantity").value,
+    unit: $("#wrUnit").value.trim(),
+    warehouse_type: $("#wrWarehouseType").value,
+    warehouse_item: $("#wrWarehouseItem").value.trim(),
+    warehouse_qty: $("#wrWarehouseQty").value.trim(),
+    defect: $("#wrDefect").value.trim(),
+    defect_urgency: $("#wrDefectUrgency").value,
+    note: $("#wrNote").value.trim()
+  };
+}
+
+function clearWorkerForm() {
+  ["wrSiteName","wrDescription","wrHours","wrMachine","wrMtcStart","wrMtcEnd","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrFuelLiters","wrFuelBy","wrFuelReceiver","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefect","wrDefectUrgency","wrNote"].forEach(id => {
+    const el = $("#" + id);
+    if (el) el.value = "";
+  });
+  localStorage.removeItem("swp_draft");
+}
+
+function saveDraft() {
+  const draft = {
+    date: $("#wrDate").value,
+    data: collectWorkerData()
+  };
+  localStorage.setItem("swp_draft", JSON.stringify(draft));
+  toast("Nacrt je sačuvan na ovom uređaju.");
+}
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem("swp_draft");
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    $("#wrDate").value = draft.date || today();
+    const d = draft.data || {};
+    Object.entries({
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrMachine:"machine", wrMtcStart:"mtc_start", wrMtcEnd:"mtc_end", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrFuelLiters:"fuel_liters", wrFuelBy:"fuel_by", wrFuelReceiver:"fuel_receiver", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefect:"defect", wrDefectUrgency:"defect_urgency", wrNote:"note"
+    }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
+  } catch {}
+}
+
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function csvEscape(v) {
+  return `"${String(v ?? "").replaceAll('"','""')}"`;
+}
+
+async function exportCsv() {
+  if (!currentCompany) return;
+  let q = sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id);
+  const from = $("#exportFrom").value;
+  const to = $("#exportTo").value;
+  if (from) q = q.gte("report_date", from);
+  if (to) q = q.lte("report_date", to);
+  const { data, error } = await q.order("report_date", { ascending: true });
+  if (error) return toast(error.message, true);
+
+  const headers = ["Datum","Ime","Funkcija","Gradiliste","Sati","Masina","MTC pocetak","MTC kraj","Vozilo","KM pocetak","KM kraj","Relacija","Ture","Gorivo L","Materijal","Kolicina","Jedinica","Kvar","Status","Napomena"];
+  const rows = (data || []).map(r => {
+    const d = r.data || {};
+    return [
+      r.report_date,
+      r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "",
+      r.company_users?.function_title || "",
+      d.site_name,
+      d.hours,
+      d.machine,
+      d.mtc_start,
+      d.mtc_end,
+      d.vehicle,
+      d.km_start,
+      d.km_end,
+      d.route,
+      d.tours,
+      d.fuel_liters,
+      d.material,
+      d.quantity,
+      d.unit,
+      d.defect,
+      r.status,
+      d.note || d.description
+    ].map(csvEscape).join(",");
+  });
+  const csv = [headers.map(csvEscape).join(","), ...rows].join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `startwork-export-${today()}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("CSV export je preuzet.");
+}
+
+function bindEvents() {
+  $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => show(btn.dataset.goto)));
+  $("#logoutBtn").addEventListener("click", signOut);
+
+  $("#adminSignupBtn").addEventListener("click", async () => {
+    try {
+      await signUp($("#adminEmail").value.trim(), $("#adminPassword").value);
+      toast("Admin nalog registrovan. Ako stigne email potvrda, potvrdi ga pa se prijavi.");
+    } catch(e) { toast(e.message, true); }
+  });
+  $("#adminLoginBtn").addEventListener("click", async () => {
+    try {
+      await signIn($("#adminEmail").value.trim(), $("#adminPassword").value);
+      await loadAdmin();
+    } catch(e) { toast(e.message, true); }
+  });
+  $("#refreshAdminBtn").addEventListener("click", loadAdmin);
+  $("#addApprovedCompanyBtn").addEventListener("click", async () => {
+    try {
+      const payload = {
+        company_name: $("#acCompanyName").value.trim(),
+        approved_email: $("#acEmail").value.trim(),
+        company_code: $("#acCompanyCode").value.trim(),
+        invite_code: $("#acInviteCode").value.trim(),
+        status: "trial",
+        plan: "trial",
+        trial_until: $("#acTrialUntil").value || null,
+        note: $("#acNote").value.trim()
+      };
+      if (!payload.company_name || !payload.approved_email || !payload.company_code || !payload.invite_code) throw new Error("Popuni naziv, email, šifru firme i pozivni kod.");
+      const { error } = await sb.from("approved_companies").insert(payload);
+      if (error) throw error;
+      ["acCompanyName","acEmail","acCompanyCode","acInviteCode","acTrialUntil","acNote"].forEach(id => $("#"+id).value = "");
+      toast("Firma je odobrena.");
+      loadApprovedCompanies();
+    } catch(e) { toast(e.message, true); }
+  });
+
+  $("#directorSignupBtn").addEventListener("click", async () => {
+    try {
+      await signUp($("#directorEmail").value.trim(), $("#directorPassword").value);
+      toast("Direkcija email registrovan. Ako stigne potvrda, potvrdi email pa se prijavi.");
+    } catch(e) { toast(e.message, true); }
+  });
+  $("#directorLoginBtn").addEventListener("click", async () => {
+    try {
+      await signIn($("#directorEmail").value.trim(), $("#directorPassword").value);
+      await loadDirectorCompany();
+    } catch(e) { toast(e.message, true); }
+  });
+  $("#activateCompanyBtn").addEventListener("click", async () => {
+    try {
+      if (!sb) initSupabase();
+      const { data: userData } = await sb.auth.getUser();
+      if (!userData?.user) {
+        await signIn($("#directorEmail").value.trim(), $("#directorPassword").value);
+      }
+      const { data, error } = await sb.rpc("activate_company", {
+        p_company_code: $("#directorCompanyCode").value.trim(),
+        p_invite_code: $("#directorInviteCode").value.trim()
+      });
+      if (error) throw error;
+      toast("Firma je aktivirana.");
+      await loadDirectorCompany();
+    } catch(e) { toast(e.message, true); }
+  });
+  $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
+
+  $$(".tab").forEach(btn => btn.addEventListener("click", () => {
+    $$(".tab").forEach(b => b.classList.remove("active"));
+    $$(".tab-panel").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
+  }));
+
+  $("#addPersonBtn").addEventListener("click", async () => {
+    try {
+      if (!currentCompany) throw new Error("Nema aktivne firme.");
+      const code = normalizeCode($("#personCode").value);
+      if (code.length < 4) throw new Error("Kod za ulaz mora imati najmanje 4 karaktera.");
+      const { error } = await sb.from("company_users").insert({
+        company_id: currentCompany.id,
+        first_name: $("#personFirst").value.trim(),
+        last_name: $("#personLast").value.trim(),
+        function_title: $("#personFunction").value.trim(),
+        access_code: code,
+        permissions: collectPermissions(),
+        active: true
+      });
+      if (error) throw error;
+      ["personFirst","personLast","personFunction","personCode"].forEach(id => $("#"+id).value = "");
+      toast("Osoba je dodata.");
+      loadPeople();
+    } catch(e) { toast(e.message, true); }
+  });
+
+  $("#addSiteBtn").addEventListener("click", async () => {
+    try {
+      const { error } = await sb.from("sites").insert({ company_id: currentCompany.id, name: $("#siteName").value.trim(), location: $("#siteLocation").value.trim() });
+      if (error) throw error;
+      $("#siteName").value = ""; $("#siteLocation").value = "";
+      toast("Gradilište dodato.");
+      loadSites();
+    } catch(e) { toast(e.message, true); }
+  });
+
+  $("#addAssetBtn").addEventListener("click", async () => {
+    try {
+      const { error } = await sb.from("assets").insert({ company_id: currentCompany.id, name: $("#assetName").value.trim(), asset_type: $("#assetType").value, registration: $("#assetReg").value.trim(), capacity: $("#assetCapacity").value.trim() });
+      if (error) throw error;
+      ["assetName","assetReg","assetCapacity"].forEach(id => $("#"+id).value = "");
+      toast("Mašina/vozilo dodato.");
+      loadAssets();
+    } catch(e) { toast(e.message, true); }
+  });
+
+  $("#exportCsvBtn").addEventListener("click", exportCsv);
+
+  $("#workerLoginBtn").addEventListener("click", async () => {
+    try {
+      if (!initSupabase()) return;
+      const companyCode = $("#workerCompanyCode").value.trim();
+      const accessCode = $("#workerAccessCode").value.trim();
+      const { data, error } = await sb.rpc("worker_login", { p_company_code: companyCode, p_access_code: accessCode });
+      if (error) throw error;
+      if (!data || !data.length) throw new Error("Neispravna šifra firme ili kod za ulaz.");
+      currentWorker = { ...data[0], company_code: companyCode, access_code: accessCode };
+      localStorage.setItem("swp_worker", JSON.stringify(currentWorker));
+      openWorkerForm();
+    } catch(e) { toast(e.message, true); }
+  });
+
+  $("#workerLogoutBtn").addEventListener("click", () => {
+    localStorage.removeItem("swp_worker");
+    localStorage.removeItem("swp_draft");
+    currentWorker = null;
+    show("WorkerLogin");
+  });
+
+  $("#saveDraftBtn").addEventListener("click", saveDraft);
+
+  $("#submitReportBtn").addEventListener("click", async () => {
+    try {
+      if (!navigator.onLine) {
+        saveDraft();
+        throw new Error("Nema interneta. Nacrt je sačuvan na ovom telefonu.");
+      }
+      const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+      if (!worker) throw new Error("Radnik nije prijavljen.");
+      const data = collectWorkerData();
+      const { error } = await sb.rpc("submit_worker_report", {
+        p_company_code: worker.company_code,
+        p_access_code: worker.access_code,
+        p_report_date: $("#wrDate").value || today(),
+        p_site_id: null,
+        p_data: data
+      });
+      if (error) throw error;
+      clearWorkerForm();
+      $("#wrDate").value = today();
+      toast("Izveštaj je poslat Direkciji ✅ Forma je očišćena.");
+    } catch(e) { toast(e.message, true); }
+  });
+}
+
+function openWorkerForm() {
+  $("#wrDate").value = today();
+  $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
+  $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
+  workerSetSections(currentWorker.permissions || {});
+  show("WorkerForm");
+  loadDraft();
+}
+
+async function boot() {
+  bindEvents();
+  initSupabase();
+  $("#wrDate").value = today();
+  const stored = localStorage.getItem("swp_worker");
+  if (stored) {
+    try {
+      currentWorker = JSON.parse(stored);
+      openWorkerForm();
+      return;
+    } catch {}
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+}
+
+document.addEventListener("DOMContentLoaded", boot);
