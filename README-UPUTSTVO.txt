@@ -50,3 +50,7 @@ Popravljena dugmad '+ Dodaj mašinu' i '+ Dodaj sipanje goriva'. Dodati su direk
 
 IZMENA v1.7:
 Svaka dodata mašina sada otvara kompletan blok: mašina/vozilo, početni sati/MTČ, završni sati/MTČ, ukupno sati rada i opis rada. Svako sipanje goriva sada otvara kompletan blok: za koju mašinu, litara, MTČ/KM pri sipanju i ko je sipao.
+
+
+IZMENA v1.8:
+Direkcija panel je prebačen na Excel-friendly poslovni izgled: svetle kartice, zelena Excel boja, tabelarni inbox, jasniji statusi i bolji kontrast za prihvatanje kod firmi koje su navikle na Excel.
