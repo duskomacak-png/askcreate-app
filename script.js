@@ -189,15 +189,24 @@ function reportHtml(r) {
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "Nepoznat korisnik";
   return `
     <div class="item">
-      <strong>${escapeHtml(person)} · ${escapeHtml(r.report_date)}</strong>
-      <small>${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
+      <strong>${d.report_type === "defect_record" ? "🚨 EVIDENCIJA KVARA" : escapeHtml(person)} · ${escapeHtml(r.report_date)}</strong>
+      <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
       <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
       ${d.hours ? `<span class="pill">${escapeHtml(String(d.hours))} h</span>` : ""}
       ${d.fuel_liters ? `<span class="pill">${escapeHtml(String(d.fuel_liters))} L</span>` : ""}
-      <p>${escapeHtml(d.description || d.note || "")}</p>
+      ${d.defect_exists === "da" ? `<span class="pill">Kvar: ${escapeHtml(d.defect_urgency || "prijavljen")}</span>` : ""}
+      ${d.defect_stops_work ? `<span class="pill">Zaustavlja rad: ${escapeHtml(d.defect_stops_work)}</span>` : ""}
+      ${d.defect_status ? `<span class="pill">Status kvara: ${escapeHtml(d.defect_status)}</span>` : ""}
+      ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
+      <p>${escapeHtml(d.defect || d.description || d.note || "")}</p>
       ${r.returned_reason ? `<p class="muted">Razlog vraćanja: ${escapeHtml(r.returned_reason)}</p>` : ""}
       <details><summary>Detalji</summary><pre>${escapeHtml(JSON.stringify(d, null, 2))}</pre></details>
       <div class="actions">
+        ${d.report_type === "defect_record" || d.report_type === "defect_alert" ? `
+          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
+          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
+          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
+        ` : ""}
         <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
         <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
         <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
@@ -224,6 +233,20 @@ window.returnReport = async (id) => {
   loadReports();
 };
 
+window.setDefectRecordStatus = async (id, newStatus) => {
+  const { data: row, error: readError } = await sb.from("reports").select("data").eq("id", id).maybeSingle();
+  if (readError) return toast(readError.message, true);
+  const d = row?.data || {};
+  d.defect_status = newStatus;
+  if (newStatus === "primljeno") d.defect_received_at = new Date().toISOString();
+  if (newStatus === "u_popravci") d.defect_repair_started_at = new Date().toISOString();
+  if (newStatus === "reseno") d.defect_resolved_at = new Date().toISOString();
+  const { error } = await sb.from("reports").update({ data: d }).eq("id", id);
+  if (error) return toast(error.message, true);
+  toast("Status kvara promenjen.");
+  loadReports();
+};
+
 function collectPermissions() {
   const obj = {};
   $$(".perm").forEach(ch => obj[ch.value] = ch.checked);
@@ -243,39 +266,155 @@ function workerSetSections(perms) {
   Object.entries(map).forEach(([key, sel]) => $(sel).classList.toggle("active", !!perms[key]));
 }
 
+
+function addMachineEntry(values = {}) {
+  const list = $("#machineEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".machine-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card machine-entry";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Mašina ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+    <label>Mašina / vozilo</label>
+    <input class="m-name" placeholder="CAT 330 / MAN kiper" value="${escapeHtml(values.name || "")}" />
+    <div class="mini-grid">
+      <div>
+        <label>MTČ / KM početak</label>
+        <input class="m-start" type="number" step="0.1" value="${escapeHtml(values.start || "")}" />
+      </div>
+      <div>
+        <label>MTČ / KM kraj</label>
+        <input class="m-end" type="number" step="0.1" value="${escapeHtml(values.end || "")}" />
+      </div>
+    </div>
+    <label>Opis rada za ovu mašinu</label>
+    <input class="m-work" placeholder="iskop, utovar, ravnanje..." value="${escapeHtml(values.work || "")}" />
+  `;
+  div.querySelector(".remove-entry").addEventListener("click", () => {
+    div.remove();
+    refreshFuelMachineOptions();
+  });
+  div.querySelector(".m-name").addEventListener("input", refreshFuelMachineOptions);
+  list.appendChild(div);
+  refreshFuelMachineOptions();
+}
+
+function getMachineEntries() {
+  return $$("#machineEntries .machine-entry").map((el, i) => ({
+    no: i + 1,
+    name: el.querySelector(".m-name")?.value.trim() || "",
+    start: el.querySelector(".m-start")?.value || "",
+    end: el.querySelector(".m-end")?.value || "",
+    work: el.querySelector(".m-work")?.value.trim() || ""
+  })).filter(m => m.name || m.start || m.end || m.work);
+}
+
+function addFuelEntry(values = {}) {
+  const list = $("#fuelEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".fuel-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card fuel-entry";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Sipanje ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+    <label>Za koju mašinu / vozilo</label>
+    <select class="f-machine"></select>
+    <label>Ako nije u listi, upiši ručno</label>
+    <input class="f-machine-custom" placeholder="npr. agregat / druga mašina" value="${escapeHtml(values.machine_custom || "")}" />
+    <div class="mini-grid">
+      <div>
+        <label>Litara</label>
+        <input class="f-liters" type="number" step="0.1" value="${escapeHtml(values.liters || "")}" />
+      </div>
+      <div>
+        <label>Ko je sipao</label>
+        <input class="f-by" placeholder="Ime" value="${escapeHtml(values.by || "")}" />
+      </div>
+    </div>
+  `;
+  div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
+  list.appendChild(div);
+  refreshFuelMachineOptions();
+  if (values.machine) div.querySelector(".f-machine").value = values.machine;
+}
+
+function getFuelEntries() {
+  return $$("#fuelEntries .fuel-entry").map((el, i) => {
+    const selected = el.querySelector(".f-machine")?.value || "";
+    const custom = el.querySelector(".f-machine-custom")?.value.trim() || "";
+    return {
+      no: i + 1,
+      machine: custom || selected,
+      machine_custom: custom,
+      liters: el.querySelector(".f-liters")?.value || "",
+      by: el.querySelector(".f-by")?.value.trim() || "",
+      receiver: currentWorker?.full_name || ""
+    };
+  }).filter(f => f.machine || f.liters || f.by);
+}
+
+function refreshFuelMachineOptions() {
+  const machines = getMachineEntries().map(m => m.name).filter(Boolean);
+  $$("#fuelEntries .f-machine").forEach(sel => {
+    const old = sel.value;
+    sel.innerHTML = `<option value="">-- izaberi mašinu --</option>` + machines.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+    if (machines.includes(old)) sel.value = old;
+  });
+}
+
 function collectWorkerData() {
+  const machines = getMachineEntries();
+  const fuelEntries = getFuelEntries();
   return {
     site_name: $("#wrSiteName").value.trim(),
     description: $("#wrDescription").value.trim(),
     hours: $("#wrHours").value,
-    machine: $("#wrMachine").value.trim(),
-    mtc_start: $("#wrMtcStart").value,
-    mtc_end: $("#wrMtcEnd").value,
+    machines,
+    fuel_entries: fuelEntries,
+
+    // Summary fields for older report/CSV display
+    machine: machines.map(m => m.name).filter(Boolean).join(" | "),
+    mtc_start: machines.map(m => m.start).filter(Boolean).join(" | "),
+    mtc_end: machines.map(m => m.end).filter(Boolean).join(" | "),
+    fuel_liters: fuelEntries.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0) || "",
+    fuel_by: fuelEntries.map(f => f.by).filter(Boolean).join(" | "),
+    fuel_receiver: currentWorker?.full_name || "",
+
     vehicle: $("#wrVehicle").value.trim(),
     km_start: $("#wrKmStart").value,
     km_end: $("#wrKmEnd").value,
     route: $("#wrRoute").value.trim(),
     tours: $("#wrTours").value,
-    fuel_liters: $("#wrFuelLiters").value,
-    fuel_by: $("#wrFuelBy").value.trim(),
-    fuel_receiver: $("#wrFuelReceiver").value.trim(),
     material: $("#wrMaterial").value.trim(),
     quantity: $("#wrQuantity").value,
     unit: $("#wrUnit").value.trim(),
     warehouse_type: $("#wrWarehouseType").value,
     warehouse_item: $("#wrWarehouseItem").value.trim(),
     warehouse_qty: $("#wrWarehouseQty").value.trim(),
+    defect_exists: $("#wrDefectExists")?.value || "ne",
     defect: $("#wrDefect").value.trim(),
+    defect_stops_work: $("#wrDefectStopsWork")?.value || "",
+    defect_can_continue: $("#wrDefectCanContinue")?.value || "",
     defect_urgency: $("#wrDefectUrgency").value,
+    called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
     note: $("#wrNote").value.trim()
   };
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrMachine","wrMtcStart","wrMtcEnd","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrFuelLiters","wrFuelBy","wrFuelReceiver","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefect","wrDefectUrgency","wrNote"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic","wrNote"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
+  if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
+  if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
+  if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
 }
 
@@ -295,8 +434,14 @@ function loadDraft() {
     const draft = JSON.parse(raw);
     $("#wrDate").value = draft.date || today();
     const d = draft.data || {};
+
+    if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
+    if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
+    (d.machines || []).forEach(m => addMachineEntry(m));
+    (d.fuel_entries || []).forEach(f => addFuelEntry(f));
+
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrMachine:"machine", wrMtcStart:"mtc_start", wrMtcEnd:"mtc_end", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrFuelLiters:"fuel_liters", wrFuelBy:"fuel_by", wrFuelReceiver:"fuel_receiver", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefect:"defect", wrDefectUrgency:"defect_urgency", wrNote:"note"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone", wrNote:"note"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
   } catch {}
 }
@@ -353,6 +498,63 @@ async function exportCsv() {
   a.click();
   URL.revokeObjectURL(a.href);
   toast("CSV export je preuzet.");
+}
+
+
+async function sendDefectNow() {
+  try {
+    if (!navigator.onLine) {
+      saveDraft();
+      throw new Error("Nema interneta. Kvar nije poslat, nacrt je sačuvan na ovom uređaju.");
+    }
+
+    const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+    if (!worker) throw new Error("Radnik nije prijavljen.");
+
+    const defectText = $("#wrDefect")?.value.trim() || "";
+    const exists = $("#wrDefectExists")?.value || "ne";
+
+    if (exists !== "da" && !defectText) {
+      throw new Error("Prvo označi da ima kvar ili upiši opis kvara.");
+    }
+
+    const machines = getMachineEntries ? getMachineEntries() : [];
+    const firstMachine = machines[0]?.name || $("#wrMachine")?.value?.trim?.() || "";
+
+    const urgentData = {
+      report_type: "defect_record",
+      sent_immediately: true,
+      defect_status: "prijavljen",
+      defect_reported_at: new Date().toISOString(),
+      site_name: $("#wrSiteName")?.value.trim() || "",
+      machine: firstMachine,
+      machines,
+      defect_exists: "da",
+      defect: defectText,
+      defect_stops_work: $("#wrDefectStopsWork")?.value || "",
+      defect_can_continue: $("#wrDefectCanContinue")?.value || "",
+      defect_urgency: $("#wrDefectUrgency")?.value || "",
+      note: $("#wrNote")?.value.trim() || "",
+      created_by_worker: worker.full_name,
+      function_title: worker.function_title,
+      called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
+      sent_to: "direkcija_mehanizacija_direktor"
+    };
+
+    const { error } = await sb.rpc("submit_worker_report", {
+      p_company_code: worker.company_code,
+      p_access_code: worker.access_code,
+      p_report_date: $("#wrDate").value || today(),
+      p_site_id: null,
+      p_data: urgentData
+    });
+
+    if (error) throw error;
+
+    toast("Kvar je evidentiran odmah 🚨 Direkcija i direktor mogu pratiti vreme rešavanja.");
+  } catch(e) {
+    toast(e.message, true);
+  }
 }
 
 function bindEvents() {
@@ -473,6 +675,10 @@ function bindEvents() {
 
   $("#exportCsvBtn").addEventListener("click", exportCsv);
 
+  if ($("#addMachineBtn")) $("#addMachineBtn").addEventListener("click", () => addMachineEntry());
+  if ($("#addFuelBtn")) $("#addFuelBtn").addEventListener("click", () => addFuelEntry());
+  if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
+
   $("#workerLoginBtn").addEventListener("click", async () => {
     try {
       if (!initSupabase()) return;
@@ -526,6 +732,8 @@ function openWorkerForm() {
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
   workerSetSections(currentWorker.permissions || {});
   show("WorkerForm");
+  if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
+  if ($("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
   loadDraft();
 }
 

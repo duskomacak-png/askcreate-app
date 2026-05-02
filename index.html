@@ -283,13 +283,10 @@
         </div>
 
         <div id="secMachines" class="dyn-section">
-          <h4>Mašina</h4>
-          <label>Mašina</label>
-          <input id="wrMachine" placeholder="CAT 330" />
-          <label>MTČ početak</label>
-          <input id="wrMtcStart" type="number" step="0.1" />
-          <label>MTČ kraj</label>
-          <input id="wrMtcEnd" type="number" step="0.1" />
+          <h4>Mašine / rad po mašini</h4>
+          <p class="hint">Dodaj svaku mašinu ili vozilo posebno. Ovo je bitno za čist Excel.</p>
+          <div id="machineEntries" class="entry-list"></div>
+          <button id="addMachineBtn" class="secondary" type="button">+ Dodaj mašinu</button>
         </div>
 
         <div id="secVehicles" class="dyn-section">
@@ -307,13 +304,11 @@
         </div>
 
         <div id="secFuel" class="dyn-section">
-          <h4>Gorivo</h4>
-          <label>Litara</label>
-          <input id="wrFuelLiters" type="number" step="0.1" />
-          <label>Ko je sipao</label>
-          <input id="wrFuelBy" placeholder="Ime" />
-          <label>Ko je primio</label>
-          <input id="wrFuelReceiver" placeholder="Ime" />
+          <h4>Sipanje goriva</h4>
+          <p class="hint">Možeš dodati više sipanja goriva i povezati svako sipanje sa mašinom/vozilom.</p>
+          <div id="fuelEntries" class="entry-list"></div>
+          <button id="addFuelBtn" class="secondary" type="button">+ Dodaj sipanje goriva</button>
+          <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
         </div>
 
         <div id="secMaterials" class="dyn-section">
@@ -341,16 +336,54 @@
         </div>
 
         <div id="secDefects" class="dyn-section">
-          <h4>Kvar</h4>
+          <h4>Kvar / mehanizacija</h4>
+          <p class="hint">Ovo je važno da Šef mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
+
+          <label>Ima kvar?</label>
+          <select id="wrDefectExists">
+            <option value="ne">Ne</option>
+            <option value="da">Da</option>
+          </select>
+
           <label>Opis kvara</label>
-          <textarea id="wrDefect" placeholder="Ako nema kvara, ostavi prazno."></textarea>
+          <textarea id="wrDefect" placeholder="npr. puklo crevo, curi ulje, ne pali..."></textarea>
+
+          <div class="mini-grid">
+            <div>
+              <label>Zaustavlja rad?</label>
+              <select id="wrDefectStopsWork">
+                <option value="">-- izaberi --</option>
+                <option value="da">Da</option>
+                <option value="ne">Ne</option>
+              </select>
+            </div>
+            <div>
+              <label>Može nastaviti rad?</label>
+              <select id="wrDefectCanContinue">
+                <option value="">-- izaberi --</option>
+                <option value="da">Da</option>
+                <option value="ne">Ne</option>
+              </select>
+            </div>
+          </div>
+
           <label>Hitnost</label>
           <select id="wrDefectUrgency">
-            <option value="">-- nema --</option>
-            <option value="nisko">Nisko</option>
-            <option value="srednje">Srednje</option>
-            <option value="hitno">Hitno</option>
+            <option value="">-- izaberi --</option>
+            <option value="nisko">Nisko — može kasnije</option>
+            <option value="srednje">Srednje — treba zakazati popravku</option>
+            <option value="hitno">Hitno — odmah zvati mehanizaciju</option>
           </select>
+
+          <label>Da li je šef mehanizacije pozvan telefonom?</label>
+          <select id="wrDefectCalledMechanic">
+            <option value="">-- izaberi --</option>
+            <option value="da">Da</option>
+            <option value="ne">Ne</option>
+          </select>
+
+          <button id="sendDefectNowBtn" class="danger-btn" type="button">🚨 Evidentiraj kvar odmah</button>
+          <p class="hint">Ako je hitno, prvo pozovi šefa mehanizacije. Ova prijava ostaje kao evidencija za Direkciju i direktora.</p>
         </div>
 
         <label>Napomena</label>
