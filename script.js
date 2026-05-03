@@ -7,6 +7,8 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
+const APP_VERSION = "1.11.6";
+
 
 let sb = null;
 let currentCompany = null;
@@ -207,6 +209,15 @@ async function loadDirectorCompany() {
 }
 
 
+
+
+
+
+
+
+
+
+
 function setPersonFormMode(mode = "add") {
   const editing = mode === "edit";
   const title = $("#personFormTitle");
@@ -218,11 +229,11 @@ function setPersonFormMode(mode = "add") {
 }
 
 function clearPersonForm() {
-  ["personFirst","personLast","personFunction","personCode"].forEach(id => {
+  ["personFirst", "personLast", "personFunction", "personCode"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
-  $$(".perm").forEach(ch => ch.checked = ch.value === "daily_work");
+  $$(".perm").forEach(ch => { ch.checked = ch.value === "daily_work"; });
   editingPersonId = null;
   setPersonFormMode("add");
 }
@@ -230,33 +241,47 @@ function clearPersonForm() {
 window.editPerson = async (id) => {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
-    const { data: p, error } = await sb
+    const { data: person, error } = await sb
       .from("company_users")
       .select("*")
       .eq("id", id)
       .eq("company_id", currentCompany.id)
       .maybeSingle();
     if (error) throw error;
-    if (!p) throw new Error("Radnik nije pronađen.");
-    editingPersonId = p.id;
-    $("#personFirst").value = p.first_name || "";
-    $("#personLast").value = p.last_name || "";
-    $("#personFunction").value = p.function_title || "";
-    $("#personCode").value = p.access_code || "";
-    const perms = p.permissions || {};
-    $$(".perm").forEach(ch => ch.checked = !!perms[ch.value]);
+    if (!person) throw new Error("Radnik nije pronađen.");
+
+    editingPersonId = person.id;
+    $("#personFirst").value = person.first_name || "";
+    $("#personLast").value = person.last_name || "";
+    $("#personFunction").value = person.function_title || "";
+    $("#personCode").value = person.access_code || "";
+
+    const permissions = person.permissions || {};
+    $$(".perm").forEach(ch => { ch.checked = !!permissions[ch.value]; });
+
     setPersonFormMode("edit");
     toast("Profil radnika je otvoren za izmenu.");
-    const formTitle = $("#personFormTitle");
-    if (formTitle) formTitle.scrollIntoView({ behavior: "smooth", block: "center" });
-  } catch(e) { toast(e.message, true); }
+    const title = $("#personFormTitle");
+    if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (e) {
+    toast(e.message, true);
+  }
 };
 
 async function savePersonForm() {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
+
+    const firstName = $("#personFirst").value.trim();
+    const lastName = $("#personLast").value.trim();
+    const functionTitle = $("#personFunction").value.trim();
     const code = normalizeLoginCode($("#personCode").value);
+
+    if (!firstName) throw new Error("Upiši ime radnika.");
+    if (!lastName) throw new Error("Upiši prezime radnika.");
+    if (!functionTitle) throw new Error("Upiši funkciju radnika.");
     if (code.length < 4) throw new Error("Šifra radnika mora imati najmanje 4 karaktera.");
+
     let duplicateQuery = sb
       .from("company_users")
       .select("id")
@@ -264,35 +289,83 @@ async function savePersonForm() {
       .eq("access_code", code)
       .eq("active", true);
     if (editingPersonId) duplicateQuery = duplicateQuery.neq("id", editingPersonId);
+
     const { data: existingCode, error: existingCodeError } = await duplicateQuery.maybeSingle();
     if (existingCodeError) throw existingCodeError;
     if (existingCode) throw new Error("U ovoj firmi već postoji aktivan radnik sa tom šifrom. Izaberi drugu šifru radnika.");
+
     const payload = {
       company_id: currentCompany.id,
-      first_name: $("#personFirst").value.trim(),
-      last_name: $("#personLast").value.trim(),
-      function_title: $("#personFunction").value.trim(),
+      first_name: firstName,
+      last_name: lastName,
+      function_title: functionTitle,
       access_code: code,
       permissions: collectPermissions(),
       active: true
     };
-    if (!payload.first_name || !payload.last_name) throw new Error("Upiši ime i prezime radnika.");
+
     if (editingPersonId) {
-      const { error } = await sb.from("company_users").update(payload).eq("id", editingPersonId).eq("company_id", currentCompany.id);
+      const { error } = await sb
+        .from("company_users")
+        .update(payload)
+        .eq("id", editingPersonId)
+        .eq("company_id", currentCompany.id);
       if (error) throw error;
       toast("Profil radnika je sačuvan.");
     } else {
       const { error } = await sb.from("company_users").insert(payload);
       if (error) throw error;
-      toast("Osoba je dodata.");
+      toast("Radnik je dodat.");
     }
+
     clearPersonForm();
     loadPeople();
-  } catch(e) { toast(e.message, true); }
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+window.deleteReportPermanently = async (id) => {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    if (!confirm("TRAJNO obrisati ovaj izveštaj iz baze?\n\nOvo se ne može vratiti.")) return;
+
+    const { error } = await sb
+      .from("reports")
+      .delete()
+      .eq("id", id)
+      .eq("company_id", currentCompany.id);
+    if (error) throw error;
+
+    toast("Izveštaj je trajno obrisan iz baze.");
+    loadReports();
+    if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
+function renderPersonItem(p) {
+  const permissionCount = Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length;
+  return `
+    <div class="item person-card-v1116" data-person-id="${escapeHtml(p.id)}">
+      <div class="item-main">
+        <strong>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</strong>
+        <small>${escapeHtml(p.function_title)} · šifra radnika: ${escapeHtml(p.access_code)}</small><br/>
+        <span class="pill">Aktivan</span>
+        <span class="pill">${permissionCount} rubrika</span>
+      </div>
+      <div class="person-actions-v1116">
+        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Uredi profil</button>
+        <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button>
+      </div>
+    </div>
+  `;
 }
 
 async function loadPeople() {
   if (!currentCompany) return;
+
   const { data, error } = await sb
     .from("company_users")
     .select("*")
@@ -302,18 +375,9 @@ async function loadPeople() {
 
   if (error) return toast(error.message, true);
 
-  $("#peopleList").innerHTML = (data || []).map(p => `
-    <div class="item management-item">
-      <div class="item-main">
-        <strong>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</strong>
-        <small>${escapeHtml(p.function_title)} · kod: ${escapeHtml(p.access_code)}</small><br/>
-        <span class="pill">Aktivan</span>
-        <span class="pill">${Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length} rubrika</span>
-      </div>
-      <div class="management-actions">
-        <button class="delete-btn" type="button" onclick="deletePerson('${p.id}', '${escapeHtml((p.first_name || '') + ' ' + (p.last_name || ''))}')">❌ Obriši iz spiska</button>
-      </div>
-    </div>`).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
+  const list = $("#peopleList");
+  if (!list) return;
+  list.innerHTML = (data || []).map(renderPersonItem).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
 }
 
 async function loadSites() {
@@ -417,18 +481,36 @@ window.archiveSite = async (id, name = "") => {
 };
 
 window.deletePerson = async (id, name = "") => {
-  const label = name ? ` (${name})` : "";
-  if (!confirm("Obrisati osobu/radnika iz aktivnog spiska" + label + "?\n\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
 
-  const { error } = await sb
-    .from("company_users")
-    .update({ active: false })
-    .eq("id", id)
-    .eq("company_id", currentCompany.id);
+    if (!name) {
+      const { data: person, error: readError } = await sb
+        .from("company_users")
+        .select("first_name,last_name")
+        .eq("id", id)
+        .eq("company_id", currentCompany.id)
+        .maybeSingle();
+      if (readError) throw readError;
+      if (person) name = `${person.first_name || ""} ${person.last_name || ""}`.trim();
+    }
 
-  if (error) return toast(error.message, true);
-  toast("Osoba je obrisana iz aktivnog spiska.");
-  loadPeople();
+    const label = name ? ` (${name})` : "";
+    if (!confirm("Obrisati osobu/radnika iz aktivnog spiska" + label + "?\n\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
+
+    const { error } = await sb
+      .from("company_users")
+      .update({ active: false })
+      .eq("id", id)
+      .eq("company_id", currentCompany.id);
+
+    if (error) throw error;
+    toast("Osoba je obrisana iz aktivnog spiska.");
+    clearPersonForm();
+    loadPeople();
+  } catch (e) {
+    toast(e.message, true);
+  }
 };
 
 window.deleteAsset = async (id, name = "") => {
@@ -514,7 +596,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Radnik / osoba",
         title:`${p.first_name} ${p.last_name}`,
         subtitle:`${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
-        actions:`${p.active ? `<button class="delete-btn" onclick="deletePerson('${p.id}', '${escapeHtml((p.first_name || '') + ' ' + (p.last_name || ''))}')">❌ Obriši iz spiska</button>` : `<span class="pill">već sklonjen</span>`}`
+        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Uredi profil</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button>` : `<span class="pill">već sklonjen</span>`}`
       });
     });
 
@@ -711,10 +793,12 @@ function renderReportReadableDetails(d = {}) {
 function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "Nepoznat korisnik";
+
   return `
-    <div class="item">
+    <div class="item report-item">
       <strong>${d.report_type === "defect_record" || d.report_type === "defect_alert" ? "🚨 EVIDENCIJA KVARA" : "📄 DNEVNI IZVEŠTAJ"} · ${escapeHtml(r.report_date)}</strong>
       <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
+
       <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
       ${d.hours ? `<span class="pill">${escapeHtml(String(d.hours))} h</span>` : ""}
       ${d.fuel_liters ? `<span class="pill">${escapeHtml(String(d.fuel_liters))} L</span>` : ""}
@@ -722,18 +806,23 @@ function reportHtml(r) {
       ${d.defect_stops_work ? `<span class="pill">Zaustavlja rad: ${escapeHtml(d.defect_stops_work)}</span>` : ""}
       ${d.defect_status ? `<span class="pill">Status kvara: ${escapeHtml(d.defect_status)}</span>` : ""}
       ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
+
       <p>${escapeHtml(d.defect || d.description || d.note || "")}</p>
       ${r.returned_reason ? `<p class="muted">Razlog vraćanja: ${escapeHtml(r.returned_reason)}</p>` : ""}
       ${renderReportReadableDetails(d)}
+
       <div class="actions">
         ${d.report_type === "defect_record" || d.report_type === "defect_alert" ? `
           <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
           <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
           <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
         ` : ""}
+
         <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
         <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
         <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
+        <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
+        <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
       </div>
     </div>`;
 }

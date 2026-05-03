@@ -1062,3 +1062,121 @@ pre.raw-details{
     white-space:normal;
   }
 }
+
+
+/* v1.11.4 — Edit worker reliable + permanent report delete */
+.edit-btn{
+  border:1px solid #bfdbfe !important;
+  background:#eff6ff !important;
+  color:#1d4ed8 !important;
+  border-radius:12px !important;
+  padding:8px 12px !important;
+  font-size:.84rem !important;
+  line-height:1.1 !important;
+  font-weight:900 !important;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.edit-btn:hover{ background:#dbeafe !important; }
+
+.hard-delete-report-btn{
+  border:1px solid #fecaca !important;
+  background:#fff1f2 !important;
+  color:#991b1b !important;
+  border-radius:10px !important;
+  padding:7px 10px !important;
+  font-size:.84rem !important;
+  font-weight:900 !important;
+  cursor:pointer;
+}
+.hard-delete-report-btn:hover{ background:#ffe4e6 !important; }
+
+.person-form-actions{ margin-top:12px; }
+
+@media(max-width:700px){
+  .edit-btn,
+  .hard-delete-report-btn{
+    width:100%;
+    white-space:normal;
+  }
+}
+
+
+/* v1.11.5 — visible edit worker and hard delete report */
+.edit-btn{
+  border:1px solid #bfdbfe !important;
+  background:#eff6ff !important;
+  color:#1d4ed8 !important;
+  border-radius:12px !important;
+  padding:8px 12px !important;
+  font-size:.84rem !important;
+  line-height:1.1 !important;
+  font-weight:900 !important;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.edit-btn:hover{ background:#dbeafe !important; }
+
+.hard-delete-report-btn{
+  border:1px solid #fecaca !important;
+  background:#fff1f2 !important;
+  color:#991b1b !important;
+  border-radius:10px !important;
+  padding:7px 10px !important;
+  font-size:.84rem !important;
+  font-weight:900 !important;
+  cursor:pointer;
+}
+.hard-delete-report-btn:hover{ background:#ffe4e6 !important; }
+
+.report-item .actions{
+  align-items:center;
+}
+
+.person-form-actions{ margin-top:12px; }
+
+@media(max-width:700px){
+  .edit-btn,
+  .hard-delete-report-btn{
+    width:100%;
+    white-space:normal;
+  }
+}
+
+
+/* v1.11.6 — worker edit/delete actions forced visible under each worker */
+.person-card-v1116{
+  display:block !important;
+  overflow:visible !important;
+}
+.person-card-v1116 .item-main{
+  width:100% !important;
+}
+.person-actions-v1116{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid rgba(15,23,42,.12);
+}
+.person-actions-v1116 .edit-btn,
+.person-actions-v1116 .delete-btn{
+  display:inline-flex !important;
+  align-items:center;
+  justify-content:center;
+  min-height:38px;
+}
+#peopleList .edit-btn,
+#peopleList .delete-btn{
+  visibility:visible !important;
+  opacity:1 !important;
+}
+@media(max-width:700px){
+  .person-actions-v1116 .edit-btn,
+  .person-actions-v1116 .delete-btn{
+    width:100%;
+  }
+}

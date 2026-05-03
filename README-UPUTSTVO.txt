@@ -134,3 +134,14 @@ Vraćena stabilna baza v1.10.9, dodat cache-busting za style.css i script.js, do
 
 IZMENA v1.11.3 DIRECTOR EDIT WORKER + ARCHIVE REPORT:
 Direkcija sada ima dugme ✏️ Uredi profil kod svakog radnika. Forma levo se popunjava i može se izmeniti ime, prezime, funkcija, šifra radnika i rubrike koje vidi. Dodato je Otkaži izmenu. Kod svakog izveštaja u glavnom inbox-u dodato je dugme 🗑️ Skloni izveštaj, koje arhivira izveštaj statusom archived i sklanja ga iz glavnog inbox-a. Nije diran Supabase SQL. Cache podignut na startwork-pro-v1113.
+
+
+IZMENA v1.11.4 EDIT WORKER + DELETE REPORT:
+Stabilizovano uređivanje radnika u Direkciji. Dugme ✏️ Uredi profil otvara radnika u postojećoj formi, a Sačuvaj izmene ažurira isti company_users red. Dodato je pojedinačno trajno brisanje izveštaja iz baze preko dugmeta 🔥 Obriši iz baze. Ovo brisanje radi delete iz reports tabele. Hard-delete radnika nije dodat ako ima istoriju, da se ne pokvare veze i evidencija. Cache podignut na startwork-pro-v1114.
+
+
+IZMENA v1.11.5 VISIBLE EDIT DELETE:
+Provereno je da u v1.11.4 funkcija za uređivanje radnika postoji, ali dugme nije bilo ubačeno u listu radnika. U ovoj verziji je kompletna loadPeople funkcija prepisana tako da svaka kartica radnika sigurno prikazuje ✏️ Uredi profil i ❌ Obriši iz spiska. Kompletan reportHtml je prepisan tako da svaki izveštaj sigurno prikazuje 📦 Arhiviraj i 🔥 Obriši iz baze. Cache podignut na startwork-pro-v1115.
+
+v1.11.6 — vidljiva dugmad za radnike bez oslanjanja na desni grid
+Popravljen je prikaz radnika u Direkcija → Ljudi i funkcije. Kartica radnika sada koristi novi render person-card-v1116 i dugmad ✏️ Uredi profil / ❌ Obriši iz spiska stoje direktno ispod podataka radnika, tako da ih CSS/grid ne može gurnuti van vidljivog dela. Uređivanje radnika i dalje radi update postojećeg reda u company_users preko id + company_id. Brisanje radnika ostaje soft-delete: active=false. Nije potreban novi Supabase SQL. Cache i linkovi su podignuti na v1116.
