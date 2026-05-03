@@ -878,14 +878,20 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
 
 let directorReportsCache = [];
 
-function isDefectReport(r) {
+function isDefectOnlyReport(r) {
   const d = r?.data || {};
-  return d.report_type === "defect_record" ||
-    d.report_type === "defect_alert" ||
+  return d.report_type === "defect_record" || d.report_type === "defect_alert" || d.sent_immediately === true;
+}
+
+function hasDefectData(r) {
+  const d = r?.data || {};
+  return isDefectOnlyReport(r) ||
     d.defect_exists === "da" ||
     !!d.defect ||
     !!d.defect_status ||
-    !!d.defect_urgency;
+    !!d.defect_urgency ||
+    !!d.defect_asset_name ||
+    !!d.defect_machine;
 }
 
 function formatDateTimeLocal(value) {
@@ -904,7 +910,7 @@ async function loadReports() {
   const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("submitted_at", { ascending:false });
   if (error) return toast(error.message, true);
   directorReportsCache = data || [];
-  const dailyReports = directorReportsCache.filter(r => !isDefectReport(r));
+  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r));
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
   renderDefectsList();
   renderExportPanel();
@@ -947,7 +953,7 @@ function defectHtml(r) {
 function renderDefectsList() {
   const box = $("#defectsList");
   if (!box) return;
-  const defects = directorReportsCache.filter(isDefectReport);
+  const defects = directorReportsCache.filter(hasDefectData);
   box.innerHTML = defects.map(defectHtml).join("") || `<p class="muted">Nema prijavljenih kvarova.</p>`;
 }
 
@@ -1204,7 +1210,7 @@ function reportHtml(r) {
         <input type="checkbox" class="report-export-check" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
         <span>✅ Izaberi ovaj izveštaj za Excel export</span>
       </label>
-      <strong>${d.report_type === "defect_record" || d.report_type === "defect_alert" ? "🚨 EVIDENCIJA KVARA" : "📄 DNEVNI IZVEŠTAJ"} · ${escapeHtml(r.report_date)}</strong>
+      <strong>${isDefectOnlyReport(r) ? "🚨 EVIDENCIJA KVARA" : "📄 DNEVNI IZVEŠTAJ"} · ${escapeHtml(r.report_date)}</strong>
       <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
 
       <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
@@ -1220,7 +1226,7 @@ function reportHtml(r) {
       ${renderReportReadableDetails(d)}
 
       <div class="actions">
-        ${d.report_type === "defect_record" || d.report_type === "defect_alert" ? `
+        ${isDefectOnlyReport(r) ? `
           <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
           <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
           <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
