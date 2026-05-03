@@ -991,8 +991,7 @@ pre.raw-details{
 }
 
 
-
-/* v1.10.7 — Final worker login cleanup */
+/* v1.10.9 — Stable role separation and worker login labels */
 .code-help-box strong{
   color:#0f766e;
   background:#ccfbf1;

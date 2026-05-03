@@ -124,9 +124,5 @@ IZMENA v1.10.6 WORKER LOGIN LOCK:
 Dodat je jasan login princip: radnik se prijavljuje sa šifrom firme + svojim kodom. Direkcija vidi objašnjenje kod dodavanja radnika. App proverava da u istoj firmi ne postoji drugi aktivan radnik sa istim kodom. SQL dodaje jedinstveni indeks za company_id + lower(trim(access_code)) za aktivne radnike. worker_login SQL sada prvo dropuje staru funkciju da ne dođe do greške promene return type. Cache podignut na startwork-pro-v1106.
 
 
-IZMENA v1.10.7 FINAL LOGIN CLEANUP:
-Direkcija više ne unosi šifru firme kod radnika — ona se automatski uzima iz aktivne firme. Direkcija kod radnika unosi samo ime, prezime, funkciju i šifru radnika. Login panel radnika sada jasno prikazuje dva polja: Šifra firme i Šifra radnika. Login proverava oba podatka zajedno preko Supabase worker_login RPC, pa radnik ne može ući u tuđu firmu samo sa svojim kodom. SQL final uključuje drop/create worker_login i unique index za aktivni kod radnika unutar firme. Cache podignut na startwork-pro-v1107.
-
-
-IZMENA v1.10.8 UI ROLE SEPARATION FIX:
-Popravljena greška iz v1.10.7 gde su tekstovi/polja radničkog login-a greškom upali u Super Admin sobu. Super Admin soba ponovo prikazuje samo admin pristup za app_admins. Radnički login ostaje posebno sa poljima Šifra firme i Šifra radnika. Cache podignut na startwork-pro-v1108.
+IZMENA v1.10.9 STABLE AUDIT FIX:
+Vraćena stabilna HTML struktura iz v1.10.6 i urađen čist fix bez mešanja Super Admin / Radnik ekrana. Super Admin ostaje email+lozinka. Radnik login jasno ima Šifra firme + Šifra radnika. Direkcija pri dodavanju radnika unosi samo ime, prezime, funkciju i Šifra radnika, dok se šifra firme prikazuje automatski iz aktivne firme. Uklonjen dupli id companyCodeHelpBox. Cache podignut na startwork-pro-v1109.

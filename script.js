@@ -57,12 +57,12 @@ function ensureDirectorTopLogoutButton() {
 
 
 function showCurrentCompanyLoginInfo() {
-  const box = $("#companyCodeHelpBox");
+  const box = $("#directorWorkerCodeHelpBox");
   if (!box || !currentCompany) return;
   const companyCode = currentCompany.code || currentCompany.company_code || "";
   box.innerHTML = `
     <b>Prijava radnika:</b>
-    <span>Šifra firme je <strong>${escapeHtml(companyCode)}</strong>. Direkcija ovde upisuje samo ličnu šifru radnika.</span>
+    <span>Šifra firme je <strong>${escapeHtml(companyCode)}</strong>. Ovde upisuješ samo ličnu šifru radnika.</span>
   `;
 }
 
@@ -1147,31 +1147,29 @@ async function loginWorkerByCode() {
     if (!initSupabase()) return;
 
     const companyInput = $("#workerCompanyCode");
-    const workerInput = $("#workerAccessCode");
+    const codeInput = $("#workerAccessCode");
 
     if (!companyInput) throw new Error("Nedostaje polje Šifra firme.");
-    if (!workerInput) throw new Error("Nedostaje polje Šifra radnika.");
+    if (!codeInput) throw new Error("Nedostaje polje Šifra radnika.");
 
     const companyCode = normalizeLoginCode(companyInput.value);
-    const workerCode = normalizeLoginCode(workerInput.value);
+    const accessCode = normalizeLoginCode(codeInput.value);
 
     if (!companyCode) throw new Error("Unesi šifru firme.");
-    if (!workerCode) throw new Error("Unesi šifru radnika.");
+    if (!accessCode) throw new Error("Unesi šifru radnika.");
 
     const { data, error } = await sb.rpc("worker_login", {
       p_company_code: companyCode,
-      p_access_code: workerCode
+      p_access_code: accessCode
     });
 
     if (error) throw error;
-    if (!data || !data.length) {
-      throw new Error("Neispravna šifra firme ili šifra radnika. Proveri oba polja tačno kako ih je dala Direkcija.");
-    }
+    if (!data || !data.length) throw new Error("Neispravna šifra firme ili šifra radnika. Proveri oba polja tačno kako ih je dala Direkcija.");
 
     currentWorker = {
       ...data[0],
       company_code: companyCode,
-      access_code: workerCode
+      access_code: accessCode
     };
 
     localStorage.setItem("swp_worker", JSON.stringify(currentWorker));

@@ -245,49 +245,5 @@ on public.company_users (company_id, lower(trim(access_code)))
 where coalesce(active, true) = true;
 
 
-
--- v1.10.7 FINAL: worker login preko šifre firme + šifre radnika
-drop function if exists public.worker_login(text, text);
-
-create or replace function public.worker_login(
-  p_company_code text,
-  p_access_code text
-)
-returns table (
-  user_id uuid,
-  company_id uuid,
-  full_name text,
-  function_title text,
-  permissions jsonb,
-  company_name text
-)
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  return query
-  select
-    cu.id as user_id,
-    c.id as company_id,
-    trim(coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) as full_name,
-    coalesce(cu.function_title, '') as function_title,
-    coalesce(cu.permissions, '{}'::jsonb) as permissions,
-    c.name as company_name
-  from public.company_users cu
-  join public.companies c on c.id = cu.company_id
-  where lower(trim(c.company_code)) = lower(trim(p_company_code))
-    and lower(trim(cu.access_code)) = lower(trim(p_access_code))
-    and coalesce(cu.active, true) = true
-    and c.status in ('trial','active')
-  limit 1;
-end;
-$$;
-
-grant execute on function public.worker_login(text, text) to anon;
-grant execute on function public.worker_login(text, text) to authenticated;
-
--- spreči dupli aktivni kod radnika u istoj firmi
-create unique index if not exists company_users_unique_active_access_code_per_company
-on public.company_users (company_id, lower(trim(access_code)))
-where coalesce(active, true) = true;
+-- v1.10.9 STABLE: final worker login note
+-- worker_login već koristi šifru firme + šifru radnika.
