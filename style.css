@@ -951,3 +951,12 @@ pre.raw-details{
     grid-template-columns:1fr;
   }
 }
+
+
+
+/* v1.10.4 — Worker code login clarity */
+.code-login-note{
+  font-size:.86rem;
+  color:#64748b;
+  margin-top:6px;
+}

@@ -110,3 +110,7 @@ Direkcija sada može da skloni završeno gradilište iz aktivnog spiska. Gradili
 
 IZMENA v1.10.3 ARCHIVE AND GLOBAL SEARCH:
 Direkcija može arhivirati izveštaj i skloniti ga iz glavnog inbox-a, bez fizičkog brisanja iz baze. Dodata je globalna pretraga u Direkciji pored Excel export/tabs zone: može tražiti radnika/osobu, mašinu/vozilo, gradilište, materijal i izveštaje. Rezultati imaju akcije za upravljanje: sklanjanje radnika, brisanje mašine/vozila, sklanjanje gradilišta, brisanje materijala i arhiviranje izveštaja. SQL dopuna dodaje status archived u reports_status_check. Cache podignut na startwork-pro-v1103.
+
+
+IZMENA v1.10.4 WORKER CODE LOGIN FIX:
+Popravljen workflow prijave radnika. Direkcija kada dodaje radnika unosi šifru/kod za ulaz. Taj kod se normalizuje trim/lowercase i čuva u company_users.access_code. Radnik se prijavljuje samo tim kodom, bez email login-a. Login traži aktivnog radnika po access_code i active=true, učitava firmu i otvara radničku formu. Cache podignut na startwork-pro-v1104.
