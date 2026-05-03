@@ -70,3 +70,7 @@ Popravljena kritična greška: internalLogoutBtn je greškom pozivao nepostojeć
 
 IZMENA v1.9.3:
 Direkcija workspace je proširen skoro preko celog ekrana. Tamni unutrašnji header je sklonjen. Dugme Odjavi se prebačeno je u Direkcija zeleni header pored Osveži. Cache podignut na startwork-pro-v193.
+
+
+IZMENA v1.9.4:
+Direkcija panel više ne koristi viewport širinu nego širinu roditelja. Sada ide lepo preko raspoloživog prostora, centriran je i ne beži u desnu stranu. Cache podignut na startwork-pro-v194.
