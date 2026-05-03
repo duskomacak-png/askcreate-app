@@ -168,3 +168,12 @@ V1.12.1: Radnik sada dobija listu aktivnih gradilišta iz Direkcije. Obavezno po
 - Gorivo može da se poveže i sa vozilima iz izveštaja.
 - Potreban SQL: supabase-worker-assets-rpc-v1122.sql
 Test link: https://askcreate.app/index.html?v=1122
+
+
+============================================================
+V1.12.3 - RADNIK: PRETRAGA VOZILA PO REGISTRACIJI
+============================================================
+- Kod radnika u rubrici Vozilo dodata je pretraga po registraciji ili nazivu.
+- Vozila se prikazuju iz Direkcija -> Mašine / vozila kada je radniku u profilu štiklirana rubrika Vozila.
+- SQL: nije potreban novi SQL ako je već pokrenut v1.12.2 worker_list_assets.
+Test link: https://askcreate.app/index.html?v=1123

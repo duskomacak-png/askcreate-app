@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.12.2";
+const APP_VERSION = "1.12.3";
 
 
 let sb = null;
@@ -1179,30 +1179,60 @@ async function loadWorkerAssets() {
   } catch (e) {
     workerAssetOptions = [];
     refreshVehicleSelects();
-    toast("Vozila za radnika nisu učitana. Pokreni SQL za v1.12.2: worker_list_assets. Detalj: " + (e.message || e), true);
+    toast("Vozila za radnika nisu učitana. Pokreni SQL za v1.12.2/v1.12.3: worker_list_assets. Detalj: " + (e.message || e), true);
   }
 }
 
-function buildVehicleOptionsHtml(selectedValue = "") {
-  const vehicles = workerAssetOptions.filter(isVehicleAsset);
+function normalizeVehicleSearch(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9čćžšđ]/gi, "")
+    .trim();
+}
+
+function vehicleMatchesSearch(asset, searchValue) {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return true;
+  const haystack = normalizeVehicleSearch([
+    asset?.name,
+    asset?.registration,
+    asset?.capacity,
+    asset?.type || asset?.asset_type
+  ].filter(Boolean).join(" "));
+  return haystack.includes(q);
+}
+
+function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
+  const allVehicles = workerAssetOptions.filter(isVehicleAsset);
+  const vehicles = allVehicles.filter(v => vehicleMatchesSearch(v, searchValue));
   const selected = String(selectedValue || "").trim();
-  if (!vehicles.length) {
+
+  if (!allVehicles.length) {
     return `<option value="">Nema vozila iz Direkcije</option>`;
   }
+  if (!vehicles.length) {
+    return `<option value="">Nema vozila za tu pretragu</option>`;
+  }
+
   return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => {
     const name = v.name || "Vozilo";
     const label = formatAssetLabel(v);
     const isSelected = selected && selected === name ? "selected" : "";
-    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" data-registration="${escapeHtml(v.registration || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
+function refreshOneVehicleSelect(entryEl) {
+  const sel = entryEl.querySelector(".v-name");
+  if (!sel) return;
+  const old = sel.value;
+  const search = entryEl.querySelector(".v-search")?.value || "";
+  sel.innerHTML = buildVehicleOptionsHtml(old, search);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+}
+
 function refreshVehicleSelects() {
-  $$("#vehicleEntries .v-name").forEach(sel => {
-    const old = sel.value;
-    sel.innerHTML = buildVehicleOptionsHtml(old);
-    if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
-  });
+  $$("#vehicleEntries .vehicle-entry").forEach(entry => refreshOneVehicleSelect(entry));
 }
 
 function getSelectedVehicleFromEntry(el) {
@@ -1228,8 +1258,12 @@ function addVehicleEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
+    <label>Pronađi vozilo po registraciji ili nazivu</label>
+    <input class="v-search" placeholder="npr. BG123AA, DAF, MAN..." value="" />
+
     <label>Vozilo iz Direkcije</label>
     <select class="v-name">${buildVehicleOptionsHtml(selectedName)}</select>
+    <p class="field-hint">Lista se prikazuje samo ako je Direkcija radniku štiklirala rubriku Vozila.</p>
 
     <label>Ako vozilo nije u listi, upiši ručno</label>
     <input class="v-custom" placeholder="npr. zamensko vozilo" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
@@ -1256,10 +1290,13 @@ function addVehicleEntry(values = {}) {
     div.remove();
     refreshFuelMachineOptions();
   });
+  div.querySelector(".v-search").addEventListener("input", () => {
+    refreshOneVehicleSelect(div);
+  });
   div.querySelector(".v-name").addEventListener("change", refreshFuelMachineOptions);
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
   list.appendChild(div);
-  refreshVehicleSelects();
+  refreshOneVehicleSelect(div);
   refreshFuelMachineOptions();
 }
 
