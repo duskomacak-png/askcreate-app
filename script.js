@@ -2151,13 +2151,10 @@ function buildCsvContent(delimiter = ";") {
 }
 
 function buildExcelHtmlTable() {
-  const { columns, rows, reports } = getExportRowsAndColumns();
+  const { columns, rows } = getExportRowsAndColumns();
   if (!columns.length) throw new Error("Štikliraj bar jednu rubriku za Excel export.");
   if (!rows.length) throw new Error("Nema izabranih izveštaja za export.");
 
-  const title = "START WORK PRO - IZVEŠTAJI ZA EXCEL";
-  const subtitle = `Firma: ${escapeHtml(currentCompany?.name || "")} | Šifra firme: ${escapeHtml(currentCompany?.company_code || "")} | Export: ${escapeHtml(today())} | Izveštaja: ${reports.length}`;
-  const colCount = Math.max(columns.length, 1);
   const head = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
   const body = rows.map((row, index) => `<tr class="${index % 2 ? "even" : "odd"}">${columns.map(c => `<td>${escapeHtml(excelCellText(row[c.key]))}</td>`).join("")}</tr>`).join("");
 
@@ -2166,31 +2163,13 @@ function buildExcelHtmlTable() {
 <head>
 <meta charset="utf-8" />
 <style>
-  body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111827; }
   table { border-collapse: collapse; width: 100%; font-size: 12px; }
-  .title-row td {
+  th {
     background: #0f7a3b;
     color: #ffffff;
-    font-size: 18px;
     font-weight: 700;
-    padding: 12px 10px;
-    border: 1px solid #0f7a3b;
-    text-align: left;
-  }
-  .subtitle-row td {
-    background: #e8f5e9;
-    color: #1f2937;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 8px 10px;
-    border: 1px solid #9cccab;
-    text-align: left;
-  }
-  th {
-    background: #16a34a;
-    color: #ffffff;
-    font-weight: 700;
-    border: 1px solid #0f7a3b;
+    border: 1px solid #0b5f2e;
     padding: 8px 10px;
     text-align: left;
     white-space: nowrap;
@@ -2203,21 +2182,10 @@ function buildExcelHtmlTable() {
   }
   tr.odd td { background: #ffffff; }
   tr.even td { background: #f6fbf7; }
-  .note-row td {
-    background: #fff8e1;
-    color: #7a4f01;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 7px 9px;
-    border: 1px solid #f2d17b;
-  }
 </style>
 </head>
 <body>
 <table>
-  <tr class="title-row"><td colspan="${colCount}">${title}</td></tr>
-  <tr class="subtitle-row"><td colspan="${colCount}">${subtitle}</td></tr>
-  <tr class="note-row"><td colspan="${colCount}">Napomena: fajl je generisan iz Start Work PRO aplikacije. Ako Excel prikaže poruku o formatu, klikni Yes/Da za otvaranje.</td></tr>
   ${head}
   ${body}
 </table>
@@ -2229,7 +2197,7 @@ async function exportCsv() {
   try {
     const csv = buildCsvContent(";");
     const blob = new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"});
-    downloadBlob(blob, `startwork-izabrani-izvestaji-${today()}.csv`);
+    downloadBlob(blob, `dnevni-izvestaji-${today()}.csv`);
     toast("CSV fajl je preuzet. Za tvoj Excel koristi se tačka-zarez da kolone budu lepo razdvojene.");
   } catch(e) {
     toast(e.message, true);
@@ -2240,8 +2208,8 @@ async function exportExcelFile() {
   try {
     const html = buildExcelHtmlTable();
     const blob = new Blob(["﻿" + html], {type:"application/vnd.ms-excel;charset=utf-8"});
-    downloadBlob(blob, `startwork-izabrani-izvestaji-${today()}.xls`);
-    toast("Excel fajl je preuzet. Otvori ga u Excelu za lepše složene kolone.");
+    downloadBlob(blob, `dnevni-izvestaji-${today()}.xls`);
+    toast("Excel tabela je preuzeta. Otvori fajl u Excelu.");
   } catch(e) {
     toast(e.message, true);
   }
