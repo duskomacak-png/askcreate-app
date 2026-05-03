@@ -1016,3 +1016,49 @@ pre.raw-details{
 .edit-btn:hover{background:#dbeafe !important;}
 .person-form-actions{margin-top:12px;}
 @media(max-width:700px){.edit-btn{width:100%;white-space:normal;}}
+
+
+/* v1.11.3 — Director edit worker + archive report */
+.edit-btn{
+  border:1px solid #bfdbfe !important;
+  background:#eff6ff !important;
+  color:#1d4ed8 !important;
+  border-radius:12px !important;
+  padding:8px 12px !important;
+  font-size:.84rem !important;
+  line-height:1.1 !important;
+  font-weight:900 !important;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.edit-btn:hover{
+  background:#dbeafe !important;
+}
+
+.archive-report-btn{
+  border:1px solid #fed7aa !important;
+  background:#fff7ed !important;
+  color:#9a3412 !important;
+  border-radius:10px !important;
+  padding:7px 10px !important;
+  font-size:.84rem !important;
+  font-weight:900 !important;
+  cursor:pointer;
+}
+
+.archive-report-btn:hover{
+  background:#ffedd5 !important;
+}
+
+.person-form-actions{
+  margin-top:12px;
+}
+
+@media(max-width:700px){
+  .edit-btn,
+  .archive-report-btn{
+    width:100%;
+    white-space:normal;
+  }
+}

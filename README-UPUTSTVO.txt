@@ -130,3 +130,7 @@ Vraćena stabilna HTML struktura iz v1.10.6 i urađen čist fix bez mešanja Sup
 
 IZMENA v1.11.2 NAV EDIT STABLE FIX:
 Vraćena stabilna baza v1.10.9, dodat cache-busting za style.css i script.js, dodat fallback klik handler za data-goto dugmad da ulazi ne ostanu mrtvi ako neki kasniji bind pukne. Dodato uređivanje profila radnika u Direkciji: ✏️ Uredi profil, Sačuvaj izmene, Otkaži izmenu. Premešten panel vraćenih izveštaja u radničku formu. Cache podignut na startwork-pro-v1112.
+
+
+IZMENA v1.11.3 DIRECTOR EDIT WORKER + ARCHIVE REPORT:
+Direkcija sada ima dugme ✏️ Uredi profil kod svakog radnika. Forma levo se popunjava i može se izmeniti ime, prezime, funkcija, šifra radnika i rubrike koje vidi. Dodato je Otkaži izmenu. Kod svakog izveštaja u glavnom inbox-u dodato je dugme 🗑️ Skloni izveštaj, koje arhivira izveštaj statusom archived i sklanja ga iz glavnog inbox-a. Nije diran Supabase SQL. Cache podignut na startwork-pro-v1113.
