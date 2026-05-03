@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1125" />
+  <link rel="stylesheet" href="style.css?v=1126" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -283,6 +283,12 @@
       <div id="tabReports" class="tab-panel">
         <div class="card">
           <h3>Inbox izveštaja</h3>
+          <p class="muted">Štikliraj izveštaje koje želiš da prebaciš u Excel export.</p>
+          <div class="row report-export-toolbar">
+            <button id="selectAllReportsBtn" class="secondary" type="button">✅ Označi sve</button>
+            <button id="clearReportsBtn" class="secondary" type="button">❌ Poništi sve</button>
+            <button id="goExportBtn" class="primary" type="button">➡️ Pošalji u Excel export</button>
+          </div>
           <div id="reportsList" class="list"></div>
         </div>
       </div>
@@ -290,11 +296,32 @@
       <div id="tabExport" class="tab-panel">
         <div class="card">
           <h3>Excel export</h3>
-          <p class="muted">Prva verzija izvozi CSV fajl koji Excel normalno otvara.</p>
-          <div class="row">
-            <input id="exportFrom" type="date" />
-            <input id="exportTo" type="date" />
-            <button id="exportCsvBtn" class="primary">Izvezi CSV za Excel</button>
+          <p class="muted">Ovde stoje izveštaji koje je Direkcija označila u tabu Izveštaji. Možeš odabrati rubrike/kolone koje želiš u Excel fajlu.</p>
+
+          <div class="export-box">
+            <h4>Izabrani izveštaji</h4>
+            <p id="exportSelectedCount" class="pill">0 izveštaja označeno za export</p>
+            <div id="exportSelectedReportsBox" class="export-selected-list"></div>
+          </div>
+
+          <div class="export-box">
+            <div class="row space-between">
+              <h4>Rubrike koje želiš u Excelu</h4>
+              <div class="row compact">
+                <button id="selectAllColumnsBtn" class="secondary" type="button">Označi sve rubrike</button>
+                <button id="clearColumnsBtn" class="secondary" type="button">Poništi rubrike</button>
+              </div>
+            </div>
+            <div id="exportColumnsBox" class="export-columns-grid"></div>
+          </div>
+
+          <div class="export-box export-download-box">
+            <h4>Preuzimanje / Excel</h4>
+            <p class="muted">Browser ne sme sam da otvori lokalni Excel bez dozvole korisnika. Zato imaš dve sigurne opcije:</p>
+            <div class="row">
+              <button id="exportCsvBtn" class="primary" type="button">📥 Preuzmi CSV fajl koji Excel otvara</button>
+              <button id="copyExcelBtn" class="secondary" type="button">📋 Kopiraj tabelu za Excel</button>
+            </div>
           </div>
         </div>
       </div>
@@ -464,6 +491,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1125"></script>
+  <script src="script.js?v=1126"></script>
 </body>
 </html>

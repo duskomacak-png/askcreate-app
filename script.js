@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.12.5";
+const APP_VERSION = "1.12.6";
 
 
 let sb = null;
@@ -876,11 +876,15 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
   }
 }
 
+let directorReportsCache = [];
+
 async function loadReports() {
   if (!currentCompany) return;
   const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("submitted_at", { ascending:false });
   if (error) return toast(error.message, true);
-  $("#reportsList").innerHTML = (data || []).map(r => reportHtml(r)).join("") || `<p class="muted">Nema poslatih izveštaja.</p>`;
+  directorReportsCache = data || [];
+  $("#reportsList").innerHTML = directorReportsCache.map(r => reportHtml(r)).join("") || `<p class="muted">Nema poslatih izveštaja.</p>`;
+  renderExportPanel();
 }
 
 
@@ -1126,8 +1130,14 @@ function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "Nepoznat korisnik";
 
+  const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
+
   return `
     <div class="item report-item">
+      <label class="export-select-row">
+        <input type="checkbox" class="report-export-check" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
+        <span>✅ Izaberi ovaj izveštaj za Excel export</span>
+      </label>
       <strong>${d.report_type === "defect_record" || d.report_type === "defect_alert" ? "🚨 EVIDENCIJA KVARA" : "📄 DNEVNI IZVEŠTAJ"} · ${escapeHtml(r.report_date)}</strong>
       <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
 
@@ -1905,53 +1915,256 @@ function csvEscape(v) {
   return `"${String(v ?? "").replaceAll('"','""')}"`;
 }
 
-async function exportCsv() {
-  if (!currentCompany) return;
-  let q = sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id);
-  const from = $("#exportFrom").value;
-  const to = $("#exportTo").value;
-  if (from) q = q.gte("report_date", from);
-  if (to) q = q.lte("report_date", to);
-  const { data, error } = await q.order("report_date", { ascending: true });
-  if (error) return toast(error.message, true);
 
-  const headers = ["Datum","Ime","Funkcija","Gradiliste","Sati","Masina","MTC pocetak","MTC kraj","Sati masine","Vozilo","KM pocetak","KM kraj","Relacija","Ture","Gorivo L","MTC/KM pri sipanju","Materijal","Kolicina","Jedinica","Kvar","Status","Napomena"];
-  const rows = (data || []).map(r => {
-    const d = r.data || {};
-    return [
-      r.report_date,
-      r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "",
-      r.company_users?.function_title || "",
-      d.site_name,
-      d.hours,
-      d.machine,
-      d.mtc_start,
-      d.mtc_end,
-      d.machine_hours,
-      d.vehicle,
-      d.km_start,
-      d.km_end,
-      d.route,
-      d.tours,
-      d.fuel_liters,
-      d.fuel_readings,
-      d.material,
-      d.quantity,
-      d.unit,
-      d.defect,
-      r.status,
-      d.note || d.description
-    ].map(csvEscape).join(",");
-  });
-  const csv = [headers.map(csvEscape).join(","), ...rows].join("\n");
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `startwork-export-${today()}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast("CSV export je preuzet.");
+const EXPORT_SELECTION_KEY = "swp_export_report_ids";
+const EXPORT_COLUMN_KEY = "swp_export_columns";
+
+const EXPORT_COLUMNS = [
+  { key:"date", label:"Datum" },
+  { key:"worker", label:"Radnik" },
+  { key:"function", label:"Funkcija" },
+  { key:"site", label:"Gradilište" },
+  { key:"hours", label:"Sati rada" },
+  { key:"description", label:"Opis rada" },
+  { key:"machine", label:"Mašina" },
+  { key:"machine_start", label:"MTČ/KM početak" },
+  { key:"machine_end", label:"MTČ/KM kraj" },
+  { key:"machine_hours", label:"Sati mašine" },
+  { key:"machine_work", label:"Rad mašine" },
+  { key:"vehicle", label:"Vozilo" },
+  { key:"registration", label:"Registracija" },
+  { key:"capacity", label:"Kapacitet m³" },
+  { key:"km_start", label:"KM početak" },
+  { key:"km_end", label:"KM kraj" },
+  { key:"route", label:"Relacija" },
+  { key:"tours", label:"Ture" },
+  { key:"cubic", label:"m³ ukupno" },
+  { key:"manual_cubic", label:"Ručno m³" },
+  { key:"fuel_for", label:"Gorivo za" },
+  { key:"fuel_liters", label:"Gorivo litara" },
+  { key:"fuel_reading", label:"MTČ/KM pri sipanju" },
+  { key:"fuel_by", label:"Sipao" },
+  { key:"fuel_receiver", label:"Primio" },
+  { key:"material", label:"Materijal" },
+  { key:"quantity", label:"Količina" },
+  { key:"unit", label:"Jedinica" },
+  { key:"defect", label:"Kvar" },
+  { key:"status", label:"Status" },
+  { key:"note", label:"Napomena" }
+];
+
+function getExportSelectedIds() {
+  try { return JSON.parse(localStorage.getItem(EXPORT_SELECTION_KEY) || "[]"); }
+  catch { return []; }
 }
+
+function setExportSelectedIds(ids) {
+  const clean = Array.from(new Set((ids || []).filter(Boolean)));
+  localStorage.setItem(EXPORT_SELECTION_KEY, JSON.stringify(clean));
+  return clean;
+}
+
+function getExportColumnKeys() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(EXPORT_COLUMN_KEY) || "null");
+    if (Array.isArray(saved) && saved.length) return saved;
+  } catch {}
+  return EXPORT_COLUMNS.map(c => c.key);
+}
+
+function setExportColumnKeys(keys) {
+  localStorage.setItem(EXPORT_COLUMN_KEY, JSON.stringify(keys || []));
+}
+
+window.toggleReportExportSelection = (id, checked) => {
+  const ids = getExportSelectedIds();
+  const next = checked ? [...ids, id] : ids.filter(x => x !== id);
+  setExportSelectedIds(next);
+  renderExportPanel();
+};
+
+window.selectAllReportsForExport = () => {
+  const ids = directorReportsCache.map(r => r.id);
+  setExportSelectedIds(ids);
+  $$(".report-export-check").forEach(cb => cb.checked = true);
+  renderExportPanel();
+  toast("Svi prikazani izveštaji su označeni za Excel export.");
+};
+
+window.clearReportsForExport = () => {
+  setExportSelectedIds([]);
+  $$(".report-export-check").forEach(cb => cb.checked = false);
+  renderExportPanel();
+  toast("Označeni izveštaji su poništeni.");
+};
+
+window.goToExportTab = () => {
+  const tab = document.querySelector('.tab[data-tab="export"]');
+  if (tab) tab.click();
+  renderExportPanel();
+};
+
+window.toggleExportColumn = (key, checked) => {
+  const keys = getExportColumnKeys();
+  const next = checked ? [...keys, key] : keys.filter(k => k !== key);
+  setExportColumnKeys(Array.from(new Set(next)));
+};
+
+window.selectAllExportColumns = () => {
+  setExportColumnKeys(EXPORT_COLUMNS.map(c => c.key));
+  renderExportPanel();
+};
+
+window.clearExportColumns = () => {
+  setExportColumnKeys([]);
+  renderExportPanel();
+};
+
+function getSelectedReportsForExport() {
+  const ids = getExportSelectedIds();
+  if (!ids.length) return [];
+  const set = new Set(ids);
+  return directorReportsCache.filter(r => set.has(r.id));
+}
+
+function reportPersonName(r) {
+  return r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : "";
+}
+
+function flattenReportRowsForExport(r) {
+  const d = r.data || {};
+  const machines = Array.isArray(d.machines) ? d.machines : [];
+  const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
+  const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+  const maxRows = Math.max(1, machines.length, vehicles.length, fuels.length);
+  const rows = [];
+
+  for (let i = 0; i < maxRows; i++) {
+    const m = machines[i] || {};
+    const v = vehicles[i] || {};
+    const f = fuels[i] || {};
+    rows.push({
+      date: r.report_date || "",
+      worker: reportPersonName(r),
+      function: r.company_users?.function_title || "",
+      site: d.site_name || "",
+      hours: d.hours || "",
+      description: d.description || "",
+      machine: m.name || d.machine || "",
+      machine_start: m.start || d.mtc_start || "",
+      machine_end: m.end || d.mtc_end || "",
+      machine_hours: m.hours || d.machine_hours || "",
+      machine_work: m.work || "",
+      vehicle: v.name || v.vehicle || d.vehicle || "",
+      registration: v.registration || "",
+      capacity: v.capacity || "",
+      km_start: v.km_start || d.km_start || "",
+      km_end: v.km_end || d.km_end || "",
+      route: v.route || d.route || "",
+      tours: v.tours || d.tours || "",
+      cubic: v.cubic_m3 || v.cubic_auto || "",
+      manual_cubic: v.cubic_manual || "",
+      fuel_for: f.machine || "",
+      fuel_liters: f.liters || d.fuel_liters || "",
+      fuel_reading: f.reading || d.fuel_readings || "",
+      fuel_by: f.by || "",
+      fuel_receiver: f.receiver || d.fuel_receiver || "",
+      material: d.material || "",
+      quantity: d.quantity || "",
+      unit: d.unit || "",
+      defect: d.defect || "",
+      status: r.status || "",
+      note: d.note || ""
+    });
+  }
+
+  return rows;
+}
+
+function getExportRowsAndColumns() {
+  const reports = getSelectedReportsForExport();
+  const keys = getExportColumnKeys();
+  const columns = EXPORT_COLUMNS.filter(c => keys.includes(c.key));
+  const rows = reports.flatMap(flattenReportRowsForExport);
+  return { reports, columns, rows };
+}
+
+function renderExportPanel() {
+  const box = $("#exportSelectedReportsBox");
+  const colsBox = $("#exportColumnsBox");
+  const countBox = $("#exportSelectedCount");
+  if (!box || !colsBox) return;
+
+  const selected = getSelectedReportsForExport();
+  const selectedIds = new Set(selected.map(r => r.id));
+  const keys = getExportColumnKeys();
+
+  if (countBox) countBox.textContent = `${selected.length} izveštaja označeno za export`;
+
+  box.innerHTML = selected.length ? selected.map(r => {
+    const d = r.data || {};
+    return `<div class="export-selected-item">
+      <b>${escapeHtml(r.report_date || "bez datuma")}</b>
+      <span>${escapeHtml(reportPersonName(r) || "Nepoznat radnik")}</span>
+      <small>${escapeHtml(d.site_name || "bez gradilišta")} · ${escapeHtml(r.status || "")}</small>
+      <button class="secondary small-btn" type="button" onclick="toggleReportExportSelection('${r.id}', false); const cb=document.querySelector('[onchange*=\'${r.id}\']'); if(cb) cb.checked=false;">Ukloni</button>
+    </div>`;
+  }).join("") : `<p class="muted">Nema izabranih izveštaja. Idi u tab Izveštaji i štikliraj šta želiš za Excel.</p>`;
+
+  colsBox.innerHTML = EXPORT_COLUMNS.map(c => `
+    <label class="export-column-check">
+      <input type="checkbox" ${keys.includes(c.key) ? "checked" : ""} onchange="toggleExportColumn('${c.key}', this.checked)" />
+      ${escapeHtml(c.label)}
+    </label>
+  `).join("");
+
+  $$(".report-export-check").forEach(cb => {
+    const m = cb.getAttribute("onchange") || "";
+    const id = (m.match(/toggleReportExportSelection\('([^']+)'/) || [])[1];
+    if (id) cb.checked = selectedIds.has(id);
+  });
+}
+
+function buildCsvContent() {
+  const { columns, rows } = getExportRowsAndColumns();
+  if (!columns.length) throw new Error("Štikliraj bar jednu rubriku za Excel export.");
+  if (!rows.length) throw new Error("Nema izabranih izveštaja za export.");
+  const header = columns.map(c => csvEscape(c.label)).join(",");
+  const body = rows.map(row => columns.map(c => csvEscape(row[c.key])).join(","));
+  return [header, ...body].join("\n");
+}
+
+async function exportCsv() {
+  try {
+    const csv = buildCsvContent();
+    const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `startwork-izabrani-izvestaji-${today()}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast("CSV fajl je preuzet. Otvori ga duplim klikom u Excelu.");
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
+
+async function copyExportTableForExcel() {
+  try {
+    const { columns, rows } = getExportRowsAndColumns();
+    if (!columns.length) throw new Error("Štikliraj bar jednu rubriku za kopiranje.");
+    if (!rows.length) throw new Error("Nema izabranih izveštaja za kopiranje.");
+    const text = [
+      columns.map(c => c.label).join("\t"),
+      ...rows.map(row => columns.map(c => String(row[c.key] ?? "").replace(/\s+/g, " ").trim()).join("\t"))
+    ].join("\n");
+    await navigator.clipboard.writeText(text);
+    toast("Tabela je kopirana. Otvori Excel i pritisni Ctrl + V.");
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
+
 
 
 async function sendDefectNow() {
@@ -2152,6 +2365,7 @@ function bindEvents() {
     $$(".tab-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
+    if (btn.dataset.tab === "export") renderExportPanel();
   }));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
@@ -2183,7 +2397,13 @@ function bindEvents() {
   if ($("#addMaterialBtn")) $("#addMaterialBtn").addEventListener("click", saveMaterialForm);
   if ($("#cancelEditMaterialBtn")) $("#cancelEditMaterialBtn").addEventListener("click", clearMaterialForm);
 
-  $("#exportCsvBtn").addEventListener("click", exportCsv);
+  if ($("#selectAllReportsBtn")) $("#selectAllReportsBtn").addEventListener("click", selectAllReportsForExport);
+  if ($("#clearReportsBtn")) $("#clearReportsBtn").addEventListener("click", clearReportsForExport);
+  if ($("#goExportBtn")) $("#goExportBtn").addEventListener("click", goToExportTab);
+  if ($("#exportCsvBtn")) $("#exportCsvBtn").addEventListener("click", exportCsv);
+  if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);
+  if ($("#selectAllColumnsBtn")) $("#selectAllColumnsBtn").addEventListener("click", selectAllExportColumns);
+  if ($("#clearColumnsBtn")) $("#clearColumnsBtn").addEventListener("click", clearExportColumns);
 
   // Add mašina / gorivo koriste onclick direktno u HTML-u zbog pouzdanosti na mobilnom/PWA cache-u.
   if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
