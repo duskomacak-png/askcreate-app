@@ -393,7 +393,7 @@ window.setReportStatus = async (id, status) => {
 };
 
 window.returnReport = async (id) => {
-  const reason = prompt("Razlog vraćanja na dopunu:");
+  const reason = prompt("Razlog vraćanja radniku na dopunu/ispravku:");
   if (!reason) return;
   const { error } = await sb.from("reports").update({ status:"returned", returned_reason:reason }).eq("id", id);
   if (error) return toast(error.message, true);
@@ -577,6 +577,110 @@ window.addMachineEntry = addMachineEntry;
 window.addFuelEntry = addFuelEntry;
 window.refreshFuelMachineOptions = refreshFuelMachineOptions;
 
+
+async function loadWorkerReturnedReports() {
+  const panel = $("#workerReturnedReports");
+  const list = $("#workerReturnedList");
+  if (!panel || !list || !currentWorker) return;
+
+  list.innerHTML = "";
+  panel.classList.add("hidden");
+
+  try {
+    const { data, error } = await sb
+      .from("reports")
+      .select("id, report_date, status, returned_reason, data, created_at")
+      .eq("company_id", currentWorker.company_id)
+      .eq("user_id", currentWorker.user_id)
+      .eq("status", "returned")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    if (!data || !data.length) return;
+
+    panel.classList.remove("hidden");
+
+    list.innerHTML = data.map(r => {
+      const d = r.data || {};
+      const title = d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni izveštaj";
+      const site = d.site_name || "Bez gradilišta";
+      const reason = r.returned_reason || "Direkcija nije upisala razlog.";
+      const opis = d.defect || d.description || d.note || "";
+      return `
+        <div class="returned-item">
+          <strong>↩️ ${escapeHtml(title)} — ${escapeHtml(r.report_date || "")}</strong>
+          <small>${escapeHtml(site)} ${opis ? "· " + escapeHtml(opis) : ""}</small>
+          <div class="returned-reason"><b>Razlog dopune:</b> ${escapeHtml(reason)}</div>
+          <div class="returned-actions">
+            <button class="secondary" type="button" onclick="loadReturnedReportIntoForm('${r.id}')">Otvori za ispravku</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
+
+window.loadReturnedReportIntoForm = async (reportId) => {
+  try {
+    if (!currentWorker) throw new Error("Radnik nije prijavljen.");
+
+    const { data: r, error } = await sb
+      .from("reports")
+      .select("id, report_date, data")
+      .eq("id", reportId)
+      .eq("company_id", currentWorker.company_id)
+      .eq("user_id", currentWorker.user_id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!r) throw new Error("Izveštaj nije pronađen.");
+
+    const d = r.data || {};
+    $("#wrDate").value = r.report_date || today();
+
+    if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
+    if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
+
+    (d.machines || []).forEach(m => addMachineEntry(m));
+    (d.fuel_entries || []).forEach(f => addFuelEntry(f));
+
+    Object.entries({
+      wrSiteName:"site_name",
+      wrDescription:"description",
+      wrHours:"hours",
+      wrVehicle:"vehicle",
+      wrKmStart:"km_start",
+      wrKmEnd:"km_end",
+      wrRoute:"route",
+      wrTours:"tours",
+      wrMaterial:"material",
+      wrQuantity:"quantity",
+      wrUnit:"unit",
+      wrWarehouseType:"warehouse_type",
+      wrWarehouseItem:"warehouse_item",
+      wrWarehouseQty:"warehouse_qty",
+      wrDefectExists:"defect_exists",
+      wrDefect:"defect",
+      wrDefectStopsWork:"defect_stops_work",
+      wrDefectCanContinue:"defect_can_continue",
+      wrDefectUrgency:"defect_urgency",
+      wrDefectCalledMechanic:"called_mechanic_by_phone",
+      wrNote:"note"
+    }).forEach(([id,key]) => {
+      const el = $("#" + id);
+      if (el) el.value = d[key] || "";
+    });
+
+    localStorage.setItem("swp_returned_report_id", reportId);
+    toast("Izveštaj je otvoren. Ispravi ga i pošalji ponovo Direkciji.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch(e) {
+    toast(e.message, true);
+  }
+};
+
 function collectWorkerData() {
   const machines = getMachineEntries();
   const fuelEntries = getFuelEntries();
@@ -627,6 +731,7 @@ function clearWorkerForm() {
   if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
   if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
+  localStorage.removeItem("swp_returned_report_id");
 }
 
 function saveDraft() {
@@ -926,6 +1031,7 @@ function bindEvents() {
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Radnik nije prijavljen.");
       const data = collectWorkerData();
+    if (await submitReturnedCorrectionIfNeeded(data)) return;
       const { error } = await sb.rpc("submit_worker_report", {
         p_company_code: worker.company_code,
         p_access_code: worker.access_code,
@@ -949,6 +1055,7 @@ function openWorkerForm() {
   setInternalHeader("Dnevni izveštaj", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   show("WorkerForm");
   loadDraft();
+  loadWorkerReturnedReports();
   if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
   if ($("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
 }
@@ -974,3 +1081,28 @@ document.addEventListener("DOMContentLoaded", boot);
 
 // Default: public landing keeps big brand header.
 try { setInternalHeader('', '', false); } catch(e) {}
+
+
+async function submitReturnedCorrectionIfNeeded(reportData) {
+  const returnedId = localStorage.getItem("swp_returned_report_id");
+  if (!returnedId || !currentWorker) return false;
+
+  const { error } = await sb
+    .from("reports")
+    .update({
+      data: reportData,
+      status: "sent",
+      returned_reason: null
+    })
+    .eq("id", returnedId)
+    .eq("company_id", currentWorker.company_id)
+    .eq("user_id", currentWorker.user_id);
+
+  if (error) throw error;
+
+  localStorage.removeItem("swp_returned_report_id");
+  toast("Ispravljen izveštaj je ponovo poslat Direkciji ✅");
+  clearWorkerForm();
+  loadWorkerReturnedReports();
+  return true;
+}

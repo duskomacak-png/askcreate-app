@@ -96,7 +96,14 @@
           <input id="acInviteCode" placeholder="npr. AC-8F42K" />
           <label>Trial do</label>
           <input id="acTrialUntil" type="date" />
-          <label>Napomena</label>
+          
+      <div id="workerReturnedReports" class="returned-panel hidden">
+        <h3>⚠️ Izveštaji vraćeni na dopunu</h3>
+        <p class="hint">Direkcija je vratila ove izveštaje. Otvori izveštaj, ispravi podatke i pošalji ponovo.</p>
+        <div id="workerReturnedList" class="returned-list"></div>
+      </div>
+
+        <label>Napomena</label>
           <textarea id="acNote" placeholder="Interna napomena"></textarea>
           <button id="addApprovedCompanyBtn" class="primary">Sačuvaj firmu</button>
         </div>

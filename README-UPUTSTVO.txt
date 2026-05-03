@@ -86,3 +86,7 @@ Direkcija header dugmad su smanjena i poređana desno jedno ispod drugog: Odjavi
 
 IZMENA v1.9.7 CLEAN REPORTS:
 Kompletna verzija za upload. Dugmad u Direkcija headeru su mala i desno jedno ispod drugog: Odjavi se gore, Osveži dole. Sirovi JSON/kod je potpuno uklonjen iz prikaza izveštaja. Direkcija vidi samo poslovni prikaz po sekcijama: Osnovno, Mašine/vozila, Gorivo, Kvar i Materijal/Magacin/Ture. Cache podignut na startwork-pro-v197.
+
+
+IZMENA v1.9.8 RETURNED REPORTS:
+Kada Direkcija vrati izveštaj na dopunu/ispravku, radnik kome pripada izveštaj vidi poseban panel 'Izveštaji vraćeni na dopunu'. Može otvoriti izveštaj, ispraviti podatke i poslati ga ponovo Direkciji. Ispravka ažurira isti report red i vraća status na sent, umesto da pravi nepotreban duplikat.
