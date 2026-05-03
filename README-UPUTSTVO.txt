@@ -58,3 +58,7 @@ Direkcija panel je prebačen na Excel-friendly poslovni izgled: svetle kartice, 
 
 IZMENA v1.9:
 Veliki Start Work PRO / AskCreate header ostaje samo na početnoj strani. Unutar aplikacije se prikazuje kompaktan radni header firme, jer plaćena firma treba da oseća da je to njen prostor. Brending je uklonjen iz radnog dela aplikacije.
+
+
+IZMENA v1.9.1 SAFE:
+Proverena i popravljena v1.9 verzija. AdminDashboard sada dobija kompaktan header. Public/login ekrani automatski vraćaju veliki početni brending. Odjava radnika sigurno vraća login/public režim. Uklonjena duplirana linija u admin status funkciji. Cache podignut na startwork-pro-v191.

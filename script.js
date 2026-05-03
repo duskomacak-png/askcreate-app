@@ -45,6 +45,11 @@ function setInternalHeader(title = "", subtitle = "", showHeader = true) {
 }
 
 function show(view) {
+  const publicViews = ["Home", "AdminLogin", "DirectorLogin", "WorkerLogin"];
+  if (publicViews.includes(view)) {
+    setInternalHeader("", "", false);
+  }
+
   $$(".view").forEach(v => v.classList.remove("active"));
   const el = $("#view" + view);
   if (el) el.classList.add("active");
@@ -89,6 +94,7 @@ async function ensureAdmin() {
 
 async function loadAdmin() {
   await ensureAdmin();
+  setInternalHeader("Admin soba", "Odobravanje firmi", true);
   show("AdminDashboard");
   await Promise.all([loadApprovedCompanies(), loadCompanies()]);
 }
@@ -203,7 +209,7 @@ function reportHtml(r) {
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "Nepoznat korisnik";
   return `
     <div class="item">
-      <strong>${d.report_type === "defect_record" ? "🚨 EVIDENCIJA KVARA" : escapeHtml(person)} · ${escapeHtml(r.report_date)}</strong>
+      <strong>${d.report_type === "defect_record" || d.report_type === "defect_alert" ? "🚨 EVIDENCIJA KVARA" : "📄 DNEVNI IZVEŠTAJ"} · ${escapeHtml(r.report_date)}</strong>
       <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
       <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
       ${d.hours ? `<span class="pill">${escapeHtml(String(d.hours))} h</span>` : ""}
@@ -756,6 +762,7 @@ function bindEvents() {
     localStorage.removeItem("swp_worker");
     localStorage.removeItem("swp_draft");
     currentWorker = null;
+    setInternalHeader("", "", false);
     show("WorkerLogin");
   });
 
