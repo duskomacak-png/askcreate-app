@@ -87,7 +87,7 @@ function today() {
 }
 
 function normalizeCode(s) {
-  return (s || "").trim();
+  return String(s || "").trim().toLowerCase();
 }
 
 async function signUp(email, password) {
@@ -1132,50 +1132,36 @@ async function sendDefectNow() {
 
 async function loginWorkerByCode() {
   try {
-    const codeInput =
-      $("#workerCode") ||
-      $("#workerLoginCode") ||
-      $("#workerAccessCode") ||
-      $("#workerPin") ||
-      $("#workerCodeInput");
+    if (!initSupabase()) return;
 
-    if (!codeInput) throw new Error("Nedostaje polje za šifru/kod radnika u HTML-u.");
+    const companyInput = $("#workerCompanyCode");
+    const codeInput = $("#workerAccessCode");
 
-    const code = normalizeLoginCode(codeInput.value);
-    if (!code) throw new Error("Unesi šifru/kod koji ti je dala Direkcija.");
+    if (!companyInput) throw new Error("Nedostaje polje Šifra firme.");
+    if (!codeInput) throw new Error("Nedostaje polje Šifra/kod radnika.");
 
-    const { data, error } = await sb
-      .from("company_users")
-      .select("*, companies(id,name,code,status)")
-      .eq("access_code", code)
-      .eq("active", true)
-      .maybeSingle();
+    const companyCode = normalizeLoginCode(companyInput.value);
+    const accessCode = normalizeLoginCode(codeInput.value);
+
+    if (!companyCode) throw new Error("Unesi šifru firme.");
+    if (!accessCode) throw new Error("Unesi šifru/kod koji ti je dala Direkcija.");
+
+    const { data, error } = await sb.rpc("worker_login", {
+      p_company_code: companyCode,
+      p_access_code: accessCode
+    });
 
     if (error) throw error;
-    if (!data) throw new Error("Ne postoji aktivan radnik sa tom šifrom/kodom.");
-
-    if (data.companies && data.companies.status && data.companies.status !== "active") {
-      throw new Error("Firma nije aktivna.");
-    }
+    if (!data || !data.length) throw new Error("Neispravna šifra firme ili kod za ulaz.");
 
     currentWorker = {
-      user_id: data.id,
-      company_id: data.company_id,
-      full_name: `${data.first_name || ""} ${data.last_name || ""}`.trim(),
-      function_title: data.function_title || "",
-      access_code: data.access_code,
-      permissions: data.permissions || {},
-      company_name: data.companies?.name || "",
-      company_code: data.companies?.code || ""
+      ...data[0],
+      company_code: companyCode,
+      access_code: accessCode
     };
 
     localStorage.setItem("swp_worker", JSON.stringify(currentWorker));
-    setInternalHeader("Dnevni izveštaj", `${currentWorker.full_name || "Radnik"} · ${currentWorker.company_name || ""}`, true);
-    show("WorkerForm");
-    loadDraft();
-    loadWorkerReturnedReports();
-    if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
-    if ($("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
+    openWorkerForm();
     toast("Radnik je prijavljen.");
   } catch(e) {
     toast(e.message, true);
@@ -1184,7 +1170,7 @@ async function loginWorkerByCode() {
 
 function bindEvents() {
 
-  ["workerCode","workerLoginCode","workerAccessCode","workerPin","workerCodeInput"].forEach(id => {
+  ["workerCompanyCode","workerAccessCode"].forEach(id => {
     const el = $("#" + id);
     if (el) el.addEventListener("keydown", e => {
       if (e.key === "Enter") loginWorkerByCode();
@@ -1270,7 +1256,7 @@ function bindEvents() {
   $("#addPersonBtn").addEventListener("click", async () => {
     try {
       if (!currentCompany) throw new Error("Nema aktivne firme.");
-      const code = normalizeCode($("#personCode").value);
+      const code = normalizeLoginCode($("#personCode").value);
       if (code.length < 4) throw new Error("Kod za ulaz mora imati najmanje 4 karaktera.");
       const { error } = await sb.from("company_users").insert({
         company_id: currentCompany.id,
@@ -1342,7 +1328,7 @@ function bindEvents() {
   // Add mašina / gorivo koriste onclick direktno u HTML-u zbog pouzdanosti na mobilnom/PWA cache-u.
   if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
 
-  if ($("#workerLoginBtn")) if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
+  if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
 
   $("#workerLogoutBtn").addEventListener("click", () => {
     localStorage.removeItem("swp_worker");

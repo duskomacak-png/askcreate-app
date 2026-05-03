@@ -114,3 +114,7 @@ Direkcija može arhivirati izveštaj i skloniti ga iz glavnog inbox-a, bez fizi�
 
 IZMENA v1.10.4 WORKER CODE LOGIN FIX:
 Popravljen workflow prijave radnika. Direkcija kada dodaje radnika unosi šifru/kod za ulaz. Taj kod se normalizuje trim/lowercase i čuva u company_users.access_code. Radnik se prijavljuje samo tim kodom, bez email login-a. Login traži aktivnog radnika po access_code i active=true, učitava firmu i otvara radničku formu. Cache podignut na startwork-pro-v1104.
+
+
+IZMENA v1.10.5 AUDIT FIX:
+Proveren i popravljen kritičan deo koda. Radnički login vraćen je na Supabase RPC worker_login i koristi šifru firme + šifru/kod radnika. Kod se normalizuje lowercase/trim pri unosu radnika i pri login-u. Dodata SQL funkcija worker_login sa security definer i grant za anon/authenticated. Dugme Arhiviraj je dodato i u glavni inbox izveštaja, ne samo u pretragu. Cache podignut na startwork-pro-v1105.
