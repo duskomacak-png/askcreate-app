@@ -126,3 +126,7 @@ Dodat je jasan login princip: radnik se prijavljuje sa šifrom firme + svojim ko
 
 IZMENA v1.10.7 FINAL LOGIN CLEANUP:
 Direkcija više ne unosi šifru firme kod radnika — ona se automatski uzima iz aktivne firme. Direkcija kod radnika unosi samo ime, prezime, funkciju i šifru radnika. Login panel radnika sada jasno prikazuje dva polja: Šifra firme i Šifra radnika. Login proverava oba podatka zajedno preko Supabase worker_login RPC, pa radnik ne može ući u tuđu firmu samo sa svojim kodom. SQL final uključuje drop/create worker_login i unique index za aktivni kod radnika unutar firme. Cache podignut na startwork-pro-v1107.
+
+
+IZMENA v1.10.8 UI ROLE SEPARATION FIX:
+Popravljena greška iz v1.10.7 gde su tekstovi/polja radničkog login-a greškom upali u Super Admin sobu. Super Admin soba ponovo prikazuje samo admin pristup za app_admins. Radnički login ostaje posebno sa poljima Šifra firme i Šifra radnika. Cache podignut na startwork-pro-v1108.
