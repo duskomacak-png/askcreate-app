@@ -606,7 +606,7 @@ async function sendDefectNow() {
     }
 
     const machines = getMachineEntries ? getMachineEntries() : [];
-    const firstMachine = machines[0]?.name || $("#wrMachine")?.value?.trim?.() || "";
+    const firstMachine = machines[0]?.name || "";
 
     const urgentData = {
       report_type: "defect_record",

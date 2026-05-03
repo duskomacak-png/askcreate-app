@@ -74,3 +74,7 @@ Direkcija workspace je proširen skoro preko celog ekrana. Tamni unutrašnji hea
 
 IZMENA v1.9.4:
 Direkcija panel više ne koristi viewport širinu nego širinu roditelja. Sada ide lepo preko raspoloživog prostora, centriran je i ne beži u desnu stranu. Cache podignut na startwork-pro-v194.
+
+
+IZMENA v1.9.5 COMPLETE RESTORE:
+Kompletna obnovljena verzija svih fajlova posle slučajnog brisanja. Proveren je JavaScript syntax, svi osnovni fajlovi su prisutni, i cache je podignut na startwork-pro-v195.
