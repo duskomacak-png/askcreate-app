@@ -78,3 +78,11 @@ Direkcija panel više ne koristi viewport širinu nego širinu roditelja. Sada i
 
 IZMENA v1.9.5 COMPLETE RESTORE:
 Kompletna obnovljena verzija svih fajlova posle slučajnog brisanja. Proveren je JavaScript syntax, svi osnovni fajlovi su prisutni, i cache je podignut na startwork-pro-v195.
+
+
+IZMENA v1.9.6:
+Direkcija header dugmad su smanjena i poređana desno jedno ispod drugog: Odjavi se gore, Osveži dole. U izveštajima je uklonjen ružan JSON/kod iz Detalji prikaza i zamenjen čitljivim poslovnim prikazom: Osnovno, Mašine, Gorivo, Kvar, Materijal/Magacin.
+
+
+IZMENA v1.9.7 CLEAN REPORTS:
+Kompletna verzija za upload. Dugmad u Direkcija headeru su mala i desno jedno ispod drugog: Odjavi se gore, Osveži dole. Sirovi JSON/kod je potpuno uklonjen iz prikaza izveštaja. Direkcija vidi samo poslovni prikaz po sekcijama: Osnovno, Mašine/vozila, Gorivo, Kvar i Materijal/Magacin/Ture. Cache podignut na startwork-pro-v197.

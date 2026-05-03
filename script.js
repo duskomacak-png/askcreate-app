@@ -226,6 +226,132 @@ async function loadReports() {
   $("#reportsList").innerHTML = (data || []).map(r => reportHtml(r)).join("") || `<p class="muted">Nema poslatih izveštaja.</p>`;
 }
 
+
+function renderReportReadableDetails(d = {}) {
+  const esc = escapeHtml;
+  const safe = (x) => (x === undefined || x === null || x === "" ? "" : String(x));
+  const val = (x) => safe(x) ? esc(safe(x)) : "<span class='report-empty'>—</span>";
+
+  const rows = (pairs) => pairs.map(([k, v]) => `<b>${esc(k)}</b><span>${val(v)}</span>`).join("");
+
+  const machines = Array.isArray(d.machines) ? d.machines : [];
+  const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+
+  const machineTable = machines.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Mašina</th>
+          <th>Početak MTČ/KM</th>
+          <th>Kraj MTČ/KM</th>
+          <th>Sati</th>
+          <th>Rad</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${machines.map((m, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(m.name)}</td>
+            <td>${val(m.start)}</td>
+            <td>${val(m.end)}</td>
+            <td>${val(m.hours)}</td>
+            <td>${val(m.work)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema unetih mašina.</p>`;
+
+  const fuelTable = fuels.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Mašina</th>
+          <th>Litara</th>
+          <th>MTČ/KM pri sipanju</th>
+          <th>Sipao</th>
+          <th>Primio</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${fuels.map((f, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(f.machine)}</td>
+            <td>${val(f.liters)}</td>
+            <td>${val(f.reading)}</td>
+            <td>${val(f.by)}</td>
+            <td>${val(f.receiver || d.fuel_receiver)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema sipanja goriva.</p>`;
+
+  const hasDefect = safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status);
+  const hasMaterial = safe(d.material) || safe(d.quantity) || safe(d.warehouse_item) || safe(d.route) || safe(d.tours);
+
+  return `
+    <div class="report-readable">
+      <div class="report-section">
+        <h4>Osnovno</h4>
+        <div class="report-kv">
+          ${rows([
+            ["Gradilište", d.site_name],
+            ["Opis rada", d.description],
+            ["Sati rada", d.hours],
+            ["Napomena", d.note]
+          ])}
+        </div>
+      </div>
+
+      <div class="report-section">
+        <h4>Mašine / vozila</h4>
+        ${machineTable}
+      </div>
+
+      <div class="report-section">
+        <h4>Gorivo</h4>
+        ${fuelTable}
+      </div>
+
+      ${hasDefect ? `
+        <div class="report-section">
+          <h4>Kvar</h4>
+          <div class="report-kv">
+            ${rows([
+              ["Ima kvar", d.defect_exists],
+              ["Opis kvara", d.defect],
+              ["Hitnost", d.defect_urgency],
+              ["Zaustavlja rad", d.defect_stops_work],
+              ["Može nastaviti rad", d.defect_can_continue],
+              ["Šef mehanizacije pozvan", d.called_mechanic_by_phone],
+              ["Status kvara", d.defect_status]
+            ])}
+          </div>
+        </div>` : ""}
+
+      ${hasMaterial ? `
+        <div class="report-section">
+          <h4>Materijal / magacin / ture</h4>
+          <div class="report-kv">
+            ${rows([
+              ["Materijal", d.material],
+              ["Količina", d.quantity],
+              ["Jedinica", d.unit],
+              ["Magacin tip", d.warehouse_type],
+              ["Magacin stavka", d.warehouse_item],
+              ["Magacin količina", d.warehouse_qty],
+              ["Relacija", d.route],
+              ["Ture", d.tours]
+            ])}
+          </div>
+        </div>` : ""}
+    </div>
+  `;
+}
+
 function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "Nepoznat korisnik";
@@ -242,7 +368,7 @@ function reportHtml(r) {
       ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || d.description || d.note || "")}</p>
       ${r.returned_reason ? `<p class="muted">Razlog vraćanja: ${escapeHtml(r.returned_reason)}</p>` : ""}
-      <details><summary>Detalji</summary><pre>${escapeHtml(JSON.stringify(d, null, 2))}</pre></details>
+      ${renderReportReadableDetails(d)}
       <div class="actions">
         ${d.report_type === "defect_record" || d.report_type === "defect_alert" ? `
           <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>

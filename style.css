@@ -422,3 +422,277 @@ body.in-app #viewDirectorDashboard .grid.three{
     grid-template-columns:1fr;
   }
 }
+
+
+
+/* v1.9.6 — Direkcija header buttons and readable report details */
+#viewDirectorDashboard .dashboard-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.director-actions{
+  margin-left:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  gap:6px;
+  flex:0 0 auto;
+}
+
+.director-actions .small-action{
+  min-width:86px;
+  width:86px;
+  padding:7px 10px !important;
+  border-radius:11px !important;
+  font-size:.82rem;
+  line-height:1.05;
+  font-weight:800;
+}
+
+#directorTopLogoutBtn{
+  order:1;
+}
+
+#refreshDirectorBtn{
+  order:2;
+}
+
+.report-readable{
+  margin-top:12px;
+  display:grid;
+  gap:12px;
+}
+
+.report-section{
+  border:1px solid #dbe7df;
+  background:#fbfdfb;
+  border-radius:14px;
+  padding:12px;
+}
+
+.report-section h4{
+  margin:0 0 8px;
+  color:#185c37 !important;
+  font-size:.95rem;
+}
+
+.report-kv{
+  display:grid;
+  grid-template-columns:170px minmax(0,1fr);
+  gap:6px 12px;
+  font-size:.92rem;
+}
+
+.report-kv b{
+  color:#334155;
+}
+
+.report-kv span{
+  color:#0f172a;
+  overflow-wrap:anywhere;
+}
+
+.report-mini-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  overflow:hidden;
+  border-radius:12px;
+  border:1px solid #dbe7df;
+  font-size:.9rem;
+}
+
+.report-mini-table th,
+.report-mini-table td{
+  padding:8px 10px;
+  border-bottom:1px solid #e7efe9;
+  text-align:left;
+  vertical-align:top;
+}
+
+.report-mini-table th{
+  background:#e8f3ec;
+  color:#185c37;
+  font-weight:900;
+}
+
+.report-mini-table tr:last-child td{
+  border-bottom:0;
+}
+
+.report-empty{
+  color:#64748b;
+  font-style:italic;
+}
+
+.raw-details{
+  display:none;
+}
+
+@media(max-width:700px){
+  #viewDirectorDashboard .dashboard-head{
+    align-items:stretch;
+  }
+
+  .director-actions{
+    align-items:stretch;
+    width:90px;
+  }
+
+  .director-actions .small-action{
+    width:100%;
+    min-width:0;
+  }
+
+  .report-kv{
+    grid-template-columns:1fr;
+  }
+
+  .report-mini-table{
+    display:block;
+    overflow-x:auto;
+  }
+}
+
+
+
+/* v1.9.7 — CLEAN REPORTS + compact Direkcija actions */
+#viewDirectorDashboard .dashboard-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+}
+
+#viewDirectorDashboard .dashboard-head > div:first-child{
+  min-width:0;
+}
+
+.director-actions{
+  margin-left:auto;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  gap:6px;
+  flex:0 0 auto;
+}
+
+.director-actions .small-action{
+  width:86px;
+  min-width:86px;
+  max-width:86px;
+  padding:7px 10px !important;
+  border-radius:11px !important;
+  font-size:.82rem !important;
+  line-height:1.05 !important;
+  font-weight:800 !important;
+  text-align:center;
+}
+
+#directorTopLogoutBtn{order:1;}
+#refreshDirectorBtn{order:2;}
+
+.report-readable{
+  margin-top:12px;
+  display:grid;
+  gap:12px;
+}
+
+.report-section{
+  border:1px solid #dbe7df;
+  background:#fbfdfb;
+  border-radius:14px;
+  padding:12px;
+}
+
+.report-section h4{
+  margin:0 0 8px;
+  color:#185c37 !important;
+  font-size:.95rem;
+}
+
+.report-kv{
+  display:grid;
+  grid-template-columns:170px minmax(0,1fr);
+  gap:6px 12px;
+  font-size:.92rem;
+}
+
+.report-kv b{
+  color:#334155;
+}
+
+.report-kv span{
+  color:#0f172a;
+  overflow-wrap:anywhere;
+}
+
+.report-mini-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  overflow:hidden;
+  border-radius:12px;
+  border:1px solid #dbe7df;
+  font-size:.9rem;
+}
+
+.report-mini-table th,
+.report-mini-table td{
+  padding:8px 10px;
+  border-bottom:1px solid #e7efe9;
+  text-align:left;
+  vertical-align:top;
+}
+
+.report-mini-table th{
+  background:#e8f3ec;
+  color:#185c37;
+  font-weight:900;
+}
+
+.report-mini-table tr:last-child td{
+  border-bottom:0;
+}
+
+.report-empty{
+  color:#64748b;
+  font-style:italic;
+}
+
+.raw-details,
+details.raw-details,
+pre.raw-details{
+  display:none !important;
+}
+
+@media(max-width:700px){
+  #viewDirectorDashboard .dashboard-head{
+    align-items:stretch;
+  }
+
+  .director-actions{
+    width:90px;
+    align-items:stretch;
+  }
+
+  .director-actions .small-action{
+    width:100%;
+    min-width:0;
+    max-width:none;
+  }
+
+  .report-kv{
+    grid-template-columns:1fr;
+  }
+
+  .report-mini-table{
+    display:block;
+    overflow-x:auto;
+  }
+}
