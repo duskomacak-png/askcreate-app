@@ -54,3 +54,7 @@ Svaka dodata mašina sada otvara kompletan blok: mašina/vozilo, početni sati/M
 
 IZMENA v1.8:
 Direkcija panel je prebačen na Excel-friendly poslovni izgled: svetle kartice, zelena Excel boja, tabelarni inbox, jasniji statusi i bolji kontrast za prihvatanje kod firmi koje su navikle na Excel.
+
+
+IZMENA v1.9:
+Veliki Start Work PRO / AskCreate header ostaje samo na početnoj strani. Unutar aplikacije se prikazuje kompaktan radni header firme, jer plaćena firma treba da oseća da je to njen prostor. Brending je uklonjen iz radnog dela aplikacije.

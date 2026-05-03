@@ -32,6 +32,18 @@ function toast(msg, isError = false) {
   setTimeout(() => el.classList.add("hidden"), 4500);
 }
 
+
+function setInternalHeader(title = "", subtitle = "", showHeader = true) {
+  const header = $("#internalHeader");
+  if (!header) return;
+  const titleEl = $("#internalTitle");
+  const subtitleEl = $("#internalSubtitle");
+  if (titleEl) titleEl.textContent = title || "Radni prostor";
+  if (subtitleEl) subtitleEl.textContent = subtitle || "";
+  header.classList.toggle("hidden", !showHeader);
+  document.body.classList.toggle("in-app", !!showHeader);
+}
+
 function show(view) {
   $$(".view").forEach(v => v.classList.remove("active"));
   const el = $("#view" + view);
@@ -65,6 +77,7 @@ async function signOut() {
   if (sb) await sb.auth.signOut();
   currentCompany = null;
   localStorage.removeItem("swp_worker");
+  setInternalHeader("", "", false);
   show("Home");
 }
 
@@ -141,6 +154,7 @@ async function loadDirectorCompany() {
   }
   currentCompany = data;
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
+  setInternalHeader("Direkcija", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadReports()]);
   return data;
@@ -603,6 +617,7 @@ async function sendDefectNow() {
 }
 
 function bindEvents() {
+  if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", logout);
   $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => show(btn.dataset.goto)));
   $("#logoutBtn").addEventListener("click", signOut);
 
@@ -775,6 +790,7 @@ function openWorkerForm() {
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
   workerSetSections(currentWorker.permissions || {});
+  setInternalHeader("Dnevni izveštaj", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   show("WorkerForm");
   loadDraft();
   if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
@@ -799,3 +815,6 @@ async function boot() {
 }
 
 document.addEventListener("DOMContentLoaded", boot);
+
+// Default: public landing keeps big brand header.
+try { setInternalHeader('', '', false); } catch(e) {}
