@@ -998,3 +998,33 @@ pre.raw-details{
   border-radius:8px;
   padding:1px 6px;
 }
+
+
+/* v1.11.0 — Edit worker profile in Direkcija */
+.edit-btn{
+  border:1px solid #bfdbfe !important;
+  background:#eff6ff !important;
+  color:#1d4ed8 !important;
+  border-radius:12px !important;
+  padding:8px 12px !important;
+  font-size:.84rem !important;
+  line-height:1.1 !important;
+  font-weight:900 !important;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.edit-btn:hover{
+  background:#dbeafe !important;
+}
+
+.person-form-actions{
+  margin-top:12px;
+}
+
+@media(max-width:700px){
+  .edit-btn{
+    width:100%;
+    white-space:normal;
+  }
+}

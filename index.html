@@ -177,7 +177,7 @@
       <div id="tabPeople" class="tab-panel active">
         <div class="grid two">
           <div class="card">
-            <h3>+ Dodaj osobu</h3>
+            <h3 id="personFormTitle">+ Dodaj osobu</h3>
             <label>Ime</label>
             <input id="personFirst" placeholder="Duško" />
             <label>Prezime</label>
@@ -205,7 +205,7 @@
               <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje osobama</label>
               <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
             </div>
-            <button id="addPersonBtn" class="primary">Sačuvaj osobu</button>
+            <div class="row person-form-actions"><button id="addPersonBtn" class="primary">Sačuvaj osobu</button><button id="cancelEditPersonBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
           <div class="card">
             <h3>Ljudi u firmi</h3>

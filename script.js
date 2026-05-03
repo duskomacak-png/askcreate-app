@@ -10,6 +10,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 
 let sb = null;
 let currentCompany = null;
+let editingPersonId = null;
 let currentWorker = null;
 
 const $ = (sel) => document.querySelector(sel);
@@ -205,6 +206,113 @@ async function loadDirectorCompany() {
   return data;
 }
 
+
+function setPersonFormMode(mode = "add") {
+  const editing = mode === "edit";
+  const title = $("#personFormTitle");
+  const btn = $("#addPersonBtn");
+  const cancel = $("#cancelEditPersonBtn");
+  if (title) title.textContent = editing ? "✏️ Uredi profil radnika" : "+ Dodaj osobu";
+  if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj osobu";
+  if (cancel) cancel.classList.toggle("hidden", !editing);
+}
+
+function clearPersonForm() {
+  ["personFirst","personLast","personFunction","personCode"].forEach(id => {
+    const el = $("#" + id);
+    if (el) el.value = "";
+  });
+  $$(".perm").forEach(ch => ch.checked = ch.value === "daily_work");
+  editingPersonId = null;
+  setPersonFormMode("add");
+}
+
+window.editPerson = async (id) => {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const { data: p, error } = await sb
+      .from("company_users")
+      .select("*")
+      .eq("id", id)
+      .eq("company_id", currentCompany.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!p) throw new Error("Radnik nije pronađen.");
+
+    editingPersonId = p.id;
+    $("#personFirst").value = p.first_name || "";
+    $("#personLast").value = p.last_name || "";
+    $("#personFunction").value = p.function_title || "";
+    $("#personCode").value = p.access_code || "";
+
+    const perms = p.permissions || {};
+    $$(".perm").forEach(ch => {
+      ch.checked = !!perms[ch.value];
+    });
+
+    setPersonFormMode("edit");
+    toast("Profil radnika je otvoren za izmenu.");
+    const formTitle = $("#personFormTitle");
+    if (formTitle) formTitle.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch(e) {
+    toast(e.message, true);
+  }
+};
+
+async function savePersonForm() {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+
+    const code = normalizeLoginCode($("#personCode").value);
+    if (code.length < 4) throw new Error("Šifra radnika mora imati najmanje 4 karaktera.");
+
+    let duplicateQuery = sb
+      .from("company_users")
+      .select("id")
+      .eq("company_id", currentCompany.id)
+      .eq("access_code", code)
+      .eq("active", true);
+
+    if (editingPersonId) duplicateQuery = duplicateQuery.neq("id", editingPersonId);
+
+    const { data: existingCode, error: existingCodeError } = await duplicateQuery.maybeSingle();
+    if (existingCodeError) throw existingCodeError;
+    if (existingCode) throw new Error("U ovoj firmi već postoji aktivan radnik sa tom šifrom. Izaberi drugu šifru radnika.");
+
+    const payload = {
+      company_id: currentCompany.id,
+      first_name: $("#personFirst").value.trim(),
+      last_name: $("#personLast").value.trim(),
+      function_title: $("#personFunction").value.trim(),
+      access_code: code,
+      permissions: collectPermissions(),
+      active: true
+    };
+
+    if (!payload.first_name || !payload.last_name) throw new Error("Upiši ime i prezime radnika.");
+
+    if (editingPersonId) {
+      const { error } = await sb
+        .from("company_users")
+        .update(payload)
+        .eq("id", editingPersonId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
+      toast("Profil radnika je sačuvan.");
+    } else {
+      const { error } = await sb.from("company_users").insert(payload);
+      if (error) throw error;
+      toast("Osoba je dodata.");
+    }
+
+    clearPersonForm();
+    loadPeople();
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
+
 async function loadPeople() {
   if (!currentCompany) return;
   const { data, error } = await sb
@@ -225,6 +333,7 @@ async function loadPeople() {
         <span class="pill">${Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length} rubrika</span>
       </div>
       <div class="management-actions">
+        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Uredi profil</button>
         <button class="delete-btn" type="button" onclick="deletePerson('${p.id}', '${escapeHtml((p.first_name || '') + ' ' + (p.last_name || ''))}')">❌ Obriši iz spiska</button>
       </div>
     </div>`).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
@@ -1265,32 +1374,8 @@ function bindEvents() {
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
   }));
 
-  $("#addPersonBtn").addEventListener("click", async () => {
-    try {
-      if (!currentCompany) throw new Error("Nema aktivne firme.");
-      const code = normalizeLoginCode($("#personCode").value);
-      if (code.length < 4) throw new Error("Šifra radnika mora imati najmanje 4 karaktera.");
-
-      const { data: existingCode, error: existingCodeError } = await sb
-        .from("company_users")
-        .select("id")
-        .eq("company_id", currentCompany.id)
-        .eq("access_code", code)
-        .eq("active", true)
-        .maybeSingle();
-
-      if (existingCodeError) throw existingCodeError;
-      if (existingCode) throw new Error("U ovoj firmi već postoji aktivan radnik sa tom šifrom. Izaberi drugu šifru radnika.");
-
-      const { error } = await sb.from("company_users").insert({
-        company_id: currentCompany.id,
-        first_name: $("#personFirst").value.trim(),
-        last_name: $("#personLast").value.trim(),
-        function_title: $("#personFunction").value.trim(),
-        access_code: code,
-        permissions: collectPermissions(),
-        active: true
-      });
+  $("#addPersonBtn").addEventListener("click", savePersonForm);
+  if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
       if (error) throw error;
       ["personFirst","personLast","personFunction","personCode"].forEach(id => $("#"+id).value = "");
       toast("Osoba je dodata.");

@@ -126,3 +126,7 @@ Dodat je jasan login princip: radnik se prijavljuje sa šifrom firme + svojim ko
 
 IZMENA v1.10.9 STABLE AUDIT FIX:
 Vraćena stabilna HTML struktura iz v1.10.6 i urađen čist fix bez mešanja Super Admin / Radnik ekrana. Super Admin ostaje email+lozinka. Radnik login jasno ima Šifra firme + Šifra radnika. Direkcija pri dodavanju radnika unosi samo ime, prezime, funkciju i Šifra radnika, dok se šifra firme prikazuje automatski iz aktivne firme. Uklonjen dupli id companyCodeHelpBox. Cache podignut na startwork-pro-v1109.
+
+
+IZMENA v1.11.0 EDIT WORKER PROFILE:
+Direkcija sada može da klikne ✏️ Uredi profil kod svakog radnika. Leva forma se popunjava podacima radnika i može se promeniti ime, prezime, funkcija, šifra radnika i rubrike koje vidi. Dugme prelazi u Sačuvaj izmene, a dodato je i Otkaži izmenu. Logika ne dira Super Admin, Radnik login, izveštaje, arhivu ni globalnu pretragu. Cache podignut na startwork-pro-v1110.
