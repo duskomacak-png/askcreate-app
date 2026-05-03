@@ -130,3 +130,7 @@ Vraćena stabilna HTML struktura iz v1.10.6 i urađen čist fix bez mešanja Sup
 
 IZMENA v1.11.0 EDIT WORKER PROFILE:
 Direkcija sada može da klikne ✏️ Uredi profil kod svakog radnika. Leva forma se popunjava podacima radnika i može se promeniti ime, prezime, funkcija, šifra radnika i rubrike koje vidi. Dugme prelazi u Sačuvaj izmene, a dodato je i Otkaži izmenu. Logika ne dira Super Admin, Radnik login, izveštaje, arhivu ni globalnu pretragu. Cache podignut na startwork-pro-v1110.
+
+
+IZMENA v1.11.1 SYNTAX AUDIT FIX:
+Popravljena greška u script.js nastala pri dodavanju editovanja profila radnika. Uklonjen je zaostali deo starog addPerson event handler-a koji je pravio SyntaxError kod catch bloka. Proveren node --check, HTML ID-jevi, edit profil radnika, worker login i Direkcija tabovi. Cache podignut na startwork-pro-v1111.

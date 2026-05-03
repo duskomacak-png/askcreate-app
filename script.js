@@ -1376,12 +1376,6 @@ function bindEvents() {
 
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
-      if (error) throw error;
-      ["personFirst","personLast","personFunction","personCode"].forEach(id => $("#"+id).value = "");
-      toast("Osoba je dodata.");
-      loadPeople();
-    } catch(e) { toast(e.message, true); }
-  });
 
   $("#addSiteBtn").addEventListener("click", async () => {
     try {
