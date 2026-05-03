@@ -118,3 +118,11 @@ Popravljen workflow prijave radnika. Direkcija kada dodaje radnika unosi šifru/
 
 IZMENA v1.10.5 AUDIT FIX:
 Proveren i popravljen kritičan deo koda. Radnički login vraćen je na Supabase RPC worker_login i koristi šifru firme + šifru/kod radnika. Kod se normalizuje lowercase/trim pri unosu radnika i pri login-u. Dodata SQL funkcija worker_login sa security definer i grant za anon/authenticated. Dugme Arhiviraj je dodato i u glavni inbox izveštaja, ne samo u pretragu. Cache podignut na startwork-pro-v1105.
+
+
+IZMENA v1.10.6 WORKER LOGIN LOCK:
+Dodat je jasan login princip: radnik se prijavljuje sa šifrom firme + svojim kodom. Direkcija vidi objašnjenje kod dodavanja radnika. App proverava da u istoj firmi ne postoji drugi aktivan radnik sa istim kodom. SQL dodaje jedinstveni indeks za company_id + lower(trim(access_code)) za aktivne radnike. worker_login SQL sada prvo dropuje staru funkciju da ne dođe do greške promene return type. Cache podignut na startwork-pro-v1106.
+
+
+IZMENA v1.10.7 FINAL LOGIN CLEANUP:
+Direkcija više ne unosi šifru firme kod radnika — ona se automatski uzima iz aktivne firme. Direkcija kod radnika unosi samo ime, prezime, funkciju i šifru radnika. Login panel radnika sada jasno prikazuje dva polja: Šifra firme i Šifra radnika. Login proverava oba podatka zajedno preko Supabase worker_login RPC, pa radnik ne može ući u tuđu firmu samo sa svojim kodom. SQL final uključuje drop/create worker_login i unique index za aktivni kod radnika unutar firme. Cache podignut na startwork-pro-v1107.

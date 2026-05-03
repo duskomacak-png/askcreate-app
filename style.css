@@ -960,3 +960,42 @@ pre.raw-details{
   color:#64748b;
   margin-top:6px;
 }
+
+
+
+/* v1.10.6 — Worker login lock clarity */
+.code-help-box{
+  margin:10px 0 12px;
+  padding:10px 12px;
+  border:1px solid #bbf7d0;
+  background:#f0fdf4;
+  color:#14532d;
+  border-radius:14px;
+  font-size:.9rem;
+  display:grid;
+  gap:3px;
+}
+
+.code-help-box b{
+  color:#166534;
+}
+
+.code-help-box span{
+  color:#334155;
+}
+
+.code-login-note{
+  margin:5px 0 10px;
+  font-size:.84rem;
+  color:#64748b;
+}
+
+
+
+/* v1.10.7 — Final worker login cleanup */
+.code-help-box strong{
+  color:#0f766e;
+  background:#ccfbf1;
+  border-radius:8px;
+  padding:1px 6px;
+}

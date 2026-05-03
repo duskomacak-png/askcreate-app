@@ -55,6 +55,17 @@ function ensureDirectorTopLogoutButton() {
 }
 
 
+
+function showCurrentCompanyLoginInfo() {
+  const box = $("#companyCodeHelpBox");
+  if (!box || !currentCompany) return;
+  const companyCode = currentCompany.code || currentCompany.company_code || "";
+  box.innerHTML = `
+    <b>Prijava radnika:</b>
+    <span>Šifra firme je <strong>${escapeHtml(companyCode)}</strong>. Direkcija ovde upisuje samo ličnu šifru radnika.</span>
+  `;
+}
+
 function normalizeLoginCode(code) {
   return String(code || "").trim().toLowerCase();
 }
@@ -189,6 +200,7 @@ async function loadDirectorCompany() {
   setInternalHeader("Direkcija", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
   ensureDirectorTopLogoutButton();
+  showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
   return data;
 }
@@ -1135,29 +1147,31 @@ async function loginWorkerByCode() {
     if (!initSupabase()) return;
 
     const companyInput = $("#workerCompanyCode");
-    const codeInput = $("#workerAccessCode");
+    const workerInput = $("#workerAccessCode");
 
     if (!companyInput) throw new Error("Nedostaje polje Šifra firme.");
-    if (!codeInput) throw new Error("Nedostaje polje Šifra/kod radnika.");
+    if (!workerInput) throw new Error("Nedostaje polje Šifra radnika.");
 
     const companyCode = normalizeLoginCode(companyInput.value);
-    const accessCode = normalizeLoginCode(codeInput.value);
+    const workerCode = normalizeLoginCode(workerInput.value);
 
     if (!companyCode) throw new Error("Unesi šifru firme.");
-    if (!accessCode) throw new Error("Unesi šifru/kod koji ti je dala Direkcija.");
+    if (!workerCode) throw new Error("Unesi šifru radnika.");
 
     const { data, error } = await sb.rpc("worker_login", {
       p_company_code: companyCode,
-      p_access_code: accessCode
+      p_access_code: workerCode
     });
 
     if (error) throw error;
-    if (!data || !data.length) throw new Error("Neispravna šifra firme ili kod za ulaz.");
+    if (!data || !data.length) {
+      throw new Error("Neispravna šifra firme ili šifra radnika. Proveri oba polja tačno kako ih je dala Direkcija.");
+    }
 
     currentWorker = {
       ...data[0],
       company_code: companyCode,
-      access_code: accessCode
+      access_code: workerCode
     };
 
     localStorage.setItem("swp_worker", JSON.stringify(currentWorker));
@@ -1257,7 +1271,19 @@ function bindEvents() {
     try {
       if (!currentCompany) throw new Error("Nema aktivne firme.");
       const code = normalizeLoginCode($("#personCode").value);
-      if (code.length < 4) throw new Error("Kod za ulaz mora imati najmanje 4 karaktera.");
+      if (code.length < 4) throw new Error("Šifra radnika mora imati najmanje 4 karaktera.");
+
+      const { data: existingCode, error: existingCodeError } = await sb
+        .from("company_users")
+        .select("id")
+        .eq("company_id", currentCompany.id)
+        .eq("access_code", code)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (existingCodeError) throw existingCodeError;
+      if (existingCode) throw new Error("U ovoj firmi već postoji aktivan radnik sa tom šifrom. Izaberi drugu šifru radnika.");
+
       const { error } = await sb.from("company_users").insert({
         company_id: currentCompany.id,
         first_name: $("#personFirst").value.trim(),
