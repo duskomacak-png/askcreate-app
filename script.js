@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.12.1";
+const APP_VERSION = "1.12.2";
 
 
 let sb = null;
@@ -16,6 +16,7 @@ let editingPersonId = null;
 let editingAssetId = null;
 let editingMaterialId = null;
 let currentWorker = null;
+let workerAssetOptions = [];
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -1143,6 +1144,142 @@ function getSelectedWorkerSite() {
   };
 }
 
+
+function normalizeAssetType(type) {
+  return String(type || "").trim().toLowerCase();
+}
+
+function isVehicleAsset(asset) {
+  const t = normalizeAssetType(asset?.asset_type || asset?.type);
+  return ["vehicle", "vozilo", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica"].includes(t);
+}
+
+function formatAssetLabel(asset) {
+  const parts = [asset?.name || "Vozilo"];
+  if (asset?.registration) parts.push(asset.registration);
+  if (asset?.capacity) parts.push(asset.capacity);
+  return parts.filter(Boolean).join(" · ");
+}
+
+async function loadWorkerAssets() {
+  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+  workerAssetOptions = [];
+
+  if (!worker) return;
+
+  try {
+    const { data, error } = await sb.rpc("worker_list_assets", {
+      p_company_code: worker.company_code,
+      p_access_code: worker.access_code
+    });
+    if (error) throw error;
+
+    workerAssetOptions = Array.isArray(data) ? data : [];
+    refreshVehicleSelects();
+  } catch (e) {
+    workerAssetOptions = [];
+    refreshVehicleSelects();
+    toast("Vozila za radnika nisu učitana. Pokreni SQL za v1.12.2: worker_list_assets. Detalj: " + (e.message || e), true);
+  }
+}
+
+function buildVehicleOptionsHtml(selectedValue = "") {
+  const vehicles = workerAssetOptions.filter(isVehicleAsset);
+  const selected = String(selectedValue || "").trim();
+  if (!vehicles.length) {
+    return `<option value="">Nema vozila iz Direkcije</option>`;
+  }
+  return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => {
+    const name = v.name || "Vozilo";
+    const label = formatAssetLabel(v);
+    const isSelected = selected && selected === name ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+function refreshVehicleSelects() {
+  $$("#vehicleEntries .v-name").forEach(sel => {
+    const old = sel.value;
+    sel.innerHTML = buildVehicleOptionsHtml(old);
+    if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+  });
+}
+
+function getSelectedVehicleFromEntry(el) {
+  const select = el.querySelector(".v-name");
+  const option = select?.options ? select.options[select.selectedIndex] : null;
+  const custom = el.querySelector(".v-custom")?.value.trim() || "";
+  return {
+    asset_id: custom ? null : (option?.dataset?.assetId || null),
+    name: custom || (select?.value || "")
+  };
+}
+
+function addVehicleEntry(values = {}) {
+  const list = $("#vehicleEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".vehicle-entry").length + 1;
+  const selectedName = values.name || values.vehicle || "";
+  const div = document.createElement("div");
+  div.className = "entry-card vehicle-entry";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Vozilo ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+
+    <label>Vozilo iz Direkcije</label>
+    <select class="v-name">${buildVehicleOptionsHtml(selectedName)}</select>
+
+    <label>Ako vozilo nije u listi, upiši ručno</label>
+    <input class="v-custom" placeholder="npr. zamensko vozilo" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
+
+    <div class="mini-grid">
+      <div>
+        <label>KM početak</label>
+        <input class="v-km-start" type="number" step="1" value="${escapeHtml(values.km_start || values.start || "")}" />
+      </div>
+      <div>
+        <label>KM kraj</label>
+        <input class="v-km-end" type="number" step="1" value="${escapeHtml(values.km_end || values.end || "")}" />
+      </div>
+    </div>
+
+    <label>Relacija</label>
+    <input class="v-route" placeholder="Od - do" value="${escapeHtml(values.route || "")}" />
+
+    <label>Broj tura</label>
+    <input class="v-tours" type="number" step="1" value="${escapeHtml(values.tours || "")}" />
+  `;
+
+  div.querySelector(".remove-entry").addEventListener("click", () => {
+    div.remove();
+    refreshFuelMachineOptions();
+  });
+  div.querySelector(".v-name").addEventListener("change", refreshFuelMachineOptions);
+  div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
+  list.appendChild(div);
+  refreshVehicleSelects();
+  refreshFuelMachineOptions();
+}
+
+function getVehicleEntries() {
+  return $$("#vehicleEntries .vehicle-entry").map((el, i) => {
+    const selected = getSelectedVehicleFromEntry(el);
+    return {
+      no: i + 1,
+      asset_id: selected.asset_id,
+      name: selected.name,
+      vehicle: selected.name,
+      vehicle_custom: el.querySelector(".v-custom")?.value.trim() || "",
+      km_start: el.querySelector(".v-km-start")?.value || "",
+      km_end: el.querySelector(".v-km-end")?.value || "",
+      route: el.querySelector(".v-route")?.value.trim() || "",
+      tours: el.querySelector(".v-tours")?.value || ""
+    };
+  }).filter(v => v.name || v.km_start || v.km_end || v.route || v.tours);
+}
+
 async function loadWorkerSites(selectedName = "") {
   const select = $("#wrSiteName");
   const hint = $("#workerSiteHint");
@@ -1335,10 +1472,12 @@ function getFuelEntries() {
 
 function refreshFuelMachineOptions() {
   const machines = getMachineEntries().map(m => m.name).filter(Boolean);
+  const vehicles = getVehicleEntries().map(v => v.name).filter(Boolean);
+  const choices = [...machines, ...vehicles].filter(Boolean);
   $$("#fuelEntries .f-machine").forEach(sel => {
     const old = sel.value;
-    sel.innerHTML = `<option value="">-- izaberi mašinu --</option>` + machines.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-    if (machines.includes(old)) sel.value = old;
+    sel.innerHTML = `<option value="">-- izaberi mašinu / vozilo --</option>` + choices.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+    if (choices.includes(old)) sel.value = old;
   });
 }
 
@@ -1346,6 +1485,7 @@ function refreshFuelMachineOptions() {
 // Direktno izlaganje funkcija za onclick fallback
 window.addMachineEntry = addMachineEntry;
 window.addFuelEntry = addFuelEntry;
+window.addVehicleEntry = addVehicleEntry;
 window.refreshFuelMachineOptions = refreshFuelMachineOptions;
 
 
@@ -1412,9 +1552,14 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     $("#wrDate").value = r.report_date || today();
 
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
+    if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
 
     (d.machines || []).forEach(m => addMachineEntry(m));
+    (d.vehicles || []).forEach(v => addVehicleEntry(v));
+    if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
+      addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
+    }
     (d.fuel_entries || []).forEach(f => addFuelEntry(f));
 
     Object.entries({
@@ -1452,6 +1597,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
 
 function collectWorkerData() {
   const machines = getMachineEntries();
+  const vehicles = getVehicleEntries();
   const fuelEntries = getFuelEntries();
   const selectedSite = getSelectedWorkerSite();
   return {
@@ -1460,6 +1606,7 @@ function collectWorkerData() {
     description: $("#wrDescription").value.trim(),
     hours: $("#wrHours").value,
     machines,
+    vehicles,
     fuel_entries: fuelEntries,
 
     // Summary fields for older report/CSV display
@@ -1472,11 +1619,11 @@ function collectWorkerData() {
     fuel_by: fuelEntries.map(f => f.by).filter(Boolean).join(" | "),
     fuel_receiver: currentWorker?.full_name || "",
 
-    vehicle: $("#wrVehicle").value.trim(),
-    km_start: $("#wrKmStart").value,
-    km_end: $("#wrKmEnd").value,
-    route: $("#wrRoute").value.trim(),
-    tours: $("#wrTours").value,
+    vehicle: vehicles.map(v => v.name).filter(Boolean).join(" | "),
+    km_start: vehicles.map(v => v.km_start).filter(Boolean).join(" | "),
+    km_end: vehicles.map(v => v.km_end).filter(Boolean).join(" | "),
+    route: vehicles.map(v => v.route).filter(Boolean).join(" | "),
+    tours: vehicles.map(v => v.tours).filter(Boolean).join(" | "),
     material: $("#wrMaterial").value.trim(),
     quantity: $("#wrQuantity").value,
     unit: $("#wrUnit").value.trim(),
@@ -1498,6 +1645,7 @@ function clearWorkerForm() {
     if (el) el.value = "";
   });
   if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
+  if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
   if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
   if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
@@ -1522,8 +1670,13 @@ function loadDraft() {
     const d = draft.data || {};
 
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
+    if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
     (d.machines || []).forEach(m => addMachineEntry(m));
+    (d.vehicles || []).forEach(v => addVehicleEntry(v));
+    if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
+      addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
+    }
     (d.fuel_entries || []).forEach(f => addFuelEntry(f));
 
     Object.entries({
@@ -1868,10 +2021,11 @@ async function openWorkerForm() {
   workerSetSections(currentWorker.permissions || {});
   setInternalHeader("Dnevni izveštaj", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   show("WorkerForm");
-  await loadWorkerSites();
+  await Promise.all([loadWorkerSites(), loadWorkerAssets()]);
   loadDraft();
   loadWorkerReturnedReports();
   if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
+  if ($("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
   if ($("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
 }
 

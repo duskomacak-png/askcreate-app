@@ -160,3 +160,11 @@ Posle toga test link: https://askcreate.app/index.html?v=1120
 
 
 V1.12.1: Radnik sada dobija listu aktivnih gradilišta iz Direkcije. Obavezno pokreni SQL fajl supabase-worker-sites-rpc-v1121.sql. Test link: https://askcreate.app/index.html?v=1121
+
+
+=== v1.12.2 ===
+- Radnik u rubrici Vozilo bira vozilo iz liste koju je dodala Direkcija.
+- Dodato + Dodaj vozilo za više vozila u jednom izveštaju.
+- Gorivo može da se poveže i sa vozilima iz izveštaja.
+- Potreban SQL: supabase-worker-assets-rpc-v1122.sql
+Test link: https://askcreate.app/index.html?v=1122
