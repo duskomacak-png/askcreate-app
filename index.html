@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1127" />
+  <link rel="stylesheet" href="style.css?v=1129" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -317,9 +317,10 @@
 
           <div class="export-box export-download-box">
             <h4>Preuzimanje / Excel</h4>
-            <p class="muted">Browser ne sme sam da otvori lokalni Excel bez dozvole korisnika. Zato imaš dve sigurne opcije:</p>
+            <p class="muted">Browser ne sme sam da otvori lokalni Excel bez dozvole korisnika. Zato imaš tri sigurne opcije:</p>
             <div class="row">
-              <button id="exportCsvBtn" class="primary" type="button">📥 Preuzmi CSV fajl koji Excel otvara</button>
+              <button id="exportXlsBtn" class="primary" type="button">📥 Preuzmi poslovni Excel .xls</button>
+              <button id="exportCsvBtn" class="secondary" type="button">📥 Preuzmi CSV za Excel</button>
               <button id="copyExcelBtn" class="secondary" type="button">📋 Kopiraj tabelu za Excel</button>
             </div>
           </div>
@@ -491,6 +492,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1127"></script>
+  <script src="script.js?v=1129"></script>
 </body>
 </html>

@@ -1915,6 +1915,22 @@ function csvEscape(v) {
   return `"${String(v ?? "").replaceAll('"','""')}"`;
 }
 
+function excelCellText(v) {
+  return String(v ?? "").replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function downloadBlob(blob, fileName) {
+  const a = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 500);
+}
 
 const EXPORT_SELECTION_KEY = "swp_export_report_ids";
 const EXPORT_COLUMN_KEY = "swp_export_columns";
@@ -2125,25 +2141,107 @@ function renderExportPanel() {
   });
 }
 
-function buildCsvContent() {
+function buildCsvContent(delimiter = ";") {
   const { columns, rows } = getExportRowsAndColumns();
   if (!columns.length) throw new Error("Štikliraj bar jednu rubriku za Excel export.");
   if (!rows.length) throw new Error("Nema izabranih izveštaja za export.");
-  const header = columns.map(c => csvEscape(c.label)).join(",");
-  const body = rows.map(row => columns.map(c => csvEscape(row[c.key])).join(","));
-  return [header, ...body].join("\n");
+  const header = columns.map(c => csvEscape(c.label)).join(delimiter);
+  const body = rows.map(row => columns.map(c => csvEscape(excelCellText(row[c.key]))).join(delimiter));
+  return [header, ...body].join("\r\n");
+}
+
+function buildExcelHtmlTable() {
+  const { columns, rows, reports } = getExportRowsAndColumns();
+  if (!columns.length) throw new Error("Štikliraj bar jednu rubriku za Excel export.");
+  if (!rows.length) throw new Error("Nema izabranih izveštaja za export.");
+
+  const title = "START WORK PRO - IZVEŠTAJI ZA EXCEL";
+  const subtitle = `Firma: ${escapeHtml(currentCompany?.name || "")} | Šifra firme: ${escapeHtml(currentCompany?.company_code || "")} | Export: ${escapeHtml(today())} | Izveštaja: ${reports.length}`;
+  const colCount = Math.max(columns.length, 1);
+  const head = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
+  const body = rows.map((row, index) => `<tr class="${index % 2 ? "even" : "odd"}">${columns.map(c => `<td>${escapeHtml(excelCellText(row[c.key]))}</td>`).join("")}</tr>`).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  .title-row td {
+    background: #0f7a3b;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 12px 10px;
+    border: 1px solid #0f7a3b;
+    text-align: left;
+  }
+  .subtitle-row td {
+    background: #e8f5e9;
+    color: #1f2937;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 8px 10px;
+    border: 1px solid #9cccab;
+    text-align: left;
+  }
+  th {
+    background: #16a34a;
+    color: #ffffff;
+    font-weight: 700;
+    border: 1px solid #0f7a3b;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  td {
+    border: 1px solid #cfd8dc;
+    padding: 7px 9px;
+    vertical-align: top;
+    mso-number-format: "\@";
+  }
+  tr.odd td { background: #ffffff; }
+  tr.even td { background: #f6fbf7; }
+  .note-row td {
+    background: #fff8e1;
+    color: #7a4f01;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 7px 9px;
+    border: 1px solid #f2d17b;
+  }
+</style>
+</head>
+<body>
+<table>
+  <tr class="title-row"><td colspan="${colCount}">${title}</td></tr>
+  <tr class="subtitle-row"><td colspan="${colCount}">${subtitle}</td></tr>
+  <tr class="note-row"><td colspan="${colCount}">Napomena: fajl je generisan iz Start Work PRO aplikacije. Ako Excel prikaže poruku o formatu, klikni Yes/Da za otvaranje.</td></tr>
+  ${head}
+  ${body}
+</table>
+</body>
+</html>`;
 }
 
 async function exportCsv() {
   try {
-    const csv = buildCsvContent();
-    const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `startwork-izabrani-izvestaji-${today()}.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast("CSV fajl je preuzet. Otvori ga duplim klikom u Excelu.");
+    const csv = buildCsvContent(";");
+    const blob = new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"});
+    downloadBlob(blob, `startwork-izabrani-izvestaji-${today()}.csv`);
+    toast("CSV fajl je preuzet. Za tvoj Excel koristi se tačka-zarez da kolone budu lepo razdvojene.");
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
+
+async function exportExcelFile() {
+  try {
+    const html = buildExcelHtmlTable();
+    const blob = new Blob(["﻿" + html], {type:"application/vnd.ms-excel;charset=utf-8"});
+    downloadBlob(blob, `startwork-izabrani-izvestaji-${today()}.xls`);
+    toast("Excel fajl je preuzet. Otvori ga u Excelu za lepše složene kolone.");
   } catch(e) {
     toast(e.message, true);
   }
@@ -2156,7 +2254,7 @@ async function copyExportTableForExcel() {
     if (!rows.length) throw new Error("Nema izabranih izveštaja za kopiranje.");
     const text = [
       columns.map(c => c.label).join("\t"),
-      ...rows.map(row => columns.map(c => String(row[c.key] ?? "").replace(/\s+/g, " ").trim()).join("\t"))
+      ...rows.map(row => columns.map(c => excelCellText(row[c.key])).join("\t"))
     ].join("\n");
     await navigator.clipboard.writeText(text);
     toast("Tabela je kopirana. Otvori Excel i pritisni Ctrl + V.");
@@ -2164,7 +2262,6 @@ async function copyExportTableForExcel() {
     toast(e.message, true);
   }
 }
-
 
 
 async function sendDefectNow() {
@@ -2401,6 +2498,7 @@ function bindEvents() {
   if ($("#clearReportsBtn")) $("#clearReportsBtn").addEventListener("click", clearReportsForExport);
   if ($("#goExportBtn")) $("#goExportBtn").addEventListener("click", goToExportTab);
   if ($("#exportCsvBtn")) $("#exportCsvBtn").addEventListener("click", exportCsv);
+  if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);
   if ($("#selectAllColumnsBtn")) $("#selectAllColumnsBtn").addEventListener("click", selectAllExportColumns);
   if ($("#clearColumnsBtn")) $("#clearColumnsBtn").addEventListener("click", clearExportColumns);
