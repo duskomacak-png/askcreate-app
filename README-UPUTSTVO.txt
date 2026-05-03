@@ -159,7 +159,7 @@ Obavezno pokreni SQL fajl: supabase-materials-rpc-v1120.sql
 Posle toga test link: https://askcreate.app/index.html?v=1120
 
 
-V1.12.1: Radnik sada dobija listu aktivnih gradilišta iz Direkcije. Obavezno pokreni SQL fajl supabase-worker-sites-rpc-v1121.sql. Test link: https://askcreate.app/index.html?v=1124
+V1.12.1: Radnik sada dobija listu aktivnih gradilišta iz Direkcije. Obavezno pokreni SQL fajl supabase-worker-sites-rpc-v1121.sql. Test link: https://askcreate.app/index.html?v=1125
 
 
 === v1.12.2 ===
@@ -171,18 +171,22 @@ Test link: https://askcreate.app/index.html?v=1122
 
 
 ============================================================
-V1.12.4 - RADNIK: PRETRAGA VOZILA PO REGISTRACIJI
+V1.12.5 - RADNIK: PRETRAGA VOZILA PO REGISTRACIJI
 ============================================================
 - Kod radnika u rubrici Vozilo dodata je pretraga po registraciji ili nazivu.
 - Vozila se prikazuju iz Direkcija -> Mašine / vozila kada je radniku u profilu štiklirana rubrika Vozila.
 - SQL: nije potreban novi SQL ako je već pokrenut v1.12.2 worker_list_assets.
-Test link: https://askcreate.app/index.html?v=1124
+Test link: https://askcreate.app/index.html?v=1125
 
 
-=== v1.12.4 ===
+=== v1.12.5 ===
 - Popravljen worker_list_assets problem: vozila se sada normalizuju kao asset_type/type.
 - Radnik vidi vozila iz Direkcije u padajućoj listi i može da ih pretraži po registraciji ili nazivu.
 - Dodato automatsko računanje kubika: kapacitet vozila × broj tura.
 - Dodato ručno polje m³ za pola ture / nepotpunu turu.
-- SQL je potreban: pokrenuti v1.12.4 worker_list_assets SQL iz četa.
-Test link: https://askcreate.app/index.html?v=1124
+- SQL je potreban: pokrenuti v1.12.5 worker_list_assets SQL iz četa.
+Test link: https://askcreate.app/index.html?v=1125
+
+
+=== v1.12.5 ===
+Direkcija sada vidi poslati radnički izveštaj kao Excel pregled: osnovno, mašine, vozila, ture, m³, gorivo i kvarovi su složeni u tabelama. Novi Supabase SQL nije potreban. Test link: https://askcreate.app/index.html?v=1125

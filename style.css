@@ -1265,3 +1265,54 @@ pre.raw-details{
 body:not(.worker-mode) .field-hint {
   color: rgba(15, 23, 42, 0.62);
 }
+
+/* v1.12.5 - Direkcija: Excel-like report preview */
+.report-excel-section{
+  background:#f8fffb;
+  border-color:#bddfc9;
+}
+.report-excel-wrap{
+  width:100%;
+  overflow:auto;
+  border:1px solid #cfe6d7;
+  border-radius:14px;
+  background:#ffffff;
+  box-shadow: inset 0 0 0 1px rgba(24,92,55,.03);
+}
+.report-excel-table{
+  width:max-content;
+  min-width:100%;
+  border-collapse:collapse;
+  font-size:.84rem;
+}
+.report-excel-table th,
+.report-excel-table td{
+  border:1px solid #dbe7df;
+  padding:7px 9px;
+  text-align:left;
+  vertical-align:top;
+  white-space:nowrap;
+}
+.report-excel-table th{
+  position:sticky;
+  top:0;
+  z-index:1;
+  background:#dff1e6;
+  color:#134e2d;
+  font-weight:900;
+}
+.report-excel-table td:nth-child(4){
+  white-space:normal;
+  min-width:220px;
+  max-width:360px;
+}
+.report-excel-table tbody tr:nth-child(even){
+  background:#f7fbf8;
+}
+.report-excel-table tbody tr:hover{
+  background:#eef8f1;
+}
+@media(max-width:700px){
+  .report-excel-table{font-size:.78rem;}
+  .report-excel-table th,.report-excel-table td{padding:6px 7px;}
+}

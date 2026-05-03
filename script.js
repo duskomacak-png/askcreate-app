@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.12.4";
+const APP_VERSION = "1.12.5";
 
 
 let sb = null;
@@ -888,11 +888,81 @@ function renderReportReadableDetails(d = {}) {
   const esc = escapeHtml;
   const safe = (x) => (x === undefined || x === null || x === "" ? "" : String(x));
   const val = (x) => safe(x) ? esc(safe(x)) : "<span class='report-empty'>—</span>";
-
   const rows = (pairs) => pairs.map(([k, v]) => `<b>${esc(k)}</b><span>${val(v)}</span>`).join("");
 
   const machines = Array.isArray(d.machines) ? d.machines : [];
+  const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+
+  const reportRows = [];
+
+  const maxRows = Math.max(1, machines.length, vehicles.length, fuels.length);
+  for (let i = 0; i < maxRows; i++) {
+    const m = machines[i] || {};
+    const v = vehicles[i] || {};
+    const f = fuels[i] || {};
+    reportRows.push(`
+      <tr>
+        <td>${i + 1}</td>
+        <td>${val(d.site_name)}</td>
+        <td>${val(d.hours)}</td>
+        <td>${val(d.description)}</td>
+        <td>${val(m.name)}</td>
+        <td>${val(m.start)}</td>
+        <td>${val(m.end)}</td>
+        <td>${val(m.hours)}</td>
+        <td>${val(m.work)}</td>
+        <td>${val(v.name || v.vehicle)}</td>
+        <td>${val(v.registration)}</td>
+        <td>${val(v.capacity)}</td>
+        <td>${val(v.km_start)}</td>
+        <td>${val(v.km_end)}</td>
+        <td>${val(v.route)}</td>
+        <td>${val(v.tours)}</td>
+        <td>${val(v.cubic_m3 || v.cubic_auto)}</td>
+        <td>${val(v.cubic_manual)}</td>
+        <td>${val(f.machine)}</td>
+        <td>${val(f.liters)}</td>
+        <td>${val(f.reading)}</td>
+        <td>${val(f.by)}</td>
+        <td>${val(f.receiver || d.fuel_receiver)}</td>
+      </tr>
+    `);
+  }
+
+  const excelTable = `
+    <div class="report-excel-wrap">
+      <table class="report-excel-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Gradilište</th>
+            <th>Sati radnika</th>
+            <th>Opis rada</th>
+            <th>Mašina</th>
+            <th>MTČ/KM početak</th>
+            <th>MTČ/KM kraj</th>
+            <th>Sati mašine</th>
+            <th>Rad mašine</th>
+            <th>Vozilo</th>
+            <th>Registracija</th>
+            <th>Kapacitet m³</th>
+            <th>KM početak</th>
+            <th>KM kraj</th>
+            <th>Relacija</th>
+            <th>Ture</th>
+            <th>m³ ukupno</th>
+            <th>Ručno m³</th>
+            <th>Gorivo za</th>
+            <th>Litara</th>
+            <th>MTČ/KM gorivo</th>
+            <th>Sipao</th>
+            <th>Primio</th>
+          </tr>
+        </thead>
+        <tbody>${reportRows.join("")}</tbody>
+      </table>
+    </div>`;
 
   const machineTable = machines.length ? `
     <table class="report-mini-table">
@@ -920,12 +990,46 @@ function renderReportReadableDetails(d = {}) {
       </tbody>
     </table>` : `<p class="report-empty">Nema unetih mašina.</p>`;
 
+  const vehicleTable = vehicles.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Vozilo</th>
+          <th>Reg.</th>
+          <th>Kapacitet</th>
+          <th>KM početak</th>
+          <th>KM kraj</th>
+          <th>Relacija</th>
+          <th>Ture</th>
+          <th>m³ ukupno</th>
+          <th>Ručno m³</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${vehicles.map((v, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(v.name || v.vehicle)}</td>
+            <td>${val(v.registration)}</td>
+            <td>${val(v.capacity)}</td>
+            <td>${val(v.km_start)}</td>
+            <td>${val(v.km_end)}</td>
+            <td>${val(v.route)}</td>
+            <td>${val(v.tours)}</td>
+            <td>${val(v.cubic_m3 || v.cubic_auto)}</td>
+            <td>${val(v.cubic_manual)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema unetih vozila.</p>`;
+
   const fuelTable = fuels.length ? `
     <table class="report-mini-table">
       <thead>
         <tr>
           <th>#</th>
-          <th>Mašina</th>
+          <th>Mašina/vozilo</th>
           <th>Litara</th>
           <th>MTČ/KM pri sipanju</th>
           <th>Sipao</th>
@@ -951,6 +1055,12 @@ function renderReportReadableDetails(d = {}) {
 
   return `
     <div class="report-readable">
+      <div class="report-section report-excel-section">
+        <h4>Excel pregled izveštaja</h4>
+        <p class="field-hint">Tabela je namerno složena kao Excel: jedan red može sadržati mašinu, vozilo i gorivo za isti dnevni izveštaj. Ako ima više vozila/mašina, prikazuju se u dodatnim redovima.</p>
+        ${excelTable}
+      </div>
+
       <div class="report-section">
         <h4>Osnovno</h4>
         <div class="report-kv">
@@ -964,8 +1074,13 @@ function renderReportReadableDetails(d = {}) {
       </div>
 
       <div class="report-section">
-        <h4>Mašine / vozila</h4>
+        <h4>Mašine</h4>
         ${machineTable}
+      </div>
+
+      <div class="report-section">
+        <h4>Vozila / ture / m³</h4>
+        ${vehicleTable}
       </div>
 
       <div class="report-section">
@@ -991,7 +1106,7 @@ function renderReportReadableDetails(d = {}) {
 
       ${hasMaterial ? `
         <div class="report-section">
-          <h4>Materijal / magacin / ture</h4>
+          <h4>Materijal / magacin</h4>
           <div class="report-kv">
             ${rows([
               ["Materijal", d.material],
@@ -999,9 +1114,7 @@ function renderReportReadableDetails(d = {}) {
               ["Jedinica", d.unit],
               ["Magacin tip", d.warehouse_type],
               ["Magacin stavka", d.warehouse_item],
-              ["Magacin količina", d.warehouse_qty],
-              ["Relacija", d.route],
-              ["Ture", d.tours]
+              ["Magacin količina", d.warehouse_qty]
             ])}
           </div>
         </div>` : ""}
