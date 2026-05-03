@@ -90,3 +90,7 @@ Kompletna verzija za upload. Dugmad u Direkcija headeru su mala i desno jedno is
 
 IZMENA v1.9.8 RETURNED REPORTS:
 Kada Direkcija vrati izveštaj na dopunu/ispravku, radnik kome pripada izveštaj vidi poseban panel 'Izveštaji vraćeni na dopunu'. Može otvoriti izveštaj, ispraviti podatke i poslati ga ponovo Direkciji. Ispravka ažurira isti report red i vraća status na sent, umesto da pravi nepotreban duplikat.
+
+
+IZMENA v1.9.9 NO WORKER NOTE:
+Iz radničke forme uklonjena je donja rubrika Napomena / Dodatna napomena jer su podaci već pokriveni kroz opis rada, mašine, gorivo i kvar. Novo slanje više ne šalje note polje iz radničke forme. Stari izveštaji koji već imaju note i dalje se mogu prikazati u Direkciji bez greške. Cache podignut na startwork-pro-v199.

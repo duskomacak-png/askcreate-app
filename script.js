@@ -666,9 +666,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       wrDefectStopsWork:"defect_stops_work",
       wrDefectCanContinue:"defect_can_continue",
       wrDefectUrgency:"defect_urgency",
-      wrDefectCalledMechanic:"called_mechanic_by_phone",
-      wrNote:"note"
-    }).forEach(([id,key]) => {
+      wrDefectCalledMechanic:"called_mechanic_by_phone",}).forEach(([id,key]) => {
       const el = $("#" + id);
       if (el) el.value = d[key] || "";
     });
@@ -717,13 +715,12 @@ function collectWorkerData() {
     defect_stops_work: $("#wrDefectStopsWork")?.value || "",
     defect_can_continue: $("#wrDefectCanContinue")?.value || "",
     defect_urgency: $("#wrDefectUrgency").value,
-    called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
-    note: $("#wrNote").value.trim()
+    called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || ""
   };
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic","wrNote"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
@@ -757,7 +754,7 @@ function loadDraft() {
     (d.fuel_entries || []).forEach(f => addFuelEntry(f));
 
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone", wrNote:"note"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
   } catch {}
 }
@@ -852,7 +849,6 @@ async function sendDefectNow() {
       defect_stops_work: $("#wrDefectStopsWork")?.value || "",
       defect_can_continue: $("#wrDefectCanContinue")?.value || "",
       defect_urgency: $("#wrDefectUrgency")?.value || "",
-      note: $("#wrNote")?.value.trim() || "",
       created_by_worker: worker.full_name,
       function_title: worker.function_title,
       called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
