@@ -268,3 +268,103 @@ body.in-app #viewDirectorDashboard{
     font-size:.78rem;
   }
 }
+
+
+
+/* v1.9.3 — Direkcija full workspace: remove dark internal bar and widen Excel panel */
+body.in-app #internalHeader{
+  display:none !important;
+}
+
+body.in-app #viewDirectorDashboard{
+  width:calc(100vw - 32px);
+  max-width:none;
+  margin:12px auto 24px;
+  padding:14px;
+  border-radius:22px;
+}
+
+body.in-app #viewDirectorDashboard .dashboard-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  padding:14px 16px;
+  border-radius:18px;
+}
+
+body.in-app #viewDirectorDashboard .dashboard-head > div{
+  min-width:0;
+}
+
+body.in-app #viewDirectorDashboard .dashboard-head .actions,
+body.in-app #viewDirectorDashboard .dashboard-head .top-actions,
+body.in-app #viewDirectorDashboard .dashboard-head .head-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+#directorTopLogoutBtn{
+  margin-left:8px;
+}
+
+body.in-app #viewDirectorDashboard .grid,
+body.in-app #viewDirectorDashboard .two-col,
+body.in-app #viewDirectorDashboard .content-grid{
+  width:100%;
+}
+
+body.in-app #viewDirectorDashboard .card{
+  border-radius:18px;
+}
+
+body.in-app #viewDirectorDashboard .tabs{
+  width:100%;
+  margin:12px 0;
+}
+
+body.in-app #viewDirectorDashboard .tab-panel,
+body.in-app #viewDirectorDashboard .panel,
+body.in-app #viewDirectorDashboard .list{
+  width:100%;
+}
+
+/* Keep worker/admin compact, but no dark app bar inside paid workspace */
+body.in-app .screen{
+  max-width:calc(100vw - 32px);
+}
+
+/* Desktop: use more horizontal space for Direkcija */
+@media(min-width:1000px){
+  body.in-app #viewDirectorDashboard{
+    width:calc(100vw - 48px);
+    padding:18px;
+  }
+}
+
+/* Mobile safety */
+@media(max-width:700px){
+  body.in-app #viewDirectorDashboard{
+    width:calc(100vw - 16px);
+    margin:8px auto 18px;
+    padding:10px;
+    border-radius:16px;
+  }
+
+  body.in-app #viewDirectorDashboard .dashboard-head{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  body.in-app #viewDirectorDashboard .dashboard-head .actions,
+  body.in-app #viewDirectorDashboard .dashboard-head .top-actions,
+  body.in-app #viewDirectorDashboard .dashboard-head .head-actions{
+    width:100%;
+  }
+
+  body.in-app #viewDirectorDashboard .dashboard-head button{
+    flex:1;
+  }
+}

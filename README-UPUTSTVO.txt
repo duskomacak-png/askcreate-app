@@ -66,3 +66,7 @@ Proverena i popravljena v1.9 verzija. AdminDashboard sada dobija kompaktan heade
 
 IZMENA v1.9.2 FIX:
 Popravljena kritična greška: internalLogoutBtn je greškom pozivao nepostojeću funkciju logout umesto signOut. Zbog toga se JS prekidao i početni ulazi nisu reagovali. Dodata zaštita za logoutBtn i cache podignut na startwork-pro-v192.
+
+
+IZMENA v1.9.3:
+Direkcija workspace je proširen skoro preko celog ekrana. Tamni unutrašnji header je sklonjen. Dugme Odjavi se prebačeno je u Direkcija zeleni header pored Osveži. Cache podignut na startwork-pro-v193.

@@ -33,6 +33,27 @@ function toast(msg, isError = false) {
 }
 
 
+
+function ensureDirectorTopLogoutButton() {
+  const dash = $("#viewDirectorDashboard");
+  if (!dash || $("#directorTopLogoutBtn")) return;
+  const head = dash.querySelector(".dashboard-head");
+  if (!head) return;
+  let actions = head.querySelector(".actions") || head.querySelector(".top-actions") || head.querySelector(".head-actions");
+  if (!actions) {
+    actions = document.createElement("div");
+    actions.className = "actions head-actions";
+    head.appendChild(actions);
+  }
+  const btn = document.createElement("button");
+  btn.id = "directorTopLogoutBtn";
+  btn.className = "secondary";
+  btn.type = "button";
+  btn.textContent = "Odjavi se";
+  btn.addEventListener("click", signOut);
+  actions.appendChild(btn);
+}
+
 function setInternalHeader(title = "", subtitle = "", showHeader = true) {
   const header = $("#internalHeader");
   if (!header) return;
@@ -162,6 +183,7 @@ async function loadDirectorCompany() {
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   setInternalHeader("Direkcija", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
+  ensureDirectorTopLogoutButton();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadReports()]);
   return data;
 }
@@ -626,6 +648,7 @@ function bindEvents() {
   if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", signOut);
   $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => show(btn.dataset.goto)));
   if ($("#logoutBtn")) $("#logoutBtn").addEventListener("click", signOut);
+  if ($("#directorTopLogoutBtn")) $("#directorTopLogoutBtn").addEventListener("click", signOut);
 
   $("#adminSignupBtn").addEventListener("click", async () => {
     try {
