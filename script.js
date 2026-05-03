@@ -915,7 +915,7 @@ function defectHtml(r) {
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : (d.created_by_worker || "Nepoznat radnik");
   const status = d.defect_status || "prijavljen";
   const reportedAt = d.defect_reported_at || r.submitted_at || r.created_at;
-  const assetName = d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name) || "—";
+  const assetName = d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name) || "—";
 
   return `
     <div class="item report-item defect-item">
@@ -923,7 +923,7 @@ function defectHtml(r) {
       <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || d.function_title || "")} · ${escapeHtml(r.report_date || "")}</small><br/>
       <span class="pill">Prijavljeno: ${escapeHtml(formatDateTimeLocal(reportedAt))}</span>
       <span class="pill">Status: ${escapeHtml(status)}</span>
-      <span class="pill">Gradilište: ${escapeHtml(d.site_name || "bez gradilišta")}</span>
+      <span class="pill">Gradilište/lokacija: ${escapeHtml(d.defect_site_name || d.site_name || "bez gradilišta")}</span>
       <span class="pill">Mašina/vozilo: ${escapeHtml(assetName)}</span>
       ${d.defect_stops_work ? `<span class="pill">Zaustavlja rad: ${escapeHtml(d.defect_stops_work)}</span>` : ""}
       ${d.defect_can_continue ? `<span class="pill">Može nastaviti: ${escapeHtml(d.defect_can_continue)}</span>` : ""}
@@ -1161,6 +1161,8 @@ function renderReportReadableDetails(d = {}) {
           <h4>Kvar</h4>
           <div class="report-kv">
             ${rows([
+              ["Mašina/vozilo u kvaru", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle],
+              ["Gradilište/lokacija mašine", d.defect_site_name || d.site_name],
               ["Ima kvar", d.defect_exists],
               ["Opis kvara", d.defect],
               ["Hitnost", d.defect_urgency],
@@ -1862,6 +1864,8 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       wrWarehouseType:"warehouse_type",
       wrWarehouseItem:"warehouse_item",
       wrWarehouseQty:"warehouse_qty",
+      wrDefectAssetName:"defect_asset_name",
+      wrDefectSiteName:"defect_site_name",
       wrDefectExists:"defect_exists",
       wrDefect:"defect",
       wrDefectStopsWork:"defect_stops_work",
@@ -1916,6 +1920,9 @@ function collectWorkerData() {
     warehouse_type: $("#wrWarehouseType").value,
     warehouse_item: $("#wrWarehouseItem").value.trim(),
     warehouse_qty: $("#wrWarehouseQty").value.trim(),
+    defect_asset_name: $("#wrDefectAssetName")?.value.trim() || "",
+    defect_machine: $("#wrDefectAssetName")?.value.trim() || "",
+    defect_site_name: $("#wrDefectSiteName")?.value.trim() || selectedSite.site_name || "",
     defect_exists: $("#wrDefectExists")?.value || "ne",
     defect: $("#wrDefect").value.trim(),
     defect_stops_work: $("#wrDefectStopsWork")?.value || "",
@@ -1926,7 +1933,7 @@ function collectWorkerData() {
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
@@ -1966,7 +1973,7 @@ function loadDraft() {
     (d.fuel_entries || []).forEach(f => addFuelEntry(f));
 
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_name", wrDefectSiteName:"defect_site_name", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
   } catch {}
 }
@@ -2307,6 +2314,9 @@ async function sendDefectNow() {
     if (!worker) throw new Error("Radnik nije prijavljen.");
 
     const defectText = $("#wrDefect")?.value.trim() || "";
+    const defectAssetName = $("#wrDefectAssetName")?.value.trim() || "";
+    const selectedDefectSite = getSelectedWorkerSite ? getSelectedWorkerSite() : {};
+    const defectSiteName = $("#wrDefectSiteName")?.value.trim() || selectedDefectSite.site_name || "";
     const exists = $("#wrDefectExists")?.value || "ne";
 
     if (exists !== "da" && !defectText) {
@@ -2314,16 +2324,20 @@ async function sendDefectNow() {
     }
 
     const machines = getMachineEntries ? getMachineEntries() : [];
-    const firstMachine = machines[0]?.name || "";
+    const firstMachine = defectAssetName || machines[0]?.name || "";
 
     const urgentData = {
       report_type: "defect_record",
       sent_immediately: true,
       defect_status: "prijavljen",
       defect_reported_at: new Date().toISOString(),
-      site_id: getSelectedWorkerSite().site_id,
-      site_name: getSelectedWorkerSite().site_name,
+      site_id: selectedDefectSite.site_id || getSelectedWorkerSite().site_id,
+      site_name: defectSiteName || getSelectedWorkerSite().site_name,
+      defect_site_name: defectSiteName || getSelectedWorkerSite().site_name,
       machine: firstMachine,
+      defect_asset_name: defectAssetName,
+      defect_machine: defectAssetName,
+      defect_site_name: defectSiteName,
       machines,
       defect_exists: "da",
       defect: defectText,

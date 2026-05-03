@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1131" />
+  <link rel="stylesheet" href="style.css?v=1133" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -445,6 +445,13 @@
           <h4>Kvar / mehanizacija</h4>
           <p class="hint">Ovo je važno da Šef mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
+          <label>Ime mašine / vozila koje je u kvaru</label>
+          <input id="wrDefectAssetName" placeholder="npr. CAT 330, MAN kiper, D6R..." />
+
+          <label>Gradilište / lokacija mašine</label>
+          <input id="wrDefectSiteName" placeholder="npr. Zemun Zmaj, Beograd, lokacija gde stoji mašina..." />
+          <p class="hint">Upiši gde se nalazi mašina u kvaru. Ako je gore već izabrano gradilište, možeš prepisati isti naziv.</p>
+
           <label>Ima kvar?</label>
           <select id="wrDefectExists">
             <option value="ne">Ne</option>
@@ -505,6 +512,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1131"></script>
+  <script src="script.js?v=1133"></script>
 </body>
 </html>
