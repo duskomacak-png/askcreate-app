@@ -184,7 +184,7 @@ async function loadDirectorCompany() {
   setInternalHeader("Direkcija", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
   ensureDirectorTopLogoutButton();
-  await Promise.all([loadPeople(), loadSites(), loadAssets(), loadReports()]);
+  await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
   return data;
 }
 
@@ -194,10 +194,15 @@ async function loadPeople() {
   if (error) return toast(error.message, true);
   $("#peopleList").innerHTML = (data || []).map(p => `
     <div class="item">
-      <strong>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</strong>
-      <small>${escapeHtml(p.function_title)} · kod: ${escapeHtml(p.access_code)}</small><br/>
-      <span class="pill">${p.active ? "Aktivan" : "Neaktivan"}</span>
-      <span class="pill">${Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length} rubrika</span>
+      <div class="item-main">
+        <strong>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</strong>
+        <small>${escapeHtml(p.function_title)} · kod: ${escapeHtml(p.access_code)}</small><br/>
+        <span class="pill">${p.active ? "Aktivan" : "Neaktivan"}</span>
+        <span class="pill">${Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length} rubrika</span>
+      </div>
+      <div class="actions">
+        <button class="danger-small" onclick="deletePerson('${p.id}')">Obriši osobu</button>
+      </div>
     </div>`).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
 }
 
@@ -215,9 +220,77 @@ async function loadAssets() {
   const { data, error } = await sb.from("assets").select("*").eq("company_id", currentCompany.id).order("created_at", { ascending:false });
   if (error) return toast(error.message, true);
   $("#assetsList").innerHTML = (data || []).map(a => `
-    <div class="item"><strong>${escapeHtml(a.name)}</strong><small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(a.capacity || "")}</small></div>
+    <div class="item">
+      <div class="item-main">
+        <strong>${escapeHtml(a.name)}</strong>
+        <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(a.capacity || "")}</small>
+      </div>
+      <div class="actions">
+        <button class="danger-small" onclick="deleteAsset('${a.id}')">Obriši mašinu/vozilo</button>
+      </div>
+    </div>
   `).join("") || `<p class="muted">Nema mašina/vozila.</p>`;
 }
+
+
+async function loadMaterials() {
+  if (!currentCompany) return;
+  const list = $("#materialsList");
+  const datalist = $("#materialsDatalist");
+
+  const { data, error } = await sb
+    .from("materials")
+    .select("*")
+    .eq("company_id", currentCompany.id)
+    .order("created_at", { ascending:false });
+
+  if (error) {
+    if (list) list.innerHTML = `<p class="muted">Tabela materials još nije dodata u Supabase. Pokreni SQL dopunu iz supabase-dopuna-v2.sql.</p>`;
+    return;
+  }
+
+  if (list) {
+    list.innerHTML = (data || []).map(m => `
+      <div class="item">
+        <div class="item-main">
+          <strong>${escapeHtml(m.name)}</strong>
+          <small>${escapeHtml(m.unit || "")} ${m.category ? "· " + escapeHtml(m.category) : ""}</small>
+        </div>
+        <div class="actions">
+          <button class="danger-small" onclick="deleteMaterial('${m.id}')">Obriši materijal</button>
+        </div>
+      </div>
+    `).join("") || `<p class="muted">Nema dodatih materijala.</p>`;
+  }
+
+  if (datalist) {
+    datalist.innerHTML = (data || []).map(m => `<option value="${escapeHtml(m.name)}"></option>`).join("");
+  }
+}
+
+window.deletePerson = async (id) => {
+  if (!confirm("Obrisati ovu osobu/radnika? Ako ima stare izveštaje, brisanje može biti odbijeno zbog evidencije.")) return;
+  const { error } = await sb.from("company_users").delete().eq("id", id).eq("company_id", currentCompany.id);
+  if (error) return toast(error.message, true);
+  toast("Osoba je obrisana.");
+  loadPeople();
+};
+
+window.deleteAsset = async (id) => {
+  if (!confirm("Obrisati ovu mašinu/vozilo iz spiska?")) return;
+  const { error } = await sb.from("assets").delete().eq("id", id).eq("company_id", currentCompany.id);
+  if (error) return toast(error.message, true);
+  toast("Mašina/vozilo je obrisano.");
+  loadAssets();
+};
+
+window.deleteMaterial = async (id) => {
+  if (!confirm("Obrisati ovaj materijal iz spiska?")) return;
+  const { error } = await sb.from("materials").delete().eq("id", id).eq("company_id", currentCompany.id);
+  if (error) return toast(error.message, true);
+  toast("Materijal je obrisan.");
+  loadMaterials();
+};
 
 async function loadReports() {
   if (!currentCompany) return;
@@ -986,6 +1059,24 @@ function bindEvents() {
       ["assetName","assetReg","assetCapacity"].forEach(id => $("#"+id).value = "");
       toast("Mašina/vozilo dodato.");
       loadAssets();
+    } catch(e) { toast(e.message, true); }
+  });
+
+  if ($("#addMaterialBtn")) $("#addMaterialBtn").addEventListener("click", async () => {
+    try {
+      if (!currentCompany) throw new Error("Nema aktivne firme.");
+      const name = $("#materialName").value.trim();
+      if (!name) throw new Error("Upiši naziv materijala.");
+      const { error } = await sb.from("materials").insert({
+        company_id: currentCompany.id,
+        name,
+        unit: $("#materialUnit").value,
+        category: $("#materialCategory").value.trim()
+      });
+      if (error) throw error;
+      ["materialName","materialCategory"].forEach(id => $("#"+id).value = "");
+      toast("Materijal je dodat.");
+      loadMaterials();
     } catch(e) { toast(e.message, true); }
   });
 

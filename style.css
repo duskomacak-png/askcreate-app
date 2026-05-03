@@ -766,3 +766,37 @@ pre.raw-details{
     width:100%;
   }
 }
+
+
+
+/* v1.10.0 — Direkcija delete actions + materials list */
+.item .item-main{
+  min-width:0;
+}
+
+.item .danger-small{
+  border:1px solid rgba(220,38,38,.35) !important;
+  background:#fff1f2 !important;
+  color:#991b1b !important;
+  border-radius:10px !important;
+  padding:7px 10px !important;
+  font-size:.82rem !important;
+  font-weight:800 !important;
+}
+
+.item .danger-small:hover{
+  filter:brightness(.98);
+}
+
+.item .actions{
+  margin-top:10px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#materialsList .item,
+#assetsList .item,
+#peopleList .item{
+  display:block;
+}

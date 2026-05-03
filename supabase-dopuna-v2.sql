@@ -152,3 +152,25 @@ for all
 to authenticated
 using (public.is_company_owner(company_id))
 with check (public.is_company_owner(company_id));
+
+
+
+-- v1.10.0: Materijali za Direkciju
+create table if not exists public.materials (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  name text not null,
+  unit text,
+  category text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.materials enable row level security;
+
+drop policy if exists "Company owner can manage materials" on public.materials;
+create policy "Company owner can manage materials"
+on public.materials
+for all
+to authenticated
+using (public.is_company_owner(company_id))
+with check (public.is_company_owner(company_id));

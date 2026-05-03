@@ -94,3 +94,7 @@ Kada Direkcija vrati izveštaj na dopunu/ispravku, radnik kome pripada izveštaj
 
 IZMENA v1.9.9 NO WORKER NOTE:
 Iz radničke forme uklonjena je donja rubrika Napomena / Dodatna napomena jer su podaci već pokriveni kroz opis rada, mašine, gorivo i kvar. Novo slanje više ne šalje note polje iz radničke forme. Stari izveštaji koji već imaju note i dalje se mogu prikazati u Direkciji bez greške. Cache podignut na startwork-pro-v199.
+
+
+IZMENA v1.10.0 DELETE AND MATERIALS:
+Direkcija sada može da obriše osobu/radnika iz spiska i mašinu/vozilo iz spiska. Dodat je poseban tab Materijali: gore je + Dodaj materijal, ispod je spisak materijala sa dugmetom Obriši materijal. U SQL dopunu je dodata tabela public.materials i RLS policy za Direkciju. Cache podignut na startwork-pro-v1100.
