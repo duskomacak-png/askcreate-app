@@ -149,3 +149,6 @@ Popravljen je prikaz radnika u Direkcija → Ljudi i funkcije. Kartica radnika s
 
 --- v1.11.7 ---
 Dodato uređivanje mašina/vozila u Direkcija → Mašine / vozila: ✏️ Uredi popunjava postojeću formu, Sačuvaj izmene radi update u assets tabeli preko id + company_id, Otkaži izmenu vraća formu na dodavanje. Dugme za mašine/vozila je jasno promenjeno u 🔥 Trajno obriši iz baze i radi delete iz assets tabele. Kod radnika je dodata posebna opcija 🔥 Trajno obriši iz baze pored postojećeg ❌ Obriši iz spiska. ❌ Obriši iz spiska i dalje radi soft-delete active=false, a 🔥 Trajno obriši iz baze radi delete iz company_users tabele. Nije potreban novi Supabase SQL. Cache i linkovi su podignuti na v1117.
+
+
+V1.11.9: Popravka materijala - dodavanje/izmena/trajno brisanje, plus materijali se pojavljuju u formi radnika za štikliranje.

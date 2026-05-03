@@ -1213,3 +1213,46 @@ pre.raw-details{
     white-space:normal;
   }
 }
+
+/* v1.11.9 - materijali: edit/delete + prava po materijalu kod radnika */
+.material-actions-v1119,
+.material-form-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+.material-card-v1119{
+  overflow:visible;
+}
+.material-permission-box{
+  margin-top:14px;
+  padding-top:12px;
+  border-top:1px solid rgba(15,23,42,.12);
+}
+.material-permission-box h4{
+  margin:0 0 6px;
+}
+.dynamic-check-list{
+  display:grid;
+  gap:8px;
+  margin-top:8px;
+}
+.material-permission-option{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border:1px solid rgba(15,23,42,.10);
+  border-radius:12px;
+  background:rgba(255,255,255,.58);
+}
+.tiny{ font-size:12px; }
+@media(max-width:700px){
+  .material-actions-v1119 .edit-btn,
+  .material-actions-v1119 .danger-btn,
+  .material-form-actions button{
+    width:100%;
+    white-space:normal;
+  }
+}

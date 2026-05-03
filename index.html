@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1118" />
+  <link rel="stylesheet" href="style.css?v=1119" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -197,6 +197,11 @@
               <label><input type="checkbox" class="perm" value="excel_export" /> Excel export</label>
               <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje osobama</label>
               <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
+              <div class="material-permission-box">
+                <h4>Materijali koje radnik sme da vidi</h4>
+                <p class="muted tiny">Materijal dodat u tabu Materijali automatski se pojavljuje ovde za štikliranje.</p>
+                <div id="personMaterialPermissions" class="dynamic-check-list"></div>
+              </div>
             </div>
             <div class="row person-form-actions"><button id="addPersonBtn" class="primary">Sačuvaj osobu</button><button id="cancelEditPersonBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
@@ -252,7 +257,7 @@
       <div id="tabMaterials" class="tab-panel">
         <div class="grid two">
           <div class="card">
-            <h3>+ Dodaj materijal</h3>
+            <h3 id="materialFormTitle">+ Dodaj materijal</h3>
             <label>Naziv materijala</label>
             <input id="materialName" placeholder="npr. Kamen 0-31, pesak, rizla..." />
             <label>Jedinica</label>
@@ -266,7 +271,7 @@
             </select>
             <label>Kategorija / napomena</label>
             <input id="materialCategory" placeholder="npr. tampon, beton, gorivo, ostalo..." />
-            <button id="addMaterialBtn" class="primary">Sačuvaj materijal</button>
+            <div class="row material-form-actions"><button id="addMaterialBtn" class="primary">Sačuvaj materijal</button><button id="cancelEditMaterialBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
           <div class="card">
             <h3>Spisak materijala</h3>
@@ -463,6 +468,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1118"></script>
+  <script src="script.js?v=1119"></script>
 </body>
 </html>

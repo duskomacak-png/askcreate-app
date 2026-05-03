@@ -7,13 +7,14 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.11.8";
+const APP_VERSION = "1.11.9";
 
 
 let sb = null;
 let currentCompany = null;
 let editingPersonId = null;
 let editingAssetId = null;
+let editingMaterialId = null;
 let currentWorker = null;
 
 const $ = (sel) => document.querySelector(sel);
@@ -245,6 +246,7 @@ function clearPersonForm() {
   $$(".perm").forEach(ch => { ch.checked = ch.value === "daily_work"; });
   editingPersonId = null;
   setPersonFormMode("add");
+  refreshPersonMaterialPermissions();
 }
 
 window.editPerson = async (id) => {
@@ -267,6 +269,8 @@ window.editPerson = async (id) => {
 
     const permissions = person.permissions || {};
     $$(".perm").forEach(ch => { ch.checked = !!permissions[ch.value]; });
+    const selectedMaterialIds = new Set((permissions.allowed_material_ids || []).map(String));
+    await refreshPersonMaterialPermissions(selectedMaterialIds);
 
     setPersonFormMode("edit");
     toast("Profil radnika je otvoren za izmenu.");
@@ -539,19 +543,22 @@ async function loadMaterials() {
     .order("created_at", { ascending:false });
 
   if (error) {
-    if (list) list.innerHTML = `<p class="muted">Tabela materials još nije dodata u Supabase. Pokreni SQL dopunu iz supabase-dopuna-v2.sql.</p>`;
+    if (list) list.innerHTML = `<p class="muted">Materijali se ne mogu učitati: ${escapeHtml(error.message)}. Ako tabela ne postoji, pokreni SQL dopunu iz supabase-dopuna-v2.sql.</p>`;
+    const box = $("#personMaterialPermissions");
+    if (box) box.innerHTML = `<p class="muted tiny">Materijali nisu učitani.</p>`;
     return;
   }
 
   if (list) {
     list.innerHTML = (data || []).map(m => `
-      <div class="item management-item">
+      <div class="item management-item material-card-v1119">
         <div class="item-main">
           <strong>${escapeHtml(m.name)}</strong>
           <small>${escapeHtml(m.unit || "")} ${m.category ? "· " + escapeHtml(m.category) : ""}</small>
         </div>
-        <div class="management-actions">
-          <button class="delete-btn" type="button" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">❌ Obriši materijal</button>
+        <div class="management-actions material-actions-v1119">
+          <button class="edit-btn" type="button" onclick="editMaterial('${m.id}')">✏️ Uredi</button>
+          <button class="danger-btn" type="button" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">🔥 Trajno obriši iz baze</button>
         </div>
       </div>
     `).join("") || `<p class="muted">Nema dodatih materijala.</p>`;
@@ -559,6 +566,89 @@ async function loadMaterials() {
 
   if (datalist) {
     datalist.innerHTML = (data || []).map(m => `<option value="${escapeHtml(m.name)}"></option>`).join("");
+  }
+
+  renderPersonMaterialPermissions(data || []);
+}
+
+function setMaterialFormMode(mode = "add") {
+  const editing = mode === "edit";
+  const title = $("#materialFormTitle");
+  const btn = $("#addMaterialBtn");
+  const cancel = $("#cancelEditMaterialBtn");
+  if (title) title.textContent = editing ? "✏️ Uredi materijal" : "+ Dodaj materijal";
+  if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj materijal";
+  if (cancel) cancel.classList.toggle("hidden", !editing);
+}
+
+function clearMaterialForm() {
+  const name = $("#materialName");
+  const category = $("#materialCategory");
+  const unit = $("#materialUnit");
+  if (name) name.value = "";
+  if (category) category.value = "";
+  if (unit) unit.value = "m3";
+  editingMaterialId = null;
+  setMaterialFormMode("add");
+}
+
+window.editMaterial = async (id) => {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const { data: material, error } = await sb
+      .from("materials")
+      .select("*")
+      .eq("id", id)
+      .eq("company_id", currentCompany.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!material) throw new Error("Materijal nije pronađen.");
+
+    editingMaterialId = material.id;
+    $("#materialName").value = material.name || "";
+    $("#materialUnit").value = material.unit || "m3";
+    $("#materialCategory").value = material.category || "";
+    setMaterialFormMode("edit");
+    toast("Materijal je otvoren za izmenu.");
+    const title = $("#materialFormTitle");
+    if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch(e) {
+    toast(e.message, true);
+  }
+};
+
+async function saveMaterialForm() {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const name = $("#materialName").value.trim();
+    if (!name) throw new Error("Upiši naziv materijala.");
+
+    const payload = {
+      company_id: currentCompany.id,
+      name,
+      unit: $("#materialUnit").value,
+      category: $("#materialCategory").value.trim()
+    };
+
+    if (editingMaterialId) {
+      const { error } = await sb
+        .from("materials")
+        .update(payload)
+        .eq("id", editingMaterialId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
+      toast("Materijal je izmenjen.");
+    } else {
+      const { error } = await sb.from("materials").insert(payload);
+      if (error) throw error;
+      toast("Materijal je dodat.");
+    }
+
+    clearMaterialForm();
+    await loadMaterials();
+    if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
+  } catch(e) {
+    toast(e.message, true);
   }
 }
 
@@ -665,7 +755,7 @@ window.deleteAsset = async (id, name = "") => {
 
 window.deleteMaterial = async (id, name = "") => {
   const label = name ? ` (${name})` : "";
-  if (!confirm("Obrisati ovaj materijal iz spiska" + label + "?")) return;
+  if (!confirm("TRAJNO obrisati ovaj materijal iz baze" + label + "?\n\nOvo se ne može vratiti.")) return;
 
   const { error } = await sb
     .from("materials")
@@ -674,8 +764,10 @@ window.deleteMaterial = async (id, name = "") => {
     .eq("company_id", currentCompany.id);
 
   if (error) return toast(error.message, true);
-  toast("Materijal je obrisan iz spiska.");
+  toast("Materijal je trajno obrisan iz baze.");
+  if (editingMaterialId === id) clearMaterialForm();
   loadMaterials();
+  if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
 };
 
 
@@ -998,7 +1090,55 @@ window.setDefectRecordStatus = async (id, newStatus) => {
 function collectPermissions() {
   const obj = {};
   $$(".perm").forEach(ch => obj[ch.value] = ch.checked);
+
+  // v1.11.9: posebna prava po materijalu.
+  // Ovo ne ruši stari login: ako nema izabranih materijala, radnik i dalje ima/ili nema osnovnu rubriku "Materijal" preko obj.materials.
+  obj.allowed_material_ids = $$(".material-perm:checked").map(ch => ch.value);
+  obj.allowed_material_names = $$(".material-perm:checked").map(ch => ch.dataset.name || "").filter(Boolean);
   return obj;
+}
+
+function getCheckedMaterialPermissionIdsFromForm() {
+  return new Set($$(".material-perm:checked").map(ch => ch.value));
+}
+
+function renderPersonMaterialPermissions(materials = [], selectedIds = null) {
+  const box = $("#personMaterialPermissions");
+  if (!box) return;
+
+  const checkedNow = selectedIds || getCheckedMaterialPermissionIdsFromForm();
+  if (!materials.length) {
+    box.innerHTML = `<p class="muted tiny">Nema dodatih materijala. Dodaj materijal u tabu Materijali pa će se pojaviti ovde za štikliranje.</p>`;
+    return;
+  }
+
+  box.innerHTML = materials.map(m => {
+    const id = String(m.id || "");
+    const checked = checkedNow.has(id) ? "checked" : "";
+    const label = `${m.name || "Materijal"}${m.unit ? " · " + m.unit : ""}`;
+    return `
+      <label class="material-permission-option">
+        <input type="checkbox" class="material-perm" value="${escapeHtml(id)}" data-name="${escapeHtml(m.name || "")}" ${checked} />
+        ${escapeHtml(label)}
+      </label>
+    `;
+  }).join("");
+}
+
+async function refreshPersonMaterialPermissions(selectedIds = null) {
+  if (!currentCompany) return;
+  const { data, error } = await sb
+    .from("materials")
+    .select("id,name,unit,category")
+    .eq("company_id", currentCompany.id)
+    .order("created_at", { ascending:false });
+
+  if (error) {
+    const box = $("#personMaterialPermissions");
+    if (box) box.innerHTML = `<p class="muted tiny">Materijali nisu učitani: ${escapeHtml(error.message)}</p>`;
+    return;
+  }
+  renderPersonMaterialPermissions(data || [], selectedIds);
 }
 
 function workerSetSections(perms) {
@@ -1621,23 +1761,8 @@ function bindEvents() {
     if (e.key === "Enter") runDirectorGlobalSearch(true);
   });
 
-  if ($("#addMaterialBtn")) $("#addMaterialBtn").addEventListener("click", async () => {
-    try {
-      if (!currentCompany) throw new Error("Nema aktivne firme.");
-      const name = $("#materialName").value.trim();
-      if (!name) throw new Error("Upiši naziv materijala.");
-      const { error } = await sb.from("materials").insert({
-        company_id: currentCompany.id,
-        name,
-        unit: $("#materialUnit").value,
-        category: $("#materialCategory").value.trim()
-      });
-      if (error) throw error;
-      ["materialName","materialCategory"].forEach(id => $("#"+id).value = "");
-      toast("Materijal je dodat.");
-      loadMaterials();
-    } catch(e) { toast(e.message, true); }
-  });
+  if ($("#addMaterialBtn")) $("#addMaterialBtn").addEventListener("click", saveMaterialForm);
+  if ($("#cancelEditMaterialBtn")) $("#cancelEditMaterialBtn").addEventListener("click", clearMaterialForm);
 
   $("#exportCsvBtn").addEventListener("click", exportCsv);
 
