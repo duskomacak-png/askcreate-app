@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.11.9";
+const APP_VERSION = "1.12.1";
 
 
 let sb = null;
@@ -536,14 +536,12 @@ async function loadMaterials() {
   const list = $("#materialsList");
   const datalist = $("#materialsDatalist");
 
-  const { data, error } = await sb
-    .from("materials")
-    .select("*")
-    .eq("company_id", currentCompany.id)
-    .order("created_at", { ascending:false });
+  const { data, error } = await sb.rpc("director_list_materials", {
+    p_company_id: currentCompany.id
+  });
 
   if (error) {
-    if (list) list.innerHTML = `<p class="muted">Materijali se ne mogu učitati: ${escapeHtml(error.message)}. Ako tabela ne postoji, pokreni SQL dopunu iz supabase-dopuna-v2.sql.</p>`;
+    if (list) list.innerHTML = `<p class="muted">Materijali se ne mogu učitati: ${escapeHtml(error.message)}. Pokreni SQL dopunu za v1.12.0.</p>`;
     const box = $("#personMaterialPermissions");
     if (box) box.innerHTML = `<p class="muted tiny">Materijali nisu učitani.</p>`;
     return;
@@ -595,13 +593,12 @@ function clearMaterialForm() {
 window.editMaterial = async (id) => {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
-    const { data: material, error } = await sb
-      .from("materials")
-      .select("*")
-      .eq("id", id)
-      .eq("company_id", currentCompany.id)
-      .maybeSingle();
+    const { data, error } = await sb.rpc("director_get_material", {
+      p_company_id: currentCompany.id,
+      p_material_id: id
+    });
     if (error) throw error;
+    const material = Array.isArray(data) ? data[0] : data;
     if (!material) throw new Error("Materijal nije pronađen.");
 
     editingMaterialId = material.id;
@@ -623,26 +620,16 @@ async function saveMaterialForm() {
     const name = $("#materialName").value.trim();
     if (!name) throw new Error("Upiši naziv materijala.");
 
-    const payload = {
-      company_id: currentCompany.id,
-      name,
-      unit: $("#materialUnit").value,
-      category: $("#materialCategory").value.trim()
-    };
+    const { error } = await sb.rpc("director_upsert_material", {
+      p_company_id: currentCompany.id,
+      p_material_id: editingMaterialId || null,
+      p_name: name,
+      p_unit: $("#materialUnit").value,
+      p_category: $("#materialCategory").value.trim()
+    });
 
-    if (editingMaterialId) {
-      const { error } = await sb
-        .from("materials")
-        .update(payload)
-        .eq("id", editingMaterialId)
-        .eq("company_id", currentCompany.id);
-      if (error) throw error;
-      toast("Materijal je izmenjen.");
-    } else {
-      const { error } = await sb.from("materials").insert(payload);
-      if (error) throw error;
-      toast("Materijal je dodat.");
-    }
+    if (error) throw error;
+    toast(editingMaterialId ? "Materijal je izmenjen." : "Materijal je dodat.");
 
     clearMaterialForm();
     await loadMaterials();
@@ -754,20 +741,24 @@ window.deleteAsset = async (id, name = "") => {
 };
 
 window.deleteMaterial = async (id, name = "") => {
-  const label = name ? ` (${name})` : "";
-  if (!confirm("TRAJNO obrisati ovaj materijal iz baze" + label + "?\n\nOvo se ne može vratiti.")) return;
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const label = name ? ` (${name})` : "";
+    if (!confirm("TRAJNO obrisati ovaj materijal iz baze" + label + "?\n\nOvo se ne može vratiti.")) return;
 
-  const { error } = await sb
-    .from("materials")
-    .delete()
-    .eq("id", id)
-    .eq("company_id", currentCompany.id);
+    const { error } = await sb.rpc("director_delete_material", {
+      p_company_id: currentCompany.id,
+      p_material_id: id
+    });
 
-  if (error) return toast(error.message, true);
-  toast("Materijal je trajno obrisan iz baze.");
-  if (editingMaterialId === id) clearMaterialForm();
-  loadMaterials();
-  if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
+    if (error) throw error;
+    toast("Materijal je trajno obrisan iz baze.");
+    if (editingMaterialId === id) clearMaterialForm();
+    await loadMaterials();
+    if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
+  } catch(e) {
+    toast(e.message, true);
+  }
 };
 
 
@@ -1141,6 +1132,66 @@ async function refreshPersonMaterialPermissions(selectedIds = null) {
   renderPersonMaterialPermissions(data || [], selectedIds);
 }
 
+
+function getSelectedWorkerSite() {
+  const el = $("#wrSiteName");
+  if (!el) return { site_id: null, site_name: "" };
+  const option = el.options ? el.options[el.selectedIndex] : null;
+  return {
+    site_id: option?.dataset?.siteId || null,
+    site_name: (el.value || "").trim()
+  };
+}
+
+async function loadWorkerSites(selectedName = "") {
+  const select = $("#wrSiteName");
+  const hint = $("#workerSiteHint");
+  if (!select) return;
+
+  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+  if (!worker) {
+    select.innerHTML = `<option value="">Prvo se prijavi kao radnik</option>`;
+    return;
+  }
+
+  select.innerHTML = `<option value="">Učitavam gradilišta...</option>`;
+  if (hint) hint.textContent = "Gradilišta se učitavaju iz Direkcije.";
+
+  try {
+    const { data, error } = await sb.rpc("worker_list_sites", {
+      p_company_code: worker.company_code,
+      p_access_code: worker.access_code
+    });
+
+    if (error) throw error;
+
+    const sites = Array.isArray(data) ? data : [];
+    if (!sites.length) {
+      select.innerHTML = `<option value="">Nema aktivnih gradilišta</option>`;
+      if (hint) hint.textContent = "Direkcija još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
+      return;
+    }
+
+    select.innerHTML = `<option value="">Odaberi gradilište</option>` + sites.map(site => {
+      const name = site.name || "Gradilište";
+      const loc = site.location ? ` · ${site.location}` : "";
+      return `<option value="${escapeHtml(name)}" data-site-id="${escapeHtml(site.id || "")}">${escapeHtml(name + loc)}</option>`;
+    }).join("");
+
+    if (selectedName) {
+      const wanted = String(selectedName).trim().toLowerCase();
+      const match = Array.from(select.options).find(o => String(o.value || "").trim().toLowerCase() === wanted);
+      if (match) select.value = match.value;
+    }
+
+    if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Direkcija.";
+  } catch (e) {
+    select.innerHTML = `<option value="">Gradilišta nisu učitana</option>`;
+    if (hint) hint.textContent = "Pokreni Supabase SQL za v1.12.1: worker_list_sites. Detalj: " + (e.message || e);
+    toast("Gradilišta za radnika nisu učitana: " + (e.message || e), true);
+  }
+}
+
 function workerSetSections(perms) {
   const map = {
     daily_work: "#secDailyWork",
@@ -1402,8 +1453,10 @@ window.loadReturnedReportIntoForm = async (reportId) => {
 function collectWorkerData() {
   const machines = getMachineEntries();
   const fuelEntries = getFuelEntries();
+  const selectedSite = getSelectedWorkerSite();
   return {
-    site_name: $("#wrSiteName").value.trim(),
+    site_id: selectedSite.site_id,
+    site_name: selectedSite.site_name,
     description: $("#wrDescription").value.trim(),
     hours: $("#wrHours").value,
     machines,
@@ -1561,7 +1614,8 @@ async function sendDefectNow() {
       sent_immediately: true,
       defect_status: "prijavljen",
       defect_reported_at: new Date().toISOString(),
-      site_name: $("#wrSiteName")?.value.trim() || "",
+      site_id: getSelectedWorkerSite().site_id,
+      site_name: getSelectedWorkerSite().site_name,
       machine: firstMachine,
       machines,
       defect_exists: "da",
@@ -1579,7 +1633,7 @@ async function sendDefectNow() {
       p_company_code: worker.company_code,
       p_access_code: worker.access_code,
       p_report_date: $("#wrDate").value || today(),
-      p_site_id: null,
+      p_site_id: getSelectedWorkerSite().site_id,
       p_data: urgentData
     });
 
@@ -1790,12 +1844,13 @@ function bindEvents() {
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Radnik nije prijavljen.");
       const data = collectWorkerData();
+      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Direkcija.");
     if (await submitReturnedCorrectionIfNeeded(data)) return;
       const { error } = await sb.rpc("submit_worker_report", {
         p_company_code: worker.company_code,
         p_access_code: worker.access_code,
         p_report_date: $("#wrDate").value || today(),
-        p_site_id: null,
+        p_site_id: data.site_id || null,
         p_data: data
       });
       if (error) throw error;
@@ -1806,13 +1861,14 @@ function bindEvents() {
   });
 }
 
-function openWorkerForm() {
+async function openWorkerForm() {
   $("#wrDate").value = today();
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
   workerSetSections(currentWorker.permissions || {});
   setInternalHeader("Dnevni izveštaj", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   show("WorkerForm");
+  await loadWorkerSites();
   loadDraft();
   loadWorkerReturnedReports();
   if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();

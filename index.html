@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1119" />
+  <link rel="stylesheet" href="style.css?v=1121" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -340,7 +340,10 @@
         <input id="wrDate" type="date" />
 
         <label>Gradilište</label>
-        <input id="wrSiteName" placeholder="Naziv gradilišta" />
+        <select id="wrSiteName">
+          <option value="">Učitavam gradilišta...</option>
+        </select>
+        <p id="workerSiteHint" class="hint">Gradilišta dodaje Direkcija. Radnik bira sa liste aktivnih gradilišta.</p>
 
         <div id="secDailyWork" class="dyn-section">
           <h4>Dnevni rad</h4>
@@ -468,6 +471,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1119"></script>
+  <script src="script.js?v=1121"></script>
 </body>
 </html>

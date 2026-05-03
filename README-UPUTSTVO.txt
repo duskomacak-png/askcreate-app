@@ -151,4 +151,12 @@ Popravljen je prikaz radnika u Direkcija → Ljudi i funkcije. Kartica radnika s
 Dodato uređivanje mašina/vozila u Direkcija → Mašine / vozila: ✏️ Uredi popunjava postojeću formu, Sačuvaj izmene radi update u assets tabeli preko id + company_id, Otkaži izmenu vraća formu na dodavanje. Dugme za mašine/vozila je jasno promenjeno u 🔥 Trajno obriši iz baze i radi delete iz assets tabele. Kod radnika je dodata posebna opcija 🔥 Trajno obriši iz baze pored postojećeg ❌ Obriši iz spiska. ❌ Obriši iz spiska i dalje radi soft-delete active=false, a 🔥 Trajno obriši iz baze radi delete iz company_users tabele. Nije potreban novi Supabase SQL. Cache i linkovi su podignuti na v1117.
 
 
-V1.11.9: Popravka materijala - dodavanje/izmena/trajno brisanje, plus materijali se pojavljuju u formi radnika za štikliranje.
+V1.12.0: Popravka materijala - dodavanje/izmena/trajno brisanje, plus materijali se pojavljuju u formi radnika za štikliranje.
+
+
+V1.12.0: Materijali više ne idu direktno preko .from('materials').insert(), jer Supabase RLS može da blokira INSERT.
+Obavezno pokreni SQL fajl: supabase-materials-rpc-v1120.sql
+Posle toga test link: https://askcreate.app/index.html?v=1120
+
+
+V1.12.1: Radnik sada dobija listu aktivnih gradilišta iz Direkcije. Obavezno pokreni SQL fajl supabase-worker-sites-rpc-v1121.sql. Test link: https://askcreate.app/index.html?v=1121
