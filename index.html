@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=1112" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -96,14 +96,7 @@
           <input id="acInviteCode" placeholder="npr. AC-8F42K" />
           <label>Trial do</label>
           <input id="acTrialUntil" type="date" />
-          
-      <div id="workerReturnedReports" class="returned-panel hidden">
-        <h3>⚠️ Izveštaji vraćeni na dopunu</h3>
-        <p class="hint">Direkcija je vratila ove izveštaje. Otvori izveštaj, ispravi podatke i pošalji ponovo.</p>
-        <div id="workerReturnedList" class="returned-list"></div>
-      </div>
-
-        <label>Napomena</label>
+<label>Napomena</label>
           <textarea id="acNote" placeholder="Interna napomena"></textarea>
           <button id="addApprovedCompanyBtn" class="primary">Sačuvaj firmu</button>
         </div>
@@ -331,6 +324,12 @@
       </div>
 
       <div class="card">
+      <div id="workerReturnedReports" class="returned-panel hidden">
+        <h3>⚠️ Izveštaji vraćeni na dopunu</h3>
+        <p class="hint">Direkcija je vratila ove izveštaje. Otvori izveštaj, ispravi podatke i pošalji ponovo.</p>
+        <div id="workerReturnedList" class="returned-list"></div>
+      </div>
+
         <h3>Dnevni izveštaj</h3>
         <label>Datum</label>
         <input id="wrDate" type="date" />
@@ -464,6 +463,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=1112"></script>
 </body>
 </html>

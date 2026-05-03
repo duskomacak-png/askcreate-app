@@ -236,50 +236,37 @@ window.editPerson = async (id) => {
       .eq("id", id)
       .eq("company_id", currentCompany.id)
       .maybeSingle();
-
     if (error) throw error;
     if (!p) throw new Error("Radnik nije pronađen.");
-
     editingPersonId = p.id;
     $("#personFirst").value = p.first_name || "";
     $("#personLast").value = p.last_name || "";
     $("#personFunction").value = p.function_title || "";
     $("#personCode").value = p.access_code || "";
-
     const perms = p.permissions || {};
-    $$(".perm").forEach(ch => {
-      ch.checked = !!perms[ch.value];
-    });
-
+    $$(".perm").forEach(ch => ch.checked = !!perms[ch.value]);
     setPersonFormMode("edit");
     toast("Profil radnika je otvoren za izmenu.");
     const formTitle = $("#personFormTitle");
     if (formTitle) formTitle.scrollIntoView({ behavior: "smooth", block: "center" });
-  } catch(e) {
-    toast(e.message, true);
-  }
+  } catch(e) { toast(e.message, true); }
 };
 
 async function savePersonForm() {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
-
     const code = normalizeLoginCode($("#personCode").value);
     if (code.length < 4) throw new Error("Šifra radnika mora imati najmanje 4 karaktera.");
-
     let duplicateQuery = sb
       .from("company_users")
       .select("id")
       .eq("company_id", currentCompany.id)
       .eq("access_code", code)
       .eq("active", true);
-
     if (editingPersonId) duplicateQuery = duplicateQuery.neq("id", editingPersonId);
-
     const { data: existingCode, error: existingCodeError } = await duplicateQuery.maybeSingle();
     if (existingCodeError) throw existingCodeError;
     if (existingCode) throw new Error("U ovoj firmi već postoji aktivan radnik sa tom šifrom. Izaberi drugu šifru radnika.");
-
     const payload = {
       company_id: currentCompany.id,
       first_name: $("#personFirst").value.trim(),
@@ -289,15 +276,9 @@ async function savePersonForm() {
       permissions: collectPermissions(),
       active: true
     };
-
     if (!payload.first_name || !payload.last_name) throw new Error("Upiši ime i prezime radnika.");
-
     if (editingPersonId) {
-      const { error } = await sb
-        .from("company_users")
-        .update(payload)
-        .eq("id", editingPersonId)
-        .eq("company_id", currentCompany.id);
+      const { error } = await sb.from("company_users").update(payload).eq("id", editingPersonId).eq("company_id", currentCompany.id);
       if (error) throw error;
       toast("Profil radnika je sačuvan.");
     } else {
@@ -305,12 +286,9 @@ async function savePersonForm() {
       if (error) throw error;
       toast("Osoba je dodata.");
     }
-
     clearPersonForm();
     loadPeople();
-  } catch(e) {
-    toast(e.message, true);
-  }
+  } catch(e) { toast(e.message, true); }
 }
 
 async function loadPeople() {
@@ -333,7 +311,6 @@ async function loadPeople() {
         <span class="pill">${Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length} rubrika</span>
       </div>
       <div class="management-actions">
-        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Uredi profil</button>
         <button class="delete-btn" type="button" onclick="deletePerson('${p.id}', '${escapeHtml((p.first_name || '') + ' ' + (p.last_name || ''))}')">❌ Obriši iz spiska</button>
       </div>
     </div>`).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
@@ -1289,6 +1266,18 @@ async function loginWorkerByCode() {
   }
 }
 
+
+function installNavigationFallback() {
+  if (window.__swpNavFallbackInstalled) return;
+  window.__swpNavFallbackInstalled = true;
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest("[data-goto]");
+    if (!btn) return;
+    e.preventDefault();
+    show(btn.dataset.goto);
+  });
+}
+
 function bindEvents() {
 
   ["workerCompanyCode","workerAccessCode"].forEach(id => {
@@ -1373,7 +1362,6 @@ function bindEvents() {
     btn.classList.add("active");
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
   }));
-
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
 
@@ -1482,6 +1470,7 @@ function openWorkerForm() {
 }
 
 async function boot() {
+  installNavigationFallback();
   bindEvents();
   initSupabase();
   $("#wrDate").value = today();

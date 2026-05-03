@@ -1000,7 +1000,7 @@ pre.raw-details{
 }
 
 
-/* v1.11.0 — Edit worker profile in Direkcija */
+/* v1.11.2 — navigation fallback and edit worker profile */
 .edit-btn{
   border:1px solid #bfdbfe !important;
   background:#eff6ff !important;
@@ -1013,18 +1013,6 @@ pre.raw-details{
   cursor:pointer;
   white-space:nowrap;
 }
-
-.edit-btn:hover{
-  background:#dbeafe !important;
-}
-
-.person-form-actions{
-  margin-top:12px;
-}
-
-@media(max-width:700px){
-  .edit-btn{
-    width:100%;
-    white-space:normal;
-  }
-}
+.edit-btn:hover{background:#dbeafe !important;}
+.person-form-actions{margin-top:12px;}
+@media(max-width:700px){.edit-btn{width:100%;white-space:normal;}}
