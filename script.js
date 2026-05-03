@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.11.7";
+const APP_VERSION = "1.11.8";
 
 
 let sb = null;
@@ -71,7 +71,15 @@ function showCurrentCompanyLoginInfo() {
 }
 
 function normalizeLoginCode(code) {
-  return String(code || "").trim().toLowerCase();
+  // Login kodovi ne smeju da padnu zbog velikih/malih slova ili slučajnog razmaka.
+  // Primer: " FIRMA01 " i "firma01" tretiramo isto.
+  return String(code || "").trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function readRpcSingleRow(data) {
+  if (Array.isArray(data)) return data[0] || null;
+  if (data && typeof data === "object") return data;
+  return null;
 }
 
 function setInternalHeader(title = "", subtitle = "", showHeader = true) {
@@ -1460,18 +1468,26 @@ async function loginWorkerByCode() {
     if (!companyCode) throw new Error("Unesi šifru firme.");
     if (!accessCode) throw new Error("Unesi šifru radnika.");
 
+    // Radnik se ne loguje emailom. Login mora proći samo preko para:
+    // šifra firme + šifra radnika. Ovo ide kroz Supabase RPC worker_login.
     const { data, error } = await sb.rpc("worker_login", {
       p_company_code: companyCode,
       p_access_code: accessCode
     });
 
-    if (error) throw error;
-    if (!data || !data.length) throw new Error("Neispravna šifra firme ili šifra radnika. Proveri oba polja tačno kako ih je dala Direkcija.");
+    if (error) {
+      throw new Error("Worker login SQL nije aktivan ili je star. Pokreni SQL dopunu iz ZIP-a, pa probaj opet. Detalj: " + error.message);
+    }
+
+    const row = readRpcSingleRow(data);
+    if (!row || !row.user_id || !row.company_id) {
+      throw new Error("Neispravna šifra firme ili šifra radnika. Proveri da je radnik AKTIVAN i da unosiš baš šifru firme + šifru radnika.");
+    }
 
     currentWorker = {
-      ...data[0],
-      company_code: companyCode,
-      access_code: accessCode
+      ...row,
+      company_code: row.company_code || companyCode,
+      access_code: row.access_code || accessCode
     };
 
     localStorage.setItem("swp_worker", JSON.stringify(currentWorker));
