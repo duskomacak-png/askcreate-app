@@ -800,3 +800,50 @@ pre.raw-details{
 #peopleList .item{
   display:block;
 }
+
+
+
+/* v1.10.1 — Clear delete buttons in Direkcija */
+.management-item{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:12px;
+}
+
+.management-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:8px;
+}
+
+.delete-btn{
+  border:1px solid #fecaca !important;
+  background:#fff1f2 !important;
+  color:#991b1b !important;
+  border-radius:12px !important;
+  padding:8px 12px !important;
+  font-size:.84rem !important;
+  line-height:1.1 !important;
+  font-weight:900 !important;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.delete-btn:hover{
+  background:#ffe4e6 !important;
+}
+
+@media(max-width:700px){
+  .management-item{
+    grid-template-columns:1fr;
+  }
+  .management-actions{
+    justify-content:stretch;
+  }
+  .delete-btn{
+    width:100%;
+    white-space:normal;
+  }
+}

@@ -98,3 +98,7 @@ Iz radničke forme uklonjena je donja rubrika Napomena / Dodatna napomena jer su
 
 IZMENA v1.10.0 DELETE AND MATERIALS:
 Direkcija sada može da obriše osobu/radnika iz spiska i mašinu/vozilo iz spiska. Dodat je poseban tab Materijali: gore je + Dodaj materijal, ispod je spisak materijala sa dugmetom Obriši materijal. U SQL dopunu je dodata tabela public.materials i RLS policy za Direkciju. Cache podignut na startwork-pro-v1100.
+
+
+IZMENA v1.10.1 CLEAR DELETE BUTTONS:
+Dugmad za brisanje u Direkciji su sada mnogo jasnija i vidljiva na svakoj kartici posebno. Radnik/osoba se briše iz aktivnog spiska preko active=false da stari izveštaji ostanu sačuvani. Svaka mašina/vozilo ima posebno dugme 'Obriši ovu mašinu/vozilo'. Materijal takođe ima posebno dugme za brisanje. Cache podignut na startwork-pro-v1101.
