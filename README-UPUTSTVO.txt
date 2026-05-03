@@ -62,3 +62,7 @@ Veliki Start Work PRO / AskCreate header ostaje samo na početnoj strani. Unutar
 
 IZMENA v1.9.1 SAFE:
 Proverena i popravljena v1.9 verzija. AdminDashboard sada dobija kompaktan header. Public/login ekrani automatski vraćaju veliki početni brending. Odjava radnika sigurno vraća login/public režim. Uklonjena duplirana linija u admin status funkciji. Cache podignut na startwork-pro-v191.
+
+
+IZMENA v1.9.2 FIX:
+Popravljena kritična greška: internalLogoutBtn je greškom pozivao nepostojeću funkciju logout umesto signOut. Zbog toga se JS prekidao i početni ulazi nisu reagovali. Dodata zaštita za logoutBtn i cache podignut na startwork-pro-v192.

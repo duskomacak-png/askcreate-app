@@ -623,9 +623,9 @@ async function sendDefectNow() {
 }
 
 function bindEvents() {
-  if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", logout);
+  if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", signOut);
   $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => show(btn.dataset.goto)));
-  $("#logoutBtn").addEventListener("click", signOut);
+  if ($("#logoutBtn")) $("#logoutBtn").addEventListener("click", signOut);
 
   $("#adminSignupBtn").addEventListener("click", async () => {
     try {
