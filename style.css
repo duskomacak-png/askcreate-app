@@ -1180,3 +1180,36 @@ pre.raw-details{
     width:100%;
   }
 }
+
+
+/* v1.11.7 - asset edit + hard delete buttons */
+.danger-btn{
+  border:1px solid rgba(211,47,47,.35) !important;
+  background:rgba(211,47,47,.08) !important;
+  color:#b91c1c !important;
+  border-radius:14px;
+  padding:10px 12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.danger-btn:hover{ background:rgba(211,47,47,.14) !important; }
+.asset-actions-v1117,
+.person-actions-v1116{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+.asset-actions-v1117 .edit-btn,
+.asset-actions-v1117 .danger-btn,
+.person-actions-v1116 .danger-btn{
+  min-height:38px;
+}
+@media(max-width:700px){
+  .asset-actions-v1117 .edit-btn,
+  .asset-actions-v1117 .danger-btn,
+  .person-actions-v1116 .danger-btn{
+    width:100%;
+    white-space:normal;
+  }
+}

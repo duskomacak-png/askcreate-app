@@ -7,12 +7,13 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.11.6";
+const APP_VERSION = "1.11.7";
 
 
 let sb = null;
 let currentCompany = null;
 let editingPersonId = null;
+let editingAssetId = null;
 let currentWorker = null;
 
 const $ = (sel) => document.querySelector(sel);
@@ -345,6 +346,93 @@ window.deleteReportPermanently = async (id) => {
   }
 };
 
+function setAssetFormMode(mode = "add") {
+  const editing = mode === "edit";
+  const title = document.querySelector("#assetFormTitle");
+  const btn = document.querySelector("#addAssetBtn");
+  const cancel = document.querySelector("#cancelEditAssetBtn");
+  if (title) title.textContent = editing ? "✏️ Uredi mašinu / vozilo" : "+ Dodaj mašinu / vozilo";
+  if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj";
+  if (cancel) cancel.classList.toggle("hidden", !editing);
+}
+
+function clearAssetForm() {
+  ["assetName", "assetReg", "assetCapacity"].forEach(id => {
+    const el = document.querySelector("#" + id);
+    if (el) el.value = "";
+  });
+  const type = document.querySelector("#assetType");
+  if (type) type.value = "machine";
+  editingAssetId = null;
+  setAssetFormMode("add");
+}
+
+window.editAsset = async (id) => {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const { data: asset, error } = await sb
+      .from("assets")
+      .select("*")
+      .eq("id", id)
+      .eq("company_id", currentCompany.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!asset) throw new Error("Mašina/vozilo nije pronađeno.");
+
+    editingAssetId = asset.id;
+    document.querySelector("#assetName").value = asset.name || "";
+    document.querySelector("#assetType").value = asset.asset_type || "machine";
+    document.querySelector("#assetReg").value = asset.registration || "";
+    document.querySelector("#assetCapacity").value = asset.capacity || "";
+    setAssetFormMode("edit");
+    toast("Mašina/vozilo je otvoreno za izmenu.");
+    const title = document.querySelector("#assetFormTitle");
+    if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
+async function saveAssetForm() {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const name = document.querySelector("#assetName").value.trim();
+    const assetType = document.querySelector("#assetType").value;
+    const registration = document.querySelector("#assetReg").value.trim();
+    const capacity = document.querySelector("#assetCapacity").value.trim();
+
+    if (!name) throw new Error("Upiši naziv mašine/vozila.");
+
+    const payload = {
+      company_id: currentCompany.id,
+      name,
+      asset_type: assetType,
+      registration,
+      capacity
+    };
+
+    if (editingAssetId) {
+      const { error } = await sb
+        .from("assets")
+        .update(payload)
+        .eq("id", editingAssetId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
+      toast("Mašina/vozilo je izmenjeno.");
+    } else {
+      const { error } = await sb.from("assets").insert(payload);
+      if (error) throw error;
+      toast("Mašina/vozilo dodato.");
+    }
+
+    clearAssetForm();
+    loadAssets();
+    if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
 function renderPersonItem(p) {
   const permissionCount = Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length;
   return `
@@ -358,6 +446,7 @@ function renderPersonItem(p) {
       <div class="person-actions-v1116">
         <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Uredi profil</button>
         <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button>
+        <button class="danger-btn" type="button" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>
       </div>
     </div>
   `;
@@ -421,8 +510,9 @@ async function loadAssets() {
         <strong>${escapeHtml(a.name)}</strong>
         <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(a.capacity || "")}</small>
       </div>
-      <div class="management-actions">
-        <button class="delete-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">❌ Obriši ovu mašinu/vozilo</button>
+      <div class="management-actions asset-actions-v1117">
+        <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Uredi</button>
+        <button class="danger-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>
       </div>
     </div>
   `).join("") || `<p class="muted">Nema mašina/vozila.</p>`;
@@ -513,9 +603,44 @@ window.deletePerson = async (id, name = "") => {
   }
 };
 
+window.deletePersonPermanently = async (id, name = "") => {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+
+    if (!name) {
+      const { data: person, error: readError } = await sb
+        .from("company_users")
+        .select("first_name,last_name")
+        .eq("id", id)
+        .eq("company_id", currentCompany.id)
+        .maybeSingle();
+      if (readError) throw readError;
+      if (person) name = `${person.first_name || ""} ${person.last_name || ""}`.trim();
+    }
+
+    const label = name ? ` (${name})` : "";
+    if (!confirm("TRAJNO obrisati radnika iz baze" + label + "?\n\nOvo se ne može vratiti. Ako Supabase odbije brisanje zbog povezanih izveštaja, prvo koristi ❌ Obriši iz spiska.")) return;
+    if (!confirm("Još jednom potvrdi: radnik će biti trajno obrisan iz company_users tabele.")) return;
+
+    const { error } = await sb
+      .from("company_users")
+      .delete()
+      .eq("id", id)
+      .eq("company_id", currentCompany.id);
+
+    if (error) throw error;
+    toast("Radnik je trajno obrisan iz baze.");
+    if (editingPersonId === id) clearPersonForm();
+    loadPeople();
+    if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
 window.deleteAsset = async (id, name = "") => {
   const label = name ? ` (${name})` : "";
-  if (!confirm("Obrisati ovu mašinu/vozilo iz spiska" + label + "?")) return;
+  if (!confirm("TRAJNO obrisati ovu mašinu/vozilo iz baze" + label + "?\n\nOvo se ne može vratiti.")) return;
 
   const { error } = await sb
     .from("assets")
@@ -524,8 +649,10 @@ window.deleteAsset = async (id, name = "") => {
     .eq("company_id", currentCompany.id);
 
   if (error) return toast(error.message, true);
-  toast("Mašina/vozilo je obrisano iz spiska.");
+  toast("Mašina/vozilo je trajno obrisano iz baze.");
+  if (editingAssetId === id) clearAssetForm();
   loadAssets();
+  if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
 };
 
 window.deleteMaterial = async (id, name = "") => {
@@ -596,7 +723,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Radnik / osoba",
         title:`${p.first_name} ${p.last_name}`,
         subtitle:`${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
-        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Uredi profil</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button>` : `<span class="pill">već sklonjen</span>`}`
+        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Uredi profil</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button><button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>` : `<button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>`}`
       });
     });
 
@@ -606,7 +733,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Mašina / vozilo",
         title:a.name,
         subtitle:`${a.asset_type} · ${a.registration || ""} · ${a.capacity || ""}`,
-        actions:`<button class="delete-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">❌ Obriši ovu mašinu/vozilo</button>`
+        actions:`<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Uredi</button><button class="danger-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>`
       });
     });
 
@@ -1464,15 +1591,8 @@ function bindEvents() {
     } catch(e) { toast(e.message, true); }
   });
 
-  $("#addAssetBtn").addEventListener("click", async () => {
-    try {
-      const { error } = await sb.from("assets").insert({ company_id: currentCompany.id, name: $("#assetName").value.trim(), asset_type: $("#assetType").value, registration: $("#assetReg").value.trim(), capacity: $("#assetCapacity").value.trim() });
-      if (error) throw error;
-      ["assetName","assetReg","assetCapacity"].forEach(id => $("#"+id).value = "");
-      toast("Mašina/vozilo dodato.");
-      loadAssets();
-    } catch(e) { toast(e.message, true); }
-  });
+  $("#addAssetBtn").addEventListener("click", saveAssetForm);
+  if ($("#cancelEditAssetBtn")) $("#cancelEditAssetBtn").addEventListener("click", clearAssetForm);
 
 
   if ($("#directorSearchBtn")) $("#directorSearchBtn").addEventListener("click", () => runDirectorGlobalSearch(true));

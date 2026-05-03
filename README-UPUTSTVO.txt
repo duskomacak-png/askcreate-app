@@ -145,3 +145,7 @@ Provereno je da u v1.11.4 funkcija za uređivanje radnika postoji, ali dugme nij
 
 v1.11.6 — vidljiva dugmad za radnike bez oslanjanja na desni grid
 Popravljen je prikaz radnika u Direkcija → Ljudi i funkcije. Kartica radnika sada koristi novi render person-card-v1116 i dugmad ✏️ Uredi profil / ❌ Obriši iz spiska stoje direktno ispod podataka radnika, tako da ih CSS/grid ne može gurnuti van vidljivog dela. Uređivanje radnika i dalje radi update postojećeg reda u company_users preko id + company_id. Brisanje radnika ostaje soft-delete: active=false. Nije potreban novi Supabase SQL. Cache i linkovi su podignuti na v1116.
+
+
+--- v1.11.7 ---
+Dodato uređivanje mašina/vozila u Direkcija → Mašine / vozila: ✏️ Uredi popunjava postojeću formu, Sačuvaj izmene radi update u assets tabeli preko id + company_id, Otkaži izmenu vraća formu na dodavanje. Dugme za mašine/vozila je jasno promenjeno u 🔥 Trajno obriši iz baze i radi delete iz assets tabele. Kod radnika je dodata posebna opcija 🔥 Trajno obriši iz baze pored postojećeg ❌ Obriši iz spiska. ❌ Obriši iz spiska i dalje radi soft-delete active=false, a 🔥 Trajno obriši iz baze radi delete iz company_users tabele. Nije potreban novi Supabase SQL. Cache i linkovi su podignuti na v1117.
