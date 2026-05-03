@@ -106,3 +106,7 @@ Dugmad za brisanje u Direkciji su sada mnogo jasnija i vidljiva na svakoj kartic
 
 IZMENA v1.10.2 SITE ARCHIVE:
 Direkcija sada može da skloni završeno gradilište iz aktivnog spiska. Gradilište se ne briše fizički, nego se postavlja active=false kako bi stari izveštaji ostali sačuvani kao evidencija. Svako aktivno gradilište ima dugme 'Završi / skloni gradilište'. Cache podignut na startwork-pro-v1102.
+
+
+IZMENA v1.10.3 ARCHIVE AND GLOBAL SEARCH:
+Direkcija može arhivirati izveštaj i skloniti ga iz glavnog inbox-a, bez fizičkog brisanja iz baze. Dodata je globalna pretraga u Direkciji pored Excel export/tabs zone: može tražiti radnika/osobu, mašinu/vozilo, gradilište, materijal i izveštaje. Rezultati imaju akcije za upravljanje: sklanjanje radnika, brisanje mašine/vozila, sklanjanje gradilišta, brisanje materijala i arhiviranje izveštaja. SQL dopuna dodaje status archived u reports_status_check. Cache podignut na startwork-pro-v1103.

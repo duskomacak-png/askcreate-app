@@ -874,3 +874,80 @@ pre.raw-details{
     white-space:normal;
   }
 }
+
+
+
+/* v1.10.3 — Report archive + global Direkcija search */
+.director-searchbar{
+  display:grid;
+  grid-template-columns:minmax(280px,1fr) auto auto;
+  gap:8px;
+  align-items:center;
+  margin:10px 0 14px;
+  background:#ffffff;
+  border:1px solid #d9e2ec;
+  border-radius:18px;
+  padding:10px;
+  box-shadow:0 10px 24px rgba(15,23,42,.06);
+}
+
+.search-input-wrap{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:#f8fafc;
+  border:1px solid #cbd5e1;
+  border-radius:14px;
+  padding:0 10px;
+}
+
+.search-input-wrap input{
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  padding:10px 4px !important;
+}
+
+.search-icon{
+  color:#107c41;
+  font-weight:900;
+}
+
+.director-search-results.hidden{
+  display:none !important;
+}
+
+.director-search-results{
+  margin-bottom:14px;
+}
+
+.search-result-type{
+  display:inline-flex;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#3730a3;
+  font-size:.75rem;
+  font-weight:900;
+  margin-bottom:6px;
+}
+
+.archive-report-btn{
+  border:1px solid #bfdbfe !important;
+  background:#eff6ff !important;
+  color:#1d4ed8 !important;
+  border-radius:10px !important;
+  padding:7px 10px !important;
+  font-size:.84rem !important;
+  font-weight:900 !important;
+}
+
+.archive-report-btn:hover{
+  background:#dbeafe !important;
+}
+
+@media(max-width:850px){
+  .director-searchbar{
+    grid-template-columns:1fr;
+  }
+}

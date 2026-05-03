@@ -358,9 +358,123 @@ window.deleteMaterial = async (id, name = "") => {
   loadMaterials();
 };
 
+
+window.archiveReport = async (id) => {
+  if (!confirm("Arhivirati/skloniti ovaj izveštaj iz glavnog inbox-a?\\n\\nIzveštaj ostaje u bazi kao evidencija.")) return;
+  const { error } = await sb
+    .from("reports")
+    .update({ status: "archived" })
+    .eq("id", id)
+    .eq("company_id", currentCompany.id);
+
+  if (error) return toast(error.message, true);
+  toast("Izveštaj je arhiviran i sklonjen iz inbox-a.");
+  loadReports();
+  runDirectorGlobalSearch(false);
+};
+
+function searchMatch(text, q) {
+  return String(text || "").toLowerCase().includes(String(q || "").toLowerCase());
+}
+
+async function runDirectorGlobalSearch(showEmptyMessage = true) {
+  const input = $("#directorGlobalSearch");
+  const box = $("#directorSearchResults");
+  const list = $("#directorSearchResultsList");
+  if (!input || !box || !list || !currentCompany) return;
+
+  const q = input.value.trim().toLowerCase();
+  list.innerHTML = "";
+  box.classList.add("hidden");
+
+  if (!q) {
+    if (showEmptyMessage) toast("Upiši pojam za pretragu.");
+    return;
+  }
+
+  box.classList.remove("hidden");
+
+  const results = [];
+
+  try {
+    const [peopleRes, assetsRes, sitesRes, materialsRes, reportsRes] = await Promise.all([
+      sb.from("company_users").select("*").eq("company_id", currentCompany.id),
+      sb.from("assets").select("*").eq("company_id", currentCompany.id),
+      sb.from("sites").select("*").eq("company_id", currentCompany.id),
+      sb.from("materials").select("*").eq("company_id", currentCompany.id),
+      sb.from("reports").select("id, report_date, status, returned_reason, data, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("created_at", { ascending:false }).limit(150)
+    ]);
+
+    if (peopleRes.data) peopleRes.data.forEach(p => {
+      const text = `${p.first_name} ${p.last_name} ${p.function_title} ${p.access_code} ${p.active ? "aktivan" : "neaktivan"}`;
+      if (searchMatch(text, q)) results.push({
+        type:"Radnik / osoba",
+        title:`${p.first_name} ${p.last_name}`,
+        subtitle:`${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
+        actions:`${p.active ? `<button class="delete-btn" onclick="deletePerson('${p.id}', '${escapeHtml((p.first_name || '') + ' ' + (p.last_name || ''))}')">❌ Obriši iz spiska</button>` : `<span class="pill">već sklonjen</span>`}`
+      });
+    });
+
+    if (assetsRes.data) assetsRes.data.forEach(a => {
+      const text = `${a.name} ${a.asset_type} ${a.registration || ""} ${a.capacity || ""}`;
+      if (searchMatch(text, q)) results.push({
+        type:"Mašina / vozilo",
+        title:a.name,
+        subtitle:`${a.asset_type} · ${a.registration || ""} · ${a.capacity || ""}`,
+        actions:`<button class="delete-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">❌ Obriši ovu mašinu/vozilo</button>`
+      });
+    });
+
+    if (sitesRes.data) sitesRes.data.forEach(s => {
+      const text = `${s.name} ${s.location || ""} ${s.active ? "aktivno" : "završeno sklonjeno"}`;
+      if (searchMatch(text, q)) results.push({
+        type:"Gradilište",
+        title:s.name,
+        subtitle:`${s.location || ""} · ${s.active ? "aktivno" : "završeno/sklonjeno"}`,
+        actions:`${s.active ? `<button class="archive-btn" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Završi / skloni gradilište</button>` : `<span class="pill">već sklonjeno</span>`}`
+      });
+    });
+
+    if (materialsRes.data) materialsRes.data.forEach(m => {
+      const text = `${m.name} ${m.unit || ""} ${m.category || ""}`;
+      if (searchMatch(text, q)) results.push({
+        type:"Materijal",
+        title:m.name,
+        subtitle:`${m.unit || ""} ${m.category ? "· " + m.category : ""}`,
+        actions:`<button class="delete-btn" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">❌ Obriši materijal</button>`
+      });
+    });
+
+    if (reportsRes.data) reportsRes.data.forEach(r => {
+      const d = r.data || {};
+      const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "";
+      const text = `${person} ${r.status} ${r.report_date} ${d.site_name || ""} ${d.description || ""} ${d.machine || ""} ${d.vehicle || ""} ${d.material || ""} ${d.defect || ""} ${d.note || ""}`;
+      if (searchMatch(text, q)) results.push({
+        type:"Izveštaj",
+        title:`${person || "Izveštaj"} · ${r.report_date || ""}`,
+        subtitle:`status: ${r.status} · ${d.site_name || "bez gradilišta"} ${d.defect ? "· kvar: " + d.defect : ""}`,
+        actions:`${r.status !== "archived" ? `<button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj izveštaj</button>` : `<span class="pill">arhivirano</span>`}`
+      });
+    });
+
+    list.innerHTML = results.length ? results.map(r => `
+      <div class="item management-item">
+        <div class="item-main">
+          <span class="search-result-type">${escapeHtml(r.type)}</span>
+          <strong>${escapeHtml(r.title)}</strong>
+          <small>${escapeHtml(r.subtitle || "")}</small>
+        </div>
+        <div class="management-actions">${r.actions}</div>
+      </div>
+    `).join("") : `<p class="muted">Nema rezultata za: ${escapeHtml(q)}</p>`;
+  } catch(e) {
+    list.innerHTML = `<p class="muted">Greška pretrage: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
 async function loadReports() {
   if (!currentCompany) return;
-  const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).order("submitted_at", { ascending:false });
+  const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("submitted_at", { ascending:false });
   if (error) return toast(error.message, true);
   $("#reportsList").innerHTML = (data || []).map(r => reportHtml(r)).join("") || `<p class="muted">Nema poslatih izveštaja.</p>`;
 }
@@ -1126,6 +1240,17 @@ function bindEvents() {
       toast("Mašina/vozilo dodato.");
       loadAssets();
     } catch(e) { toast(e.message, true); }
+  });
+
+
+  if ($("#directorSearchBtn")) $("#directorSearchBtn").addEventListener("click", () => runDirectorGlobalSearch(true));
+  if ($("#directorClearSearchBtn")) $("#directorClearSearchBtn").addEventListener("click", () => {
+    $("#directorGlobalSearch").value = "";
+    $("#directorSearchResults").classList.add("hidden");
+    $("#directorSearchResultsList").innerHTML = "";
+  });
+  if ($("#directorGlobalSearch")) $("#directorGlobalSearch").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runDirectorGlobalSearch(true);
   });
 
   if ($("#addMaterialBtn")) $("#addMaterialBtn").addEventListener("click", async () => {

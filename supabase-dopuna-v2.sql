@@ -174,3 +174,22 @@ for all
 to authenticated
 using (public.is_company_owner(company_id))
 with check (public.is_company_owner(company_id));
+
+
+
+-- v1.10.3: dodaj archived status za reports
+do $$
+begin
+  if exists (
+    select 1
+    from pg_constraint
+    where conname = 'reports_status_check'
+      and conrelid = 'public.reports'::regclass
+  ) then
+    alter table public.reports drop constraint reports_status_check;
+  end if;
+end $$;
+
+alter table public.reports
+add constraint reports_status_check
+check (status in ('draft','sent','returned','corrected','approved','exported','archived'));

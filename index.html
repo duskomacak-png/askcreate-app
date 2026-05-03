@@ -161,6 +161,19 @@
         <button class="tab" data-tab="export">Excel export</button>
       </div>
 
+      <div class="director-searchbar">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔎</span>
+          <input id="directorGlobalSearch" type="search" placeholder="Pretraži bazu: radnik, mašina, vozilo, gradilište, materijal, izveštaj..." />
+        </div>
+        <button id="directorSearchBtn" class="secondary small-action" type="button">Traži</button>
+        <button id="directorClearSearchBtn" class="secondary small-action" type="button">Očisti</button>
+      </div>
+      <div id="directorSearchResults" class="card director-search-results hidden">
+        <h3>Rezultati pretrage</h3>
+        <div id="directorSearchResultsList" class="list"></div>
+      </div>
+
       <div id="tabPeople" class="tab-panel active">
         <div class="grid two">
           <div class="card">
