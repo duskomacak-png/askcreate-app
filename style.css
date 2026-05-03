@@ -1336,3 +1336,86 @@ body:not(.worker-mode) .field-hint {
 .compact{gap:8px;}
 .export-download-box .row{gap:10px;flex-wrap:wrap;}
 @media(max-width:720px){.export-selected-item{grid-template-columns:1fr}.export-selected-item button{grid-column:1;grid-row:auto}.space-between{align-items:flex-start}.compact{width:100%;}}
+
+/* v1.12.7 — Direkcija reports layout containment fix
+   Keeps report cards and Excel preview tables inside the white workspace.
+   Wide tables scroll inside their own box instead of pushing the whole page left/right. */
+body.in-app #viewDirectorDashboard,
+body.in-app #viewDirectorDashboard *{
+  min-width:0;
+}
+
+body.in-app #tabReports,
+body.in-app #tabReports .list,
+body.in-app #tabReports .item,
+body.in-app #tabReports .report-item,
+body.in-app #tabReports .report-readable,
+body.in-app #tabReports .report-section,
+body.in-app #tabReports .report-excel-section,
+body.in-app #tabReports .export-box{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+}
+
+body.in-app #tabReports .item{
+  padding:14px;
+}
+
+body.in-app #tabReports .report-excel-section{
+  margin-top:12px;
+  padding:12px;
+  border-radius:16px;
+}
+
+body.in-app #tabReports .report-excel-wrap{
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+}
+
+body.in-app #tabReports .report-excel-table{
+  width:max-content;
+  min-width:960px;
+  max-width:none;
+}
+
+body.in-app #tabReports .report-kv,
+body.in-app #tabReports .report-mini-table{
+  max-width:100%;
+  overflow-x:auto;
+}
+
+body.in-app #tabReports .row,
+body.in-app #tabReports .actions,
+body.in-app #tabReports .report-export-toolbar{
+  max-width:100%;
+  overflow:visible;
+}
+
+@media(max-width:900px){
+  body.in-app .shell{
+    padding-left:8px;
+    padding-right:8px;
+  }
+  body.in-app #viewDirectorDashboard{
+    padding-left:8px;
+    padding-right:8px;
+  }
+  body.in-app #tabReports .item{
+    padding:10px;
+    border-radius:14px;
+  }
+  body.in-app #tabReports .report-excel-section{
+    padding:8px;
+  }
+  body.in-app #tabReports .report-excel-table{
+    min-width:820px;
+    font-size:.76rem;
+  }
+}
