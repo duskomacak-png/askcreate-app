@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.12.3";
+const APP_VERSION = "1.12.4";
 
 
 let sb = null;
@@ -1174,12 +1174,16 @@ async function loadWorkerAssets() {
     });
     if (error) throw error;
 
-    workerAssetOptions = Array.isArray(data) ? data : [];
+    workerAssetOptions = (Array.isArray(data) ? data : []).map(a => ({
+      ...a,
+      asset_type: a.asset_type || a.type || "",
+      type: a.type || a.asset_type || ""
+    }));
     refreshVehicleSelects();
   } catch (e) {
     workerAssetOptions = [];
     refreshVehicleSelects();
-    toast("Vozila za radnika nisu učitana. Pokreni SQL za v1.12.2/v1.12.3: worker_list_assets. Detalj: " + (e.message || e), true);
+    toast("Vozila za radnika nisu učitana. Pokreni SQL za v1.12.2/v1.12.4: worker_list_assets. Detalj: " + (e.message || e), true);
   }
 }
 
@@ -1217,8 +1221,9 @@ function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
   return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => {
     const name = v.name || "Vozilo";
     const label = formatAssetLabel(v);
-    const isSelected = selected && selected === name ? "selected" : "";
-    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" data-registration="${escapeHtml(v.registration || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
+    const type = v.asset_type || v.type || "";
+    const isSelected = selected && (selected === name || selected === String(v.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" data-registration="${escapeHtml(v.registration || "")}" data-capacity="${escapeHtml(v.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
@@ -1241,15 +1246,44 @@ function getSelectedVehicleFromEntry(el) {
   const custom = el.querySelector(".v-custom")?.value.trim() || "";
   return {
     asset_id: custom ? null : (option?.dataset?.assetId || null),
-    name: custom || (select?.value || "")
+    name: custom || (select?.value || ""),
+    registration: custom ? "" : (option?.dataset?.registration || ""),
+    capacity: custom ? "" : (option?.dataset?.capacity || "")
   };
+}
+
+function parseDecimal(value) {
+  const n = Number(String(value || "").replace(",", ".").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function calculateVehicleCubic(capacity, tours) {
+  const cap = parseDecimal(capacity);
+  const t = parseDecimal(tours);
+  if (!cap || !t) return "";
+  const total = cap * t;
+  return Number.isInteger(total) ? String(total) : String(Math.round(total * 100) / 100);
+}
+
+function updateVehicleCubic(entryEl) {
+  const selected = getSelectedVehicleFromEntry(entryEl);
+  const tours = entryEl.querySelector(".v-tours")?.value || "";
+  const auto = calculateVehicleCubic(selected.capacity, tours);
+  const autoEl = entryEl.querySelector(".v-cubic-auto");
+  if (autoEl) autoEl.value = auto;
+  const hint = entryEl.querySelector(".v-cubic-hint");
+  if (hint) {
+    hint.textContent = auto
+      ? `Automatski: ${selected.capacity || 0} m³ × ${tours || 0} tura = ${auto} m³`
+      : "Ako vozilo ima kapacitet i upišeš broj tura, aplikacija računa m³ automatski.";
+  }
 }
 
 function addVehicleEntry(values = {}) {
   const list = $("#vehicleEntries");
   if (!list) return;
   const idx = list.querySelectorAll(".vehicle-entry").length + 1;
-  const selectedName = values.name || values.vehicle || "";
+  const selectedName = values.name || values.vehicle || values.asset_id || "";
   const div = document.createElement("div");
   div.className = "entry-card vehicle-entry";
   div.innerHTML = `
@@ -1263,7 +1297,7 @@ function addVehicleEntry(values = {}) {
 
     <label>Vozilo iz Direkcije</label>
     <select class="v-name">${buildVehicleOptionsHtml(selectedName)}</select>
-    <p class="field-hint">Lista se prikazuje samo ako je Direkcija radniku štiklirala rubriku Vozila.</p>
+    <p class="field-hint">Ako je lista prazna, proveri: Direkcija → Mašine/vozila → Tip mora biti Vozilo i SQL worker_list_assets mora biti ažuriran.</p>
 
     <label>Ako vozilo nije u listi, upiši ručno</label>
     <input class="v-custom" placeholder="npr. zamensko vozilo" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
@@ -1282,8 +1316,20 @@ function addVehicleEntry(values = {}) {
     <label>Relacija</label>
     <input class="v-route" placeholder="Od - do" value="${escapeHtml(values.route || "")}" />
 
-    <label>Broj tura</label>
-    <input class="v-tours" type="number" step="1" value="${escapeHtml(values.tours || "")}" />
+    <div class="mini-grid">
+      <div>
+        <label>Broj tura</label>
+        <input class="v-tours" type="number" step="0.5" value="${escapeHtml(values.tours || "")}" />
+      </div>
+      <div>
+        <label>Automatski m³</label>
+        <input class="v-cubic-auto" type="number" step="0.01" readonly value="${escapeHtml(values.cubic_auto || values.cubic_m3 || "")}" />
+      </div>
+    </div>
+    <p class="field-hint v-cubic-hint">Ako vozilo ima kapacitet i upišeš broj tura, aplikacija računa m³ automatski.</p>
+
+    <label>Upiši ručno m³ ako nije puna tura</label>
+    <input class="v-cubic-manual" type="number" step="0.01" placeholder="npr. 9 ako je pola ture od 18 m³" value="${escapeHtml(values.cubic_manual || "")}" />
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -1292,29 +1338,44 @@ function addVehicleEntry(values = {}) {
   });
   div.querySelector(".v-search").addEventListener("input", () => {
     refreshOneVehicleSelect(div);
+    updateVehicleCubic(div);
   });
-  div.querySelector(".v-name").addEventListener("change", refreshFuelMachineOptions);
+  div.querySelector(".v-name").addEventListener("change", () => {
+    updateVehicleCubic(div);
+    refreshFuelMachineOptions();
+  });
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
+  div.querySelector(".v-tours").addEventListener("input", () => updateVehicleCubic(div));
   list.appendChild(div);
   refreshOneVehicleSelect(div);
+  updateVehicleCubic(div);
   refreshFuelMachineOptions();
 }
 
 function getVehicleEntries() {
   return $$("#vehicleEntries .vehicle-entry").map((el, i) => {
     const selected = getSelectedVehicleFromEntry(el);
+    const tours = el.querySelector(".v-tours")?.value || "";
+    const autoCubic = calculateVehicleCubic(selected.capacity, tours);
+    const manualCubic = el.querySelector(".v-cubic-manual")?.value || "";
+    const finalCubic = manualCubic || autoCubic;
     return {
       no: i + 1,
       asset_id: selected.asset_id,
       name: selected.name,
       vehicle: selected.name,
+      registration: selected.registration,
+      capacity: selected.capacity,
       vehicle_custom: el.querySelector(".v-custom")?.value.trim() || "",
       km_start: el.querySelector(".v-km-start")?.value || "",
       km_end: el.querySelector(".v-km-end")?.value || "",
       route: el.querySelector(".v-route")?.value.trim() || "",
-      tours: el.querySelector(".v-tours")?.value || ""
+      tours,
+      cubic_auto: autoCubic,
+      cubic_manual: manualCubic,
+      cubic_m3: finalCubic
     };
-  }).filter(v => v.name || v.km_start || v.km_end || v.route || v.tours);
+  }).filter(v => v.name || v.km_start || v.km_end || v.route || v.tours || v.cubic_m3);
 }
 
 async function loadWorkerSites(selectedName = "") {
@@ -1661,6 +1722,7 @@ function collectWorkerData() {
     km_end: vehicles.map(v => v.km_end).filter(Boolean).join(" | "),
     route: vehicles.map(v => v.route).filter(Boolean).join(" | "),
     tours: vehicles.map(v => v.tours).filter(Boolean).join(" | "),
+    cubic_m3: vehicles.map(v => v.cubic_m3).filter(Boolean).join(" | "),
     material: $("#wrMaterial").value.trim(),
     quantity: $("#wrQuantity").value,
     unit: $("#wrUnit").value.trim(),
