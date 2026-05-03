@@ -878,13 +878,77 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
 
 let directorReportsCache = [];
 
+function isDefectReport(r) {
+  const d = r?.data || {};
+  return d.report_type === "defect_record" ||
+    d.report_type === "defect_alert" ||
+    d.defect_exists === "da" ||
+    !!d.defect ||
+    !!d.defect_status ||
+    !!d.defect_urgency;
+}
+
+function formatDateTimeLocal(value) {
+  if (!value) return "—";
+  try {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return String(value);
+    return dt.toLocaleString("sr-RS", { dateStyle: "short", timeStyle: "short" });
+  } catch(e) {
+    return String(value);
+  }
+}
+
 async function loadReports() {
   if (!currentCompany) return;
   const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("submitted_at", { ascending:false });
   if (error) return toast(error.message, true);
   directorReportsCache = data || [];
-  $("#reportsList").innerHTML = directorReportsCache.map(r => reportHtml(r)).join("") || `<p class="muted">Nema poslatih izveštaja.</p>`;
+  const dailyReports = directorReportsCache.filter(r => !isDefectReport(r));
+  $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
+  renderDefectsList();
   renderExportPanel();
+}
+
+function defectHtml(r) {
+  const d = r.data || {};
+  const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : (d.created_by_worker || "Nepoznat radnik");
+  const status = d.defect_status || "prijavljen";
+  const reportedAt = d.defect_reported_at || r.submitted_at || r.created_at;
+  const assetName = d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name) || "—";
+
+  return `
+    <div class="item report-item defect-item">
+      <strong>🚨 KVAR · ${escapeHtml(d.defect_urgency || "prijavljen")}</strong>
+      <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || d.function_title || "")} · ${escapeHtml(r.report_date || "")}</small><br/>
+      <span class="pill">Prijavljeno: ${escapeHtml(formatDateTimeLocal(reportedAt))}</span>
+      <span class="pill">Status: ${escapeHtml(status)}</span>
+      <span class="pill">Gradilište: ${escapeHtml(d.site_name || "bez gradilišta")}</span>
+      <span class="pill">Mašina/vozilo: ${escapeHtml(assetName)}</span>
+      ${d.defect_stops_work ? `<span class="pill">Zaustavlja rad: ${escapeHtml(d.defect_stops_work)}</span>` : ""}
+      ${d.defect_can_continue ? `<span class="pill">Može nastaviti: ${escapeHtml(d.defect_can_continue)}</span>` : ""}
+      ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
+      <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
+      <div class="report-kv">
+        <b>Primljeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_received_at))}</span>
+        <b>Početak popravke</b><span>${escapeHtml(formatDateTimeLocal(d.defect_repair_started_at))}</span>
+        <b>Rešeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_resolved_at))}</span>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
+        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
+        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
+        <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj kvar</button>
+        <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
+      </div>
+    </div>`;
+}
+
+function renderDefectsList() {
+  const box = $("#defectsList");
+  if (!box) return;
+  const defects = directorReportsCache.filter(isDefectReport);
+  box.innerHTML = defects.map(defectHtml).join("") || `<p class="muted">Nema prijavljenih kvarova.</p>`;
 }
 
 
@@ -2431,6 +2495,7 @@ function bindEvents() {
     btn.classList.add("active");
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
+    if (btn.dataset.tab === "defects") renderDefectsList();
   }));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
@@ -2465,6 +2530,7 @@ function bindEvents() {
   if ($("#selectAllReportsBtn")) $("#selectAllReportsBtn").addEventListener("click", selectAllReportsForExport);
   if ($("#clearReportsBtn")) $("#clearReportsBtn").addEventListener("click", clearReportsForExport);
   if ($("#goExportBtn")) $("#goExportBtn").addEventListener("click", goToExportTab);
+  if ($("#refreshDefectsBtn")) $("#refreshDefectsBtn").addEventListener("click", loadReports);
   if ($("#exportCsvBtn")) $("#exportCsvBtn").addEventListener("click", exportCsv);
   if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);

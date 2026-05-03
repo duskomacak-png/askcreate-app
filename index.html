@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1130" />
+  <link rel="stylesheet" href="style.css?v=1131" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -151,6 +151,7 @@
         <button class="tab" data-tab="assets">Mašine / vozila</button>
         <button class="tab" data-tab="materials">Materijali</button>
         <button class="tab" data-tab="reports">Izveštaji</button>
+        <button class="tab" data-tab="defects">Kvarovi</button>
         <button class="tab" data-tab="export">Excel export</button>
       </div>
 
@@ -290,6 +291,18 @@
             <button id="goExportBtn" class="primary" type="button">➡️ Pošalji u Excel export</button>
           </div>
           <div id="reportsList" class="list"></div>
+        </div>
+      </div>
+
+
+      <div id="tabDefects" class="tab-panel">
+        <div class="card">
+          <h3>Kvarovi</h3>
+          <p class="muted">Ovde se prikazuju samo kvarovi koje radnici prijave. Kvarovi se ne mešaju sa dnevnim izveštajima.</p>
+          <div class="row report-export-toolbar">
+            <button id="refreshDefectsBtn" class="secondary" type="button">🔄 Osveži kvarove</button>
+          </div>
+          <div id="defectsList" class="list"></div>
         </div>
       </div>
 
@@ -492,6 +505,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1130"></script>
+  <script src="script.js?v=1131"></script>
 </body>
 </html>
