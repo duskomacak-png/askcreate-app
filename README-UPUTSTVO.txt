@@ -102,3 +102,7 @@ Direkcija sada može da obriše osobu/radnika iz spiska i mašinu/vozilo iz spis
 
 IZMENA v1.10.1 CLEAR DELETE BUTTONS:
 Dugmad za brisanje u Direkciji su sada mnogo jasnija i vidljiva na svakoj kartici posebno. Radnik/osoba se briše iz aktivnog spiska preko active=false da stari izveštaji ostanu sačuvani. Svaka mašina/vozilo ima posebno dugme 'Obriši ovu mašinu/vozilo'. Materijal takođe ima posebno dugme za brisanje. Cache podignut na startwork-pro-v1101.
+
+
+IZMENA v1.10.2 SITE ARCHIVE:
+Direkcija sada može da skloni završeno gradilište iz aktivnog spiska. Gradilište se ne briše fizički, nego se postavlja active=false kako bi stari izveštaji ostali sačuvani kao evidencija. Svako aktivno gradilište ima dugme 'Završi / skloni gradilište'. Cache podignut na startwork-pro-v1102.

@@ -215,11 +215,27 @@ async function loadPeople() {
 
 async function loadSites() {
   if (!currentCompany) return;
-  const { data, error } = await sb.from("sites").select("*").eq("company_id", currentCompany.id).order("created_at", { ascending:false });
+  const { data, error } = await sb
+    .from("sites")
+    .select("*")
+    .eq("company_id", currentCompany.id)
+    .eq("active", true)
+    .order("created_at", { ascending:false });
+
   if (error) return toast(error.message, true);
+
   $("#sitesList").innerHTML = (data || []).map(s => `
-    <div class="item"><strong>${escapeHtml(s.name)}</strong><small>${escapeHtml(s.location || "")}</small></div>
-  `).join("") || `<p class="muted">Nema gradilišta.</p>`;
+    <div class="item management-item">
+      <div class="item-main">
+        <strong>${escapeHtml(s.name)}</strong>
+        <small>${escapeHtml(s.location || "")}</small><br/>
+        <span class="pill">Aktivno gradilište</span>
+      </div>
+      <div class="management-actions">
+        <button class="archive-btn" type="button" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Završi / skloni gradilište</button>
+      </div>
+    </div>
+  `).join("") || `<p class="muted">Nema aktivnih gradilišta.</p>`;
 }
 
 async function loadAssets() {
@@ -280,6 +296,22 @@ async function loadMaterials() {
     datalist.innerHTML = (data || []).map(m => `<option value="${escapeHtml(m.name)}"></option>`).join("");
   }
 }
+
+
+window.archiveSite = async (id, name = "") => {
+  const label = name ? ` (${name})` : "";
+  if (!confirm("Skloniti gradilište iz aktivnog spiska" + label + "?\\n\\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
+
+  const { error } = await sb
+    .from("sites")
+    .update({ active: false })
+    .eq("id", id)
+    .eq("company_id", currentCompany.id);
+
+  if (error) return toast(error.message, true);
+  toast("Gradilište je sklonjeno iz aktivnog spiska.");
+  loadSites();
+};
 
 window.deletePerson = async (id, name = "") => {
   const label = name ? ` (${name})` : "";
@@ -1078,7 +1110,7 @@ function bindEvents() {
 
   $("#addSiteBtn").addEventListener("click", async () => {
     try {
-      const { error } = await sb.from("sites").insert({ company_id: currentCompany.id, name: $("#siteName").value.trim(), location: $("#siteLocation").value.trim() });
+      const { error } = await sb.from("sites").insert({ company_id: currentCompany.id, name: $("#siteName").value.trim(), location: $("#siteLocation").value.trim(), active: true });
       if (error) throw error;
       $("#siteName").value = ""; $("#siteLocation").value = "";
       toast("Gradilište dodato.");

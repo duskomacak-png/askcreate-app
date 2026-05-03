@@ -847,3 +847,30 @@ pre.raw-details{
     white-space:normal;
   }
 }
+
+
+
+/* v1.10.2 — Archive finished construction sites */
+.archive-btn{
+  border:1px solid #bbf7d0 !important;
+  background:#ecfdf5 !important;
+  color:#166534 !important;
+  border-radius:12px !important;
+  padding:8px 12px !important;
+  font-size:.84rem !important;
+  line-height:1.1 !important;
+  font-weight:900 !important;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.archive-btn:hover{
+  background:#dcfce7 !important;
+}
+
+@media(max-width:700px){
+  .archive-btn{
+    width:100%;
+    white-space:normal;
+  }
+}
