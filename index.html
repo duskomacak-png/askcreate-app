@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1145" />
+  <link rel="stylesheet" href="style.css?v=1146" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -146,13 +146,13 @@
       </div>
 
       <div class="tabs">
-        <button class="tab active" data-tab="people">Ljudi i funkcije</button>
+        <button class="tab active" data-tab="people">Ljudi</button>
         <button class="tab" data-tab="sites">Gradilišta</button>
-        <button class="tab" data-tab="assets">Mašine / vozila</button>
+        <button class="tab" data-tab="assets">Mašine i vozila</button>
         <button class="tab" data-tab="materials">Materijali</button>
-        <button class="tab" data-tab="reports">Izveštaji</button>
+        <button class="tab" data-tab="reports">Dnevni izveštaji</button>
         <button class="tab" data-tab="defects">Kvarovi</button>
-        <button class="tab" data-tab="export">Excel export</button>
+        <button class="tab" data-tab="export">Izvoz u Excel</button>
       </div>
 
       <div class="director-searchbar">
@@ -176,7 +176,7 @@
             <input id="personFirst" placeholder="Duško" />
             <label>Prezime</label>
             <input id="personLast" placeholder="Mačak" />
-            <label>Funkcija</label>
+            <label>Radno mesto</label>
             <input id="personFunction" placeholder="Bagerista, Vozač, Šef gradilišta..." />
             <div id="directorWorkerCodeHelpBox" class="code-help-box">
               <b>Prijava radnika:</b>
@@ -185,20 +185,20 @@
             <label>Šifra radnika</label>
             <input id="personCode" placeholder="npr. zor1234" />
             <div class="permission-box">
-              <h4>Rubrike koje vidi</h4>
-              <label><input type="checkbox" class="perm" value="daily_work" /> Dnevni rad</label>
-              <label><input type="checkbox" class="perm" value="workers" /> Radnici</label>
-              <label><input type="checkbox" class="perm" value="machines" /> Mašine</label>
-              <label><input type="checkbox" class="perm" value="vehicles" /> Vozila</label>
-              <label><input type="checkbox" class="perm" value="lowloader" /> Vozilo labudica</label>
-              <label><input type="checkbox" class="perm" value="fuel" /> Gorivo</label>
-              <label><input type="checkbox" class="perm" value="field_tanker" /> Cisterna za tankanje goriva na terenu</label>
+              <h4>Šta ovaj korisnik sme da popunjava?</h4>
+              <label><input type="checkbox" class="perm" value="daily_work" /> Osnovni dnevni rad</label>
+              <label><input type="checkbox" class="perm" value="workers" /> Radnici na gradilištu</label>
+              <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
+              <label><input type="checkbox" class="perm" value="vehicles" /> Rad sa kamionom / vozilom</label>
+              <label><input type="checkbox" class="perm" value="lowloader" /> Prevoz mašine labudicom</label>
+              <label><input type="checkbox" class="perm" value="fuel" /> Sipanje goriva u svoju mašinu</label>
+              <label><input type="checkbox" class="perm" value="field_tanker" /> Tankanje goriva cisternom</label>
               <label><input type="checkbox" class="perm" value="materials" /> Materijal</label>
               <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
-              <label><input type="checkbox" class="perm" value="defects" /> Kvarovi</label>
+              <label><input type="checkbox" class="perm" value="defects" /> Prijava kvara</label>
               <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
               <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje</label>
-              <label><input type="checkbox" class="perm" value="excel_export" /> Excel export</label>
+              <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
               <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje osobama</label>
               <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
               <div class="material-permission-box">
@@ -287,11 +287,11 @@
       <div id="tabReports" class="tab-panel">
         <div class="card">
           <h3>Inbox izveštaja</h3>
-          <p class="muted">Štikliraj izveštaje koje želiš da prebaciš u Excel export.</p>
+          <p class="muted">Štikliraj dnevne izveštaje koje želiš da prebaciš u izvoz za Excel.</p>
           <div class="row report-export-toolbar">
             <button id="selectAllReportsBtn" class="secondary" type="button">✅ Označi sve</button>
             <button id="clearReportsBtn" class="secondary" type="button">❌ Poništi sve</button>
-            <button id="goExportBtn" class="primary" type="button">➡️ Pošalji u Excel export</button>
+            <button id="goExportBtn" class="primary" type="button">➡️ Pošalji u izvoz za Excel</button>
           </div>
           <div id="reportsList" class="list"></div>
         </div>
@@ -311,8 +311,8 @@
 
       <div id="tabExport" class="tab-panel">
         <div class="card">
-          <h3>Excel export</h3>
-          <p class="muted">Ovde stoje izveštaji koje je Direkcija označila u tabu Izveštaji. Možeš odabrati rubrike/kolone koje želiš u Excel fajlu.</p>
+          <h3>Izvoz u Excel</h3>
+          <p class="muted">Ovde stoje dnevni izveštaji koje je Direkcija označila. Odaberi koje podatke želiš u Excel fajlu.</p>
 
           <div class="export-box">
             <h4>Izabrani izveštaji</h4>
@@ -322,7 +322,7 @@
 
           <div class="export-box">
             <div class="row space-between">
-              <h4>Rubrike koje želiš u Excelu</h4>
+              <h4>Podaci koje želiš u Excelu</h4>
               <div class="row compact">
                 <button id="selectAllColumnsBtn" class="secondary" type="button">Označi sve rubrike</button>
                 <button id="clearColumnsBtn" class="secondary" type="button">Poništi rubrike</button>
@@ -393,7 +393,7 @@
         </div>
 
         <div id="secDailyWork" class="dyn-section">
-          <h4>Dnevni rad</h4>
+          <h4>Šta je rađeno danas</h4>
           <label>Opis rada</label>
           <textarea id="wrDescription" placeholder="Šta je rađeno danas?"></textarea>
           <label>Sati rada</label>
@@ -408,21 +408,21 @@
         </div>
 
         <div id="secMachines" class="dyn-section">
-          <h4>Mašine / rad po mašini</h4>
+          <h4>Mašina koju sam koristio</h4>
           <p class="hint">Dodaj svaku mašinu ili vozilo posebno. Ovo je bitno za čist Excel.</p>
           <div id="machineEntries" class="entry-list"></div>
           <button id="addMachineBtn" class="secondary" type="button" onclick="addMachineEntry()">+ Dodaj mašinu</button>
         </div>
 
         <div id="secVehicles" class="dyn-section">
-          <h4>Vozila / rad po vozilu</h4>
+          <h4>Kamion / vozilo koje sam koristio</h4>
           <p class="hint">Vozila dodaje Direkcija. Radnik bira vozilo iz liste. Ako pređe na drugo vozilo, klikne + Dodaj vozilo.</p>
           <div id="vehicleEntries" class="entry-list"></div>
           <button id="addVehicleBtn" class="secondary" type="button" onclick="addVehicleEntry()">+ Dodaj vozilo</button>
         </div>
 
         <div id="secLowloader" class="dyn-section">
-          <h4>Vozilo labudica / selidba mašine</h4>
+          <h4>Prevoz mašine labudicom</h4>
           <p class="hint">Ovu rubriku Direkcija uključuje za prevoz mašina labudicom. Dodaj svaku selidbu posebno.</p>
           <div id="lowloaderEntries" class="entry-list"></div>
           <button id="addLowloaderBtn" class="secondary" type="button" onclick="addLowloaderEntry()">+ Dodaj selidbu mašine</button>
@@ -439,7 +439,7 @@
 
 
         <div id="secFieldTanker" class="dyn-section">
-          <h4>Cisterna / tankanje goriva na terenu</h4>
+          <h4>Tankanje goriva cisternom</h4>
           <p class="hint">Ovu rubriku Direkcija uključuje za radnika koji razvozi gorivo cisternom na gradilišta. Dodaj svako sipanje posebno.</p>
           <div id="fieldTankerEntries" class="entry-list"></div>
           <button id="addFieldTankerBtn" class="secondary" type="button" onclick="addFieldTankerEntry()">+ Dodaj sipanje</button>
@@ -471,7 +471,7 @@
         </div>
 
         <div id="secDefects" class="dyn-section">
-          <h4>Kvar / mehanizacija</h4>
+          <h4>Prijava kvara</h4>
           <p class="hint">Ovo je važno da Šef mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
           <label>Ime mašine / vozila koje je u kvaru</label>
@@ -541,6 +541,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1145"></script>
+  <script src="script.js?v=1146"></script>
 </body>
 </html>
