@@ -2462,3 +2462,111 @@ body{
     padding:16px !important;
   }
 }
+
+/* v1.15.1 — Worker mobile contrast fix */
+#viewWorkerForm .dashboard-head{
+  background:transparent !important;
+  box-shadow:none !important;
+  border:none !important;
+  padding:0 2px 6px 2px;
+}
+#viewWorkerForm .dashboard-head h2{
+  color:#203629 !important;
+  font-weight:900;
+}
+#viewWorkerForm .dashboard-head p,
+#viewWorkerForm #workerCompanyLabel{
+  color:#8e9ab0 !important;
+}
+#viewWorkerForm #workerLogoutBtn{
+  background:#f3f6f3 !important;
+  border:1px solid #d8e1da !important;
+  color:#2d4033 !important;
+}
+
+#viewWorkerForm > .card{
+  background:linear-gradient(135deg,#123d2a 0%,#1b4b32 52%,#0f3626 100%) !important;
+  border:1px solid rgba(215,229,219,.18) !important;
+  box-shadow:0 16px 34px rgba(18,53,37,.22) !important;
+}
+#viewWorkerForm > .card h3,
+#viewWorkerForm > .card h4,
+#viewWorkerForm > .card label,
+#viewWorkerForm > .card .entry-card-head strong,
+#viewWorkerForm > .card .returned-panel h3{
+  color:#f7fbf8 !important;
+}
+#viewWorkerForm > .card .hint,
+#viewWorkerForm > .card p,
+#viewWorkerForm > .card .muted,
+#viewWorkerForm > .card #workerSiteHint,
+#viewWorkerForm > .card .field-hint{
+  color:#d8e5dc !important;
+}
+#viewWorkerForm > .card h3{
+  margin-top:0;
+  margin-bottom:10px;
+}
+
+#viewWorkerForm .dyn-section,
+#viewWorkerForm .entry-card,
+#viewWorkerForm .returned-panel,
+#viewWorkerForm .returned-item{
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.035)) !important;
+  border:1px solid rgba(220,233,224,.18) !important;
+}
+#viewWorkerForm .dyn-section h4{
+  color:#f4c24f !important;
+}
+#viewWorkerForm .entry-card-head strong{
+  color:#f4c24f !important;
+}
+
+#viewWorkerForm input,
+#viewWorkerForm select,
+#viewWorkerForm textarea{
+  background:rgba(255,255,255,.12) !important;
+  border:1px solid rgba(228,236,230,.22) !important;
+  color:#ffffff !important;
+}
+#viewWorkerForm input::placeholder,
+#viewWorkerForm textarea::placeholder{
+  color:rgba(255,255,255,.68) !important;
+}
+#viewWorkerForm select option{
+  color:#1e2b22;
+}
+#viewWorkerForm input:focus,
+#viewWorkerForm select:focus,
+#viewWorkerForm textarea:focus{
+  border-color:#f4c24f !important;
+  box-shadow:0 0 0 4px rgba(244,194,79,.18) !important;
+}
+
+#viewWorkerForm .secondary,
+#viewWorkerForm button.secondary{
+  background:rgba(255,255,255,.12) !important;
+  border:1px solid rgba(224,233,226,.2) !important;
+  color:#ffffff !important;
+}
+#viewWorkerForm .primary,
+#viewWorkerForm button.primary,
+#viewWorkerForm #submitReportBtn{
+  background:linear-gradient(135deg,#5aa864,#6fbc78) !important;
+  color:#ffffff !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+}
+
+@media(max-width:768px){
+  #viewWorkerForm .dashboard-head h2{
+    font-size:clamp(28px,8vw,44px) !important;
+    line-height:1.08;
+  }
+  #viewWorkerForm > .card{
+    padding:18px !important;
+  }
+  #viewWorkerForm .dyn-section,
+  #viewWorkerForm .entry-card{
+    padding:14px !important;
+  }
+}
