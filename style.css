@@ -2683,3 +2683,51 @@ body{
     gap:12px !important;
   }
 }
+
+/* v1.15.3 — Worker header and button visibility fix */
+#viewWorkerForm .dashboard-head,
+#viewWorkerForm .dashboard-head *{
+  opacity:1 !important;
+}
+#viewWorkerForm .dashboard-head h2{
+  color:#1f3528 !important;
+  text-shadow:none !important;
+}
+#viewWorkerForm .dashboard-head p,
+#viewWorkerForm #workerCompanyLabel{
+  color:#a8b0c7 !important;
+  opacity:1 !important;
+}
+#viewWorkerForm #workerLogoutBtn{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:50px !important;
+  padding:12px 18px !important;
+  background:#eef3ef !important;
+  border:1px solid #cfd9d2 !important;
+  color:#213629 !important;
+  font-weight:800 !important;
+  box-shadow:0 4px 12px rgba(18,40,28,.08) !important;
+  opacity:1 !important;
+}
+#viewWorkerForm #workerLogoutBtn:hover,
+#viewWorkerForm #workerLogoutBtn:focus{
+  background:#e6eee8 !important;
+  color:#1b3023 !important;
+}
+#viewWorkerForm > .card > h3,
+#viewWorkerForm .dyn-section h4,
+#viewWorkerForm .entry-card-head strong{
+  opacity:1 !important;
+  text-shadow:0 1px 1px rgba(0,0,0,.18);
+}
+#viewWorkerForm > .card > h3{
+  color:#f0bf4f !important;
+}
+@media(max-width:768px){
+  #viewWorkerForm #workerLogoutBtn{
+    width:auto !important;
+    max-width:220px !important;
+  }
+}
