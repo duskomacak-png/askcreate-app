@@ -1765,3 +1765,271 @@ button[onclick*="Edit"],
   .export-group-head .row{width:100%;}
   .export-group-head .row button{flex:1;}
 }
+
+/* v1.14.8 — Soft business UI refinement */
+:root{
+  --bg-main:#eef3ef;
+  --bg-soft:#f6f8f6;
+  --surface:#ffffff;
+  --surface-soft:#f8fbf9;
+  --line:#d9e5dd;
+  --line-strong:#c9d8cf;
+  --text:#203126;
+  --text-soft:#5d6f63;
+  --green-1:#1d6a43;
+  --green-2:#2b8a57;
+  --green-3:#eaf4ee;
+  --green-4:#f4faf6;
+  --warn-bg:#fff6e8;
+  --warn-line:#ecd39d;
+  --warn-text:#8a5a00;
+  --danger-bg:#fff2f0;
+  --danger-line:#e8c0bb;
+  --danger-text:#b24a40;
+  --shadow-soft:0 8px 24px rgba(28,53,37,.06);
+  --shadow-card:0 10px 28px rgba(20,45,30,.08);
+}
+
+body{
+  background:linear-gradient(180deg,#edf3ef 0%,#f5f7f5 32%,#edf2ee 100%) !important;
+  color:var(--text);
+}
+
+.topbar{
+  background:linear-gradient(135deg,#184f35,#237147) !important;
+  border-bottom:1px solid rgba(255,255,255,.10);
+  box-shadow:0 12px 32px rgba(18,61,40,.20);
+}
+
+.topbar p,
+.brand-kicker{
+  color:#d8efe0 !important;
+}
+
+.card{
+  background:linear-gradient(180deg,#163126,#11271d) !important;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;
+  box-shadow:0 18px 40px rgba(14,30,21,.18);
+}
+
+label{color:#e6efe9}
+input,select,textarea{
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  border-radius:14px;
+}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,.65)}
+input:focus,select:focus,textarea:focus{
+  border-color:#7fc29a;
+  box-shadow:0 0 0 4px rgba(127,194,154,.14);
+}
+
+.primary,.secondary,.ghost,.back,.danger-btn{
+  border-radius:14px !important;
+  transition:all .18s ease;
+  box-shadow:none;
+}
+.primary{
+  background:linear-gradient(135deg,var(--green-1),var(--green-2)) !important;
+  color:#fff !important;
+  border:1px solid #195c3a !important;
+}
+.secondary{
+  background:rgba(255,255,255,.10) !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,.16) !important;
+}
+.ghost,.back{
+  background:rgba(255,255,255,.04) !important;
+  color:#d6e6db !important;
+  border:1px solid rgba(255,255,255,.12) !important;
+}
+.danger-btn{
+  background:var(--danger-bg) !important;
+  color:var(--danger-text) !important;
+  border:1px solid var(--danger-line) !important;
+  box-shadow:none !important;
+}
+.primary:hover,.secondary:hover,.ghost:hover,.back:hover,.danger-btn:hover,.tab:hover{
+  transform:translateY(-1px);
+}
+
+#viewDirectorDashboard{
+  background:linear-gradient(180deg,#eef3ef,#f5f8f5) !important;
+  border:1px solid #e1e9e3;
+  box-shadow:0 10px 28px rgba(18,43,29,.06);
+}
+
+#viewDirectorDashboard .dashboard-head{
+  background:linear-gradient(135deg,#1d6a43,#2f8357) !important;
+  color:#fff;
+  box-shadow:0 14px 34px rgba(24,88,53,.18) !important;
+}
+#viewDirectorDashboard .dashboard-head p{color:#d9efe1 !important;}
+
+#viewDirectorDashboard .card,
+#viewDirectorDashboard .item,
+#viewDirectorDashboard .permission-box,
+#viewDirectorDashboard .report-section,
+#viewDirectorDashboard .export-column-group,
+#viewDirectorDashboard .report-excel-section{
+  background:var(--surface) !important;
+  border:1px solid var(--line) !important;
+  box-shadow:var(--shadow-card) !important;
+}
+
+#viewDirectorDashboard .tabs{
+  background:rgba(255,255,255,.74) !important;
+  border:1px solid #dde7df !important;
+  box-shadow:var(--shadow-soft) !important;
+}
+#viewDirectorDashboard .tab{
+  background:#f1f6f2 !important;
+  color:#2a4634 !important;
+  border:1px solid #d7e4db !important;
+}
+#viewDirectorDashboard .tab.active{
+  background:linear-gradient(135deg,#1d6a43,#2b8a57) !important;
+  color:#fff !important;
+  border-color:#1d6a43 !important;
+}
+
+#viewDirectorDashboard input,
+#viewDirectorDashboard select,
+#viewDirectorDashboard textarea{
+  background:#fbfcfb !important;
+  color:#18251d !important;
+  border:1px solid var(--line-strong) !important;
+}
+#viewDirectorDashboard input::placeholder,
+#viewDirectorDashboard textarea::placeholder{color:#819083 !important;}
+#viewDirectorDashboard input:focus,
+#viewDirectorDashboard select:focus,
+#viewDirectorDashboard textarea:focus{
+  border-color:var(--green-2) !important;
+  box-shadow:0 0 0 4px rgba(43,138,87,.10) !important;
+}
+
+#viewDirectorDashboard label,
+#viewDirectorDashboard .report-kv b,
+#viewDirectorDashboard .item strong,
+#viewDirectorDashboard h2,
+#viewDirectorDashboard h3,
+#viewDirectorDashboard h4,
+#viewDirectorDashboard .export-group-head h5{
+  color:#21392a !important;
+}
+#viewDirectorDashboard .muted,
+#viewDirectorDashboard .hint,
+#viewDirectorDashboard .item small,
+#viewDirectorDashboard .export-group-head p,
+#viewDirectorDashboard .report-kv span,
+#viewDirectorDashboard small{
+  color:var(--text-soft) !important;
+}
+
+#viewDirectorDashboard .pill{
+  background:var(--green-3) !important;
+  color:#246343 !important;
+  border:1px solid #cfe0d5 !important;
+}
+
+#viewDirectorDashboard .secondary,
+#viewDirectorDashboard .ghost,
+#viewDirectorDashboard .back{
+  background:#f8faf8 !important;
+  color:#2b4132 !important;
+  border:1px solid #d8e2db !important;
+}
+#viewDirectorDashboard .primary{
+  background:linear-gradient(135deg,#1d6a43,#2b8a57) !important;
+  color:#fff !important;
+  border:1px solid #1a5d3b !important;
+}
+#viewDirectorDashboard .danger-btn,
+#viewDirectorDashboard .delete-btn,
+#viewDirectorDashboard .archive-btn,
+#viewDirectorDashboard .archive-report-btn{
+  background:var(--danger-bg) !important;
+  color:var(--danger-text) !important;
+  border:1px solid var(--danger-line) !important;
+}
+
+#viewDirectorDashboard .actions .secondary:nth-child(1){
+  border-color:#cfe0d5 !important;
+  background:var(--green-4) !important;
+  color:#256343 !important;
+}
+#viewDirectorDashboard .actions .secondary:nth-child(2){
+  border-color:var(--warn-line) !important;
+  background:var(--warn-bg) !important;
+  color:var(--warn-text) !important;
+}
+#viewDirectorDashboard .actions .secondary:nth-child(3){
+  border-color:#cfd8f1 !important;
+  background:#f3f6ff !important;
+  color:#4250a0 !important;
+}
+
+.report-section{
+  background:var(--surface-soft) !important;
+  border-radius:16px !important;
+}
+.report-mini-table,
+.report-excel-table{
+  border-color:#dfe8e2 !important;
+}
+.report-mini-table th,
+.report-excel-table th{
+  background:#eef5f0 !important;
+  color:#27553c !important;
+}
+.report-mini-table td,
+.report-excel-table td{
+  background:#fff !important;
+  color:#24352a !important;
+}
+.report-excel-table tbody tr:nth-child(even){
+  background:#f9fbf9 !important;
+}
+
+.export-column-group{
+  border-radius:18px !important;
+  background:linear-gradient(180deg,#ffffff,#f8fbf8) !important;
+}
+.export-master-actions .secondary{
+  background:#f8faf8 !important;
+  color:#2d4335 !important;
+  border:1px solid #d7e3da !important;
+}
+.export-column-group .export-column-check{
+  background:#fcfdfc !important;
+  border:1px solid #dde6e0 !important;
+  border-radius:14px;
+}
+.export-column-group .export-column-check:hover{
+  background:#f4f8f5 !important;
+}
+
+.permission-box{
+  background:#fcfdfc !important;
+  border:1px solid #dde6e0 !important;
+}
+.permission-box h4{color:#254230 !important;}
+
+.notice{
+  background:#fff7ea !important;
+  border:1px solid #ecd8ae !important;
+  color:#7c5a12 !important;
+}
+
+@media(max-width:850px){
+  #viewDirectorDashboard{
+    background:#f2f5f2 !important;
+  }
+  #viewDirectorDashboard .tabs{
+    border-radius:18px !important;
+  }
+}
