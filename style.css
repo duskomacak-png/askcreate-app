@@ -2570,3 +2570,116 @@ body{
     padding:14px !important;
   }
 }
+
+/* v1.15.2 — Worker mobile polish */
+@media(max-width:768px){
+  body.worker-mode .shell,
+  body.in-app .shell{
+    padding:8px 10px 18px !important;
+  }
+
+  #viewWorkerForm .dashboard-head{
+    margin-bottom:14px !important;
+    gap:10px !important;
+  }
+
+  #viewWorkerForm .dashboard-head h2{
+    font-size:clamp(30px,8.2vw,44px) !important;
+    letter-spacing:-.04em;
+    margin-bottom:4px !important;
+  }
+
+  #viewWorkerForm .dashboard-head p{
+    font-size:clamp(17px,4.8vw,24px) !important;
+    line-height:1.25 !important;
+  }
+
+  #viewWorkerForm #workerLogoutBtn{
+    min-height:48px !important;
+    width:auto !important;
+    align-self:flex-start;
+    padding:11px 16px !important;
+    border-radius:16px !important;
+  }
+
+  #viewWorkerForm > .card{
+    border-radius:24px !important;
+    padding:18px !important;
+  }
+
+  #viewWorkerForm > .card > h3{
+    font-size:clamp(24px,6.6vw,34px) !important;
+    line-height:1.1 !important;
+    margin-bottom:14px !important;
+  }
+
+  #viewWorkerForm > .card > .hint{
+    font-size:clamp(16px,4.5vw,20px) !important;
+    line-height:1.38 !important;
+    margin-bottom:18px !important;
+  }
+
+  #viewWorkerForm label{
+    font-size:clamp(18px,5vw,23px) !important;
+    line-height:1.2 !important;
+    margin:18px 0 8px !important;
+  }
+
+  #viewWorkerForm input,
+  #viewWorkerForm select,
+  #viewWorkerForm textarea{
+    min-height:58px !important;
+    border-radius:18px !important;
+    font-size:clamp(18px,5vw,24px) !important;
+    padding:14px 18px !important;
+  }
+
+  #viewWorkerForm textarea{
+    min-height:122px !important;
+  }
+
+  #viewWorkerForm .dyn-section{
+    border-radius:24px !important;
+    padding:18px !important;
+    margin:18px 0 !important;
+  }
+
+  #viewWorkerForm .dyn-section h4{
+    font-size:clamp(24px,6vw,31px) !important;
+    line-height:1.12 !important;
+    margin-bottom:12px !important;
+  }
+
+  #viewWorkerForm .dyn-section .hint,
+  #viewWorkerForm .field-hint{
+    font-size:clamp(15px,4.1vw,19px) !important;
+    line-height:1.35 !important;
+  }
+
+  #viewWorkerForm .entry-card{
+    border-radius:22px !important;
+    padding:18px !important;
+    margin-top:14px !important;
+  }
+
+  #viewWorkerForm .entry-card-head{
+    margin-bottom:16px !important;
+  }
+
+  #viewWorkerForm .entry-card-head strong{
+    font-size:clamp(20px,5.4vw,27px) !important;
+  }
+
+  #viewWorkerForm button,
+  #viewWorkerForm .primary,
+  #viewWorkerForm .secondary{
+    min-height:54px !important;
+    border-radius:18px !important;
+    font-size:clamp(16px,4.5vw,20px) !important;
+    padding:13px 18px !important;
+  }
+
+  #viewWorkerForm .row{
+    gap:12px !important;
+  }
+}
