@@ -1474,35 +1474,63 @@ function normalizeAssetType(type) {
   return String(type || "").trim().toLowerCase();
 }
 
+function getAssetName(asset) {
+  return String(
+    asset?.name ||
+    asset?.asset_name ||
+    asset?.assetName ||
+    asset?.title ||
+    asset?.label ||
+    asset?.registration ||
+    asset?.plate ||
+    asset?.reg_no ||
+    ""
+  ).trim();
+}
+
+function getAssetType(asset) {
+  return normalizeAssetType(asset?.asset_type || asset?.type || asset?.assetType || asset?.category || "");
+}
+
+function getAssetRegistration(asset) {
+  return String(asset?.registration || asset?.plate || asset?.reg_no || asset?.oznaka || "").trim();
+}
+
 function isVehicleAsset(asset) {
-  const t = normalizeAssetType(asset?.asset_type || asset?.type);
-  return ["vehicle", "vozilo", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica"].includes(t);
+  const t = getAssetType(asset);
+  return ["vehicle", "vozilo", "vehicles", "vozila", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica", "auto", "kombinovano vozilo"].includes(t);
 }
 
 function formatAssetLabel(asset) {
-  const parts = [asset?.name || "Vozilo"];
-  if (asset?.registration) parts.push(asset.registration);
+  const parts = [getAssetName(asset) || "Vozilo"];
+  const reg = getAssetRegistration(asset);
+  if (reg) parts.push(reg);
   if (asset?.capacity) parts.push(asset.capacity);
   return parts.filter(Boolean).join(" · ");
 }
 
 function isMachineAsset(asset) {
-  const t = normalizeAssetType(asset?.asset_type || asset?.type);
+  const t = getAssetType(asset);
   if (!t) return true;
   if (isVehicleAsset(asset)) return false;
-  return ["machine", "masina", "mašina", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "utovarivač"].includes(t) || !isVehicleAsset(asset);
+  return ["machine", "machines", "machinery", "masina", "masine", "mašina", "mašine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "utovarivač", "finišer", "finiser", "oprema"].includes(t) || !isVehicleAsset(asset);
 }
 
 function formatMachineLabel(asset) {
-  const parts = [asset?.name || "Mašina"];
-  if (asset?.registration) parts.push(asset.registration);
+  const parts = [getAssetName(asset) || "Mašina"];
+  const reg = getAssetRegistration(asset);
+  if (reg) parts.push(reg);
   return parts.filter(Boolean).join(" · ");
 }
 
 function buildMachineDatalistOptionsHtml() {
   return workerAssetOptions
     .filter(isMachineAsset)
-    .map(asset => `<option value="${escapeHtml(asset.name || "")}">${escapeHtml(formatMachineLabel(asset))}</option>`)
+    .map(asset => getAssetName(asset))
+    .filter(Boolean)
+    .map((name, index, arr) => arr.indexOf(name) === index ? name : null)
+    .filter(Boolean)
+    .map(name => `<option value="${escapeHtml(name)}"></option>`)
     .join("");
 }
 
@@ -1527,9 +1555,11 @@ async function loadWorkerAssets() {
 
     workerAssetOptions = (Array.isArray(data) ? data : []).map(a => ({
       ...a,
-      asset_type: a.asset_type || a.type || "",
-      type: a.type || a.asset_type || ""
-    }));
+      name: getAssetName(a),
+      registration: getAssetRegistration(a),
+      asset_type: a.asset_type || a.type || a.assetType || a.category || "",
+      type: a.type || a.asset_type || a.assetType || a.category || ""
+    })).filter(a => a.name || a.registration);
     refreshVehicleSelects();
     refreshMachineDatalists();
     refreshFieldTankerSelectors();
@@ -1788,7 +1818,7 @@ async function loadWorkerSites(selectedName = "") {
 }
 
 function workerSetSections(perms) {
-  // v1.16.4 pravilo:
+  // v1.16.5 pravilo:
   // "Ime gradilišta i datum/godina" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Direkcije.
   // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
   const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
