@@ -894,6 +894,15 @@ function hasDefectData(r) {
     !!d.defect_machine;
 }
 
+function hasDailyReportData(r) {
+  const d = r?.data || {};
+  const hasMachines = Array.isArray(d.machines) && d.machines.some(m => m && Object.values(m).some(Boolean));
+  const hasVehicles = Array.isArray(d.vehicles) && d.vehicles.some(v => v && Object.values(v).some(Boolean));
+  const hasFuel = Array.isArray(d.fuel_entries) && d.fuel_entries.some(f => f && Object.values(f).some(Boolean));
+  const hasMaterial = !!(d.material || d.quantity || d.unit || d.warehouse_type || d.warehouse_item || d.warehouse_qty);
+  return !!(d.description || d.hours || d.site_name || hasMachines || hasVehicles || hasFuel || hasMaterial || d.note);
+}
+
 function formatDateTimeLocal(value) {
   if (!value) return "—";
   try {
@@ -910,7 +919,7 @@ async function loadReports() {
   const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("submitted_at", { ascending:false });
   if (error) return toast(error.message, true);
   directorReportsCache = data || [];
-  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r));
+  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
   renderDefectsList();
   renderExportPanel();
@@ -958,7 +967,7 @@ function renderDefectsList() {
 }
 
 
-function renderReportReadableDetails(d = {}) {
+function renderReportReadableDetails(d = {}, options = {}) {
   const esc = escapeHtml;
   const safe = (x) => (x === undefined || x === null || x === "" ? "" : String(x));
   const val = (x) => safe(x) ? esc(safe(x)) : "<span class='report-empty'>—</span>";
@@ -1124,8 +1133,9 @@ function renderReportReadableDetails(d = {}) {
       </tbody>
     </table>` : `<p class="report-empty">Nema sipanja goriva.</p>`;
 
-  const hasDefect = safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status);
-  const hasMaterial = safe(d.material) || safe(d.quantity) || safe(d.warehouse_item) || safe(d.route) || safe(d.tours);
+  const showDefectSection = options.showDefect === true;
+  const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
+  const hasMaterial = safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
 
   return `
     <div class="report-readable">
@@ -1216,12 +1226,7 @@ function reportHtml(r) {
       <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
       ${d.hours ? `<span class="pill">${escapeHtml(String(d.hours))} h</span>` : ""}
       ${d.fuel_liters ? `<span class="pill">${escapeHtml(String(d.fuel_liters))} L</span>` : ""}
-      ${d.defect_exists === "da" ? `<span class="pill">Kvar: ${escapeHtml(d.defect_urgency || "prijavljen")}</span>` : ""}
-      ${d.defect_stops_work ? `<span class="pill">Zaustavlja rad: ${escapeHtml(d.defect_stops_work)}</span>` : ""}
-      ${d.defect_status ? `<span class="pill">Status kvara: ${escapeHtml(d.defect_status)}</span>` : ""}
-      ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
-
-      <p>${escapeHtml(d.defect || d.description || d.note || "")}</p>
+      <p>${escapeHtml(d.description || d.note || "")}</p>
       ${r.returned_reason ? `<p class="muted">Razlog vraćanja: ${escapeHtml(r.returned_reason)}</p>` : ""}
       ${renderReportReadableDetails(d)}
 
@@ -1891,15 +1896,20 @@ window.loadReturnedReportIntoForm = async (reportId) => {
 };
 
 function collectWorkerData() {
-  const machines = getMachineEntries();
-  const vehicles = getVehicleEntries();
-  const fuelEntries = getFuelEntries();
+  const perms = currentWorker?.permissions || {};
+  const machines = perms.machines ? getMachineEntries() : [];
+  const vehicles = perms.vehicles ? getVehicleEntries() : [];
+  const fuelEntries = perms.fuel ? getFuelEntries() : [];
   const selectedSite = getSelectedWorkerSite();
+  const canDaily = !!perms.daily_work;
+  const canMaterials = !!perms.materials;
+  const canWarehouse = !!perms.warehouse;
+  const canDefects = !!perms.defects;
   return {
     site_id: selectedSite.site_id,
     site_name: selectedSite.site_name,
-    description: $("#wrDescription").value.trim(),
-    hours: $("#wrHours").value,
+    description: canDaily ? $("#wrDescription").value.trim() : "",
+    hours: canDaily ? $("#wrHours").value : "",
     machines,
     vehicles,
     fuel_entries: fuelEntries,
@@ -1920,21 +1930,21 @@ function collectWorkerData() {
     route: vehicles.map(v => v.route).filter(Boolean).join(" | "),
     tours: vehicles.map(v => v.tours).filter(Boolean).join(" | "),
     cubic_m3: vehicles.map(v => v.cubic_m3).filter(Boolean).join(" | "),
-    material: $("#wrMaterial").value.trim(),
-    quantity: $("#wrQuantity").value,
-    unit: $("#wrUnit").value.trim(),
-    warehouse_type: $("#wrWarehouseType").value,
-    warehouse_item: $("#wrWarehouseItem").value.trim(),
-    warehouse_qty: $("#wrWarehouseQty").value.trim(),
-    defect_asset_name: $("#wrDefectAssetName")?.value.trim() || "",
-    defect_machine: $("#wrDefectAssetName")?.value.trim() || "",
-    defect_site_name: $("#wrDefectSiteName")?.value.trim() || selectedSite.site_name || "",
-    defect_exists: $("#wrDefectExists")?.value || "ne",
-    defect: $("#wrDefect").value.trim(),
-    defect_stops_work: $("#wrDefectStopsWork")?.value || "",
-    defect_can_continue: $("#wrDefectCanContinue")?.value || "",
-    defect_urgency: $("#wrDefectUrgency").value,
-    called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || ""
+    material: canMaterials ? $("#wrMaterial").value.trim() : "",
+    quantity: canMaterials ? $("#wrQuantity").value : "",
+    unit: canMaterials ? $("#wrUnit").value.trim() : "",
+    warehouse_type: canWarehouse ? $("#wrWarehouseType").value : "",
+    warehouse_item: canWarehouse ? $("#wrWarehouseItem").value.trim() : "",
+    warehouse_qty: canWarehouse ? $("#wrWarehouseQty").value.trim() : "",
+    defect_asset_name: canDefects ? ($("#wrDefectAssetName")?.value.trim() || "") : "",
+    defect_machine: canDefects ? ($("#wrDefectAssetName")?.value.trim() || "") : "",
+    defect_site_name: canDefects ? ($("#wrDefectSiteName")?.value.trim() || selectedSite.site_name || "") : "",
+    defect_exists: canDefects ? ($("#wrDefectExists")?.value || "ne") : "ne",
+    defect: canDefects ? $("#wrDefect").value.trim() : "",
+    defect_stops_work: canDefects ? ($("#wrDefectStopsWork")?.value || "") : "",
+    defect_can_continue: canDefects ? ($("#wrDefectCanContinue")?.value || "") : "",
+    defect_urgency: canDefects ? $("#wrDefectUrgency").value : "",
+    called_mechanic_by_phone: canDefects ? ($("#wrDefectCalledMechanic")?.value || "") : ""
   };
 }
 
