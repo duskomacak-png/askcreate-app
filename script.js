@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.12.7";
+const APP_VERSION = "1.14.4";
 
 
 let sb = null;
@@ -17,6 +17,7 @@ let editingAssetId = null;
 let editingMaterialId = null;
 let currentWorker = null;
 let workerAssetOptions = [];
+let workerSiteOptions = [];
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -1504,9 +1505,11 @@ async function loadWorkerAssets() {
       type: a.type || a.asset_type || ""
     }));
     refreshVehicleSelects();
+    refreshFieldTankerSelectors();
   } catch (e) {
     workerAssetOptions = [];
     refreshVehicleSelects();
+    refreshFieldTankerSelectors();
     toast("Vozila za radnika nisu učitana. Pokreni SQL za v1.12.2/v1.12.4: worker_list_assets. Detalj: " + (e.message || e), true);
   }
 }
@@ -1725,9 +1728,11 @@ async function loadWorkerSites(selectedName = "") {
     if (error) throw error;
 
     const sites = Array.isArray(data) ? data : [];
+    workerSiteOptions = sites;
     if (!sites.length) {
       select.innerHTML = `<option value="">Nema aktivnih gradilišta</option>`;
       if (hint) hint.textContent = "Direkcija još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
+      refreshFieldTankerSelectors();
       return;
     }
 
@@ -1742,11 +1747,14 @@ async function loadWorkerSites(selectedName = "") {
       const match = Array.from(select.options).find(o => String(o.value || "").trim().toLowerCase() === wanted);
       if (match) select.value = match.value;
     }
+    refreshFieldTankerSelectors();
 
     if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Direkcija.";
   } catch (e) {
     select.innerHTML = `<option value="">Gradilišta nisu učitana</option>`;
     if (hint) hint.textContent = "Pokreni Supabase SQL za v1.12.1: worker_list_sites. Detalj: " + (e.message || e);
+    workerSiteOptions = [];
+    refreshFieldTankerSelectors();
     toast("Gradilišta za radnika nisu učitana: " + (e.message || e), true);
   }
 }
@@ -1958,10 +1966,53 @@ function getLowloaderEntries() {
 }
 
 
+
+function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
+  const selected = String(selectedValue || "").trim().toLowerCase();
+  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Direkcije</option>`;
+  return `<option value="">Odaberi gradilište</option>` + workerSiteOptions.map(site => {
+    const name = site.name || "Gradilište";
+    const loc = site.location ? ` · ${site.location}` : "";
+    const isSelected = selected && String(name).trim().toLowerCase() === selected ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-site-id="${escapeHtml(site.id || "")}" ${isSelected}>${escapeHtml(name + loc)}</option>`;
+  }).join("");
+}
+
+function buildFieldTankerAssetOptionsHtml(selectedValue = "") {
+  const selected = String(selectedValue || "").trim().toLowerCase();
+  if (!workerAssetOptions.length) return `<option value="">Nema mašina/vozila iz Direkcije</option>`;
+  return `<option value="">Odaberi mašinu / vozilo</option>` + workerAssetOptions.map(asset => {
+    const name = asset.name || "Mašina / vozilo";
+    const label = formatAssetLabel(asset);
+    const type = asset.asset_type || asset.type || "";
+    const isSelected = selected && (String(name).trim().toLowerCase() === selected || String(asset.id || "").trim().toLowerCase() === selected) ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(asset.registration || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+function refreshFieldTankerSelectors() {
+  $$("#fieldTankerEntries .field-tanker-entry").forEach(card => {
+    const siteSelect = card.querySelector(".ft-site-select");
+    if (siteSelect) {
+      const old = siteSelect.value;
+      siteSelect.innerHTML = buildFieldTankerSiteOptionsHtml(old);
+      if (old && Array.from(siteSelect.options).some(o => o.value === old)) siteSelect.value = old;
+    }
+    const assetSelect = card.querySelector(".ft-asset-select");
+    if (assetSelect) {
+      const old = assetSelect.value;
+      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(old);
+      if (old && Array.from(assetSelect.options).some(o => o.value === old)) assetSelect.value = old;
+    }
+  });
+}
+
 function addFieldTankerEntry(values = {}) {
   const list = $("#fieldTankerEntries");
   if (!list) return;
   const idx = list.querySelectorAll(".field-tanker-entry").length + 1;
+  const selectedSite = values.site_name || values.site || "";
+  const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
   const div = document.createElement("div");
   div.className = "entry-card field-tanker-entry";
   div.innerHTML = `
@@ -1970,11 +2021,19 @@ function addFieldTankerEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Ime gradilišta</label>
-    <input class="ft-site" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_name || values.site || "")}" />
+    <label>Gradilište iz Direkcije</label>
+    <select class="ft-site-select">${buildFieldTankerSiteOptionsHtml(selectedSite)}</select>
+    <p class="field-hint">Ako gradilište nije u listi, upiši ga ručno ispod.</p>
 
-    <label>Mašina ili vozilo</label>
-    <input class="ft-asset" placeholder="npr. CAT 330, valjak, kamion..." value="${escapeHtml(values.asset_name || values.machine || values.vehicle || "")}" />
+    <label>Upiši ručno gradilište ako nije u listi</label>
+    <input class="ft-site-custom" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_custom || values.manual_site || "")}" />
+
+    <label>Mašina ili vozilo iz Direkcije</label>
+    <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(selectedAsset)}</select>
+    <p class="field-hint">Lista se puni iz Direkcija → Mašine / vozila.</p>
+
+    <label>Upiši ručno mašinu/vozilo ako nije u listi</label>
+    <input class="ft-asset-custom" placeholder="npr. CAT 330, valjak, kamion..." value="${escapeHtml(values.asset_custom || values.manual_asset || "")}" />
 
     <label>Trenutni MTČ ili kilometraža</label>
     <input class="ft-reading numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250 ili 85320" value="${escapeHtml(values.reading || values.mtc_km || "")}" />
@@ -1991,6 +2050,7 @@ function addFieldTankerEntry(values = {}) {
   });
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
+  refreshFieldTankerSelectors();
 }
 
 function renumberFieldTankerEntries() {
@@ -2002,15 +2062,25 @@ function renumberFieldTankerEntries() {
 
 function getFieldTankerEntries() {
   return $$("#fieldTankerEntries .field-tanker-entry").map((el, i) => {
-    const site = el.querySelector(".ft-site")?.value.trim() || "";
-    const asset = el.querySelector(".ft-asset")?.value.trim() || "";
+    const siteSelect = el.querySelector(".ft-site-select");
+    const siteOption = siteSelect?.options ? siteSelect.options[siteSelect.selectedIndex] : null;
+    const manualSite = el.querySelector(".ft-site-custom")?.value.trim() || "";
+    const site = manualSite || (siteSelect?.value || "").trim();
+    const assetSelect = el.querySelector(".ft-asset-select");
+    const assetOption = assetSelect?.options ? assetSelect.options[assetSelect.selectedIndex] : null;
+    const manualAsset = el.querySelector(".ft-asset-custom")?.value.trim() || "";
+    const asset = manualAsset || (assetSelect?.value || "").trim();
     const reading = el.querySelector(".ft-reading")?.value.trim() || "";
     const liters = el.querySelector(".ft-liters")?.value.trim() || "";
     const receiver = el.querySelector(".ft-receiver")?.value.trim() || "";
     return {
       no: i + 1,
+      site_id: manualSite ? null : (siteOption?.dataset?.siteId || null),
       site_name: site,
+      site_custom: manualSite,
+      asset_id: manualAsset ? null : (assetOption?.dataset?.assetId || null),
       asset_name: asset,
+      asset_custom: manualAsset,
       machine: asset,
       reading,
       mtc_km: reading,
