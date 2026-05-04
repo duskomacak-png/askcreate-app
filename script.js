@@ -244,7 +244,7 @@ function clearPersonForm() {
     const el = $("#" + id);
     if (el) el.value = "";
   });
-  $$(".perm").forEach(ch => { ch.checked = ch.value === "daily_work"; });
+  $$(".perm").forEach(ch => { ch.checked = false; });
   editingPersonId = null;
   setPersonFormMode("add");
   refreshPersonMaterialPermissions();
@@ -1754,6 +1754,7 @@ async function loadWorkerSites(selectedName = "") {
 function workerSetSections(perms) {
   const map = {
     daily_work: "#secDailyWork",
+    daily_work_site: "#secWorkerSite",
     workers: "#secWorkers",
     machines: "#secMachines",
     vehicles: "#secVehicles",
@@ -1764,7 +1765,11 @@ function workerSetSections(perms) {
     warehouse: "#secWarehouse",
     defects: "#secDefects"
   };
-  Object.entries(map).forEach(([key, sel]) => $(sel).classList.toggle("active", !!perms[key]));
+  Object.entries(map).forEach(([key, sel]) => {
+    const allowed = key === "daily_work_site" ? !!perms.daily_work : !!perms[key];
+    const el = $(sel);
+    if (el) el.classList.toggle("active", allowed);
+  });
 }
 
 
@@ -3005,15 +3010,18 @@ async function openWorkerForm() {
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
   workerSetSections(currentWorker.permissions || {});
-  setInternalHeader("Dnevni izveštaj", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  setInternalHeader("Terenski unos", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   show("WorkerForm");
   await Promise.all([loadWorkerSites(), loadWorkerAssets()]);
   loadDraft();
   loadWorkerReturnedReports();
-  if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
-  if ($("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
-  if ($("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
-  if ((currentWorker.permissions || {}).field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
+  const perms = currentWorker.permissions || {};
+  if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
+  if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
+  if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
+  if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
+  if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
+  if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
 }
 
 async function boot() {

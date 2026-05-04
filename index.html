@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1142" />
+  <link rel="stylesheet" href="style.css?v=1143" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -186,7 +186,7 @@
             <input id="personCode" placeholder="npr. zor1234" />
             <div class="permission-box">
               <h4>Rubrike koje vidi</h4>
-              <label><input type="checkbox" class="perm" value="daily_work" checked /> Dnevni rad</label>
+              <label><input type="checkbox" class="perm" value="daily_work" /> Dnevni rad</label>
               <label><input type="checkbox" class="perm" value="workers" /> Radnici</label>
               <label><input type="checkbox" class="perm" value="machines" /> Mašine</label>
               <label><input type="checkbox" class="perm" value="vehicles" /> Vozila</label>
@@ -379,15 +379,18 @@
         <div id="workerReturnedList" class="returned-list"></div>
       </div>
 
-        <h3>Dnevni izveštaj</h3>
-        <label>Datum</label>
+        <h3>Terenski unos</h3>
+        <p class="hint">Osnovno se prikazuje samo datum. Ostale rubrike vidiš samo ako ih Direkcija uključi u tvom profilu.</p>
+        <label>Datum / godina</label>
         <input id="wrDate" type="date" />
 
-        <label>Gradilište</label>
-        <select id="wrSiteName">
-          <option value="">Učitavam gradilišta...</option>
-        </select>
-        <p id="workerSiteHint" class="hint">Gradilišta dodaje Direkcija. Radnik bira sa liste aktivnih gradilišta.</p>
+        <div id="secWorkerSite" class="dyn-section">
+          <label>Gradilište</label>
+          <select id="wrSiteName">
+            <option value="">Učitavam gradilišta...</option>
+          </select>
+          <p id="workerSiteHint" class="hint">Gradilišta dodaje Direkcija. Radnik bira sa liste aktivnih gradilišta.</p>
+        </div>
 
         <div id="secDailyWork" class="dyn-section">
           <h4>Dnevni rad</h4>
@@ -538,6 +541,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1142"></script>
+  <script src="script.js?v=1143"></script>
 </body>
 </html>
