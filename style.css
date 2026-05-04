@@ -1748,3 +1748,20 @@ button[onclick*="Edit"],
     flex:1 1 180px !important;
   }
 }
+
+
+/* v1.14.7 — grupisan i pojednostavljen Excel export */
+.export-groups-list{display:flex;flex-direction:column;gap:14px;margin-top:14px;}
+.export-column-group{border:1px solid rgba(22,128,60,.18);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(244,247,245,.9));padding:14px;box-shadow:0 6px 18px rgba(15,23,42,.04);}
+.export-group-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.export-group-head h5{margin:0 0 4px;font-size:16px;color:#0b3d24;font-weight:900;}
+.export-group-head p{margin:0 0 4px;color:#647067;font-size:13px;line-height:1.35;}
+.export-group-head small{display:inline-block;color:#16803c;font-weight:800;font-size:12px;}
+.export-master-actions{margin-top:12px;}
+.export-column-group .export-columns-grid{margin-top:0;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.export-column-group .export-column-check{background:#fff;border-color:rgba(15,23,42,.08);}
+@media(max-width:760px){
+  .export-group-head{flex-direction:column;}
+  .export-group-head .row{width:100%;}
+  .export-group-head .row button{flex:1;}
+}

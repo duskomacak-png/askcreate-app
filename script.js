@@ -2498,6 +2498,75 @@ const EXPORT_COLUMNS = [
   { key:"note", label:"Napomena" }
 ];
 
+const SIMPLE_EXPORT_KEYS = [
+  "date", "worker", "site", "description", "hours",
+  "machine", "vehicle", "tours", "cubic", "fuel_liters",
+  "defect", "status"
+];
+
+const EXPORT_GROUPS = [
+  {
+    id: "basic",
+    title: "Osnovni podaci",
+    hint: "Ko je poslao izveštaj, gde je radio i šta je urađeno.",
+    keys: ["date", "worker", "function", "site", "hours", "description"]
+  },
+  {
+    id: "crew",
+    title: "Radnici na gradilištu",
+    hint: "Radnici koje je šef uneo i koliko su sati radili.",
+    keys: ["crew_worker", "crew_hours"]
+  },
+  {
+    id: "machines",
+    title: "Mašine",
+    hint: "Bager, valjak, buldozer i druga mehanizacija.",
+    keys: ["machine", "machine_start", "machine_end", "machine_hours", "machine_work"]
+  },
+  {
+    id: "vehicles",
+    title: "Vozila / kamioni",
+    hint: "Kamioni, kilometraža, relacija, ture i kubici.",
+    keys: ["vehicle", "registration", "capacity", "km_start", "km_end", "route", "tours", "cubic", "manual_cubic"]
+  },
+  {
+    id: "fuel",
+    title: "Sipanje goriva",
+    hint: "Gorivo koje je radnik sipao u svoju mašinu ili vozilo.",
+    keys: ["fuel_for", "fuel_liters", "fuel_reading", "fuel_by", "fuel_receiver"]
+  },
+  {
+    id: "lowloader",
+    title: "Prevoz mašine labudicom",
+    hint: "Selidba mašine sa jedne lokacije na drugu.",
+    keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km", "lowloader_machine"]
+  },
+  {
+    id: "fieldTanker",
+    title: "Tankanje goriva cisternom",
+    hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
+    keys: ["field_tanker_site", "field_tanker_asset", "field_tanker_reading", "field_tanker_liters", "field_tanker_receiver"]
+  },
+  {
+    id: "material",
+    title: "Materijal",
+    hint: "Materijal, količina i jedinica mere.",
+    keys: ["material", "quantity", "unit"]
+  },
+  {
+    id: "defects",
+    title: "Kvarovi",
+    hint: "Kratak prikaz kvara ako se izvozi zajedno sa dnevnim izveštajem.",
+    keys: ["defect"]
+  },
+  {
+    id: "status",
+    title: "Status i napomene",
+    hint: "Status izveštaja i dodatna napomena.",
+    keys: ["status", "note"]
+  }
+];
+
 function getExportSelectedIds() {
   try { return JSON.parse(localStorage.getItem(EXPORT_SELECTION_KEY) || "[]"); }
   catch { return []; }
@@ -2569,6 +2638,34 @@ window.clearExportColumns = () => {
   $$("#exportColumnsBox input[type='checkbox']").forEach(cb => cb.checked = false);
   renderExportPanel();
   toast("Sve rubrike za Excel su poništene.");
+};
+
+window.applySimpleExportColumns = () => {
+  setExportColumnKeys(SIMPLE_EXPORT_KEYS);
+  renderExportPanel();
+  toast("Uključen je jednostavan Excel prikaz.");
+};
+
+window.applyDetailedExportColumns = () => {
+  setExportColumnKeys(EXPORT_COLUMNS.map(c => c.key));
+  renderExportPanel();
+  toast("Uključen je detaljan Excel prikaz.");
+};
+
+window.selectExportGroup = (groupId) => {
+  const group = EXPORT_GROUPS.find(g => g.id === groupId);
+  if (!group) return;
+  const current = getExportColumnKeys();
+  setExportColumnKeys(Array.from(new Set([...current, ...group.keys])));
+  renderExportPanel();
+};
+
+window.clearExportGroup = (groupId) => {
+  const group = EXPORT_GROUPS.find(g => g.id === groupId);
+  if (!group) return;
+  const remove = new Set(group.keys);
+  setExportColumnKeys(getExportColumnKeys().filter(k => !remove.has(k)));
+  renderExportPanel();
 };
 
 function getSelectedReportsForExport() {
@@ -2680,12 +2777,33 @@ function renderExportPanel() {
     </div>`;
   }).join("") : `<p class="muted">Nema izabranih izveštaja. Idi u tab Izveštaji i štikliraj šta želiš za Excel.</p>`;
 
-  colsBox.innerHTML = EXPORT_COLUMNS.map(c => `
-    <label class="export-column-check">
-      <input type="checkbox" ${keys.includes(c.key) ? "checked" : ""} onchange="toggleExportColumn('${c.key}', this.checked)" />
-      ${escapeHtml(c.label)}
-    </label>
-  `).join("");
+  const columnByKey = Object.fromEntries(EXPORT_COLUMNS.map(c => [c.key, c]));
+  colsBox.innerHTML = EXPORT_GROUPS.map(group => {
+    const selectedInGroup = group.keys.filter(k => keys.includes(k)).length;
+    const totalInGroup = group.keys.length;
+    const checks = group.keys.map(key => {
+      const c = columnByKey[key];
+      if (!c) return "";
+      return `<label class="export-column-check">
+        <input type="checkbox" ${keys.includes(c.key) ? "checked" : ""} onchange="toggleExportColumn('${c.key}', this.checked)" />
+        ${escapeHtml(c.label)}
+      </label>`;
+    }).join("");
+    return `<div class="export-column-group">
+      <div class="export-group-head">
+        <div>
+          <h5>${escapeHtml(group.title)}</h5>
+          <p>${escapeHtml(group.hint)}</p>
+          <small>${selectedInGroup}/${totalInGroup} rubrika označeno</small>
+        </div>
+        <div class="row compact">
+          <button class="secondary small-btn" type="button" onclick="selectExportGroup('${group.id}')">Označi grupu</button>
+          <button class="secondary small-btn" type="button" onclick="clearExportGroup('${group.id}')">Poništi grupu</button>
+        </div>
+      </div>
+      <div class="export-columns-grid">${checks}</div>
+    </div>`;
+  }).join("");
 
   $$(".report-export-check").forEach(cb => {
     const m = cb.getAttribute("onchange") || "";
@@ -3031,6 +3149,8 @@ function bindEvents() {
   if ($("#exportCsvBtn")) $("#exportCsvBtn").addEventListener("click", exportCsv);
   if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);
+  if ($("#simpleExportBtn")) $("#simpleExportBtn").addEventListener("click", applySimpleExportColumns);
+  if ($("#detailedExportBtn")) $("#detailedExportBtn").addEventListener("click", applyDetailedExportColumns);
   if ($("#selectAllColumnsBtn")) $("#selectAllColumnsBtn").addEventListener("click", selectAllExportColumns);
   if ($("#clearColumnsBtn")) $("#clearColumnsBtn").addEventListener("click", clearExportColumns);
 

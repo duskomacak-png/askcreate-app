@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1146" />
+  <link rel="stylesheet" href="style.css?v=1147" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -322,13 +322,20 @@
 
           <div class="export-box">
             <div class="row space-between">
-              <h4>Podaci koje želiš u Excelu</h4>
+              <div>
+                <h4>Podaci koje želiš u Excelu</h4>
+                <p class="muted">Izaberi jednostavan pregled za direktora ili detaljan pregled za operativu.</p>
+              </div>
               <div class="row compact">
-                <button id="selectAllColumnsBtn" class="secondary" type="button">Označi sve rubrike</button>
-                <button id="clearColumnsBtn" class="secondary" type="button">Poništi rubrike</button>
+                <button id="simpleExportBtn" class="primary" type="button">Jednostavan Excel</button>
+                <button id="detailedExportBtn" class="secondary" type="button">Detaljan Excel</button>
               </div>
             </div>
-            <div id="exportColumnsBox" class="export-columns-grid"></div>
+            <div class="row compact export-master-actions">
+              <button id="selectAllColumnsBtn" class="secondary" type="button">Označi sve rubrike</button>
+              <button id="clearColumnsBtn" class="secondary" type="button">Poništi sve rubrike</button>
+            </div>
+            <div id="exportColumnsBox" class="export-groups-list"></div>
           </div>
 
           <div class="export-box export-download-box">
@@ -541,6 +548,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1146"></script>
+  <script src="script.js?v=1147"></script>
 </body>
 </html>
