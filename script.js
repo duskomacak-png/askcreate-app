@@ -1703,6 +1703,7 @@ function addMachineEntry(values = {}) {
 
   div.querySelector(".m-name").addEventListener("input", refreshFuelMachineOptions);
   list.appendChild(div);
+  preventNumberInputScrollChanges(div);
   refreshFuelMachineOptions();
 }
 
@@ -1738,11 +1739,11 @@ function addFuelEntry(values = {}) {
     <div class="mini-grid">
       <div>
         <label>Litara</label>
-        <input class="f-liters" type="number" step="0.1" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
+        <input class="f-liters" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
       </div>
       <div>
         <label>MTČ / KM pri sipanju</label>
-        <input class="f-reading" type="number" step="0.1" placeholder="npr. 1255.0" value="${escapeHtml(values.reading || "")}" />
+        <input class="f-reading" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 1255.0" value="${escapeHtml(values.reading || "")}" />
       </div>
     </div>
 
@@ -1754,6 +1755,7 @@ function addFuelEntry(values = {}) {
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
   list.appendChild(div);
+  preventNumberInputScrollChanges(div);
   refreshFuelMachineOptions();
 
   if (values.machine) div.querySelector(".f-machine").value = values.machine;
@@ -1925,7 +1927,7 @@ function collectWorkerData() {
     mtc_start: machines.map(m => m.start).filter(Boolean).join(" | "),
     mtc_end: machines.map(m => m.end).filter(Boolean).join(" | "),
     machine_hours: machines.map(m => m.hours).filter(Boolean).join(" | "),
-    fuel_liters: fuelEntries.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0) || "",
+    fuel_liters: fuelEntries.reduce((sum, f) => sum + parseDecimalInput(f.liters), 0) || "",
     fuel_readings: fuelEntries.map(f => f.reading).filter(Boolean).join(" | "),
     fuel_by: fuelEntries.map(f => f.by).filter(Boolean).join(" | "),
     fuel_receiver: currentWorker?.full_name || "",
@@ -2006,6 +2008,26 @@ function escapeHtml(str) {
 
 function csvEscape(v) {
   return `"${String(v ?? "").replaceAll('"','""')}"`;
+}
+
+function parseDecimalInput(value) {
+  const cleaned = String(value ?? "").trim().replace(/\s/g, "").replace(",", ".");
+  const n = Number.parseFloat(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function preventNumberInputScrollChanges(root = document) {
+  root.querySelectorAll('input[type="number"]').forEach(input => {
+    if (input.dataset.noWheelBound === "1") return;
+    input.dataset.noWheelBound = "1";
+    input.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      input.blur();
+    }, { passive: false });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") event.preventDefault();
+    });
+  });
 }
 
 function excelCellText(v) {
@@ -2454,6 +2476,7 @@ function installNavigationFallback() {
 }
 
 function bindEvents() {
+  preventNumberInputScrollChanges(document);
 
   ["workerCompanyCode","workerAccessCode"].forEach(id => {
     const el = $("#" + id);
