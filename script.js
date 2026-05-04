@@ -2069,8 +2069,11 @@ function setExportSelectedIds(ids) {
 
 function getExportColumnKeys() {
   try {
-    const saved = JSON.parse(localStorage.getItem(EXPORT_COLUMN_KEY) || "null");
-    if (Array.isArray(saved) && saved.length) return saved;
+    const raw = localStorage.getItem(EXPORT_COLUMN_KEY);
+    if (raw !== null) {
+      const saved = JSON.parse(raw);
+      if (Array.isArray(saved)) return saved;
+    }
   } catch {}
   return EXPORT_COLUMNS.map(c => c.key);
 }
@@ -2116,11 +2119,14 @@ window.toggleExportColumn = (key, checked) => {
 window.selectAllExportColumns = () => {
   setExportColumnKeys(EXPORT_COLUMNS.map(c => c.key));
   renderExportPanel();
+  toast("Sve rubrike za Excel su označene.");
 };
 
 window.clearExportColumns = () => {
   setExportColumnKeys([]);
+  $$("#exportColumnsBox input[type='checkbox']").forEach(cb => cb.checked = false);
   renderExportPanel();
+  toast("Sve rubrike za Excel su poništene.");
 };
 
 function getSelectedReportsForExport() {
