@@ -1680,3 +1680,71 @@ button[onclick*="Edit"],
     width:100%;
   }
 }
+
+/* v1.14.5 — Fix global search result actions layout */
+.director-search-results .management-item{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(260px,auto) !important;
+  align-items:center !important;
+  gap:14px !important;
+  width:100% !important;
+  overflow:hidden !important;
+}
+
+.director-search-results .item-main{
+  min-width:0 !important;
+  overflow:hidden !important;
+}
+
+.director-search-results .item-main strong,
+.director-search-results .item-main small{
+  overflow-wrap:anywhere !important;
+}
+
+.director-search-results .management-actions{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  justify-content:flex-end !important;
+  align-items:center !important;
+  gap:8px !important;
+  min-width:0 !important;
+  max-width:100% !important;
+}
+
+.director-search-results .management-actions button,
+.director-search-results .management-actions .edit-btn,
+.director-search-results .management-actions .delete-btn,
+.director-search-results .management-actions .danger-btn,
+.director-search-results .management-actions .archive-btn,
+.director-search-results .management-actions .archive-report-btn{
+  width:auto !important;
+  min-width:112px !important;
+  max-width:240px !important;
+  margin:0 !important;
+  white-space:normal !important;
+  text-align:center !important;
+  padding:9px 12px !important;
+}
+
+.director-search-results .management-actions .danger-btn{
+  min-width:190px !important;
+}
+
+@media(max-width:900px){
+  .director-search-results .management-item{
+    grid-template-columns:1fr !important;
+    align-items:stretch !important;
+  }
+  .director-search-results .management-actions{
+    justify-content:flex-start !important;
+  }
+  .director-search-results .management-actions button,
+  .director-search-results .management-actions .edit-btn,
+  .director-search-results .management-actions .delete-btn,
+  .director-search-results .management-actions .danger-btn,
+  .director-search-results .management-actions .archive-btn,
+  .director-search-results .management-actions .archive-report-btn{
+    width:auto !important;
+    flex:1 1 180px !important;
+  }
+}
