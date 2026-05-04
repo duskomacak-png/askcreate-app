@@ -1486,6 +1486,32 @@ function formatAssetLabel(asset) {
   return parts.filter(Boolean).join(" · ");
 }
 
+function isMachineAsset(asset) {
+  const t = normalizeAssetType(asset?.asset_type || asset?.type);
+  if (!t) return true;
+  if (isVehicleAsset(asset)) return false;
+  return ["machine", "masina", "mašina", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "utovarivač"].includes(t) || !isVehicleAsset(asset);
+}
+
+function formatMachineLabel(asset) {
+  const parts = [asset?.name || "Mašina"];
+  if (asset?.registration) parts.push(asset.registration);
+  return parts.filter(Boolean).join(" · ");
+}
+
+function buildMachineDatalistOptionsHtml() {
+  return workerAssetOptions
+    .filter(isMachineAsset)
+    .map(asset => `<option value="${escapeHtml(asset.name || "")}">${escapeHtml(formatMachineLabel(asset))}</option>`)
+    .join("");
+}
+
+function refreshMachineDatalists() {
+  $$(".m-machine-list").forEach(list => {
+    list.innerHTML = buildMachineDatalistOptionsHtml();
+  });
+}
+
 async function loadWorkerAssets() {
   const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
   workerAssetOptions = [];
@@ -1505,12 +1531,14 @@ async function loadWorkerAssets() {
       type: a.type || a.asset_type || ""
     }));
     refreshVehicleSelects();
+    refreshMachineDatalists();
     refreshFieldTankerSelectors();
   } catch (e) {
     workerAssetOptions = [];
     refreshVehicleSelects();
+    refreshMachineDatalists();
     refreshFieldTankerSelectors();
-    toast("Vozila za radnika nisu učitana. Pokreni SQL za v1.12.2/v1.12.4: worker_list_assets. Detalj: " + (e.message || e), true);
+    toast("Mašine/vozila za radnika nisu učitana. Pokreni SQL za v1.12.2/v1.12.4: worker_list_assets. Detalj: " + (e.message || e), true);
   }
 }
 
@@ -1760,7 +1788,7 @@ async function loadWorkerSites(selectedName = "") {
 }
 
 function workerSetSections(perms) {
-  // v1.16.3 pravilo:
+  // v1.16.4 pravilo:
   // "Ime gradilišta i datum/godina" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Direkcije.
   // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
   const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
@@ -1851,8 +1879,10 @@ function addMachineEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Mašina / vozilo</label>
-    <input class="m-name" placeholder="npr. CAT 330, D6R, MAN kiper" value="${escapeHtml(values.name || "")}" />
+    <label>Mašina</label>
+    <input class="m-name" list="machineOptions${idx}" placeholder="počni da kucaš: CAT 330, D6R..." value="${escapeHtml(values.name || "")}" />
+    <datalist id="machineOptions${idx}" class="m-machine-list">${buildMachineDatalistOptionsHtml()}</datalist>
+    <p class="field-hint">Prvo se nude mašine koje je Direkcija upisala u Mašine / vozila. Ako mašina nije u listi, možeš je upisati ručno.</p>
 
     <div class="mini-grid">
       <div>
@@ -1895,6 +1925,7 @@ function addMachineEntry(values = {}) {
   div.querySelector(".m-name").addEventListener("input", refreshFuelMachineOptions);
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
+  refreshMachineDatalists();
   refreshFuelMachineOptions();
 }
 
