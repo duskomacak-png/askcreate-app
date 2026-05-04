@@ -2294,3 +2294,171 @@ input:focus,select:focus,textarea:focus{
     min-height:42px;
   }
 }
+
+/* v1.15.0 — Lighter business UI correction after visual review */
+body{
+  background:linear-gradient(180deg,#edf3ee 0%,#f3f6f2 44%,#e8efe9 100%) !important;
+}
+
+.topbar{
+  background:linear-gradient(135deg,#56a663,#6fbc78) !important;
+  border-bottom:1px solid rgba(33,79,44,.16) !important;
+  box-shadow:0 10px 24px rgba(43,92,54,.16) !important;
+}
+.topbar h1{
+  color:#f7fffa !important;
+  text-shadow:0 1px 0 rgba(0,0,0,.06);
+}
+.topbar p,
+.brand-kicker{
+  color:#edf8ef !important;
+}
+
+#viewHome .hero.card{
+  background:linear-gradient(180deg,#eef6ef,#e5f0e7) !important;
+  border:1px solid #d6e3d7 !important;
+  box-shadow:0 14px 30px rgba(39,77,49,.08) !important;
+}
+#viewHome h2,
+#viewHome p{
+  color:#284232 !important;
+}
+#viewHome .big-btn{
+  background:linear-gradient(180deg,#f9fcf9,#eef5ef) !important;
+  border:1px solid #d2dfd3 !important;
+  color:#243d2d !important;
+  box-shadow:0 10px 18px rgba(26,54,34,.06) !important;
+}
+#viewHome .big-btn small{
+  color:#647a69 !important;
+}
+#viewHome .big-btn span{
+  filter:saturate(.9);
+}
+#viewHome .notice{
+  background:#f7faf7 !important;
+  border:1px solid #d9e4da !important;
+  color:#5b6f61 !important;
+}
+
+#viewDirectorDashboard{
+  background:linear-gradient(180deg,#eef3ee,#f5f8f5) !important;
+  border:1px solid #dfe8e1 !important;
+}
+#viewDirectorDashboard .dashboard-head{
+  background:linear-gradient(135deg,#5ea768,#72b97b) !important;
+  box-shadow:0 12px 24px rgba(55,105,65,.15) !important;
+}
+#viewDirectorDashboard .dashboard-head h2,
+#viewDirectorDashboard .dashboard-head strong,
+#viewDirectorDashboard .dashboard-head p,
+#viewDirectorDashboard .dashboard-head .muted{
+  color:#f7fff9 !important;
+}
+#viewDirectorDashboard .tabs{
+  background:#f0f5f1 !important;
+  border-color:#dbe5dd !important;
+}
+#viewDirectorDashboard .tab{
+  background:#f7faf7 !important;
+  border-color:#d8e2da !important;
+}
+#viewDirectorDashboard .tab.active{
+  background:linear-gradient(135deg,#4b9a5b,#64af70) !important;
+  border-color:#4b9a5b !important;
+}
+
+#viewDirectorDashboard .card,
+#viewDirectorDashboard .item,
+#viewDirectorDashboard .permission-box,
+#viewDirectorDashboard .report-section,
+#viewDirectorDashboard .export-column-group,
+#viewDirectorDashboard .report-excel-section,
+#viewDirectorDashboard .export-box{
+  background:#f7faf7 !important;
+  border:1px solid #dbe5dd !important;
+  box-shadow:0 8px 20px rgba(33,67,43,.05) !important;
+}
+
+#viewDirectorDashboard input,
+#viewDirectorDashboard select,
+#viewDirectorDashboard textarea{
+  background:#f3f7f4 !important;
+  border-color:#d2ddd4 !important;
+}
+
+#viewDirectorDashboard .secondary,
+#viewDirectorDashboard .ghost,
+#viewDirectorDashboard .back,
+.export-master-actions .secondary{
+  background:#f3f7f4 !important;
+  border-color:#d3ddd5 !important;
+  color:#2d4335 !important;
+}
+#viewDirectorDashboard .primary{
+  background:linear-gradient(135deg,#4f9f5d,#68b374) !important;
+  border-color:#4a9257 !important;
+}
+
+.report-section,
+.report-excel-section,
+.export-column-group{
+  background:linear-gradient(180deg,#f7faf7,#f1f6f2) !important;
+}
+.export-column-group .export-column-check,
+#viewDirectorDashboard .permission-box,
+#viewDirectorDashboard .report-kv,
+#viewDirectorDashboard .item,
+#viewDirectorDashboard .search-result,
+#viewDirectorDashboard .search-item{
+  background:#f2f7f3 !important;
+  border-color:#d8e2da !important;
+}
+.export-column-group .export-column-check:hover{
+  background:#edf4ee !important;
+}
+
+.report-mini-table,
+.report-excel-table{
+  border-color:#d8e3da !important;
+  background:#f5f9f6 !important;
+}
+.report-mini-table th,
+.report-excel-table th{
+  background:#e3ece5 !important;
+  color:#35533d !important;
+}
+.report-mini-table td,
+.report-excel-table td{
+  background:#f8fbf8 !important;
+  color:#2d4234 !important;
+}
+.report-mini-table tbody tr:nth-child(even) td,
+.report-excel-table tbody tr:nth-child(even) td{
+  background:#f1f6f2 !important;
+}
+
+#viewDirectorDashboard .pill{
+  background:#e8f2ea !important;
+  border-color:#cfdfd2 !important;
+}
+
+.footer{
+  color:#748176 !important;
+  border-top:1px solid rgba(70,107,79,.12) !important;
+}
+
+@media(max-width:850px){
+  .topbar{
+    padding:22px 16px !important;
+  }
+  #viewHome .hero.card{
+    padding:18px !important;
+  }
+  #viewHome .big-btn{
+    min-height:108px !important;
+  }
+  #viewDirectorDashboard .dashboard-head{
+    padding:16px !important;
+  }
+}
