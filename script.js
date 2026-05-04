@@ -1258,10 +1258,17 @@ window.setReportStatus = async (id, status) => {
 
 window.returnReport = async (id) => {
   const reason = prompt("Razlog vraćanja radniku na dopunu/ispravku:");
-  if (!reason) return;
-  const { error } = await sb.from("reports").update({ status:"returned", returned_reason:reason }).eq("id", id);
+  if (!reason || !reason.trim()) return;
+  const { error } = await sb
+    .from("reports")
+    .update({
+      status: "returned",
+      returned_reason: reason.trim()
+    })
+    .eq("id", id)
+    .eq("company_id", currentCompany.id);
   if (error) return toast(error.message, true);
-  toast("Izveštaj vraćen.");
+  toast("Izveštaj je vraćen radniku na dopunu.");
   loadReports();
 };
 
@@ -1796,13 +1803,10 @@ async function loadWorkerReturnedReports() {
   panel.classList.add("hidden");
 
   try {
-    const { data, error } = await sb
-      .from("reports")
-      .select("id, report_date, status, returned_reason, data, created_at")
-      .eq("company_id", currentWorker.company_id)
-      .eq("user_id", currentWorker.user_id)
-      .eq("status", "returned")
-      .order("created_at", { ascending: false });
+    const { data, error } = await sb.rpc("worker_list_returned_reports", {
+      p_company_code: currentWorker.company_code,
+      p_access_code: currentWorker.access_code
+    });
 
     if (error) throw error;
     if (!data || !data.length) return;
@@ -1812,7 +1816,7 @@ async function loadWorkerReturnedReports() {
     list.innerHTML = data.map(r => {
       const d = r.data || {};
       const title = d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni izveštaj";
-      const site = d.site_name || "Bez gradilišta";
+      const site = d.site_name || d.defect_site_name || "Bez gradilišta";
       const reason = r.returned_reason || "Direkcija nije upisala razlog.";
       const opis = d.defect || d.description || d.note || "";
       return `
@@ -1827,24 +1831,26 @@ async function loadWorkerReturnedReports() {
       `;
     }).join("");
   } catch(e) {
-    toast(e.message, true);
+    toast("Vraćeni izveštaji se ne mogu učitati: " + e.message + " Pokreni Supabase SQL za v1.13.7.", true);
   }
+}
+
+async function getReturnedReportForWorker(reportId) {
+  if (!currentWorker) throw new Error("Radnik nije prijavljen.");
+  const { data, error } = await sb.rpc("worker_list_returned_reports", {
+    p_company_code: currentWorker.company_code,
+    p_access_code: currentWorker.access_code
+  });
+  if (error) throw error;
+  return (data || []).find(r => r.id === reportId) || null;
 }
 
 window.loadReturnedReportIntoForm = async (reportId) => {
   try {
     if (!currentWorker) throw new Error("Radnik nije prijavljen.");
 
-    const { data: r, error } = await sb
-      .from("reports")
-      .select("id, report_date, data")
-      .eq("id", reportId)
-      .eq("company_id", currentWorker.company_id)
-      .eq("user_id", currentWorker.user_id)
-      .maybeSingle();
-
-    if (error) throw error;
-    if (!r) throw new Error("Izveštaj nije pronađen.");
+    const r = await getReturnedReportForWorker(reportId);
+    if (!r) throw new Error("Izveštaj nije pronađen ili više nije vraćen na dopunu.");
 
     const d = r.data || {};
     $("#wrDate").value = r.report_date || today();
@@ -2657,16 +2663,14 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   const returnedId = localStorage.getItem("swp_returned_report_id");
   if (!returnedId || !currentWorker) return false;
 
-  const { error } = await sb
-    .from("reports")
-    .update({
-      data: reportData,
-      status: "sent",
-      returned_reason: null
-    })
-    .eq("id", returnedId)
-    .eq("company_id", currentWorker.company_id)
-    .eq("user_id", currentWorker.user_id);
+  const { error } = await sb.rpc("worker_resubmit_returned_report", {
+    p_company_code: currentWorker.company_code,
+    p_access_code: currentWorker.access_code,
+    p_report_id: returnedId,
+    p_report_date: $("#wrDate").value || today(),
+    p_site_id: reportData.site_id || null,
+    p_data: reportData
+  });
 
   if (error) throw error;
 
