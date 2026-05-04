@@ -1523,21 +1523,56 @@ function formatMachineLabel(asset) {
   return parts.filter(Boolean).join(" · ");
 }
 
-function buildMachineDatalistOptionsHtml() {
+function machineMatchesSearch(asset, searchValue) {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return true;
+  const haystack = normalizeVehicleSearch([
+    asset?.name,
+    asset?.registration,
+    asset?.capacity,
+    asset?.type || asset?.asset_type
+  ].filter(Boolean).join(" "));
+  return haystack.includes(q);
+}
+
+function getMachineAssetsFromDirection() {
   return workerAssetOptions
     .filter(isMachineAsset)
-    .map(asset => getAssetName(asset))
-    .filter(Boolean)
-    .map((name, index, arr) => arr.indexOf(name) === index ? name : null)
-    .filter(Boolean)
-    .map(name => `<option value="${escapeHtml(name)}"></option>`)
-    .join("");
+    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
+}
+
+function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
+  const allMachines = getMachineAssetsFromDirection();
+  const machines = allMachines.filter(m => machineMatchesSearch(m, searchValue));
+  const selected = String(selectedValue || "").trim();
+
+  if (!allMachines.length) {
+    return `<option value="">Nema mašina iz Direkcije</option>`;
+  }
+  if (!machines.length) {
+    return `<option value="">Nema mašina za tu pretragu</option>`;
+  }
+
+  return `<option value="">Odaberi mašinu</option>` + machines.map(m => {
+    const name = getAssetName(m) || "Mašina";
+    const label = formatMachineLabel(m);
+    const type = m.asset_type || m.type || "";
+    const isSelected = selected && (selected === name || selected === String(m.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(m.id || "")}" data-registration="${escapeHtml(getAssetRegistration(m) || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+function refreshOneMachineSelect(entryEl) {
+  const sel = entryEl.querySelector(".m-name");
+  if (!sel) return;
+  const old = sel.value;
+  const search = entryEl.querySelector(".m-search")?.value || "";
+  sel.innerHTML = buildMachineOptionsHtml(old, search);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
 }
 
 function refreshMachineDatalists() {
-  $$(".m-machine-list").forEach(list => {
-    list.innerHTML = buildMachineDatalistOptionsHtml();
-  });
+  $$("#machineEntries .machine-entry").forEach(entry => refreshOneMachineSelect(entry));
 }
 
 async function loadWorkerAssets() {
@@ -1909,10 +1944,15 @@ function addMachineEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
+    <label>Pretraži mašinu iz Direkcije</label>
+    <input class="m-search" placeholder="kucaj naziv ili oznaku: CAT, 330, D6R..." value="" />
+
     <label>Mašina</label>
-    <input class="m-name" list="machineOptions${idx}" placeholder="počni da kucaš: CAT 330, D6R..." value="${escapeHtml(values.name || "")}" />
-    <datalist id="machineOptions${idx}" class="m-machine-list">${buildMachineDatalistOptionsHtml()}</datalist>
-    <p class="field-hint">Prvo se nude mašine koje je Direkcija upisala u Mašine / vozila. Ako mašina nije u listi, možeš je upisati ručno.</p>
+    <select class="m-name">${buildMachineOptionsHtml(values.name || "")}</select>
+    <p class="field-hint">Ovde se moraju videti mašine koje je Direkcija upisala u Mašine / vozila. Ako lista piše „Nema mašina iz Direkcije”, problem je u učitavanju worker_list_assets ili u tipu mašine.</p>
+
+    <label>Ako mašina nije u listi, upiši ručno</label>
+    <input class="m-custom" placeholder="npr. zamenska mašina" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
 
     <div class="mini-grid">
       <div>
@@ -1952,22 +1992,32 @@ function addMachineEntry(values = {}) {
     refreshFuelMachineOptions();
   });
 
-  div.querySelector(".m-name").addEventListener("input", refreshFuelMachineOptions);
+  const machineSearch = div.querySelector(".m-search");
+  const machineSelect = div.querySelector(".m-name");
+  const machineCustom = div.querySelector(".m-custom");
+  if (machineSearch) machineSearch.addEventListener("input", () => refreshOneMachineSelect(div));
+  if (machineSelect) machineSelect.addEventListener("change", refreshFuelMachineOptions);
+  if (machineCustom) machineCustom.addEventListener("input", refreshFuelMachineOptions);
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
-  refreshMachineDatalists();
+  refreshOneMachineSelect(div);
   refreshFuelMachineOptions();
 }
 
 function getMachineEntries() {
-  return $$("#machineEntries .machine-entry").map((el, i) => ({
-    no: i + 1,
-    name: el.querySelector(".m-name")?.value.trim() || "",
-    start: el.querySelector(".m-start")?.value || "",
-    end: el.querySelector(".m-end")?.value || "",
-    hours: el.querySelector(".m-hours")?.value || "",
-    work: el.querySelector(".m-work")?.value.trim() || ""
-  })).filter(m => m.name || m.start || m.end || m.hours || m.work);
+  return $$("#machineEntries .machine-entry").map((el, i) => {
+    const selected = el.querySelector(".m-name")?.value.trim() || "";
+    const custom = el.querySelector(".m-custom")?.value.trim() || "";
+    return {
+      no: i + 1,
+      name: custom || selected,
+      machine_custom: custom,
+      start: el.querySelector(".m-start")?.value || "",
+      end: el.querySelector(".m-end")?.value || "",
+      hours: el.querySelector(".m-hours")?.value || "",
+      work: el.querySelector(".m-work")?.value.trim() || ""
+    };
+  }).filter(m => m.name || m.start || m.end || m.hours || m.work);
 }
 
 
