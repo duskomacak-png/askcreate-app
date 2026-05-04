@@ -976,15 +976,17 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
+  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
 
   const reportRows = [];
 
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, fuels.length);
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length)
   for (let i = 0; i < maxRows; i++) {
     const w = workers[i] || {};
     const m = machines[i] || {};
     const v = vehicles[i] || {};
+    const ll = lowloaders[i] || {};
     const f = fuels[i] || {};
     reportRows.push(`
       <tr>
@@ -1008,6 +1010,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(v.tours)}</td>
         <td>${val(v.cubic_m3 || v.cubic_auto)}</td>
         <td>${val(v.cubic_manual)}</td>
+        <td>${val(ll.plates || ll.registration)}</td>
+        <td>${val(ll.from_address)}</td>
+        <td>${val(ll.to_address)}</td>
+        <td>${val(ll.km_total)}</td>
+        <td>${val(ll.machine)}</td>
         <td>${val(f.machine)}</td>
         <td>${val(f.liters)}</td>
         <td>${val(f.reading)}</td>
@@ -1042,6 +1049,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>Ture</th>
             <th>m³ ukupno</th>
             <th>Ručno m³</th>
+            <th>Labudica tablice</th>
+            <th>Početna adresa</th>
+            <th>Završna adresa</th>
+            <th>Ukupno km</th>
+            <th>Mašina koja se seli</th>
             <th>Gorivo za</th>
             <th>Litara</th>
             <th>MTČ/KM gorivo</th>
@@ -1133,6 +1145,32 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </tbody>
     </table>` : `<p class="report-empty">Nema unetih vozila.</p>`;
 
+  const lowloaderTable = lowloaders.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tablice labudice</th>
+          <th>Početna adresa</th>
+          <th>Završna adresa</th>
+          <th>Ukupno km</th>
+          <th>Mašina koja se seli</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lowloaders.map((ll, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(ll.plates || ll.registration)}</td>
+            <td>${val(ll.from_address)}</td>
+            <td>${val(ll.to_address)}</td>
+            <td>${val(ll.km_total)}</td>
+            <td>${val(ll.machine)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema unetih selidbi labudicom.</p>`;
+
   const fuelTable = fuels.length ? `
     <table class="report-mini-table">
       <thead>
@@ -1197,6 +1235,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <h4>Vozila / ture / m³</h4>
         ${vehicleTable}
       </div>
+
+      ${lowloaders.length ? `<div class="report-section">
+        <h4>Vozilo labudica / selidba mašine</h4>
+        ${lowloaderTable}
+      </div>` : ""}
 
       <div class="report-section">
         <h4>Gorivo</h4>
@@ -1671,6 +1714,7 @@ function workerSetSections(perms) {
     workers: "#secWorkers",
     machines: "#secMachines",
     vehicles: "#secVehicles",
+    lowloader: "#secLowloader",
     fuel: "#secFuel",
     materials: "#secMaterials",
     warehouse: "#secWarehouse",
@@ -1797,6 +1841,73 @@ function getMachineEntries() {
   })).filter(m => m.name || m.start || m.end || m.hours || m.work);
 }
 
+
+function addLowloaderEntry(values = {}) {
+  const list = $("#lowloaderEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".lowloader-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card lowloader-entry";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Selidba mašine ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+
+    <label>Broj tablica labudice</label>
+    <input class="ll-plates" placeholder="npr. BG-123-AA" value="${escapeHtml(values.plates || values.registration || "")}" />
+
+    <div class="grid two">
+      <div>
+        <label>Početna adresa</label>
+        <input class="ll-from" placeholder="odakle se preuzima mašina" value="${escapeHtml(values.from_address || values.from || "")}" />
+      </div>
+      <div>
+        <label>Završna adresa</label>
+        <input class="ll-to" placeholder="gde se istovara mašina" value="${escapeHtml(values.to_address || values.to || "")}" />
+      </div>
+    </div>
+
+    <label>Ukupno kilometara</label>
+    <input class="ll-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 42" value="${escapeHtml(values.km_total || values.km || "")}" />
+
+    <label>Koju mašinu seli</label>
+    <input class="ll-machine" placeholder="npr. bager CAT 330, valjak, finišer..." value="${escapeHtml(values.machine || values.machine_name || "")}" />
+  `;
+  div.querySelector(".remove-entry").addEventListener("click", () => {
+    div.remove();
+    renumberLowloaderEntries();
+  });
+  list.appendChild(div);
+  preventNumberInputScrollChanges(div);
+}
+
+function renumberLowloaderEntries() {
+  $$("#lowloaderEntries .lowloader-entry").forEach((card, i) => {
+    const h = card.querySelector("strong");
+    if (h) h.textContent = `Selidba mašine ${i + 1}`;
+  });
+}
+
+function getLowloaderEntries() {
+  return $$("#lowloaderEntries .lowloader-entry").map((el, i) => {
+    const plates = el.querySelector(".ll-plates")?.value.trim() || "";
+    const from = el.querySelector(".ll-from")?.value.trim() || "";
+    const to = el.querySelector(".ll-to")?.value.trim() || "";
+    const km = el.querySelector(".ll-km")?.value.trim() || "";
+    const machine = el.querySelector(".ll-machine")?.value.trim() || "";
+    return {
+      no: i + 1,
+      plates,
+      registration: plates,
+      from_address: from,
+      to_address: to,
+      km_total: km,
+      machine
+    };
+  }).filter(x => x.plates || x.from_address || x.to_address || x.km_total || x.machine);
+}
+
 function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
   if (!list) return;
@@ -1872,6 +1983,8 @@ function refreshFuelMachineOptions() {
 window.addMachineEntry = addMachineEntry;
 window.addFuelEntry = addFuelEntry;
 window.addVehicleEntry = addVehicleEntry;
+window.addLowloaderEntry = addLowloaderEntry;
+window.renumberLowloaderEntries = renumberLowloaderEntries;
 window.refreshFuelMachineOptions = refreshFuelMachineOptions;
 
 
@@ -1940,10 +2053,12 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
+    if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
 
     (d.workers || d.worker_entries || []).forEach(w => addWorkerEntry(w));
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
+    (d.lowloader_moves || d.lowloader_entries || []).forEach(x => addLowloaderEntry(x));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
     }
@@ -1995,6 +2110,8 @@ function collectWorkerData() {
   const canMaterials = !!perms.materials;
   const canWarehouse = !!perms.warehouse;
   const canDefects = !!perms.defects;
+  const canLowloader = !!perms.lowloader;
+  const lowloaderMoves = canLowloader ? getLowloaderEntries() : [];
   return {
     site_id: selectedSite.site_id,
     site_name: selectedSite.site_name,
@@ -2005,6 +2122,8 @@ function collectWorkerData() {
     workers_total_hours: canWorkers ? getWorkerEntries().reduce((sum, w) => sum + parseDecimalInput(w.hours), 0) || "" : "",
     machines,
     vehicles,
+    lowloader_moves: lowloaderMoves,
+    lowloader_entries: lowloaderMoves,
     fuel_entries: fuelEntries,
 
     // Summary fields for older report/CSV display
@@ -2050,6 +2169,7 @@ function clearWorkerForm() {
   if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
   if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
   if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
+  if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
   if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
@@ -2076,9 +2196,11 @@ function loadDraft() {
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
+    if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
     (d.workers || d.worker_entries || []).forEach(w => addWorkerEntry(w));
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
+    (d.lowloader_moves || d.lowloader_entries || []).forEach(x => addLowloaderEntry(x));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
     }
@@ -2161,6 +2283,11 @@ const EXPORT_COLUMNS = [
   { key:"tours", label:"Ture" },
   { key:"cubic", label:"m³ ukupno" },
   { key:"manual_cubic", label:"Ručno m³" },
+  { key:"lowloader_plates", label:"Labudica tablice" },
+  { key:"lowloader_from", label:"Labudica početna adresa" },
+  { key:"lowloader_to", label:"Labudica završna adresa" },
+  { key:"lowloader_km", label:"Labudica ukupno km" },
+  { key:"lowloader_machine", label:"Mašina koja se seli" },
   { key:"fuel_for", label:"Gorivo za" },
   { key:"fuel_liters", label:"Gorivo litara" },
   { key:"fuel_reading", label:"MTČ/KM pri sipanju" },
@@ -2263,6 +2390,7 @@ function flattenReportRowsForExport(r) {
   const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
+  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, fuels.length);
   const rows = [];
@@ -2271,6 +2399,7 @@ function flattenReportRowsForExport(r) {
     const w = workers[i] || {};
     const m = machines[i] || {};
     const v = vehicles[i] || {};
+    const ll = lowloaders[i] || {};
     const f = fuels[i] || {};
     rows.push({
       date: r.report_date || "",
@@ -2295,6 +2424,11 @@ function flattenReportRowsForExport(r) {
       tours: v.tours || d.tours || "",
       cubic: v.cubic_m3 || v.cubic_auto || "",
       manual_cubic: v.cubic_manual || "",
+      lowloader_plates: ll.plates || ll.registration || "",
+      lowloader_from: ll.from_address || "",
+      lowloader_to: ll.to_address || "",
+      lowloader_km: ll.km_total || "",
+      lowloader_machine: ll.machine || "",
       fuel_for: f.machine || "",
       fuel_liters: f.liters || d.fuel_liters || "",
       fuel_reading: f.reading || d.fuel_readings || "",
