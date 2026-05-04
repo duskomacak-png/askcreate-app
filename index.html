@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07111f" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1141" />
+  <link rel="stylesheet" href="style.css?v=1142" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -192,6 +192,7 @@
               <label><input type="checkbox" class="perm" value="vehicles" /> Vozila</label>
               <label><input type="checkbox" class="perm" value="lowloader" /> Vozilo labudica</label>
               <label><input type="checkbox" class="perm" value="fuel" /> Gorivo</label>
+              <label><input type="checkbox" class="perm" value="field_tanker" /> Cisterna za tankanje goriva na terenu</label>
               <label><input type="checkbox" class="perm" value="materials" /> Materijal</label>
               <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
               <label><input type="checkbox" class="perm" value="defects" /> Kvarovi</label>
@@ -432,6 +433,15 @@
           <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
         </div>
 
+
+
+        <div id="secFieldTanker" class="dyn-section">
+          <h4>Cisterna / tankanje goriva na terenu</h4>
+          <p class="hint">Ovu rubriku Direkcija uključuje za radnika koji razvozi gorivo cisternom na gradilišta. Dodaj svako sipanje posebno.</p>
+          <div id="fieldTankerEntries" class="entry-list"></div>
+          <button id="addFieldTankerBtn" class="secondary" type="button" onclick="addFieldTankerEntry()">+ Dodaj sipanje</button>
+        </div>
+
         <div id="secMaterials" class="dyn-section">
           <h4>Materijal</h4>
           <label>Materijal</label>
@@ -528,6 +538,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1141"></script>
+  <script src="script.js?v=1142"></script>
 </body>
 </html>

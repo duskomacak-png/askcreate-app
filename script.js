@@ -978,16 +978,18 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
   const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+  const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
 
   const reportRows = [];
 
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length)
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length)
   for (let i = 0; i < maxRows; i++) {
     const w = workers[i] || {};
     const m = machines[i] || {};
     const v = vehicles[i] || {};
     const ll = lowloaders[i] || {};
     const f = fuels[i] || {};
+    const ft = fieldTankers[i] || {};
     reportRows.push(`
       <tr>
         <td>${i + 1}</td>
@@ -1020,6 +1022,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(f.reading)}</td>
         <td>${val(f.by)}</td>
         <td>${val(f.receiver || d.fuel_receiver)}</td>
+        <td>${val(ft.site_name)}</td>
+        <td>${val(ft.asset_name || ft.machine)}</td>
+        <td>${val(ft.reading || ft.mtc_km)}</td>
+        <td>${val(ft.liters)}</td>
+        <td>${val(ft.receiver || ft.received_by)}</td>
       </tr>
     `);
   }
@@ -1059,6 +1066,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>MTČ/KM gorivo</th>
             <th>Sipao</th>
             <th>Primio</th>
+            <th>Cisterna gradilište</th>
+            <th>Cisterna mašina/vozilo</th>
+            <th>Cisterna MTČ/KM</th>
+            <th>Cisterna litara</th>
+            <th>Gorivo primio</th>
           </tr>
         </thead>
         <tbody>${reportRows.join("")}</tbody>
@@ -1197,6 +1209,32 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </tbody>
     </table>` : `<p class="report-empty">Nema sipanja goriva.</p>`;
 
+  const fieldTankerTable = fieldTankers.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Gradilište</th>
+          <th>Mašina/vozilo</th>
+          <th>Trenutni MTČ/KM</th>
+          <th>Sipano litara</th>
+          <th>Gorivo primio</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${fieldTankers.map((ft, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(ft.site_name)}</td>
+            <td>${val(ft.asset_name || ft.machine)}</td>
+            <td>${val(ft.reading || ft.mtc_km)}</td>
+            <td>${val(ft.liters)}</td>
+            <td>${val(ft.receiver || ft.received_by)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema terenskih sipanja cisternom.</p>`;
+
   const showDefectSection = options.showDefect === true;
   const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
   const hasMaterial = safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
@@ -1245,6 +1283,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <h4>Gorivo</h4>
         ${fuelTable}
       </div>
+
+      ${fieldTankers.length ? `<div class="report-section">
+        <h4>Cisterna / tankanje goriva na terenu</h4>
+        ${fieldTankerTable}
+      </div>` : ""}
 
       ${hasDefect ? `
         <div class="report-section">
@@ -1716,6 +1759,7 @@ function workerSetSections(perms) {
     vehicles: "#secVehicles",
     lowloader: "#secLowloader",
     fuel: "#secFuel",
+    field_tanker: "#secFieldTanker",
     materials: "#secMaterials",
     warehouse: "#secWarehouse",
     defects: "#secDefects"
@@ -1908,6 +1952,70 @@ function getLowloaderEntries() {
   }).filter(x => x.plates || x.from_address || x.to_address || x.km_total || x.machine);
 }
 
+
+function addFieldTankerEntry(values = {}) {
+  const list = $("#fieldTankerEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".field-tanker-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card field-tanker-entry";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Sipanje na terenu ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+
+    <label>Ime gradilišta</label>
+    <input class="ft-site" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_name || values.site || "")}" />
+
+    <label>Mašina ili vozilo</label>
+    <input class="ft-asset" placeholder="npr. CAT 330, valjak, kamion..." value="${escapeHtml(values.asset_name || values.machine || values.vehicle || "")}" />
+
+    <label>Trenutni MTČ ili kilometraža</label>
+    <input class="ft-reading numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250 ili 85320" value="${escapeHtml(values.reading || values.mtc_km || "")}" />
+
+    <label>Sipano litara</label>
+    <input class="ft-liters numeric-text" type="text" inputmode="decimal" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
+
+    <label>Gorivo primio</label>
+    <input class="ft-receiver" placeholder="ime i prezime vozača / rukovaoca" value="${escapeHtml(values.receiver || values.received_by || "")}" />
+  `;
+  div.querySelector(".remove-entry").addEventListener("click", () => {
+    div.remove();
+    renumberFieldTankerEntries();
+  });
+  list.appendChild(div);
+  preventNumberInputScrollChanges(div);
+}
+
+function renumberFieldTankerEntries() {
+  $$("#fieldTankerEntries .field-tanker-entry").forEach((card, i) => {
+    const h = card.querySelector("strong");
+    if (h) h.textContent = `Sipanje na terenu ${i + 1}`;
+  });
+}
+
+function getFieldTankerEntries() {
+  return $$("#fieldTankerEntries .field-tanker-entry").map((el, i) => {
+    const site = el.querySelector(".ft-site")?.value.trim() || "";
+    const asset = el.querySelector(".ft-asset")?.value.trim() || "";
+    const reading = el.querySelector(".ft-reading")?.value.trim() || "";
+    const liters = el.querySelector(".ft-liters")?.value.trim() || "";
+    const receiver = el.querySelector(".ft-receiver")?.value.trim() || "";
+    return {
+      no: i + 1,
+      site_name: site,
+      asset_name: asset,
+      machine: asset,
+      reading,
+      mtc_km: reading,
+      liters,
+      receiver,
+      received_by: receiver
+    };
+  }).filter(x => x.site_name || x.asset_name || x.reading || x.liters || x.receiver);
+}
+
 function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
   if (!list) return;
@@ -1983,6 +2091,7 @@ function refreshFuelMachineOptions() {
 window.addMachineEntry = addMachineEntry;
 window.addFuelEntry = addFuelEntry;
 window.addVehicleEntry = addVehicleEntry;
+window.addFieldTankerEntry = addFieldTankerEntry;
 window.addLowloaderEntry = addLowloaderEntry;
 window.renumberLowloaderEntries = renumberLowloaderEntries;
 window.refreshFuelMachineOptions = refreshFuelMachineOptions;
@@ -2059,6 +2168,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
     (d.lowloader_moves || d.lowloader_entries || []).forEach(x => addLowloaderEntry(x));
+    (d.field_tanker_entries || d.tanker_fuel_entries || []).forEach(x => addFieldTankerEntry(x));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
     }
@@ -2111,7 +2221,9 @@ function collectWorkerData() {
   const canWarehouse = !!perms.warehouse;
   const canDefects = !!perms.defects;
   const canLowloader = !!perms.lowloader;
+  const canFieldTanker = !!perms.field_tanker;
   const lowloaderMoves = canLowloader ? getLowloaderEntries() : [];
+  const fieldTankerEntries = canFieldTanker ? getFieldTankerEntries() : [];
   return {
     site_id: selectedSite.site_id,
     site_name: selectedSite.site_name,
@@ -2124,6 +2236,8 @@ function collectWorkerData() {
     vehicles,
     lowloader_moves: lowloaderMoves,
     lowloader_entries: lowloaderMoves,
+    field_tanker_entries: fieldTankerEntries,
+    tanker_fuel_entries: fieldTankerEntries,
     fuel_entries: fuelEntries,
 
     // Summary fields for older report/CSV display
@@ -2170,6 +2284,7 @@ function clearWorkerForm() {
   if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
   if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
   if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
+  if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
   if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
@@ -2197,10 +2312,12 @@ function loadDraft() {
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
     if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
+    if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
     (d.workers || d.worker_entries || []).forEach(w => addWorkerEntry(w));
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
     (d.lowloader_moves || d.lowloader_entries || []).forEach(x => addLowloaderEntry(x));
+    (d.field_tanker_entries || d.tanker_fuel_entries || []).forEach(x => addFieldTankerEntry(x));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
     }
@@ -2293,6 +2410,11 @@ const EXPORT_COLUMNS = [
   { key:"fuel_reading", label:"MTČ/KM pri sipanju" },
   { key:"fuel_by", label:"Sipao" },
   { key:"fuel_receiver", label:"Primio" },
+  { key:"field_tanker_site", label:"Cisterna gradilište" },
+  { key:"field_tanker_asset", label:"Cisterna mašina/vozilo" },
+  { key:"field_tanker_reading", label:"Cisterna MTČ/KM" },
+  { key:"field_tanker_liters", label:"Cisterna litara" },
+  { key:"field_tanker_receiver", label:"Cisterna gorivo primio" },
   { key:"material", label:"Materijal" },
   { key:"quantity", label:"Količina" },
   { key:"unit", label:"Jedinica" },
@@ -2392,7 +2514,8 @@ function flattenReportRowsForExport(r) {
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
   const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, fuels.length);
+  const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length);
   const rows = [];
 
   for (let i = 0; i < maxRows; i++) {
@@ -2401,6 +2524,7 @@ function flattenReportRowsForExport(r) {
     const v = vehicles[i] || {};
     const ll = lowloaders[i] || {};
     const f = fuels[i] || {};
+    const ft = fieldTankers[i] || {};
     rows.push({
       date: r.report_date || "",
       worker: reportPersonName(r),
@@ -2434,6 +2558,11 @@ function flattenReportRowsForExport(r) {
       fuel_reading: f.reading || d.fuel_readings || "",
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || "",
+      field_tanker_site: ft.site_name || "",
+      field_tanker_asset: ft.asset_name || ft.machine || "",
+      field_tanker_reading: ft.reading || ft.mtc_km || "",
+      field_tanker_liters: ft.liters || "",
+      field_tanker_receiver: ft.receiver || ft.received_by || "",
       material: d.material || "",
       quantity: d.quantity || "",
       unit: d.unit || "",
@@ -2884,6 +3013,7 @@ async function openWorkerForm() {
   if ($("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
   if ($("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
   if ($("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
+  if ((currentWorker.permissions || {}).field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
 }
 
 async function boot() {
