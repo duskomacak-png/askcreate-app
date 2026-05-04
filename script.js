@@ -1760,9 +1760,21 @@ async function loadWorkerSites(selectedName = "") {
 }
 
 function workerSetSections(perms) {
+  // v1.16.3 pravilo:
+  // "Ime gradilišta i datum/godina" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Direkcije.
+  // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
+  const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
+
+  const dailySection = $("#secDailyWork");
+  if (dailySection) {
+    dailySection.classList.remove("active");
+    dailySection.classList.add("hidden-by-rule");
+  }
+
+  const siteSection = $("#secWorkerSite");
+  if (siteSection) siteSection.classList.toggle("active", dailyAllowed);
+
   const map = {
-    daily_work: "#secDailyWork",
-    daily_work_site: "#secWorkerSite",
     workers: "#secWorkers",
     machines: "#secMachines",
     vehicles: "#secVehicles",
@@ -1774,9 +1786,8 @@ function workerSetSections(perms) {
     defects: "#secDefects"
   };
   Object.entries(map).forEach(([key, sel]) => {
-    const allowed = key === "daily_work_site" ? !!perms.daily_work : !!perms[key];
     const el = $(sel);
-    if (el) el.classList.toggle("active", allowed);
+    if (el) el.classList.toggle("active", !!perms[key]);
   });
 }
 
@@ -2290,7 +2301,7 @@ function collectWorkerData() {
   const vehicles = perms.vehicles ? getVehicleEntries() : [];
   const fuelEntries = perms.fuel ? getFuelEntries() : [];
   const selectedSite = getSelectedWorkerSite();
-  const canDaily = !!perms.daily_work;
+  const canDaily = !!(perms.daily_work || perms.daily_work_site);
   const canWorkers = !!perms.workers;
   const canMaterials = !!perms.materials;
   const canWarehouse = !!perms.warehouse;
@@ -2302,8 +2313,10 @@ function collectWorkerData() {
   return {
     site_id: selectedSite.site_id,
     site_name: selectedSite.site_name,
-    description: canDaily ? $("#wrDescription").value.trim() : "",
-    hours: canDaily ? $("#wrHours").value : "",
+    // v1.16.3: Ime gradilišta i datum/godina čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
+    // Opis rada i sati rada ne šaljemo pod ovom rubrikom.
+    description: "",
+    hours: "",
     workers: canWorkers ? getWorkerEntries() : [],
     worker_entries: canWorkers ? getWorkerEntries() : [],
     workers_total_hours: canWorkers ? getWorkerEntries().reduce((sum, w) => sum + parseDecimalInput(w.hours), 0) || "" : "",

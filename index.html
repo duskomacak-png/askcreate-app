@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1161" />
+  <link rel="stylesheet" href="style.css?v=1163" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -186,7 +186,7 @@
             <input id="personCode" placeholder="npr. zor1234" />
             <div class="permission-box">
               <h4>Šta ovaj korisnik sme da popunjava?</h4>
-              <label><input type="checkbox" class="perm" value="daily_work" /> Osnovni dnevni rad</label>
+              <label><input type="checkbox" class="perm" value="daily_work" /> Ime gradilišta i datum/godina</label>
               <label><input type="checkbox" class="perm" value="workers" /> Radnici na gradilištu</label>
               <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
               <label><input type="checkbox" class="perm" value="vehicles" /> Rad sa kamionom / vozilom</label>
@@ -387,19 +387,22 @@
       </div>
 
         <h3>Terenski unos</h3>
-        <p class="hint">Osnovno se prikazuje samo datum. Ostale rubrike vidiš samo ako ih Direkcija uključi u tvom profilu.</p>
+        <p class="hint">Ako ti Direkcija uključi rubriku Ime gradilišta i datum/godina, popunjavaš samo datum/godinu i biraš gradilište iz liste Direkcije. Ostale rubrike vidiš samo ako su posebno uključene.</p>
         <label>Datum / godina</label>
         <input id="wrDate" type="date" />
 
         <div id="secWorkerSite" class="dyn-section">
-          <label>Gradilište</label>
+          <label>Ime gradilišta</label>
           <select id="wrSiteName">
             <option value="">Učitavam gradilišta...</option>
           </select>
           <p id="workerSiteHint" class="hint">Gradilišta dodaje Direkcija. Radnik bira sa liste aktivnih gradilišta.</p>
         </div>
 
-        <div id="secDailyWork" class="dyn-section">
+        <div id="secDailyWork" class="dyn-section hidden-by-rule" aria-hidden="true">
+          <!-- v1.16.3: Ime gradilišta i datum/godina više ne prikazuje opis rada ni sate.
+               Pravilo: samo Datum / godina + Gradilište iz liste Direkcije.
+               Ovaj blok ostaje u HTML-u zbog kompatibilnosti, ali se ne aktivira. -->
           <h4>Šta je rađeno danas</h4>
           <label>Opis rada</label>
           <textarea id="wrDescription" placeholder="Šta je rađeno danas?"></textarea>
@@ -548,6 +551,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1161"></script>
+  <script src="script.js?v=1163"></script>
 </body>
 </html>

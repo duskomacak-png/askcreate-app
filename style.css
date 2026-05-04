@@ -1,4 +1,4 @@
-/* Start Work PRO v1.16.1 — stable light UI
+/* Start Work PRO v1.16.2 — stable light UI
    Cilj: čitljiv poslovni izgled bez dark/glass preklapanja.
    Ne menjati ID/class nazive koje koristi script.js. */
 
@@ -341,4 +341,10 @@ pre{white-space:pre-wrap;word-break:break-word}
   .tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:6px}
   .tab{white-space:nowrap}
   .big-btn{min-height:120px}
+}
+
+
+/* v1.16.2: sigurnosno sakrivanje starih polja za opis/sate u Osnovnom dnevnom radu */
+.hidden-by-rule {
+  display: none !important;
 }
