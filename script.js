@@ -973,14 +973,16 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const val = (x) => safe(x) ? esc(safe(x)) : "<span class='report-empty'>—</span>";
   const rows = (pairs) => pairs.map(([k, v]) => `<b>${esc(k)}</b><span>${val(v)}</span>`).join("");
 
+  const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
 
   const reportRows = [];
 
-  const maxRows = Math.max(1, machines.length, vehicles.length, fuels.length);
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, fuels.length);
   for (let i = 0; i < maxRows; i++) {
+    const w = workers[i] || {};
     const m = machines[i] || {};
     const v = vehicles[i] || {};
     const f = fuels[i] || {};
@@ -990,6 +992,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(d.site_name)}</td>
         <td>${val(d.hours)}</td>
         <td>${val(d.description)}</td>
+        <td>${val(w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" "))}</td>
+        <td>${val(w.hours)}</td>
         <td>${val(m.name)}</td>
         <td>${val(m.start)}</td>
         <td>${val(m.end)}</td>
@@ -1022,6 +1026,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>Gradilište</th>
             <th>Sati radnika</th>
             <th>Opis rada</th>
+            <th>Radnik u ekipi</th>
+            <th>Sati radnika u ekipi</th>
             <th>Mašina</th>
             <th>MTČ/KM početak</th>
             <th>MTČ/KM kraj</th>
@@ -1046,6 +1052,26 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tbody>${reportRows.join("")}</tbody>
       </table>
     </div>`;
+
+  const workerTable = workers.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ime i prezime</th>
+          <th>Sati rada</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${workers.map((w, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" "))}</td>
+            <td>${val(w.hours)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema dodatih radnika u ekipi.</p>`;
 
   const machineTable = machines.length ? `
     <table class="report-mini-table">
@@ -1156,6 +1182,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
           ])}
         </div>
       </div>
+
+      ${workers.length ? `<div class="report-section">
+        <h4>Radnici / sati po radniku</h4>
+        ${workerTable}
+      </div>` : ""}
 
       <div class="report-section">
         <h4>Mašine</h4>
@@ -1637,6 +1668,7 @@ async function loadWorkerSites(selectedName = "") {
 function workerSetSections(perms) {
   const map = {
     daily_work: "#secDailyWork",
+    workers: "#secWorkers",
     machines: "#secMachines",
     vehicles: "#secVehicles",
     fuel: "#secFuel",
@@ -1647,6 +1679,53 @@ function workerSetSections(perms) {
   Object.entries(map).forEach(([key, sel]) => $(sel).classList.toggle("active", !!perms[key]));
 }
 
+
+
+function addWorkerEntry(values = {}) {
+  const list = $("#workerEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".worker-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card worker-entry";
+  div.innerHTML = `
+    <h5>Radnik ${idx}</h5>
+    <div class="grid two">
+      <div>
+        <label>Ime</label>
+        <input class="worker-first" placeholder="Ime radnika" value="${escapeHtml(values.first_name || values.first || "")}" />
+      </div>
+      <div>
+        <label>Prezime</label>
+        <input class="worker-last" placeholder="Prezime radnika" value="${escapeHtml(values.last_name || values.last || "")}" />
+      </div>
+    </div>
+    <label>Sati rada tog dana</label>
+    <input class="worker-hours numeric-text" type="text" inputmode="decimal" placeholder="8" value="${escapeHtml(values.hours || "")}" />
+    <button class="secondary small-btn" type="button" onclick="this.closest('.worker-entry').remove(); renumberWorkerEntries();">Ukloni radnika</button>
+  `;
+  list.appendChild(div);
+}
+
+function renumberWorkerEntries() {
+  $$("#workerEntries .worker-entry").forEach((card, i) => {
+    const h = card.querySelector("h5");
+    if (h) h.textContent = `Radnik ${i + 1}`;
+  });
+}
+
+function getWorkerEntries() {
+  return $$("#workerEntries .worker-entry").map(card => {
+    const first = card.querySelector(".worker-first")?.value.trim() || "";
+    const last = card.querySelector(".worker-last")?.value.trim() || "";
+    const hours = card.querySelector(".worker-hours")?.value.trim() || "";
+    return {
+      first_name: first,
+      last_name: last,
+      full_name: [first, last].filter(Boolean).join(" "),
+      hours
+    };
+  }).filter(w => w.first_name || w.last_name || w.hours);
+}
 
 function addMachineEntry(values = {}) {
   const list = $("#machineEntries");
@@ -1857,10 +1936,12 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     const d = r.data || {};
     $("#wrDate").value = r.report_date || today();
 
+    if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
 
+    (d.workers || d.worker_entries || []).forEach(w => addWorkerEntry(w));
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
@@ -1910,6 +1991,7 @@ function collectWorkerData() {
   const fuelEntries = perms.fuel ? getFuelEntries() : [];
   const selectedSite = getSelectedWorkerSite();
   const canDaily = !!perms.daily_work;
+  const canWorkers = !!perms.workers;
   const canMaterials = !!perms.materials;
   const canWarehouse = !!perms.warehouse;
   const canDefects = !!perms.defects;
@@ -1918,6 +2000,9 @@ function collectWorkerData() {
     site_name: selectedSite.site_name,
     description: canDaily ? $("#wrDescription").value.trim() : "",
     hours: canDaily ? $("#wrHours").value : "",
+    workers: canWorkers ? getWorkerEntries() : [],
+    worker_entries: canWorkers ? getWorkerEntries() : [],
+    workers_total_hours: canWorkers ? getWorkerEntries().reduce((sum, w) => sum + parseDecimalInput(w.hours), 0) || "" : "",
     machines,
     vehicles,
     fuel_entries: fuelEntries,
@@ -1961,6 +2046,7 @@ function clearWorkerForm() {
     const el = $("#" + id);
     if (el) el.value = "";
   });
+  if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
   if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
   if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
   if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
@@ -1986,9 +2072,11 @@ function loadDraft() {
     $("#wrDate").value = draft.date || today();
     const d = draft.data || {};
 
+    if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
+    (d.workers || d.worker_entries || []).forEach(w => addWorkerEntry(w));
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
@@ -2057,6 +2145,8 @@ const EXPORT_COLUMNS = [
   { key:"site", label:"Gradilište" },
   { key:"hours", label:"Sati rada" },
   { key:"description", label:"Opis rada" },
+  { key:"crew_worker", label:"Radnik u ekipi" },
+  { key:"crew_hours", label:"Sati radnika u ekipi" },
   { key:"machine", label:"Mašina" },
   { key:"machine_start", label:"MTČ/KM početak" },
   { key:"machine_end", label:"MTČ/KM kraj" },
@@ -2170,13 +2260,15 @@ function reportPersonName(r) {
 
 function flattenReportRowsForExport(r) {
   const d = r.data || {};
+  const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
-  const maxRows = Math.max(1, machines.length, vehicles.length, fuels.length);
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, fuels.length);
   const rows = [];
 
   for (let i = 0; i < maxRows; i++) {
+    const w = workers[i] || {};
     const m = machines[i] || {};
     const v = vehicles[i] || {};
     const f = fuels[i] || {};
@@ -2187,6 +2279,8 @@ function flattenReportRowsForExport(r) {
       site: d.site_name || "",
       hours: d.hours || "",
       description: d.description || "",
+      crew_worker: w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || "",
+      crew_hours: w.hours || "",
       machine: m.name || d.machine || "",
       machine_start: m.start || d.mtc_start || "",
       machine_end: m.end || d.mtc_end || "",
