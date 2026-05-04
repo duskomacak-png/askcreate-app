@@ -1419,3 +1419,264 @@ body.in-app #tabReports .report-export-toolbar{
     font-size:.76rem;
   }
 }
+
+/* ==========================================================
+   v1.13.9 — BUSINESS GREEN UI SYSTEM
+   Cilj: poslovni Excel/admin izgled bez promene logike.
+   ========================================================== */
+:root{
+  --sw-green-950:#062915;
+  --sw-green-900:#0b3d24;
+  --sw-green-800:#0e4a2a;
+  --sw-green-700:#0f6b35;
+  --sw-green-600:#16803c;
+  --sw-green-100:#e7f4ec;
+  --sw-green-50:#f4f8f5;
+  --sw-border:#dce7df;
+  --sw-danger:#b42318;
+  --sw-danger-soft:#fff1f0;
+  --sw-warning:#b45309;
+  --sw-warning-soft:#fff7ed;
+  --sw-blue:#1d4ed8;
+  --sw-blue-soft:#eff6ff;
+  --sw-shadow:0 10px 30px rgba(15, 23, 42, .08);
+}
+
+/* Direkcija ostaje svetla, poslovna i Excel-orijentisana */
+#viewDirectorDashboard{
+  background:linear-gradient(180deg,#f7faf8 0%,#eef5f0 100%);
+  color:#17251d;
+}
+#viewDirectorDashboard .dashboard-head{
+  background:linear-gradient(135deg,var(--sw-green-900),var(--sw-green-700));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:22px;
+  padding:20px 22px;
+  box-shadow:var(--sw-shadow);
+  color:#fff;
+}
+#viewDirectorDashboard .dashboard-head p,
+#viewDirectorDashboard .dashboard-head .muted{
+  color:rgba(255,255,255,.82) !important;
+}
+#viewDirectorDashboard .card,
+#viewDirectorDashboard .item,
+#viewDirectorDashboard .export-box{
+  background:#fff !important;
+  color:#1f2937 !important;
+  border:1px solid var(--sw-border) !important;
+  box-shadow:var(--sw-shadow);
+}
+#viewDirectorDashboard label,
+#viewDirectorDashboard h3,
+#viewDirectorDashboard h4{
+  color:#1f2937;
+}
+#viewDirectorDashboard .muted,
+#viewDirectorDashboard .hint,
+#viewDirectorDashboard .item small{
+  color:#667085 !important;
+}
+#viewDirectorDashboard input,
+#viewDirectorDashboard select,
+#viewDirectorDashboard textarea{
+  background:#fff !important;
+  color:#111827 !important;
+  border:1px solid #d7e2dc !important;
+  min-height:44px;
+}
+#viewDirectorDashboard input:focus,
+#viewDirectorDashboard select:focus,
+#viewDirectorDashboard textarea:focus{
+  border-color:var(--sw-green-600) !important;
+  box-shadow:0 0 0 4px rgba(22,128,60,.12) !important;
+}
+#viewDirectorDashboard .tab{
+  height:42px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff !important;
+  border:1px solid var(--sw-border) !important;
+  color:#344054 !important;
+  font-weight:800;
+  box-shadow:0 4px 14px rgba(15,23,42,.04);
+}
+#viewDirectorDashboard .tab.active{
+  background:var(--sw-green-700) !important;
+  color:#fff !important;
+  border-color:var(--sw-green-700) !important;
+}
+
+/* Globalni sistem dugmadi */
+button,
+.primary,
+.secondary,
+.ghost,
+.back,
+.danger-btn,
+.danger-small,
+.small-btn{
+  min-height:40px;
+  border-radius:12px !important;
+  font-weight:800 !important;
+  letter-spacing:.01em;
+  line-height:1.15;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+}
+.primary{
+  background:linear-gradient(180deg,var(--sw-green-600),var(--sw-green-700)) !important;
+  color:#fff !important;
+  border:1px solid var(--sw-green-700) !important;
+  box-shadow:0 6px 16px rgba(15,107,53,.22);
+}
+.primary:hover{
+  box-shadow:0 10px 22px rgba(15,107,53,.26);
+}
+.secondary,
+.ghost,
+.back,
+.small-btn{
+  background:#fff !important;
+  color:#344054 !important;
+  border:1px solid var(--sw-border) !important;
+  box-shadow:0 4px 12px rgba(15,23,42,.05);
+}
+.secondary:hover,
+.ghost:hover,
+.back:hover,
+.small-btn:hover{
+  border-color:#b8c9bf !important;
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+.danger-btn,
+.danger-small,
+button[onclick*="delete"],
+button[onclick*="Delete"]{
+  background:var(--sw-danger-soft) !important;
+  color:var(--sw-danger) !important;
+  border:1px solid #f3b7b1 !important;
+  box-shadow:none !important;
+}
+.danger-btn:hover,
+.danger-small:hover,
+button[onclick*="delete"]:hover,
+button[onclick*="Delete"]:hover{
+  background:#ffe4e0 !important;
+  border-color:#e99b93 !important;
+}
+button[onclick*="returnReport"],
+button[onclick*="Returned"],
+.warning,
+.btn-warning{
+  background:var(--sw-warning-soft) !important;
+  color:var(--sw-warning) !important;
+  border:1px solid #fed7aa !important;
+}
+button[onclick*="edit"],
+button[onclick*="Edit"],
+.edit-btn{
+  background:var(--sw-blue-soft) !important;
+  color:var(--sw-blue) !important;
+  border:1px solid #bfdbfe !important;
+  box-shadow:0 4px 12px rgba(29,78,216,.06);
+}
+.item .actions,
+.asset-actions-v1117,
+.person-actions-v1116,
+.material-actions-v1119,
+.material-form-actions{
+  gap:10px !important;
+  align-items:center;
+}
+.item .actions button,
+.asset-actions-v1117 button,
+.person-actions-v1116 button,
+.material-actions-v1119 button{
+  min-width:118px;
+  padding:9px 14px !important;
+}
+
+/* Radnik: ostaje taman za teren, ali primarne akcije prelaze u poslovnu zelenu */
+#viewWorkerApp .primary,
+#viewWorkerApp button.primary,
+#submitReportBtn{
+  background:linear-gradient(180deg,#19a456,var(--sw-green-700)) !important;
+  color:#fff !important;
+  border-color:rgba(255,255,255,.12) !important;
+  min-height:52px;
+  border-radius:16px !important;
+  font-size:17px;
+}
+#viewWorkerApp .secondary,
+#viewWorkerApp button.secondary,
+#saveDraftBtn{
+  min-height:48px;
+  border-radius:16px !important;
+}
+#viewWorkerApp input:focus,
+#viewWorkerApp select:focus,
+#viewWorkerApp textarea:focus{
+  border-color:#24b463 !important;
+  box-shadow:0 0 0 4px rgba(36,180,99,.18) !important;
+}
+#viewWorkerApp .dyn-section h4{
+  color:#37d67a !important;
+}
+
+/* Export rubrike i tabele */
+.export-columns-grid label,
+.export-column-check{
+  min-height:42px;
+  border-radius:12px !important;
+  border:1px solid #dce7df !important;
+  background:#fff !important;
+  color:#344054 !important;
+  display:flex !important;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px !important;
+}
+.export-columns-grid input,
+.export-column-check input,
+.permission-box input{
+  accent-color:var(--sw-green-700);
+}
+.excel-scroll table th,
+.report-excel-table th{
+  background:var(--sw-green-700) !important;
+  color:#fff !important;
+}
+.excel-scroll table td,
+.report-excel-table td{
+  background:#fff;
+}
+
+/* Pretraga i male forme u Direkciji */
+#directorGlobalSearch{
+  border-radius:16px !important;
+  min-height:48px !important;
+}
+#directorSearchBtn,
+#directorClearSearchBtn{
+  min-height:48px;
+  min-width:92px;
+}
+
+@media(max-width:720px){
+  button,.primary,.secondary,.ghost,.back,.danger-btn,.danger-small,.small-btn{
+    min-height:44px;
+  }
+  #viewWorkerApp .primary,
+  #submitReportBtn{
+    min-height:54px;
+    width:100%;
+  }
+  .item .actions button,
+  .asset-actions-v1117 button,
+  .person-actions-v1116 button,
+  .material-actions-v1119 button{
+    min-width:0;
+    width:100%;
+  }
+}
