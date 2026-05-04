@@ -2033,3 +2033,264 @@ input:focus,select:focus,textarea:focus{
     border-radius:18px !important;
   }
 }
+
+/* v1.14.9 — Final UI polish: spacing, headings, checkbox cards, mobile comfort */
+#viewDirectorDashboard .card{
+  padding:20px !important;
+}
+
+#viewDirectorDashboard h3{
+  font-size:1.22rem;
+  letter-spacing:-.01em;
+  margin-top:0;
+  margin-bottom:10px;
+}
+
+#viewDirectorDashboard h4,
+#viewDirectorDashboard h5{
+  letter-spacing:-.005em;
+}
+
+#viewDirectorDashboard .grid.two{
+  gap:18px !important;
+}
+
+#viewDirectorDashboard .list{
+  gap:14px !important;
+}
+
+#viewDirectorDashboard .item{
+  border-radius:18px !important;
+  padding:16px !important;
+}
+
+#viewDirectorDashboard .item .actions,
+#viewDirectorDashboard .management-actions{
+  gap:9px !important;
+  align-items:center !important;
+}
+
+#viewDirectorDashboard button,
+#viewDirectorDashboard .primary,
+#viewDirectorDashboard .secondary,
+#viewDirectorDashboard .ghost,
+#viewDirectorDashboard .back{
+  min-height:40px;
+  line-height:1.15;
+}
+
+#viewDirectorDashboard .small-btn,
+#viewDirectorDashboard .director-actions .small-action{
+  min-height:34px !important;
+  padding:7px 11px !important;
+  border-radius:11px !important;
+}
+
+#viewDirectorDashboard input,
+#viewDirectorDashboard select,
+#viewDirectorDashboard textarea{
+  min-height:44px;
+  padding:11px 13px !important;
+}
+
+#viewDirectorDashboard textarea{
+  line-height:1.45;
+}
+
+#viewDirectorDashboard .permission-box label,
+#viewDirectorDashboard .export-column-check{
+  min-height:46px;
+  display:flex !important;
+  align-items:center;
+  gap:9px;
+}
+
+#viewDirectorDashboard .permission-box input,
+#viewDirectorDashboard .export-column-check input{
+  width:16px !important;
+  height:16px !important;
+  flex:0 0 auto;
+  accent-color:#237147;
+}
+
+.export-box{
+  border:1px solid #dce6df;
+  background:linear-gradient(180deg,#ffffff,#f9fbf9);
+  border-radius:18px;
+  padding:16px;
+  margin-top:14px;
+  box-shadow:0 8px 22px rgba(20,45,30,.045);
+}
+
+.export-box h4{
+  margin-top:0;
+  margin-bottom:8px;
+  color:#21392a !important;
+}
+
+.export-master-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  padding:12px;
+  border:1px solid #dfe8e2;
+  border-radius:16px;
+  background:#fbfdfb;
+}
+
+.export-master-actions button{
+  flex:0 1 auto;
+}
+
+.export-column-group{
+  padding:16px !important;
+  border-radius:20px !important;
+}
+
+.export-group-head{
+  padding-bottom:10px;
+  border-bottom:1px solid #e4ece6;
+  margin-bottom:14px !important;
+}
+
+.export-group-head h5{
+  font-size:1.02rem !important;
+}
+
+.export-group-head .row{
+  margin-top:0 !important;
+}
+
+.export-column-group .export-columns-grid{
+  gap:10px !important;
+}
+
+.export-column-group .export-column-check{
+  padding:11px 12px;
+  box-shadow:0 4px 12px rgba(20,45,30,.025);
+}
+
+.report-readable{
+  gap:14px !important;
+}
+
+.report-section{
+  padding:14px !important;
+  border-radius:17px !important;
+}
+
+.report-kv{
+  row-gap:8px !important;
+}
+
+.report-excel-wrap{
+  border-radius:16px !important;
+  background:#fbfdfb;
+}
+
+.report-excel-table th,
+.report-excel-table td{
+  white-space:nowrap;
+}
+
+.director-search-results{
+  border-radius:18px;
+}
+
+.director-search-results .management-item{
+  border-radius:16px !important;
+}
+
+/* Worker screen: keep field form comfortable, not flashy */
+#viewWorkerApp .card,
+#viewWorkerDashboard .card,
+.worker-card{
+  border-radius:20px;
+}
+
+.dyn-section{
+  border-radius:18px !important;
+  padding:16px !important;
+}
+
+.dyn-section h4{
+  font-size:1.05rem;
+  margin-bottom:10px !important;
+}
+
+.entry-card{
+  border-radius:17px !important;
+  padding:15px !important;
+}
+
+.entry-card-head{
+  margin-bottom:10px !important;
+}
+
+/* Softer scrolling / visual comfort */
+*{
+  scrollbar-width:thin;
+  scrollbar-color:#b9c9be #edf3ef;
+}
+::-webkit-scrollbar{height:10px;width:10px}
+::-webkit-scrollbar-track{background:#edf3ef;border-radius:999px}
+::-webkit-scrollbar-thumb{background:#b9c9be;border-radius:999px;border:2px solid #edf3ef}
+::-webkit-scrollbar-thumb:hover{background:#93aa9a}
+
+@media(max-width:900px){
+  #viewDirectorDashboard .card{
+    padding:15px !important;
+  }
+  .export-box{
+    padding:13px;
+  }
+  .export-master-actions button,
+  .export-download-box button{
+    flex:1 1 180px;
+  }
+  .export-column-group{
+    padding:13px !important;
+  }
+  .export-column-group .export-columns-grid{
+    grid-template-columns:1fr !important;
+  }
+  #viewDirectorDashboard .item .actions button,
+  #viewDirectorDashboard .management-actions button{
+    flex:1 1 150px;
+  }
+}
+
+@media(max-width:560px){
+  body.in-app .shell{
+    padding:6px 7px 16px !important;
+  }
+  body.in-app #viewDirectorDashboard{
+    padding:8px !important;
+    border-radius:14px !important;
+  }
+  #viewDirectorDashboard .dashboard-head{
+    padding:12px !important;
+    border-radius:15px !important;
+  }
+  #viewDirectorDashboard .tabs{
+    gap:6px !important;
+    padding:6px !important;
+  }
+  #viewDirectorDashboard .tab{
+    padding:9px 11px !important;
+    font-size:.9rem;
+  }
+  #viewDirectorDashboard .card{
+    padding:12px !important;
+    border-radius:15px !important;
+  }
+  .report-kv{
+    grid-template-columns:1fr !important;
+  }
+  .export-group-head .row button{
+    width:100%;
+  }
+  #viewDirectorDashboard button{
+    min-height:42px;
+  }
+}
