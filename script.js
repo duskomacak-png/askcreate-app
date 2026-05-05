@@ -1,4 +1,4 @@
-// v1.19.5_WORKER_ASSET_CODE_INPUTS - dedicated worker code search fields for assets; requires assets.asset_code column
+// v1.19.6_WORKER_ASSETS_ROBUST_LOAD - worker asset loading fixed; RPC + direct merge always; tolerant asset type matching
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.5";
+const APP_VERSION = "1.19.6";
 
 
 let sb = null;
@@ -1737,7 +1737,16 @@ function getSelectedWorkerSite() {
 
 
 function normalizeAssetType(type) {
-  return String(type || "").trim().toLowerCase();
+  return String(type || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/š/g, "s")
+    .replace(/đ/g, "dj")
+    .replace(/č/g, "c")
+    .replace(/ć/g, "c")
+    .replace(/ž/g, "z");
 }
 
 function getAssetName(asset) {
@@ -1787,7 +1796,7 @@ function isVehicleAsset(asset) {
 
 function isOtherAsset(asset) {
   const t = getAssetType(asset);
-  return ["other", "ostalo", "alat", "tool", "tools", "oprema", "equipment", "agregat", "vibro", "vibro ploca", "vibro ploča", "vibroploca", "vibroploča"].includes(t);
+  return ["other", "ostalo", "alat", "tool", "tools", "oprema", "equipment", "agregat", "vibro", "vibro ploca", "vibroploca"].includes(t);
 }
 
 function assetKindLabel(kind) {
@@ -1808,7 +1817,7 @@ function isMachineAsset(asset) {
   const t = getAssetType(asset);
   if (!t) return true;
   if (isVehicleAsset(asset) || isOtherAsset(asset)) return false;
-  return ["machine", "machines", "machinery", "masina", "masine", "mašina", "mašine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "utovarivač", "finišer", "finiser"].includes(t);
+  return ["machine", "machines", "machinery", "masina", "masine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "finiser"].includes(t);
 }
 
 function formatMachineLabel(asset) {
@@ -2000,6 +2009,7 @@ async function loadWorkerAssets() {
   let rpcError = null;
   let directError = null;
 
+  // Prvi izvor: RPC. Ovo je pravilan put za radnika.
   try {
     const { data, error } = await sb.rpc("worker_list_assets", {
       p_company_code: worker.company_code,
@@ -2011,11 +2021,11 @@ async function loadWorkerAssets() {
     rpcError = e;
   }
 
-  // v1.16.7: dodat sigurnosni fallback.
-  // Direkcija čuva mašine i vozila u tabeli assets. Ako RPC worker_list_assets vrati prazno,
-  // pokušavamo direktno iz iste tabele po company_id koji radnik dobija na login-u.
-  // Ovo ne menja Supabase SQL; samo koristi postojeći company_id iz worker_login rezultata.
-  if ((!rpcRows.length) && worker.company_id) {
+  // Drugi izvor: direktno iz assets po company_id.
+  // VAŽNO v1.19.6: ovo se sada pokušava UVEK kada radnik ima company_id,
+  // ne samo kada RPC vrati prazno. Tako radnik vidi mašine i ako je RPC star
+  // i ne vraća sva polja/tipove, a ne diramo Supabase SQL.
+  if (worker.company_id) {
     try {
       const { data, error } = await sb
         .from("assets")
@@ -2029,14 +2039,20 @@ async function loadWorkerAssets() {
     }
   }
 
-  workerAssetOptions = mergeAssetRows(rpcRows, directRows);
+  workerAssetOptions = mergeAssetRows(directRows, rpcRows);
 
   refreshVehicleSelects();
   refreshMachineDatalists();
   refreshFieldTankerSelectors();
 
-  if (!workerAssetOptions.length && (rpcError || directError)) {
-    toast("Mašine/vozila nisu učitana za radnika. RPC worker_list_assets/direct assets nisu vratili podatke. Detalj: " + ((rpcError && rpcError.message) || (directError && directError.message) || "nema podataka"), true);
+  const machineCount = workerAssetOptions.filter(isMachineAsset).length;
+  const vehicleCount = workerAssetOptions.filter(isVehicleAsset).length;
+  const otherCount = workerAssetOptions.filter(isOtherAsset).length;
+
+  if (!workerAssetOptions.length) {
+    toast("Radniku nisu učitane mašine/vozila. Proveri da li u Direkciji postoje sredstva za ovu firmu i da li je radnik u istoj firmi. Detalj: " + ((directError && directError.message) || (rpcError && rpcError.message) || "nema podataka"), true);
+  } else if (!machineCount && (vehicleCount || otherCount)) {
+    toast(`Sredstva su učitana, ali nema tipa Mašina. U Direkciji proveri Tip: Mašina. Učitano: vozila ${vehicleCount}, ostalo ${otherCount}.`, true);
   }
 }
 
@@ -2153,7 +2169,7 @@ function addVehicleEntry(values = {}) {
 
     <label>Vozilo iz Direkcije</label>
     <select class="v-name">${buildVehicleOptionsHtml(selectedName)}</select>
-    <p class="field-hint">Ako je lista prazna, proveri: Direkcija → Mašine/vozila → Tip mora biti Vozilo i SQL worker_list_assets mora biti ažuriran.</p>
+    <p class="field-hint">Ako je lista prazna, proveri da li je vozilo dodato u istoj firmi i da je Tip = Vozilo.</p>
 
     <label>Ako vozilo nije u listi, upiši ručno</label>
     <input class="v-custom" placeholder="npr. zamensko vozilo" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
@@ -2611,7 +2627,7 @@ function addMachineEntry(values = {}) {
 
     <label>Mašina</label>
     <select class="m-name">${buildMachineOptionsHtml(values.name || "")}</select>
-    <p class="field-hint">Ovde se moraju videti mašine koje je Direkcija upisala u Mašine / vozila. Ako lista piše „Nema mašina iz Direkcije”, pokreni Supabase SQL v1.17.0 za worker_list_assets.</p>
+    <p class="field-hint">Ovde se moraju videti mašine koje je Direkcija upisala u Mašine / vozila. Ako lista piše „Nema mašina”, proveri da je Tip = Mašina i da je radnik u istoj firmi.</p>
     <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Direkcije</button>
 
     <label>Ako mašina nije u listi, upiši ručno</label>
@@ -2668,7 +2684,7 @@ function addMachineEntry(values = {}) {
       refreshMachinesBtn.textContent = "Učitavam...";
       await loadWorkerAssets();
       refreshOneMachineSelect(div);
-      toast(workerAssetOptions.length ? "Mašine/vozila iz Direkcije su osvežene." : "Nema učitanih mašina/vozila. Ako ih Direkcija ima, pokreni SQL v1.17.0 worker_list_assets.", !workerAssetOptions.length);
+      toast(workerAssetOptions.length ? "Mašine/vozila iz Direkcije su osvežene." : "Nema učitanih mašina/vozila. Proveri firmu radnika i listu u Direkciji.", !workerAssetOptions.length);
     } finally {
       refreshMachinesBtn.disabled = false;
       refreshMachinesBtn.textContent = "Osveži mašine iz Direkcije";
