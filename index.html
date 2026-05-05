@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1178" />
+  <link rel="stylesheet" href="style.css?v=1180" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -469,13 +469,10 @@
 
         <div id="secMaterials" class="dyn-section">
           <h4>Materijal</h4>
-          <label>Materijal</label>
-          <input id="wrMaterial" list="materialsDatalist" placeholder="Kamen 0-31, pesak..." />
-          <datalist id="materialsDatalist"></datalist>
-          <label>Količina</label>
-          <input id="wrQuantity" type="number" step="0.01" />
-          <label>Jedinica</label>
-          <input id="wrUnit" placeholder="m3, t, kom" />
+          <p class="hint">Direkcija dodaje listu materijala. Radnik za svaki unos bira da li je ulaz, izlaz ili ugradnja materijala.</p>
+          <div id="materialEntries" class="entry-list"></div>
+          <button id="addMaterialBtn" class="secondary" type="button" onclick="addMaterialEntry()">+ Dodaj materijal</button>
+          <p class="field-hint">Ako materijal nije u listi Direkcije, možeš ga upisati ručno.</p>
         </div>
 
         <div id="secWarehouse" class="dyn-section">
@@ -563,6 +560,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1178"></script>
+  <script src="script.js?v=1180"></script>
 </body>
 </html>
