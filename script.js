@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.8";
+const APP_VERSION = "1.20.0";
 
 
 let sb = null;
@@ -1957,12 +1957,16 @@ function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
   const selected = String(selectedValue || "").trim();
   const q = normalizeVehicleSearch(searchValue);
 
+  // v1.20.0: Interni broj ima prednost i kod rubrike "Rad sa mašinom".
+  // Ranije je ovde stajao uslov getCanonicalAssetKind(exact) === "machine".
+  // Ako RPC/Supabase vrati tip malo drugačije, mašina postoji ali se ne prikaže.
+  // Sada, ako je broj tačan, prikaži sredstvo odmah, pa tek za običnu pretragu koristi filter tipa.
   const exact = findAssetByExactCode(searchValue);
-  if (exact && getCanonicalAssetKind(exact) === "machine" && !machines.some(m => String(m.id || "") === String(exact.id || ""))) {
+  if (exact && !machines.some(m => String(m.id || "") === String(exact.id || ""))) {
     machines = [exact, ...machines];
   }
   if (q && !machines.length) {
-    machines = findAssetsByUniversalSearch(searchValue).filter(isMachineAsset);
+    machines = findAssetsByUniversalSearch(searchValue);
   }
 
   if (!workerAssetOptions.length) {
