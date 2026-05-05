@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.5";
+const APP_VERSION = "1.20.6";
 
 
 let sb = null;
@@ -4979,6 +4979,7 @@ function bindEvents() {
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
+    if (btn.dataset.tab === "audit") runWorkerUiAudit();
   }));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
@@ -5015,6 +5016,8 @@ function bindEvents() {
   if ($("#clearReportsBtn")) $("#clearReportsBtn").addEventListener("click", clearReportsForExport);
   if ($("#goExportBtn")) $("#goExportBtn").addEventListener("click", goToExportTab);
   if ($("#refreshDefectsBtn")) $("#refreshDefectsBtn").addEventListener("click", loadReports);
+  if ($("#runWorkerUiAuditBtn")) $("#runWorkerUiAuditBtn").addEventListener("click", runWorkerUiAudit);
+  if ($("#copyWorkerUiAuditBtn")) $("#copyWorkerUiAuditBtn").addEventListener("click", copyWorkerUiAudit);
   if ($("#exportCsvBtn")) $("#exportCsvBtn").addEventListener("click", exportCsv);
   if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);

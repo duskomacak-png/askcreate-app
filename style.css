@@ -637,3 +637,15 @@ button.small {
 @media (max-width: 900px) {
   .smart-export-grid { grid-template-columns: 1fr; }
 }
+
+
+/* v1.20.6 — Provera sistema / radnički prozori */
+.audit-result-box{margin-top:14px;display:grid;gap:10px}
+.audit-card{border:1px solid var(--border);border-radius:14px;padding:12px;background:rgba(255,255,255,.72)}
+.audit-card.ok{border-color:rgba(46,125,50,.35);background:rgba(232,245,233,.65)}
+.audit-card.warn{border-color:rgba(245,124,0,.42);background:rgba(255,243,224,.75)}
+.audit-card.bad{border-color:rgba(198,40,40,.42);background:rgba(255,235,238,.78)}
+.audit-card h4{margin:0 0 6px;color:var(--text)}
+.audit-list{margin:8px 0 0 18px;padding:0}
+.audit-list li{margin:4px 0}
+.audit-small{font-size:12px;color:var(--muted)}
