@@ -1571,8 +1571,27 @@ function refreshOneMachineSelect(entryEl) {
   if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
 }
 
+function buildLowloaderMachineOptionsHtml(selectedValue = "", searchValue = "") {
+  return buildMachineOptionsHtml(selectedValue, searchValue)
+    .replace("Odaberi mašinu", "Odaberi mašinu koju seli");
+}
+
+function refreshOneLowloaderMachineSelect(entryEl) {
+  const sel = entryEl.querySelector(".ll-machine-select");
+  if (!sel) return;
+  const old = sel.value;
+  const search = entryEl.querySelector(".ll-machine-search")?.value || "";
+  sel.innerHTML = buildLowloaderMachineOptionsHtml(old, search);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+}
+
+function refreshLowloaderMachineSelectors() {
+  $$("#lowloaderEntries .lowloader-entry").forEach(entry => refreshOneLowloaderMachineSelect(entry));
+}
+
 function refreshMachineDatalists() {
   $$("#machineEntries .machine-entry").forEach(entry => refreshOneMachineSelect(entry));
+  refreshLowloaderMachineSelectors();
 }
 
 function normalizeWorkerAssetRows(rows) {
@@ -2102,15 +2121,26 @@ function addLowloaderEntry(values = {}) {
     <label>Ukupno kilometara</label>
     <input class="ll-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 42" value="${escapeHtml(values.km_total || values.km || "")}" />
 
+    <label>Pretraži mašinu iz Direkcije</label>
+    <input class="ll-machine-search" placeholder="kucaj naziv mašine: CAT, 330, valjak..." value="" />
+
     <label>Koju mašinu seli</label>
-    <input class="ll-machine" placeholder="npr. bager CAT 330, valjak, finišer..." value="${escapeHtml(values.machine || values.machine_name || "")}" />
+    <select class="ll-machine-select">${buildLowloaderMachineOptionsHtml(values.machine || values.machine_name || "")}</select>
+    <p class="field-hint">Lista se puni iz Direkcija → Mašine / vozila. Prikazuju se mašine koje je Direkcija dodala.</p>
+
+    <label>Ako mašina nije u listi, upiši ručno</label>
+    <input class="ll-machine-custom" placeholder="npr. bager CAT 330, valjak, finišer..." value="${escapeHtml(values.machine_custom || values.manual_machine || "")}" />
   `;
+  const lowloaderMachineSearch = div.querySelector(".ll-machine-search");
+  if (lowloaderMachineSearch) lowloaderMachineSearch.addEventListener("input", () => refreshOneLowloaderMachineSelect(div));
+
   div.querySelector(".remove-entry").addEventListener("click", () => {
     div.remove();
     renumberLowloaderEntries();
   });
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
+  refreshOneLowloaderMachineSelect(div);
 }
 
 function renumberLowloaderEntries() {
@@ -2126,7 +2156,9 @@ function getLowloaderEntries() {
     const from = el.querySelector(".ll-from")?.value.trim() || "";
     const to = el.querySelector(".ll-to")?.value.trim() || "";
     const km = el.querySelector(".ll-km")?.value.trim() || "";
-    const machine = el.querySelector(".ll-machine")?.value.trim() || "";
+    const selectedMachine = el.querySelector(".ll-machine-select")?.value.trim() || "";
+    const customMachine = el.querySelector(".ll-machine-custom")?.value.trim() || "";
+    const machine = customMachine || selectedMachine;
     return {
       no: i + 1,
       plates,
@@ -2134,7 +2166,8 @@ function getLowloaderEntries() {
       from_address: from,
       to_address: to,
       km_total: km,
-      machine
+      machine,
+      machine_custom: customMachine
     };
   }).filter(x => x.plates || x.from_address || x.to_address || x.km_total || x.machine);
 }
