@@ -554,7 +554,7 @@ pre{white-space:pre-wrap;word-break:break-word}
   }
 }
 
-/* v1.18.9 - Pumpadžija: lokalno memorisanje sipanja goriva */
+/* v1.19.0 - Pumpadžija: odvojeni KM i MTČ za tankanje cisternom */
 .fuel-memory-panel {
   margin-top: 16px;
   padding: 14px;

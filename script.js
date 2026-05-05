@@ -1,4 +1,4 @@
-// v1.18.9_FIELD_TANKER_MEMORY - local pump operator fuel memory; reports still avoid company_users embed
+// v1.19.0_FIELD_TANKER_KM_MTC_SPLIT - field tanker memory with separate KM and MTČ; reports still avoid company_users embed
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.18.9";
+const APP_VERSION = "1.19.0";
 
 
 let sb = null;
@@ -1210,7 +1210,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(f.receiver || d.fuel_receiver)}</td>
         <td>${val(ft.site_name)}</td>
         <td>${val(ft.asset_name || ft.machine)}</td>
-        <td>${val(ft.reading || ft.mtc_km)}</td>
+        <td>${val(ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""))}</td>
+        <td>${val(ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""))}</td>
         <td>${val(ft.liters)}</td>
         <td>${val(ft.receiver || ft.received_by)}</td>
       </tr>
@@ -1256,7 +1257,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>Primio</th>
             <th>Cisterna gradilište</th>
             <th>Cisterna mašina/vozilo</th>
-            <th>Cisterna MTČ/KM</th>
+            <th>Cisterna KM</th>
+            <th>Cisterna MTČ</th>
             <th>Cisterna litara</th>
             <th>Gorivo primio</th>
           </tr>
@@ -1411,7 +1413,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>Gradilište</th>
           <th>Tip</th>
           <th>Mašina/vozilo</th>
-          <th>Trenutni MTČ/KM</th>
+          <th>Trenutna kilometraža / KM</th>
+          <th>Trenutni MTČ</th>
           <th>Sipano litara</th>
           <th>Gorivo primio</th>
         </tr>
@@ -1423,7 +1426,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(ft.site_name)}</td>
             <td>${val(ft.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
             <td>${val(ft.asset_name || ft.machine || ft.vehicle)}</td>
-            <td>${val(ft.reading || ft.mtc_km)}</td>
+            <td>${val(ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""))}</td>
+            <td>${val(ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""))}</td>
             <td>${val(ft.liters)}</td>
             <td>${val(ft.receiver || ft.received_by)}</td>
           </tr>
@@ -2763,6 +2767,9 @@ function addFieldTankerEntry(values = {}) {
   const selectedSite = values.site_name || values.site || "";
   const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
   const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
+  const oldReading = values.reading || values.mtc_km || "";
+  const kmValue = values.km || values.current_km || values.kilometers || values.odometer || (kind === "vehicle" ? oldReading : "");
+  const mtcValue = values.mtc || values.current_mtc || values.machine_mtc || (kind === "machine" ? oldReading : "");
   const manualAsset = values.asset_custom || values.manual_asset || values.machine_custom || values.vehicle_custom || "";
   const div = document.createElement("div");
   div.className = "entry-card field-tanker-entry";
@@ -2792,8 +2799,12 @@ function addFieldTankerEntry(values = {}) {
     <label>Ručno ako nije na listi</label>
     <input class="ft-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice" value="${escapeHtml(manualAsset)}" />
 
-    <label>Trenutni MTČ ili kilometraža</label>
-    <input class="ft-reading numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250 ili 85320" value="${escapeHtml(values.reading || values.mtc_km || "")}" />
+    <label>Trenutna kilometraža / KM</label>
+    <input class="ft-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
+
+    <label>Trenutni MTČ</label>
+    <input class="ft-mtc numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(mtcValue)}" />
+    <p class="field-hint">Ako tankuješ vozilo, obavezno upiši KM. Ako tankuješ mašinu, obavezno upiši MTČ. Možeš popuniti oba ako firma tako traži.</p>
 
     <label>Sipano litara</label>
     <input class="ft-liters numeric-text" type="text" inputmode="decimal" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
@@ -2834,7 +2845,9 @@ function getFieldTankerEntries() {
     const assetOption = assetSelect?.options ? assetSelect.options[assetSelect.selectedIndex] : null;
     const manualAsset = el.querySelector(".ft-asset-custom")?.value.trim() || "";
     const asset = manualAsset || (assetSelect?.value || "").trim();
-    const reading = el.querySelector(".ft-reading")?.value.trim() || "";
+    const km = el.querySelector(".ft-km")?.value.trim() || "";
+    const mtc = el.querySelector(".ft-mtc")?.value.trim() || "";
+    const reading = mtc || km; // backward-compatible summary for older report/excel code
     const liters = el.querySelector(".ft-liters")?.value.trim() || "";
     const receiver = el.querySelector(".ft-receiver")?.value.trim() || "";
     return {
@@ -2851,13 +2864,17 @@ function getFieldTankerEntries() {
       vehicle: kind === "vehicle" ? asset : "",
       vehicle_custom: kind === "vehicle" ? manualAsset : "",
       machine_custom: kind === "machine" ? manualAsset : "",
+      km,
+      current_km: km,
+      mtc,
+      current_mtc: mtc,
       reading,
       mtc_km: reading,
       liters,
       receiver,
       received_by: receiver
     };
-  }).filter(x => x.site_name || x.asset_name || x.reading || x.liters || x.receiver);
+  }).filter(x => x.site_name || x.asset_name || x.km || x.mtc || x.reading || x.liters || x.receiver);
 }
 
 
@@ -2898,6 +2915,8 @@ function validateFieldTankerEntryForMemory(entry) {
   if (!entry.site_name) return "Upiši ili izaberi gradilište/lokaciju za svako sipanje.";
   if (!entry.asset_name) return "Izaberi mašinu/vozilo ili upiši ručno šta je tankovano.";
   if (!entry.liters) return "Upiši koliko litara je sipano.";
+  if (entry.asset_kind === "vehicle" && !entry.km && !entry.current_km) return "Za vozilo upiši kilometražu / KM.";
+  if (entry.asset_kind === "machine" && !entry.mtc && !entry.current_mtc) return "Za mašinu upiši trenutni MTČ.";
   if (!entry.receiver) return "Upiši ko je primio gorivo.";
   return "";
 }
@@ -2969,7 +2988,7 @@ function renderStoredFieldTankerEntries() {
         <div>
           <strong>${index + 1}. ${escapeHtml(entry.site_name || "Bez lokacije")}</strong>
           <small>${escapeHtml(entry.asset_kind === "vehicle" ? "Vozilo" : "Mašina")} · ${escapeHtml(entry.asset_name || "")}</small>
-          <small>${escapeHtml(entry.liters || "0")} L · MTČ/KM: ${escapeHtml(entry.reading || "-")} · Primio: ${escapeHtml(entry.receiver || "-")}</small>
+          <small>${escapeHtml(entry.liters || "0")} L · KM: ${escapeHtml(entry.km || entry.current_km || "-")} · MTČ: ${escapeHtml(entry.mtc || entry.current_mtc || "-")} · Primio: ${escapeHtml(entry.receiver || "-")}</small>
         </div>
         <button type="button" class="danger-small stored-fuel-remove" data-local-id="${escapeHtml(entry.local_id)}">Ukloni</button>
       </div>
@@ -3579,7 +3598,9 @@ const EXPORT_COLUMNS = [
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
   { key:"field_tanker_type", label:"Tip tankovanog sredstva" },
   { key:"field_tanker_asset", label:"Mašina/vozilo koje je tankovano" },
-  { key:"field_tanker_reading", label:"Stanje MTČ/KM pri tankovanju" },
+  { key:"field_tanker_km", label:"Kilometraža / KM pri tankovanju cisternom" },
+  { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
+  { key:"field_tanker_reading", label:"Staro polje MTČ/KM pri tankovanju" },
   { key:"field_tanker_liters", label:"Sipano litara iz cisterne" },
   { key:"field_tanker_receiver", label:"Gorivo primio iz cisterne" },
   { key:"material_action", label:"Radnja sa materijalom" },
@@ -3644,7 +3665,7 @@ const EXPORT_GROUPS = [
     id: "fieldTanker",
     title: "Tankanje goriva cisternom",
     hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
-    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset", "field_tanker_reading", "field_tanker_liters", "field_tanker_receiver"]
+    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
   },
   {
     id: "material",
@@ -3844,6 +3865,8 @@ function flattenReportRowsForExport(r) {
       field_tanker_site: ft.site_name || "",
       field_tanker_type: ft.asset_kind === "vehicle" ? "Vozilo" : (ft.asset_kind === "machine" ? "Mašina" : ""),
       field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || "",
+      field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
+      field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_reading: ft.reading || ft.mtc_km || "",
       field_tanker_liters: ft.liters || "",
       field_tanker_receiver: ft.receiver || ft.received_by || "",
