@@ -1,4 +1,4 @@
-// v1.19.7_WORKER_ASSETS_ROBUST_LOAD - worker asset loading fixed; RPC + direct merge always; tolerant asset type matching
+// v1.19.8_WORKER_ASSET_CODE_UNIVERSAL - broj sredstva bira mašinu/vozilo/ostalo i ne koči ga stari filter
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.7";
+const APP_VERSION = "1.19.8";
 
 
 let sb = null;
@@ -1912,6 +1912,39 @@ function autoSelectExactAssetCode(selectEl, searchValue) {
   }
 }
 
+function getCanonicalAssetKind(asset) {
+  if (isVehicleAsset(asset)) return "vehicle";
+  if (isOtherAsset(asset)) return "other";
+  return "machine";
+}
+
+function findAssetByExactCode(searchValue) {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return null;
+  return (workerAssetOptions || []).find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q) || null;
+}
+
+function findAssetsByUniversalSearch(searchValue) {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return [];
+  return (workerAssetOptions || []).filter(asset => machineMatchesSearch(asset, searchValue));
+}
+
+function assetOptionHtml(asset, selectedValue = "", labelFormatter = formatMachineLabel) {
+  const name = getAssetName(asset) || getAssetRegistration(asset) || "Sredstvo";
+  const reg = getAssetRegistration(asset);
+  const label = labelFormatter(asset) || formatAssetTitleWithCode(asset) || name;
+  const type = asset.asset_type || asset.type || getCanonicalAssetKind(asset);
+  const selected = String(selectedValue || "").trim();
+  const isSelected = selected && (
+    selected === name ||
+    selected === getAssetCode(asset) ||
+    selected === reg ||
+    selected === String(asset.id || "")
+  ) ? "selected" : "";
+  return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(asset.id || "")}" data-asset-code="${escapeHtml(getAssetCode(asset) || "")}" data-registration="${escapeHtml(reg || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+}
+
 function getMachineAssetsFromDirection() {
   return workerAssetOptions
     .filter(isMachineAsset)
@@ -1920,23 +1953,26 @@ function getMachineAssetsFromDirection() {
 
 function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
   const allMachines = getMachineAssetsFromDirection();
-  const machines = allMachines.filter(m => machineMatchesSearch(m, searchValue));
+  let machines = allMachines.filter(m => machineMatchesSearch(m, searchValue));
   const selected = String(selectedValue || "").trim();
+  const q = normalizeVehicleSearch(searchValue);
 
-  if (!allMachines.length) {
-    return `<option value="">Nema mašina iz Direkcije</option>`;
+  const exact = findAssetByExactCode(searchValue);
+  if (exact && getCanonicalAssetKind(exact) === "machine" && !machines.some(m => String(m.id || "") === String(exact.id || ""))) {
+    machines = [exact, ...machines];
+  }
+  if (q && !machines.length) {
+    machines = findAssetsByUniversalSearch(searchValue).filter(isMachineAsset);
+  }
+
+  if (!workerAssetOptions.length) {
+    return `<option value="">Nema sredstava iz Direkcije</option>`;
   }
   if (!machines.length) {
-    return `<option value="">Nema mašina za tu pretragu</option>`;
+    return q ? `<option value="">Nema mašine za taj broj/pretragu</option>` : `<option value="">Nema mašina iz Direkcije</option>`;
   }
 
-  return `<option value="">Odaberi mašinu</option>` + machines.map(m => {
-    const name = getAssetName(m) || "Mašina";
-    const label = formatMachineLabel(m);
-    const type = m.asset_type || m.type || "";
-    const isSelected = selected && (selected === name || selected === getAssetCode(m) || selected === String(m.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(m.id || "")}" data-asset-code="${escapeHtml(getAssetCode(m) || "")}" data-registration="${escapeHtml(getAssetRegistration(m) || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
-  }).join("");
+  return `<option value="">Odaberi mašinu</option>` + machines.map(m => assetOptionHtml(m, selected, formatMachineLabel)).join("");
 }
 
 function refreshOneMachineSelect(entryEl) {
@@ -2117,23 +2153,28 @@ function vehicleMatchesSearch(asset, searchValue) {
 
 function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
   const allVehicles = workerAssetOptions.filter(isVehicleAsset);
-  const vehicles = allVehicles.filter(v => vehicleMatchesSearch(v, searchValue));
+  let vehicles = allVehicles.filter(v => vehicleMatchesSearch(v, searchValue));
   const selected = String(selectedValue || "").trim();
+  const q = normalizeVehicleSearch(searchValue);
 
-  if (!allVehicles.length) {
-    return `<option value="">Nema vozila iz Direkcije</option>`;
+  // v1.19.8: broj sredstva ne sme da blokira stari filter.
+  // Ako radnik ukuca tačan interni broj, prvo prikaži to sredstvo makar je tip došao čudno iz RPC-a.
+  const exact = findAssetByExactCode(searchValue);
+  if (exact && !vehicles.some(v => String(v.id || "") === String(exact.id || ""))) {
+    vehicles = [exact, ...vehicles];
+  }
+  if (q && !vehicles.length) {
+    vehicles = findAssetsByUniversalSearch(searchValue);
+  }
+
+  if (!workerAssetOptions.length) {
+    return `<option value="">Nema sredstava iz Direkcije</option>`;
   }
   if (!vehicles.length) {
-    return `<option value="">Nema vozila za tu pretragu</option>`;
+    return q ? `<option value="">Nema sredstva za taj broj/pretragu</option>` : `<option value="">Nema vozila iz Direkcije</option>`;
   }
 
-  return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => {
-    const name = v.name || "Vozilo";
-    const label = formatAssetLabel(v);
-    const type = v.asset_type || v.type || "";
-    const isSelected = selected && (selected === name || selected === getAssetCode(v) || selected === String(v.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" data-asset-code="${escapeHtml(getAssetCode(v) || "")}" data-registration="${escapeHtml(v.registration || "")}" data-capacity="${escapeHtml(v.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
-  }).join("");
+  return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => assetOptionHtml(v, selected, formatAssetLabel)).join("");
 }
 
 function refreshOneVehicleSelect(entryEl) {
@@ -2876,27 +2917,32 @@ function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
 
 function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "", searchValue = "") {
   const selected = String(selectedValue || "").trim();
-  const allAssets = (workerAssetOptions || [])
+  let allAssets = (workerAssetOptions || [])
     .filter(asset => filterAssetsByFuelKind(asset, kind))
     .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
-  const assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
+  let assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
+  const q = normalizeVehicleSearch(searchValue);
 
-  if (!allAssets.length) {
-    return `<option value="">${fuelKindEmptyText(kind)}</option>`;
+  // v1.19.8: ako je upisan tačan broj, automatski prikaži sredstvo iako je stari filter tipa kočio listu.
+  const exact = findAssetByExactCode(searchValue);
+  if (exact) {
+    const exactKind = getCanonicalAssetKind(exact);
+    if (exactKind === kind && !assets.some(a => String(a.id || "") === String(exact.id || ""))) {
+      assets = [exact, ...assets];
+    }
+  }
+  if (q && !assets.length) {
+    assets = findAssetsByUniversalSearch(searchValue);
+  }
+
+  if (!workerAssetOptions.length) {
+    return `<option value="">Nema sredstava iz Direkcije</option>`;
   }
   if (!assets.length) {
     return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
   }
 
-  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => {
-    const name = getAssetName(asset) || getAssetRegistration(asset) || "";
-    const reg = getAssetRegistration(asset);
-    const label = formatFuelKindAssetLabel(asset, kind);
-    const value = name || label;
-    const type = asset.asset_type || asset.type || "";
-    const isSelected = selected && (selected === value || selected === name || selected === getAssetCode(asset) || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-asset-code="${escapeHtml(getAssetCode(asset) || "")}" data-registration="${escapeHtml(reg || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
-  }).join("");
+  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => assetOptionHtml(asset, selected, a => formatFuelKindAssetLabel(a, getCanonicalAssetKind(a)))).join("");
 }
 
 function refreshFieldTankerSelectors() {
@@ -2910,8 +2956,17 @@ function refreshFieldTankerSelectors() {
     const assetSelect = card.querySelector(".ft-asset-select");
     if (assetSelect) {
       const old = assetSelect.value;
-      const kind = card.querySelector(".ft-asset-kind")?.value || "machine";
+      const kindEl = card.querySelector(".ft-asset-kind");
+      let kind = kindEl?.value || "machine";
       const search = card.querySelector(".ft-asset-search")?.value || "";
+      const exact = findAssetByExactCode(search);
+      if (exact && kindEl) {
+        const exactKind = getCanonicalAssetKind(exact);
+        if (exactKind !== kind) {
+          kindEl.value = exactKind;
+          kind = exactKind;
+        }
+      }
       assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, old, search);
       if (old && Array.from(assetSelect.options).some(o => o.value === old)) assetSelect.value = old;
       autoSelectExactAssetCode(assetSelect, search);
@@ -2982,8 +3037,17 @@ function addFieldTankerEntry(values = {}) {
   function refreshThisFieldTankerAssetSelect() {
     const assetSelect = div.querySelector(".ft-asset-select");
     if (!assetSelect) return;
-    const kindNow = div.querySelector(".ft-asset-kind")?.value || "machine";
+    const kindEl = div.querySelector(".ft-asset-kind");
+    let kindNow = kindEl?.value || "machine";
     const searchNow = div.querySelector(".ft-asset-search")?.value || "";
+    const exact = findAssetByExactCode(searchNow);
+    if (exact && kindEl) {
+      const exactKind = getCanonicalAssetKind(exact);
+      if (exactKind !== kindNow) {
+        kindEl.value = exactKind;
+        kindNow = exactKind;
+      }
+    }
     const oldValue = assetSelect.value;
     assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kindNow, oldValue, searchNow);
     if (oldValue && Array.from(assetSelect.options).some(o => o.value === oldValue)) assetSelect.value = oldValue;
@@ -3233,34 +3297,48 @@ async function sendStoredFieldTankerEntries() {
 
 function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "", searchValue = "") {
   const selected = String(selectedValue || "").trim();
-  const allAssets = (workerAssetOptions || [])
+  let allAssets = (workerAssetOptions || [])
     .filter(asset => filterAssetsByFuelKind(asset, kind))
     .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
-  const assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
+  let assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
+  const q = normalizeVehicleSearch(searchValue);
 
-  if (!allAssets.length) {
-    return `<option value="">${fuelKindEmptyText(kind)}</option>`;
+  const exact = findAssetByExactCode(searchValue);
+  if (exact) {
+    const exactKind = getCanonicalAssetKind(exact);
+    if (exactKind === kind && !assets.some(a => String(a.id || "") === String(exact.id || ""))) {
+      assets = [exact, ...assets];
+    }
+  }
+  if (q && !assets.length) {
+    assets = findAssetsByUniversalSearch(searchValue);
+  }
+
+  if (!workerAssetOptions.length) {
+    return `<option value="">Nema sredstava iz Direkcije</option>`;
   }
   if (!assets.length) {
     return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
   }
 
-  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => {
-    const name = getAssetName(asset) || getAssetRegistration(asset) || "";
-    const reg = getAssetRegistration(asset);
-    const label = formatFuelKindAssetLabel(asset, kind);
-    const value = name || label;
-    const isSelected = selected && (selected === value || selected === name || selected === getAssetCode(asset) || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-asset-code="${escapeHtml(getAssetCode(asset) || "")}" data-registration="${escapeHtml(reg || "")}" data-asset-type="${escapeHtml(asset.asset_type || asset.type || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
-  }).join("");
+  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => assetOptionHtml(asset, selected, a => formatFuelKindAssetLabel(a, getCanonicalAssetKind(a)))).join("");
 }
 
 function refreshOneFuelAssetSelect(entryEl) {
   const sel = entryEl.querySelector(".f-asset-select");
   if (!sel) return;
-  const kind = entryEl.querySelector(".f-asset-kind")?.value || "machine";
+  const kindEl = entryEl.querySelector(".f-asset-kind");
+  let kind = kindEl?.value || "machine";
   const old = sel.value;
   const search = entryEl.querySelector(".f-asset-search")?.value || "";
+  const exact = findAssetByExactCode(search);
+  if (exact && kindEl) {
+    const exactKind = getCanonicalAssetKind(exact);
+    if (exactKind !== kind) {
+      kindEl.value = exactKind;
+      kind = exactKind;
+    }
+  }
   sel.innerHTML = buildFuelAssetOptionsHtml(kind, old, search);
   if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
   autoSelectExactAssetCode(sel, search);
