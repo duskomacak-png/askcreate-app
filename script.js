@@ -1,4 +1,4 @@
-// v1.18.7_REPORTS_EXPLICIT_FK - explicit reports->company_users foreign key embed
+// v1.18.8_REPORTS_NO_EMBED - reports fetched without company_users embed; users enriched in second query
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.17.9";
+const APP_VERSION = "1.18.8";
 
 
 let sb = null;
@@ -907,7 +907,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
       sb.from("assets").select("*").eq("company_id", currentCompany.id),
       sb.from("sites").select("*").eq("company_id", currentCompany.id),
       sb.from("materials").select("*").eq("company_id", currentCompany.id),
-      sb.from("reports").select("id, company_id, user_id, site_id, report_date, status, returned_reason, data, submitted_at, created_at, archived, deleted_at, company_users!reports_user_id_fkey(id, first_name, last_name, function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("created_at", { ascending:false }).limit(150)
+      sb.from("reports").select("id, company_id, user_id, site_id, report_date, status, returned_reason, data, submitted_at, created_at, archived, deleted_at").eq("company_id", currentCompany.id).neq("status", "archived").order("created_at", { ascending:false }).limit(150)
     ]);
 
     if (peopleRes.data) peopleRes.data.forEach(p => {
@@ -1077,11 +1077,11 @@ async function enrichReportsWithUsers(reports = []) {
 async function loadReports() {
   if (!currentCompany) return;
 
-  // v1.18.7: u bazi postoje dve FK veze reports -> company_users.
-  // Zato Supabase embed mora eksplicitno da koristi reports_user_id_fkey.
+  // v1.18.8: ne koristimo Supabase embed reports -> company_users.
+  // Baza ima duple FK veze, zato prvo čitamo reports, pa korisnike posebno kroz enrichReportsWithUsers().
   const { data, error } = await sb
     .from("reports")
-    .select("id, company_id, user_id, site_id, report_date, status, data, returned_reason, submitted_at, approved_at, exported_at, created_at, archived, deleted_at, exported, company_users!reports_user_id_fkey(id, first_name, last_name, function_title)")
+    .select("id, company_id, user_id, site_id, report_date, status, data, returned_reason, submitted_at, approved_at, exported_at, created_at, archived, deleted_at, exported")
     .eq("company_id", currentCompany.id)
     .neq("status", "archived")
     .order("created_at", { ascending:false });
