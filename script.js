@@ -1,4 +1,4 @@
-// v1.21.5_PROFESSIONAL_LABELS - profesionalizovani nazivi i jasniji radnički moduli
+// v1.21.6_SUBMIT_SAFE_FIX - profesionalni nazivi uz vraćen siguran submit workflow
 /* START WORK PRO by AskCreate - Start Work PRO
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.5";
+const APP_VERSION = "1.21.6";
 
 
 let sb = null;
@@ -5279,7 +5279,7 @@ async function sendDefectNow() {
       created_by_worker: worker.full_name,
       function_title: worker.function_title,
       called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
-      sent_to: "uprava_mehanizacija_direktor"
+      sent_to: "direkcija_mehanizacija_direktor"
     };
 
     const { error } = await sb.rpc("submit_worker_report", {
