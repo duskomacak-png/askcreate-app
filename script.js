@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.2";
+const APP_VERSION = "1.21.3";
 
 
 let sb = null;
@@ -1103,7 +1103,7 @@ function defectHtml(r) {
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : (d.created_by_worker || "Nepoznat radnik");
   const status = d.defect_status || "prijavljen";
   const reportedAt = d.defect_reported_at || r.submitted_at || r.created_at;
-  const assetName = d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name) || "—";
+  const assetName = [d.defect_asset_code, d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name)].filter(Boolean).join(" · ") || "—";
 
   return `
     <div class="item report-item defect-item">
@@ -1113,8 +1113,7 @@ function defectHtml(r) {
       <span class="pill">Status: ${escapeHtml(status)}</span>
       <span class="pill">Gradilište/lokacija: ${escapeHtml(d.defect_site_name || d.site_name || "bez gradilišta")}</span>
       <span class="pill">Mašina/vozilo: ${escapeHtml(assetName)}</span>
-      ${d.defect_stops_work ? `<span class="pill">Zaustavlja rad: ${escapeHtml(d.defect_stops_work)}</span>` : ""}
-      ${d.defect_can_continue ? `<span class="pill">Može nastaviti: ${escapeHtml(d.defect_can_continue)}</span>` : ""}
+      ${d.defect_work_impact ? `<span class="pill">Uticaj na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
       ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
       <div class="report-kv">
@@ -1582,13 +1581,13 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <h4>Kvar</h4>
           <div class="report-kv">
             ${rows([
-              ["Mašina/vozilo u kvaru", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle],
-              ["Gradilište/lokacija mašine", d.defect_site_name || d.site_name],
-              ["Ima kvar", d.defect_exists],
+              ["Broj sredstva", d.defect_asset_code],
+              ["Mašina/vozilo/oprema u kvaru", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle],
+              ["Registracija", d.defect_asset_registration],
+              ["Gradilište/lokacija sredstva", d.defect_site_name || d.site_name],
               ["Opis kvara", d.defect],
               ["Hitnost", d.defect_urgency],
-              ["Zaustavlja rad", d.defect_stops_work],
-              ["Može nastaviti rad", d.defect_can_continue],
+              ["Uticaj na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
               ["Šef mehanizacije pozvan", d.called_mechanic_by_phone],
               ["Status kvara", d.defect_status]
             ])}
@@ -3555,6 +3554,83 @@ function updateFieldTankerSmartResult(entryEl, asset, manualValue) {
   result.textContent = "Upiši interni broj, naziv ili tablice sredstva.";
 }
 
+function findDefectAssetForSmartInput(searchValue) {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return null;
+  const exactCode = findAssetByExactCode(searchValue);
+  if (exactCode) return exactCode;
+  const assets = (workerAssetOptions || []).filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
+  const exact = assets.find(asset => {
+    const code = normalizeVehicleSearch(getAssetCode(asset));
+    const name = normalizeVehicleSearch(getAssetName(asset));
+    const reg = normalizeVehicleSearch(getAssetRegistration(asset));
+    const label = normalizeVehicleSearch(formatFuelKindAssetLabel(asset, getCanonicalAssetKind(asset)));
+    return code === q || name === q || reg === q || label === q;
+  });
+  if (exact) return exact;
+  const matches = assets.filter(asset => machineMatchesSearch(asset, searchValue));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function formatDefectAssetLabel(asset) {
+  if (!asset) return "";
+  const kind = getCanonicalAssetKind(asset);
+  const kindLabel = kind === "vehicle" ? "Vozilo" : kind === "other" ? "Ostalo" : "Mašina";
+  return `${kindLabel}: ${formatFuelKindAssetLabel(asset, kind)}`;
+}
+
+function updateDefectAssetSmartResult() {
+  const input = $("#wrDefectAssetName");
+  const result = $("#wrDefectAssetPicked");
+  if (!input || !result) return;
+  const value = String(input.value || "").trim();
+  const asset = findDefectAssetForSmartInput(value);
+  if (asset) {
+    result.className = "asset-smart-result defect-picked ok";
+    result.textContent = `Pronađeno sredstvo: ${formatDefectAssetLabel(asset)}`;
+    return;
+  }
+  if (value) {
+    result.className = "asset-smart-result defect-picked warn";
+    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    return;
+  }
+  result.className = "asset-smart-result defect-picked";
+  result.textContent = "Upiši interni broj, naziv mašine/vozila/opreme ili registraciju.";
+}
+
+function getDefectAssetPayload() {
+  const raw = String($("#wrDefectAssetName")?.value || "").trim();
+  const asset = findDefectAssetForSmartInput(raw);
+  if (!asset) {
+    return {
+      defect_asset_kind: "",
+      defect_asset_id: "",
+      defect_asset_code: "",
+      defect_asset_name: raw,
+      defect_asset_registration: "",
+      defect_manual_asset_name: raw
+    };
+  }
+  return {
+    defect_asset_kind: getCanonicalAssetKind(asset),
+    defect_asset_id: asset.id || "",
+    defect_asset_code: getAssetCode(asset) || "",
+    defect_asset_name: getAssetName(asset) || raw,
+    defect_asset_registration: getAssetRegistration(asset) || "",
+    defect_manual_asset_name: ""
+  };
+}
+
+function getDefectImpactPayload() {
+  const impact = $("#wrDefectStopsWork")?.value || "";
+  return {
+    defect_work_impact: impact,
+    defect_stops_work: impact === "zaustavlja_rad" ? "da" : impact === "moze_nastaviti" ? "ne" : "",
+    defect_can_continue: impact === "moze_nastaviti" ? "da" : impact === "zaustavlja_rad" ? "ne" : ""
+  };
+}
+
 function refreshOneFuelAssetSelect(entryEl) {
   const sel = entryEl.querySelector(".f-asset-select");
   if (!sel) return;
@@ -3800,12 +3876,10 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       wrWarehouseType:"warehouse_type",
       wrWarehouseItem:"warehouse_item",
       wrWarehouseQty:"warehouse_qty",
-      wrDefectAssetName:"defect_asset_name",
+      wrDefectAssetName:"defect_asset_code",
       wrDefectSiteName:"defect_site_name",
-      wrDefectExists:"defect_exists",
       wrDefect:"defect",
-      wrDefectStopsWork:"defect_stops_work",
-      wrDefectCanContinue:"defect_can_continue",
+      wrDefectStopsWork:"defect_work_impact",
       wrDefectUrgency:"defect_urgency",
       wrDefectCalledMechanic:"called_mechanic_by_phone",}).forEach(([id,key]) => {
       const el = $("#" + id);
@@ -3953,20 +4027,19 @@ function collectWorkerData() {
     warehouse_type: canWarehouse ? $("#wrWarehouseType").value : "",
     warehouse_item: canWarehouse ? $("#wrWarehouseItem").value.trim() : "",
     warehouse_qty: canWarehouse ? $("#wrWarehouseQty").value.trim() : "",
-    defect_asset_name: canDefects ? ($("#wrDefectAssetName")?.value.trim() || "") : "",
-    defect_machine: canDefects ? ($("#wrDefectAssetName")?.value.trim() || "") : "",
+    ...defectAssetPayload,
+    defect_machine: canDefects ? (defectAssetPayload.defect_asset_name || "") : "",
     defect_site_name: canDefects ? ($("#wrDefectSiteName")?.value.trim() || selectedSite.site_name || "") : "",
-    defect_exists: canDefects ? ($("#wrDefectExists")?.value || "ne") : "ne",
+    defect_exists: canDefects ? "da" : "ne",
     defect: canDefects ? $("#wrDefect").value.trim() : "",
-    defect_stops_work: canDefects ? ($("#wrDefectStopsWork")?.value || "") : "",
-    defect_can_continue: canDefects ? ($("#wrDefectCanContinue")?.value || "") : "",
+    ...defectImpactPayload,
     defect_urgency: canDefects ? $("#wrDefectUrgency").value : "",
     called_mechanic_by_phone: canDefects ? ($("#wrDefectCalledMechanic")?.value || "") : ""
   };
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrLeaveType","wrLeaveDate","wrLeaveFrom","wrLeaveTo","wrLeaveNote","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrLeaveType","wrLeaveDate","wrLeaveFrom","wrLeaveTo","wrLeaveNote","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefect","wrDefectStopsWork","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
@@ -3979,7 +4052,6 @@ function clearWorkerForm() {
   if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
   if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
   if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
-  if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
 }
@@ -4066,7 +4138,7 @@ function loadDraft() {
     (d.material_entries || d.material_movements || []).forEach(m => addMaterialEntry(m));
 
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_name", wrDefectSiteName:"defect_site_name", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_code", wrDefectSiteName:"defect_site_name", wrDefect:"defect", wrDefectStopsWork:"defect_work_impact", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
     updateLeaveRequestVisibility();
   } catch {}
@@ -5143,13 +5215,14 @@ async function sendDefectNow() {
     if (!worker) throw new Error("Radnik nije prijavljen.");
 
     const defectText = $("#wrDefect")?.value.trim() || "";
-    const defectAssetName = $("#wrDefectAssetName")?.value.trim() || "";
+    const defectAsset = getDefectAssetPayload();
+    const defectAssetName = defectAsset.defect_asset_name || defectAsset.defect_manual_asset_name || "";
+    const defectImpact = getDefectImpactPayload();
     const selectedDefectSite = getSelectedWorkerSite ? getSelectedWorkerSite() : {};
     const defectSiteName = $("#wrDefectSiteName")?.value.trim() || selectedDefectSite.site_name || "";
-    const exists = $("#wrDefectExists")?.value || "ne";
 
-    if (exists !== "da" && !defectText) {
-      throw new Error("Prvo označi da ima kvar ili upiši opis kvara.");
+    if (!defectText && !defectAssetName) {
+      throw new Error("Upiši sredstvo u kvaru ili opis kvara.");
     }
 
     const machines = getMachineEntries ? getMachineEntries() : [];
@@ -5164,14 +5237,13 @@ async function sendDefectNow() {
       site_name: defectSiteName || getSelectedWorkerSite().site_name,
       defect_site_name: defectSiteName || getSelectedWorkerSite().site_name,
       machine: firstMachine,
-      defect_asset_name: defectAssetName,
+      ...defectAsset,
       defect_machine: defectAssetName,
       defect_site_name: defectSiteName,
       machines,
       defect_exists: "da",
       defect: defectText,
-      defect_stops_work: $("#wrDefectStopsWork")?.value || "",
-      defect_can_continue: $("#wrDefectCanContinue")?.value || "",
+      ...defectImpact,
       defect_urgency: $("#wrDefectUrgency")?.value || "",
       created_by_worker: worker.full_name,
       function_title: worker.function_title,
@@ -5405,6 +5477,10 @@ function bindEvents() {
 
   $("#saveDraftBtn").addEventListener("click", saveDraft);
   if ($("#wrLeaveType")) $("#wrLeaveType").addEventListener("change", updateLeaveRequestVisibility);
+  if ($("#wrDefectAssetName")) {
+    $("#wrDefectAssetName").addEventListener("input", updateDefectAssetSmartResult);
+    $("#wrDefectAssetName").addEventListener("change", updateDefectAssetSmartResult);
+  }
 
   $("#submitReportBtn").addEventListener("click", async () => {
     try {

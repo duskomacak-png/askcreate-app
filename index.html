@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1212" />
+  <link rel="stylesheet" href="style.css?v=1213" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -598,40 +598,23 @@
           <h4>Prijava kvara</h4>
           <p class="hint">Ovo je važno da Šef mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
-          <label>Ime mašine / vozila koje je u kvaru</label>
-          <input id="wrDefectAssetName" placeholder="npr. CAT 330, MAN kiper, D6R..." />
+          <label>Sredstvo u kvaru / interni broj</label>
+          <input id="wrDefectAssetName" class="asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili registraciju, npr. 1, CAT 330, BG3542RI" autocomplete="off" />
+          <div id="wrDefectAssetPicked" class="asset-smart-result defect-picked">Upiši interni broj, naziv mašine/vozila/opreme ili registraciju.</div>
 
           <label>Gradilište / lokacija mašine</label>
           <input id="wrDefectSiteName" placeholder="npr. Zemun Zmaj, Beograd, lokacija gde stoji mašina..." />
-          <p class="hint">Upiši gde se nalazi mašina u kvaru. Ako je gore već izabrano gradilište, možeš prepisati isti naziv.</p>
-
-          <label>Ima kvar?</label>
-          <select id="wrDefectExists">
-            <option value="ne">Ne</option>
-            <option value="da">Da</option>
-          </select>
+          <p class="hint">Upiši gde se nalazi sredstvo u kvaru. Ako je gore već izabrano gradilište, možeš prepisati isti naziv.</p>
 
           <label>Opis kvara</label>
           <textarea id="wrDefect" placeholder="npr. puklo crevo, curi ulje, ne pali..."></textarea>
 
-          <div class="mini-grid">
-            <div>
-              <label>Zaustavlja rad?</label>
-              <select id="wrDefectStopsWork">
-                <option value="">-- izaberi --</option>
-                <option value="da">Da</option>
-                <option value="ne">Ne</option>
-              </select>
-            </div>
-            <div>
-              <label>Može nastaviti rad?</label>
-              <select id="wrDefectCanContinue">
-                <option value="">-- izaberi --</option>
-                <option value="da">Da</option>
-                <option value="ne">Ne</option>
-              </select>
-            </div>
-          </div>
+          <label>Uticaj na rad</label>
+          <select id="wrDefectStopsWork">
+            <option value="">-- izaberi --</option>
+            <option value="zaustavlja_rad">Zaustavlja rad</option>
+            <option value="moze_nastaviti">Može nastaviti rad do popravke</option>
+          </select>
 
           <label>Hitnost</label>
           <select id="wrDefectUrgency">
@@ -665,6 +648,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1212"></script>
+  <script src="script.js?v=1213"></script>
 </body>
 </html>
