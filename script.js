@@ -2359,15 +2359,25 @@ function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
   }).join("");
 }
 
-function buildFieldTankerAssetOptionsHtml(selectedValue = "") {
-  const selected = String(selectedValue || "").trim().toLowerCase();
-  if (!workerAssetOptions.length) return `<option value="">Nema mašina/vozila iz Direkcije</option>`;
-  return `<option value="">Odaberi mašinu / vozilo</option>` + workerAssetOptions.map(asset => {
-    const name = asset.name || "Mašina / vozilo";
-    const label = formatAssetLabel(asset);
+function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "") {
+  const selected = String(selectedValue || "").trim();
+  const isVehicle = kind === "vehicle";
+  const assets = (workerAssetOptions || [])
+    .filter(asset => isVehicle ? isVehicleAsset(asset) : isMachineAsset(asset))
+    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
+
+  if (!assets.length) {
+    return `<option value="">${isVehicle ? "Nema vozila iz Direkcije" : "Nema mašina iz Direkcije"}</option>`;
+  }
+
+  return `<option value="">${isVehicle ? "Odaberi vozilo" : "Odaberi mašinu"}</option>` + assets.map(asset => {
+    const name = getAssetName(asset) || getAssetRegistration(asset) || "";
+    const reg = getAssetRegistration(asset);
+    const label = isVehicle ? formatAssetLabel(asset) : formatMachineLabel(asset);
+    const value = name || label;
     const type = asset.asset_type || asset.type || "";
-    const isSelected = selected && (String(name).trim().toLowerCase() === selected || String(asset.id || "").trim().toLowerCase() === selected) ? "selected" : "";
-    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(asset.registration || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+    const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(reg || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
@@ -2382,7 +2392,8 @@ function refreshFieldTankerSelectors() {
     const assetSelect = card.querySelector(".ft-asset-select");
     if (assetSelect) {
       const old = assetSelect.value;
-      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(old);
+      const kind = card.querySelector(".ft-asset-kind")?.value || "machine";
+      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, old);
       if (old && Array.from(assetSelect.options).some(o => o.value === old)) assetSelect.value = old;
     }
   });
@@ -2394,6 +2405,8 @@ function addFieldTankerEntry(values = {}) {
   const idx = list.querySelectorAll(".field-tanker-entry").length + 1;
   const selectedSite = values.site_name || values.site || "";
   const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
+  const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
+  const manualAsset = values.asset_custom || values.manual_asset || values.machine_custom || values.vehicle_custom || "";
   const div = document.createElement("div");
   div.className = "entry-card field-tanker-entry";
   div.innerHTML = `
@@ -2409,12 +2422,18 @@ function addFieldTankerEntry(values = {}) {
     <label>Upiši ručno gradilište ako nije u listi</label>
     <input class="ft-site-custom" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_custom || values.manual_site || "")}" />
 
-    <label>Mašina ili vozilo iz Direkcije</label>
-    <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(selectedAsset)}</select>
-    <p class="field-hint">Lista se puni iz Direkcija → Mašine / vozila.</p>
+    <label>Šta je tankovano</label>
+    <select class="ft-asset-kind">
+      <option value="machine" ${kind === "vehicle" ? "" : "selected"}>Mašina</option>
+      <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
+    </select>
 
-    <label>Upiši ručno mašinu/vozilo ako nije u listi</label>
-    <input class="ft-asset-custom" placeholder="npr. CAT 330, valjak, kamion..." value="${escapeHtml(values.asset_custom || values.manual_asset || "")}" />
+    <label>Izaberi iz Direkcije</label>
+    <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset)}</select>
+    <p class="field-hint">Kad izabereš mašinu, vidiš samo mašine. Kad izabereš vozilo, vidiš samo vozila iz Direkcija → Mašine / vozila.</p>
+
+    <label>Ručno ako nije na listi</label>
+    <input class="ft-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice" value="${escapeHtml(manualAsset)}" />
 
     <label>Trenutni MTČ ili kilometraža</label>
     <input class="ft-reading numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250 ili 85320" value="${escapeHtml(values.reading || values.mtc_km || "")}" />
@@ -2428,6 +2447,12 @@ function addFieldTankerEntry(values = {}) {
   div.querySelector(".remove-entry").addEventListener("click", () => {
     div.remove();
     renumberFieldTankerEntries();
+  });
+  div.querySelector(".ft-asset-kind")?.addEventListener("change", () => {
+    const assetSelect = div.querySelector(".ft-asset-select");
+    if (assetSelect) {
+      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(div.querySelector(".ft-asset-kind")?.value || "machine", "");
+    }
   });
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
@@ -2447,6 +2472,7 @@ function getFieldTankerEntries() {
     const siteOption = siteSelect?.options ? siteSelect.options[siteSelect.selectedIndex] : null;
     const manualSite = el.querySelector(".ft-site-custom")?.value.trim() || "";
     const site = manualSite || (siteSelect?.value || "").trim();
+    const kind = el.querySelector(".ft-asset-kind")?.value || "machine";
     const assetSelect = el.querySelector(".ft-asset-select");
     const assetOption = assetSelect?.options ? assetSelect.options[assetSelect.selectedIndex] : null;
     const manualAsset = el.querySelector(".ft-asset-custom")?.value.trim() || "";
@@ -2459,10 +2485,15 @@ function getFieldTankerEntries() {
       site_id: manualSite ? null : (siteOption?.dataset?.siteId || null),
       site_name: site,
       site_custom: manualSite,
+      asset_kind: kind,
+      asset_type: kind,
       asset_id: manualAsset ? null : (assetOption?.dataset?.assetId || null),
       asset_name: asset,
       asset_custom: manualAsset,
       machine: asset,
+      vehicle: kind === "vehicle" ? asset : "",
+      vehicle_custom: kind === "vehicle" ? manualAsset : "",
+      machine_custom: kind === "machine" ? manualAsset : "",
       reading,
       mtc_km: reading,
       liters,
