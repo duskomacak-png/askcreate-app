@@ -1,4 +1,4 @@
-// v1.19.2_ASSET_CAPACITY_M3_SUFFIX - capacity entry shows m³ suffix; no SQL/RPC changes
+// v1.19.4_ASSET_INTERNAL_CODE - asset internal number/code visible across worker selects/reports; requires assets.asset_code column
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.3";
+const APP_VERSION = "1.19.4";
 
 
 let sb = null;
@@ -471,7 +471,7 @@ function setAssetFormMode(mode = "add") {
 }
 
 function clearAssetForm() {
-  ["assetName", "assetReg", "assetCapacity"].forEach(id => {
+  ["assetCode", "assetName", "assetReg", "assetCapacity"].forEach(id => {
     const el = document.querySelector("#" + id);
     if (el) el.value = "";
   });
@@ -494,6 +494,7 @@ window.editAsset = async (id) => {
     if (!asset) throw new Error("Mašina/vozilo nije pronađeno.");
 
     editingAssetId = asset.id;
+    document.querySelector("#assetCode").value = asset.asset_code || asset.internal_code || asset.code || "";
     document.querySelector("#assetName").value = asset.name || "";
     document.querySelector("#assetType").value = asset.asset_type || "machine";
     document.querySelector("#assetReg").value = asset.registration || "";
@@ -510,6 +511,7 @@ window.editAsset = async (id) => {
 async function saveAssetForm() {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const assetCode = document.querySelector("#assetCode")?.value.trim() || "";
     const name = document.querySelector("#assetName").value.trim();
     const assetType = document.querySelector("#assetType").value;
     const registration = document.querySelector("#assetReg").value.trim();
@@ -519,6 +521,7 @@ async function saveAssetForm() {
 
     const payload = {
       company_id: currentCompany.id,
+      asset_code: assetCode,
       name,
       asset_type: assetType,
       registration,
@@ -621,7 +624,7 @@ async function loadAssets() {
   $("#assetsList").innerHTML = (data || []).map(a => `
     <div class="item management-item">
       <div class="item-main">
-        <strong>${escapeHtml(a.name)}</strong>
+        <strong>${escapeHtml(formatAssetTitleWithCode(a))}</strong>
         <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(formatCapacityM3(a.capacity))}</small>
       </div>
       <div class="management-actions asset-actions-v1117">
@@ -921,11 +924,11 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
     });
 
     if (assetsRes.data) assetsRes.data.forEach(a => {
-      const text = `${a.name} ${a.asset_type} ${a.registration || ""} ${a.capacity || ""}`;
+      const text = `${a.asset_code || ""} ${a.internal_code || ""} ${a.code || ""} ${a.name} ${a.asset_type} ${a.registration || ""} ${a.capacity || ""}`;
       if (searchMatch(text, q)) results.push({
         type:"Mašina / vozilo",
-        title:a.name,
-        subtitle:`${a.asset_type} · ${a.registration || ""} · ${formatCapacityM3(a.capacity)}`,
+        title:formatAssetTitleWithCode(a),
+        subtitle:`broj: ${getAssetCode(a) || "—"} · ${a.asset_type} · ${a.registration || ""} · ${formatCapacityM3(a.capacity)}`,
         actions:`<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Uredi</button><button class="danger-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>`
       });
     });
@@ -1305,6 +1308,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         ${machines.map((m, i) => `
           <tr>
             <td>${i + 1}</td>
+            <td>${val(m.asset_code || m.machine_code)}</td>
             <td>${val(m.name)}</td>
             <td>${val(m.start)}</td>
             <td>${val(m.end)}</td>
@@ -1320,6 +1324,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
+          <th>Broj</th>
           <th>Vozilo</th>
           <th>Reg.</th>
           <th>Kapacitet</th>
@@ -1335,6 +1340,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         ${vehicles.map((v, i) => `
           <tr>
             <td>${i + 1}</td>
+            <td>${val(v.asset_code || v.vehicle_code)}</td>
             <td>${val(v.name || v.vehicle)}</td>
             <td>${val(v.registration)}</td>
             <td>${val(v.capacity)}</td>
@@ -1385,6 +1391,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Tip</th>
+          <th>Broj</th>
           <th>Mašina/vozilo</th>
           <th>Litara</th>
           <th>KM pri sipanju</th>
@@ -1398,6 +1405,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <tr>
             <td>${i + 1}</td>
             <td>${val(assetKindLabel(f.asset_kind))}</td>
+            <td>${val(f.asset_code)}</td>
             <td>${val(f.asset_name || f.machine || f.vehicle || f.other)}</td>
             <td>${val(f.liters)}</td>
             <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
@@ -1416,6 +1424,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>#</th>
           <th>Gradilište</th>
           <th>Tip</th>
+          <th>Broj</th>
           <th>Mašina/vozilo</th>
           <th>Trenutna kilometraža / KM</th>
           <th>Trenutni MTČ</th>
@@ -1429,6 +1438,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${i + 1}</td>
             <td>${val(ft.site_name)}</td>
             <td>${val(assetKindLabel(ft.asset_kind))}</td>
+            <td>${val(ft.asset_code)}</td>
             <td>${val(ft.asset_name || ft.machine || ft.vehicle || ft.other)}</td>
             <td>${val(ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""))}</td>
             <td>${val(ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""))}</td>
@@ -1744,6 +1754,24 @@ function getAssetName(asset) {
   ).trim();
 }
 
+function getAssetCode(asset) {
+  return String(
+    asset?.asset_code ||
+    asset?.internal_code ||
+    asset?.code ||
+    asset?.asset_number ||
+    asset?.number ||
+    asset?.inventory_number ||
+    ""
+  ).trim();
+}
+
+function formatAssetTitleWithCode(asset) {
+  const code = getAssetCode(asset);
+  const name = getAssetName(asset) || asset?.name || "Sredstvo";
+  return code ? `${code} · ${name}` : name;
+}
+
 function getAssetType(asset) {
   return normalizeAssetType(asset?.asset_type || asset?.type || asset?.assetType || asset?.category || "");
 }
@@ -1769,7 +1797,7 @@ function assetKindLabel(kind) {
 }
 
 function formatAssetLabel(asset) {
-  const parts = [getAssetName(asset) || "Vozilo"];
+  const parts = [formatAssetTitleWithCode(asset) || "Vozilo"];
   const reg = getAssetRegistration(asset);
   if (reg) parts.push(reg);
   if (asset?.capacity) parts.push(asset.capacity);
@@ -1784,14 +1812,14 @@ function isMachineAsset(asset) {
 }
 
 function formatMachineLabel(asset) {
-  const parts = [getAssetName(asset) || "Mašina"];
+  const parts = [formatAssetTitleWithCode(asset) || "Mašina"];
   const reg = getAssetRegistration(asset);
   if (reg) parts.push(reg);
   return parts.filter(Boolean).join(" · ");
 }
 
 function formatOtherAssetLabel(asset) {
-  const parts = [getAssetName(asset) || "Ostalo"];
+  const parts = [formatAssetTitleWithCode(asset) || "Ostalo"];
   const reg = getAssetRegistration(asset);
   if (reg) parts.push(reg);
   return parts.filter(Boolean).join(" · ");
@@ -1825,6 +1853,7 @@ function machineMatchesSearch(asset, searchValue) {
   const q = normalizeVehicleSearch(searchValue);
   if (!q) return true;
   const haystack = normalizeVehicleSearch([
+    getAssetCode(asset),
     asset?.name,
     asset?.registration,
     asset?.capacity,
@@ -1836,7 +1865,7 @@ function machineMatchesSearch(asset, searchValue) {
 function getMachineAssetsFromDirection() {
   return workerAssetOptions
     .filter(isMachineAsset)
-    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
+    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
 }
 
 function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
@@ -1855,8 +1884,8 @@ function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
     const name = getAssetName(m) || "Mašina";
     const label = formatMachineLabel(m);
     const type = m.asset_type || m.type || "";
-    const isSelected = selected && (selected === name || selected === String(m.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(m.id || "")}" data-registration="${escapeHtml(getAssetRegistration(m) || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+    const isSelected = selected && (selected === name || selected === getAssetCode(m) || selected === String(m.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(m.id || "")}" data-asset-code="${escapeHtml(getAssetCode(m) || "")}" data-registration="${escapeHtml(getAssetRegistration(m) || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
@@ -1931,6 +1960,7 @@ function normalizeWorkerAssetRows(rows) {
   return (Array.isArray(rows) ? rows : []).map(a => ({
     ...a,
     name: getAssetName(a),
+    asset_code: getAssetCode(a),
     registration: getAssetRegistration(a),
     asset_type: a.asset_type || a.type || a.assetType || a.category || "",
     type: a.type || a.asset_type || a.assetType || a.category || ""
@@ -1940,7 +1970,7 @@ function normalizeWorkerAssetRows(rows) {
 function mergeAssetRows(primary = [], fallback = []) {
   const map = new Map();
   [...primary, ...fallback].forEach(a => {
-    const key = String(a.id || `${a.name || ""}|${a.registration || ""}|${a.asset_type || a.type || ""}`);
+    const key = String(a.id || `${getAssetCode(a) || ""}|${a.name || ""}|${a.registration || ""}|${a.asset_type || a.type || ""}`);
     if (!map.has(key)) map.set(key, a);
   });
   return Array.from(map.values());
@@ -2008,6 +2038,7 @@ function vehicleMatchesSearch(asset, searchValue) {
   const q = normalizeVehicleSearch(searchValue);
   if (!q) return true;
   const haystack = normalizeVehicleSearch([
+    getAssetCode(asset),
     asset?.name,
     asset?.registration,
     asset?.capacity,
@@ -2032,8 +2063,8 @@ function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
     const name = v.name || "Vozilo";
     const label = formatAssetLabel(v);
     const type = v.asset_type || v.type || "";
-    const isSelected = selected && (selected === name || selected === String(v.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" data-registration="${escapeHtml(v.registration || "")}" data-capacity="${escapeHtml(v.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+    const isSelected = selected && (selected === name || selected === getAssetCode(v) || selected === String(v.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" data-asset-code="${escapeHtml(getAssetCode(v) || "")}" data-registration="${escapeHtml(v.registration || "")}" data-capacity="${escapeHtml(v.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
@@ -2056,6 +2087,7 @@ function getSelectedVehicleFromEntry(el) {
   const custom = el.querySelector(".v-custom")?.value.trim() || "";
   return {
     asset_id: custom ? null : (option?.dataset?.assetId || null),
+    asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
     name: custom || (select?.value || ""),
     registration: custom ? "" : (option?.dataset?.registration || ""),
     capacity: custom ? "" : (option?.dataset?.capacity || "")
@@ -2174,6 +2206,8 @@ function getVehicleEntries() {
       asset_id: selected.asset_id,
       name: selected.name,
       vehicle: selected.name,
+      asset_code: selected.asset_code,
+      vehicle_code: selected.asset_code,
       registration: selected.registration,
       capacity: selected.capacity,
       vehicle_custom: el.querySelector(".v-custom")?.value.trim() || "",
@@ -2559,7 +2593,7 @@ function addMachineEntry(values = {}) {
     </div>
 
     <label>Pretraži mašinu iz Direkcije</label>
-    <input class="m-search" placeholder="kucaj naziv ili oznaku: CAT, 330, D6R..." value="" />
+    <input class="m-search" placeholder="kucaj broj, naziv ili oznaku: 101, CAT, 330, D6R..." value="" />
 
     <label>Mašina</label>
     <select class="m-name">${buildMachineOptionsHtml(values.name || "")}</select>
@@ -2634,10 +2668,15 @@ function addMachineEntry(values = {}) {
 
 function getMachineEntries() {
   return $$("#machineEntries .machine-entry").map((el, i) => {
-    const selected = el.querySelector(".m-name")?.value.trim() || "";
+    const select = el.querySelector(".m-name");
+    const selected = select?.value.trim() || "";
+    const option = select?.options ? select.options[select.selectedIndex] : null;
     const custom = el.querySelector(".m-custom")?.value.trim() || "";
     return {
       no: i + 1,
+      asset_id: custom ? null : (option?.dataset?.assetId || null),
+      asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
+      machine_code: custom ? "" : (option?.dataset?.assetCode || ""),
       name: custom || selected,
       machine_custom: custom,
       start: el.querySelector(".m-start")?.value || "",
@@ -2770,7 +2809,7 @@ function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "") 
   const selected = String(selectedValue || "").trim();
   const assets = (workerAssetOptions || [])
     .filter(asset => filterAssetsByFuelKind(asset, kind))
-    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
+    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
 
   if (!assets.length) {
     return `<option value="">${fuelKindEmptyText(kind)}</option>`;
@@ -2782,8 +2821,8 @@ function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "") 
     const label = formatFuelKindAssetLabel(asset, kind);
     const value = name || label;
     const type = asset.asset_type || asset.type || "";
-    const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(reg || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+    const isSelected = selected && (selected === value || selected === name || selected === getAssetCode(asset) || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-asset-code="${escapeHtml(getAssetCode(asset) || "")}" data-registration="${escapeHtml(reg || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
@@ -2904,6 +2943,7 @@ function getFieldTankerEntries() {
       asset_kind: kind,
       asset_type: kind,
       asset_id: manualAsset ? null : (assetOption?.dataset?.assetId || null),
+      asset_code: manualAsset ? "" : (assetOption?.dataset?.assetCode || ""),
       asset_name: asset,
       asset_custom: manualAsset,
       machine: kind === "machine" ? asset : "",
@@ -3111,7 +3151,7 @@ function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "") {
   const selected = String(selectedValue || "").trim();
   const assets = (workerAssetOptions || [])
     .filter(asset => filterAssetsByFuelKind(asset, kind))
-    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
+    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
 
   if (!assets.length) {
     return `<option value="">${fuelKindEmptyText(kind)}</option>`;
@@ -3122,8 +3162,8 @@ function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "") {
     const reg = getAssetRegistration(asset);
     const label = formatFuelKindAssetLabel(asset, kind);
     const value = name || label;
-    const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
-    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(reg || "")}" data-asset-type="${escapeHtml(asset.asset_type || asset.type || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
+    const isSelected = selected && (selected === value || selected === name || selected === getAssetCode(asset) || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-asset-code="${escapeHtml(getAssetCode(asset) || "")}" data-registration="${escapeHtml(reg || "")}" data-asset-type="${escapeHtml(asset.asset_type || asset.type || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
   }).join("");
 }
 
@@ -3218,6 +3258,7 @@ function getFuelEntries() {
       asset_kind: kind,
       asset_type: kind,
       asset_id: custom ? null : (option?.dataset?.assetId || null),
+      asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
       asset_name: assetName,
       asset_custom: custom,
       machine: kind === "machine" ? assetName : "",
@@ -3643,11 +3684,13 @@ const EXPORT_COLUMNS = [
   { key:"description", label:"Šta je rađeno" },
   { key:"crew_worker", label:"Ime radnika na gradilištu" },
   { key:"crew_hours", label:"Sati tog radnika" },
+  { key:"machine_code", label:"Broj mašine" },
   { key:"machine", label:"Mašina" },
   { key:"machine_start", label:"Početno stanje MTČ/KM" },
   { key:"machine_end", label:"Krajnje stanje MTČ/KM" },
   { key:"machine_hours", label:"Ukupno sati mašine" },
   { key:"machine_work", label:"Šta je mašina radila" },
+  { key:"vehicle_code", label:"Broj vozila" },
   { key:"vehicle", label:"Vozilo / kamion" },
   { key:"registration", label:"Registracija" },
   { key:"capacity", label:"Kapacitet vozila" },
@@ -3665,6 +3708,7 @@ const EXPORT_COLUMNS = [
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
   { key:"fuel_type", label:"Tip za sipanje goriva" },
+  { key:"fuel_asset_code", label:"Broj sredstva za gorivo" },
   { key:"fuel_for", label:"Gorivo sipano u" },
   { key:"fuel_liters", label:"Količina goriva u litrima" },
   { key:"fuel_km", label:"Kilometraža / KM kod sipanja" },
@@ -3674,6 +3718,7 @@ const EXPORT_COLUMNS = [
   { key:"fuel_receiver", label:"Gorivo primio" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
   { key:"field_tanker_type", label:"Tip tankovanog sredstva" },
+  { key:"field_tanker_asset_code", label:"Broj tankovanog sredstva" },
   { key:"field_tanker_asset", label:"Mašina/vozilo koje je tankovano" },
   { key:"field_tanker_km", label:"Kilometraža / KM pri tankovanju cisternom" },
   { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
@@ -3718,19 +3763,19 @@ const EXPORT_GROUPS = [
     id: "machines",
     title: "Mašine",
     hint: "Bager, valjak, buldozer i druga mehanizacija.",
-    keys: ["machine", "machine_start", "machine_end", "machine_hours", "machine_work"]
+    keys: ["machine_code", "machine", "machine_start", "machine_end", "machine_hours", "machine_work"]
   },
   {
     id: "vehicles",
     title: "Vozila / kamioni",
     hint: "Kamioni, kilometraža, relacija, ture i kubici.",
-    keys: ["vehicle", "registration", "capacity", "km_start", "km_end", "route", "tours", "cubic", "manual_cubic"]
+    keys: ["vehicle_code", "vehicle", "registration", "capacity", "km_start", "km_end", "route", "tours", "cubic", "manual_cubic"]
   },
   {
     id: "fuel",
     title: "Sipanje goriva",
     hint: "Gorivo koje je radnik sipao u svoju mašinu ili vozilo.",
-    keys: ["fuel_type", "fuel_for", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_reading", "fuel_by", "fuel_receiver"]
+    keys: ["fuel_type", "fuel_asset_code", "fuel_for", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_reading", "fuel_by", "fuel_receiver"]
   },
   {
     id: "lowloader",
@@ -3742,7 +3787,7 @@ const EXPORT_GROUPS = [
     id: "fieldTanker",
     title: "Tankanje goriva cisternom",
     hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
-    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
+    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset_code", "field_tanker_asset", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
   },
   {
     id: "material",
@@ -3912,11 +3957,13 @@ function flattenReportRowsForExport(r) {
       description: d.description || "",
       crew_worker: w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || "",
       crew_hours: w.hours || "",
+      machine_code: m.asset_code || m.machine_code || "",
       machine: m.name || d.machine || "",
       machine_start: m.start || d.mtc_start || "",
       machine_end: m.end || d.mtc_end || "",
       machine_hours: m.hours || d.machine_hours || "",
       machine_work: m.work || "",
+      vehicle_code: v.asset_code || v.vehicle_code || "",
       vehicle: v.name || v.vehicle || d.vehicle || "",
       registration: v.registration || "",
       capacity: v.capacity || "",
@@ -3934,6 +3981,7 @@ function flattenReportRowsForExport(r) {
       lowloader_km: ll.km_total || "",
       lowloader_machine: ll.machine || "",
       fuel_type: assetKindLabel(f.asset_kind),
+      fuel_asset_code: f.asset_code || "",
       fuel_for: f.asset_name || f.machine || f.vehicle || f.other || "",
       fuel_liters: f.liters || d.fuel_liters || "",
       fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
@@ -3943,6 +3991,7 @@ function flattenReportRowsForExport(r) {
       fuel_receiver: f.receiver || d.fuel_receiver || "",
       field_tanker_site: ft.site_name || "",
       field_tanker_type: assetKindLabel(ft.asset_kind),
+      field_tanker_asset_code: ft.asset_code || "",
       field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || "",
       field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
