@@ -433,3 +433,38 @@ pre{white-space:pre-wrap;word-break:break-word}
     display:none;
   }
 }
+
+/* v1.17.5 - Direkcija: čitljiv pregled izveštaja, Excel sakriven iza dugmeta */
+.report-item > strong{display:block;font-size:18px;margin:6px 0 4px;color:#173b24}
+.report-item > small{display:block;margin-bottom:8px;color:var(--muted)}
+.report-readable{margin-top:12px}
+.report-main-summary{background:#ffffff}
+.report-excel-details{background:#fffdf4;border-color:#ead99f}
+.report-excel-details summary{
+  cursor:pointer;
+  list-style:none;
+  font-weight:900;
+  color:#173b24;
+  padding:4px 0;
+}
+.report-excel-details summary::-webkit-details-marker{display:none}
+.report-excel-details summary::after{content:"  ▾";font-weight:900;color:#4f7f5d}
+.report-excel-details[open] summary::after{content:"  ▴"}
+.report-excel-wrap,.excel-scroll{max-width:100%;overflow-x:auto;overflow-y:hidden}
+.report-excel-table{min-width:1500px;width:max-content;table-layout:auto}
+.report-excel-table th,
+.report-excel-table td,
+.report-mini-table th,
+.report-mini-table td{
+  white-space:nowrap;
+  word-break:normal;
+  overflow-wrap:normal;
+  line-height:1.35;
+}
+.report-mini-table{min-width:680px}
+.report-section{overflow-x:auto}
+@media(max-width:700px){
+  .report-excel-table{min-width:1300px}
+  .report-mini-table{min-width:620px}
+  .report-section{padding:10px}
+}

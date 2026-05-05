@@ -1248,15 +1248,18 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
   const hasMaterial = safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
 
+  const hasUsefulEntry = (entry) => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== "");
+  const hasWorkers = workers.some(hasUsefulEntry);
+  const hasMachines = machines.some(hasUsefulEntry);
+  const hasVehicles = vehicles.some(hasUsefulEntry);
+  const hasLowloaders = lowloaders.some(hasUsefulEntry);
+  const hasFuels = fuels.some(hasUsefulEntry);
+  const hasFieldTankers = fieldTankers.some(hasUsefulEntry);
+  const hasBasic = safe(d.site_name) || safe(d.description) || safe(d.hours) || safe(d.note);
+
   return `
     <div class="report-readable">
-      <div class="report-section report-excel-section">
-        <h4>Excel pregled izveštaja</h4>
-        <p class="field-hint">Tabela je namerno složena kao Excel: jedan red može sadržati mašinu, vozilo i gorivo za isti dnevni izveštaj. Ako ima više vozila/mašina, prikazuju se u dodatnim redovima.</p>
-        ${excelTable}
-      </div>
-
-      <div class="report-section">
+      ${hasBasic ? `<div class="report-section report-main-summary">
         <h4>Osnovno</h4>
         <div class="report-kv">
           ${rows([
@@ -1266,34 +1269,34 @@ function renderReportReadableDetails(d = {}, options = {}) {
             ["Napomena", d.note]
           ])}
         </div>
-      </div>
+      </div>` : ""}
 
-      ${workers.length ? `<div class="report-section">
+      ${hasWorkers ? `<div class="report-section">
         <h4>Radnici / sati po radniku</h4>
         ${workerTable}
       </div>` : ""}
 
-      <div class="report-section">
+      ${hasMachines ? `<div class="report-section">
         <h4>Mašine</h4>
         ${machineTable}
-      </div>
+      </div>` : ""}
 
-      <div class="report-section">
+      ${hasVehicles ? `<div class="report-section">
         <h4>Vozila / ture / m³</h4>
         ${vehicleTable}
-      </div>
+      </div>` : ""}
 
-      ${lowloaders.length ? `<div class="report-section">
+      ${hasLowloaders ? `<div class="report-section">
         <h4>Vozilo labudica / selidba mašine</h4>
         ${lowloaderTable}
       </div>` : ""}
 
-      <div class="report-section">
+      ${hasFuels ? `<div class="report-section">
         <h4>Gorivo</h4>
         ${fuelTable}
-      </div>
+      </div>` : ""}
 
-      ${fieldTankers.length ? `<div class="report-section">
+      ${hasFieldTankers ? `<div class="report-section">
         <h4>Cisterna / tankanje goriva na terenu</h4>
         ${fieldTankerTable}
       </div>` : ""}
@@ -1330,6 +1333,12 @@ function renderReportReadableDetails(d = {}, options = {}) {
             ])}
           </div>
         </div>` : ""}
+
+      <details class="report-section report-excel-section report-excel-details">
+        <summary>📊 Prikaži Excel pregled izveštaja</summary>
+        <p class="field-hint">Ovo je samo širok Excel prikaz. Za čitanje koristi pregled iznad, a za firmu koristi export u Excel.</p>
+        ${excelTable}
+      </details>
     </div>
   `;
 }
@@ -2558,57 +2567,6 @@ window.loadReturnedReportIntoForm = async (reportId) => {
   }
 };
 
-function lowloaderHasUsableLocation(move) {
-  if (!move) return false;
-  return !!(
-    String(move.from_site || "").trim() ||
-    String(move.to_site || "").trim() ||
-    String(move.from_address || "").trim() ||
-    String(move.to_address || "").trim()
-  );
-}
-
-function getFirstLowloaderLocation(move) {
-  if (!move) return "";
-  return String(
-    move.from_site ||
-    move.from_address ||
-    move.to_site ||
-    move.to_address ||
-    ""
-  ).trim();
-}
-
-function applyStandaloneReportSiteFallback(data) {
-  if (!data || data.site_name) return data;
-
-  const lowloaderMoves = Array.isArray(data.lowloader_moves)
-    ? data.lowloader_moves
-    : (Array.isArray(data.lowloader_entries) ? data.lowloader_entries : []);
-
-  const lowloaderMove = lowloaderMoves.find(lowloaderHasUsableLocation);
-  if (lowloaderMove) {
-    data.site_id = null;
-    data.site_name = getFirstLowloaderLocation(lowloaderMove) || "Prevoz mašine labudicom";
-    data.main_site_auto_filled_from = "lowloader";
-  }
-
-  return data;
-}
-
-function isWorkerReportAllowedWithoutMainSite(data) {
-  if (!data) return false;
-  if (String(data.site_name || "").trim()) return true;
-
-  const lowloaderMoves = Array.isArray(data.lowloader_moves)
-    ? data.lowloader_moves
-    : (Array.isArray(data.lowloader_entries) ? data.lowloader_entries : []);
-
-  if (lowloaderMoves.some(lowloaderHasUsableLocation)) return true;
-
-  return false;
-}
-
 function collectWorkerData() {
   const perms = currentWorker?.permissions || {};
   const machines = perms.machines ? getMachineEntries() : [];
@@ -3522,10 +3480,7 @@ function bindEvents() {
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Radnik nije prijavljen.");
       const data = collectWorkerData();
-      applyStandaloneReportSiteFallback(data);
-      if (!isWorkerReportAllowedWithoutMainSite(data)) {
-        throw new Error("Odaberi gradilište iz liste. Ako radiš samo prevoz mašine labudicom, popuni gradilište/adresu preuzimanja ili odvoza u rubrici labudice.");
-      }
+      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Direkcija.");
     if (await submitReturnedCorrectionIfNeeded(data)) return;
       const { error } = await sb.rpc("submit_worker_report", {
         p_company_code: worker.company_code,
