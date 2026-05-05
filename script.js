@@ -1,4 +1,4 @@
-// v1.18.8_REPORTS_NO_EMBED - reports fetched without company_users embed; users enriched in second query
+// v1.18.9_FIELD_TANKER_MEMORY - local pump operator fuel memory; reports still avoid company_users embed
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.18.8";
+const APP_VERSION = "1.18.9";
 
 
 let sb = null;
@@ -2860,6 +2860,186 @@ function getFieldTankerEntries() {
   }).filter(x => x.site_name || x.asset_name || x.reading || x.liters || x.receiver);
 }
 
+
+function getFieldTankerMemoryKey() {
+  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+  const companyPart = worker?.company_id || worker?.company_code || "no_company";
+  const userPart = worker?.user_id || worker?.id || worker?.access_code || "no_worker";
+  return `swp_field_tanker_memory_${companyPart}_${userPart}`;
+}
+
+function readStoredFieldTankerEntries() {
+  try {
+    const raw = localStorage.getItem(getFieldTankerMemoryKey());
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function writeStoredFieldTankerEntries(entries = []) {
+  localStorage.setItem(getFieldTankerMemoryKey(), JSON.stringify(entries));
+  renderStoredFieldTankerEntries();
+}
+
+function normalizeStoredFieldTankerEntry(entry = {}, index = 0) {
+  return {
+    ...entry,
+    no: index + 1,
+    local_id: entry.local_id || `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    saved_at: entry.saved_at || new Date().toISOString(),
+    saved_by: entry.saved_by || currentWorker?.full_name || "",
+    source: "field_tanker_memory"
+  };
+}
+
+function validateFieldTankerEntryForMemory(entry) {
+  if (!entry.site_name) return "Upiši ili izaberi gradilište/lokaciju za svako sipanje.";
+  if (!entry.asset_name) return "Izaberi mašinu/vozilo ili upiši ručno šta je tankovano.";
+  if (!entry.liters) return "Upiši koliko litara je sipano.";
+  if (!entry.receiver) return "Upiši ko je primio gorivo.";
+  return "";
+}
+
+function memorizeCurrentFieldTankerEntries() {
+  try {
+    const currentEntries = getFieldTankerEntries();
+    if (!currentEntries.length) throw new Error("Prvo dodaj bar jedno sipanje goriva cisternom.");
+
+    const firstError = currentEntries.map(validateFieldTankerEntryForMemory).find(Boolean);
+    if (firstError) throw new Error(firstError);
+
+    const existing = readStoredFieldTankerEntries();
+    const savedNow = new Date().toISOString();
+    const prepared = currentEntries.map((entry, index) => normalizeStoredFieldTankerEntry({
+      ...entry,
+      saved_at: savedNow,
+      saved_by: currentWorker?.full_name || ""
+    }, existing.length + index));
+
+    writeStoredFieldTankerEntries([...existing, ...prepared].map(normalizeStoredFieldTankerEntry));
+
+    if ($("#fieldTankerEntries")) {
+      $("#fieldTankerEntries").innerHTML = "";
+      addFieldTankerEntry();
+    }
+
+    toast(`Memorisano ${prepared.length} sipanje/a goriva na ovom telefonu ✅`);
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
+
+function removeStoredFieldTankerEntry(localId) {
+  const remaining = readStoredFieldTankerEntries().filter(entry => entry.local_id !== localId);
+  writeStoredFieldTankerEntries(remaining.map(normalizeStoredFieldTankerEntry));
+  toast("Sipanje je uklonjeno iz lokalne memorije.");
+}
+
+function clearStoredFieldTankerEntries() {
+  const count = readStoredFieldTankerEntries().length;
+  if (!count) {
+    renderStoredFieldTankerEntries();
+    toast("Nema memorisanih sipanja za brisanje.");
+    return;
+  }
+  if (!confirm(`Obrisati ${count} memorisano/a sipanje/a sa ovog telefona? Ovo radi samo lokalno, ne briše ništa iz Supabase-a.`)) return;
+  writeStoredFieldTankerEntries([]);
+  toast("Lokalna memorija sipanja je obrisana.");
+}
+
+function renderStoredFieldTankerEntries() {
+  const box = $("#storedFieldTankerList");
+  if (!box) return;
+  const entries = readStoredFieldTankerEntries().map(normalizeStoredFieldTankerEntry);
+  if (!entries.length) {
+    box.innerHTML = `<p class="hint">Trenutno nema memorisanih sipanja na ovom telefonu.</p>`;
+    return;
+  }
+
+  const totalLiters = entries.reduce((sum, entry) => sum + parseDecimalInput(entry.liters), 0);
+  box.innerHTML = `
+    <div class="stored-fuel-summary">
+      <strong>${entries.length} memorisano/a sipanje/a</strong>
+      <span>${totalLiters ? `${totalLiters.toLocaleString("sr-RS")} L ukupno` : "Litri nisu sabrani"}</span>
+    </div>
+    ${entries.map((entry, index) => `
+      <div class="stored-fuel-item">
+        <div>
+          <strong>${index + 1}. ${escapeHtml(entry.site_name || "Bez lokacije")}</strong>
+          <small>${escapeHtml(entry.asset_kind === "vehicle" ? "Vozilo" : "Mašina")} · ${escapeHtml(entry.asset_name || "")}</small>
+          <small>${escapeHtml(entry.liters || "0")} L · MTČ/KM: ${escapeHtml(entry.reading || "-")} · Primio: ${escapeHtml(entry.receiver || "-")}</small>
+        </div>
+        <button type="button" class="danger-small stored-fuel-remove" data-local-id="${escapeHtml(entry.local_id)}">Ukloni</button>
+      </div>
+    `).join("")}
+  `;
+
+  box.querySelectorAll(".stored-fuel-remove").forEach(btn => {
+    btn.addEventListener("click", () => removeStoredFieldTankerEntry(btn.dataset.localId));
+  });
+}
+
+function buildFieldTankerMemoryReportData(entries = []) {
+  const first = entries[0] || {};
+  const totalLiters = entries.reduce((sum, entry) => sum + parseDecimalInput(entry.liters), 0);
+  return {
+    report_type: "field_tanker_daily_batch",
+    source: "field_tanker_memory",
+    memory_sent_at: new Date().toISOString(),
+    report_sections_sent: {
+      field_tanker: true,
+      tanker_fuel_memory: true
+    },
+    site_id: first.site_id || null,
+    site_name: first.site_name || "Tankanje goriva cisternom",
+    field_tanker_entries: entries.map(normalizeStoredFieldTankerEntry),
+    tanker_fuel_entries: entries.map(normalizeStoredFieldTankerEntry),
+    fuel_liters: totalLiters || "",
+    field_tanker_total_liters: totalLiters || "",
+    field_tanker_count: entries.length,
+    created_by_worker: currentWorker?.full_name || "",
+    function_title: currentWorker?.function_title || "",
+    description: "Memorisana sipanja goriva cisternom poslata kao jedan dnevni izveštaj."
+  };
+}
+
+async function sendStoredFieldTankerEntries() {
+  try {
+    if (!navigator.onLine) throw new Error("Nema interneta. Memorisana sipanja ostaju sačuvana na telefonu.");
+    const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+    if (!worker) throw new Error("Radnik nije prijavljen.");
+
+    const entries = readStoredFieldTankerEntries().map(normalizeStoredFieldTankerEntry);
+    if (!entries.length) throw new Error("Nema memorisanih sipanja za slanje.");
+
+    const firstError = entries.map(validateFieldTankerEntryForMemory).find(Boolean);
+    if (firstError) throw new Error(firstError);
+
+    const data = buildFieldTankerMemoryReportData(entries);
+    const { error } = await sb.rpc("submit_worker_report", {
+      p_company_code: worker.company_code,
+      p_access_code: worker.access_code,
+      p_report_date: $("#wrDate")?.value || today(),
+      p_site_id: data.site_id || null,
+      p_data: data
+    });
+
+    if (error) throw error;
+
+    localStorage.removeItem(getFieldTankerMemoryKey());
+    renderStoredFieldTankerEntries();
+    if ($("#fieldTankerEntries")) {
+      $("#fieldTankerEntries").innerHTML = "";
+      addFieldTankerEntry();
+    }
+    toast(`Sva memorisana sipanja su poslata Direkciji ✅ (${entries.length})`);
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
+
 function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "") {
   const selected = String(selectedValue || "").trim();
   const isVehicle = kind === "vehicle";
@@ -2984,6 +3164,9 @@ window.addMachineEntry = addMachineEntry;
 window.addFuelEntry = addFuelEntry;
 window.addVehicleEntry = addVehicleEntry;
 window.addFieldTankerEntry = addFieldTankerEntry;
+window.memorizeCurrentFieldTankerEntries = memorizeCurrentFieldTankerEntries;
+window.sendStoredFieldTankerEntries = sendStoredFieldTankerEntries;
+window.clearStoredFieldTankerEntries = clearStoredFieldTankerEntries;
 window.addLowloaderEntry = addLowloaderEntry;
 window.addMaterialEntry = addMaterialEntry;
 window.renumberLowloaderEntries = renumberLowloaderEntries;
@@ -3166,8 +3349,10 @@ function collectWorkerData() {
     ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Prevoz mašine labudicom")
     : "";
   const leaveFallbackSiteName = canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za slobodan dan / godišnji odmor" : "";
-  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || leaveFallbackSiteName;
-  const reportSiteId = selectedSite.site_id || null;
+  const firstFieldTankerEntry = fieldTankerEntries.find(x => x.site_name || x.site_id) || null;
+  const fieldTankerFallbackSiteName = firstFieldTankerEntry ? (firstFieldTankerEntry.site_name || "Tankanje goriva cisternom") : "";
+  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || (canFieldTanker && fieldTankerEntries.length ? fieldTankerFallbackSiteName : "") || leaveFallbackSiteName;
+  const reportSiteId = selectedSite.site_id || firstFieldTankerEntry?.site_id || null;
 
   const reportSectionsSent = {
     workers: canWorkers && getWorkerEntries().length > 0,
@@ -4091,6 +4276,9 @@ function bindEvents() {
 
   // Add mašina / gorivo koriste onclick direktno u HTML-u zbog pouzdanosti na mobilnom/PWA cache-u.
   if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
+  if ($("#memorizeFieldTankerBtn")) $("#memorizeFieldTankerBtn").addEventListener("click", memorizeCurrentFieldTankerEntries);
+  if ($("#sendStoredFieldTankerBtn")) $("#sendStoredFieldTankerBtn").addEventListener("click", sendStoredFieldTankerEntries);
+  if ($("#clearStoredFieldTankerBtn")) $("#clearStoredFieldTankerBtn").addEventListener("click", clearStoredFieldTankerEntries);
 
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
 
@@ -4148,6 +4336,7 @@ async function openWorkerForm() {
   if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
   if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
   if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
+  renderStoredFieldTankerEntries();
   updateLeaveRequestVisibility();
 }
 

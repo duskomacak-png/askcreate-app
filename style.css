@@ -553,3 +553,58 @@ pre{white-space:pre-wrap;word-break:break-word}
     flex-direction: column;
   }
 }
+
+/* v1.18.9 - Pumpadžija: lokalno memorisanje sipanja goriva */
+.fuel-memory-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(245,185,66,.28);
+  border-radius: 18px;
+  background: rgba(245,185,66,.07);
+}
+.fuel-memory-panel h5 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.compact-row {
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.stored-fuel-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+.stored-fuel-summary,
+.stored-fuel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.78);
+}
+.stored-fuel-item div {
+  display: grid;
+  gap: 3px;
+}
+.stored-fuel-item small {
+  opacity: .78;
+}
+button.small {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+@media (max-width: 700px) {
+  .stored-fuel-summary,
+  .stored-fuel-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .stored-fuel-item button {
+    width: 100%;
+  }
+}

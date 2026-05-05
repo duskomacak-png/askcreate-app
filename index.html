@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1188" />
+  <link rel="stylesheet" href="style.css?v=1189" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -466,6 +466,18 @@
           <p class="hint">Ovu rubriku Direkcija uključuje za radnika koji razvozi gorivo cisternom na gradilišta. Dodaj svako sipanje posebno.</p>
           <div id="fieldTankerEntries" class="entry-list"></div>
           <button id="addFieldTankerBtn" class="secondary" type="button" onclick="addFieldTankerEntry()">+ Dodaj sipanje</button>
+
+          <div class="fuel-memory-panel">
+            <h5>Memoriši sipanje goriva</h5>
+            <p class="hint">Za pumpadžiju: svako sipanje možeš sačuvati lokalno na telefonu, a na kraju dana poslati sva sipanja Direkciji kao jedan dnevni izveštaj.</p>
+            <div class="row compact-row">
+              <button id="memorizeFieldTankerBtn" class="secondary" type="button">💾 Memoriši trenutna sipanja</button>
+              <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji sva memorišana</button>
+              <button id="clearStoredFieldTankerBtn" class="danger-btn" type="button">Obriši memoriju</button>
+            </div>
+            <div id="storedFieldTankerList" class="stored-fuel-list"></div>
+            <p class="hint">Memorisana sipanja se ne brišu dok Supabase ne potvrdi uspešno slanje.</p>
+          </div>
         </div>
 
         <div id="secMaterials" class="dyn-section">
@@ -590,6 +602,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1188"></script>
+  <script src="script.js?v=1189"></script>
 </body>
 </html>
