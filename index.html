@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1218" />
+  <link rel="stylesheet" href="style.css?v=1220" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -17,7 +17,6 @@
       <strong id="internalTitle">Radni prostor</strong>
       <small id="internalSubtitle">Firma</small>
     </div>
-    <button id="internalLogoutBtn" class="ghost" type="button">Odjavi se</button>
   </div>
 
   <header class="topbar app-brand-header">
@@ -153,7 +152,6 @@
         <button class="tab" data-tab="reports">Dnevni izveštaji</button>
         <button class="tab" data-tab="defects">Kvarovi</button>
         <button class="tab" data-tab="export">Izvoz u Excel</button>
-        <button class="tab" data-tab="audit">Kontrola sistema</button>
       </div>
 
       <div class="director-searchbar">
@@ -331,19 +329,7 @@
 
 
 
-      <div id="tabAudit" class="tab-panel">
-        <div class="card">
-          <h3>Kontrola sistema</h3>
-          <p class="muted">Ovo proverava da li radnicima izlaze nepotrebni ili duplirani prozori i da li se štiklirane rubrike mapiraju na pravi ekran.</p>
-          <div class="row compact">
-            <button id="runWorkerUiAuditBtn" class="primary" type="button">🔎 Proveri radničke prozore</button>
-            <button id="copyWorkerUiAuditBtn" class="secondary" type="button">📋 Kopiraj dijagnostiku</button>
-          </div>
-          <div id="workerUiAuditResult" class="audit-result-box">
-            <p class="muted">Pokreni kontrolu za pregled radničkih modula i mogućih viškova u korisničkim podešavanjima.</p>
-          </div>
-        </div>
-      </div>
+
 
       <div id="tabExport" class="tab-panel">
         <div class="card">

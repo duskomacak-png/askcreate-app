@@ -1,4 +1,4 @@
-// v1.21.6_SUBMIT_SAFE_FIX - profesionalni nazivi uz vraćen siguran submit workflow
+// v1.22.0_UI_CLEANUP - jedno dugme odjave i uklonjena kontrola sistema
 /* START WORK PRO by AskCreate - Start Work PRO
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.8";
+const APP_VERSION = "1.22.0";
 
 
 let sb = null;
@@ -44,23 +44,8 @@ function toast(msg, isError = false) {
 
 
 function ensureDirectorTopLogoutButton() {
-  const dash = $("#viewDirectorDashboard");
-  if (!dash || $("#directorTopLogoutBtn")) return;
-  const head = dash.querySelector(".dashboard-head");
-  if (!head) return;
-  let actions = head.querySelector(".actions") || head.querySelector(".top-actions") || head.querySelector(".head-actions");
-  if (!actions) {
-    actions = document.createElement("div");
-    actions.className = "actions head-actions";
-    head.appendChild(actions);
-  }
-  const btn = document.createElement("button");
-  btn.id = "directorTopLogoutBtn";
-  btn.className = "secondary";
-  btn.type = "button";
-  btn.textContent = "Odjavi se";
-  btn.addEventListener("click", signOut);
-  actions.appendChild(btn);
+  // Nema više dodatnog Odjavi se dugmeta u Upravi.
+  // Koristi se samo glavno dugme na zelenoj traci (#logoutBtn).
 }
 
 
@@ -107,7 +92,11 @@ function show(view) {
   $$(".view").forEach(v => v.classList.remove("active"));
   const el = $("#view" + view);
   if (el) el.classList.add("active");
-  $("#logoutBtn").classList.toggle("hidden", !["AdminDashboard", "DirectorDashboard"].includes(view));
+
+  // Koristimo samo jedno dugme za odjavu: ono na zelenoj traci (#internalLogoutBtn).
+  // Staro dugme iz glavnog topbara ostaje skriveno da ne pravi duplikat.
+  const oldTopbarLogout = $("#logoutBtn");
+  if (oldTopbarLogout) oldTopbarLogout.classList.add("hidden");
 }
 
 function today() {
@@ -216,7 +205,6 @@ async function loadDirectorCompany() {
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
-  ensureDirectorTopLogoutButton();
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
   return data;
@@ -5371,10 +5359,8 @@ function bindEvents() {
     });
   });
 
-  if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", signOut);
   $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => show(btn.dataset.goto)));
   if ($("#logoutBtn")) $("#logoutBtn").addEventListener("click", signOut);
-  if ($("#directorTopLogoutBtn")) $("#directorTopLogoutBtn").addEventListener("click", signOut);
 
   $("#adminSignupBtn").addEventListener("click", async () => {
     try {
@@ -5447,7 +5433,6 @@ function bindEvents() {
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
-    if (btn.dataset.tab === "audit") runWorkerUiAudit();
   }));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
@@ -5484,8 +5469,6 @@ function bindEvents() {
   if ($("#clearReportsBtn")) $("#clearReportsBtn").addEventListener("click", clearReportsForExport);
   if ($("#goExportBtn")) $("#goExportBtn").addEventListener("click", goToExportTab);
   if ($("#refreshDefectsBtn")) $("#refreshDefectsBtn").addEventListener("click", loadReports);
-  if ($("#runWorkerUiAuditBtn")) $("#runWorkerUiAuditBtn").addEventListener("click", runWorkerUiAudit);
-  if ($("#copyWorkerUiAuditBtn")) $("#copyWorkerUiAuditBtn").addEventListener("click", copyWorkerUiAudit);
   if ($("#exportCsvBtn")) $("#exportCsvBtn").addEventListener("click", exportCsv);
   if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);
