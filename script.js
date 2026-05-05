@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.0";
+const APP_VERSION = "1.21.1";
 
 
 let sb = null;
@@ -2430,9 +2430,6 @@ function addVehicleEntry(values = {}) {
       </div>
     </div>
     <p class="field-hint v-cubic-hint">Ako vozilo ima kapacitet i upišeš broj tura, aplikacija računa m³ automatski.</p>
-
-    <label>Upiši ručno m³ ako nije puna tura</label>
-    <input class="v-cubic-manual" type="number" step="0.01" placeholder="npr. 9 ako je pola ture od 18 m³" value="${escapeHtml(values.cubic_manual || "")}" />
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -2475,8 +2472,8 @@ function getVehicleEntries() {
     const selected = getSelectedVehicleFromEntry(el);
     const tours = el.querySelector(".v-tours")?.value || "";
     const autoCubic = calculateVehicleCubic(selected.capacity, tours);
-    const manualCubic = el.querySelector(".v-cubic-manual")?.value || "";
-    const finalCubic = manualCubic || autoCubic;
+    const manualCubic = "";
+    const finalCubic = autoCubic;
     return {
       no: i + 1,
       asset_id: selected.asset_id,
