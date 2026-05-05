@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.6";
+const APP_VERSION = "1.20.7";
 
 
 let sb = null;
@@ -3891,6 +3891,177 @@ function formatCapacityM3(value) {
   if (!raw) return "";
   if (/m\s*(³|3)|kub|kubic/i.test(raw)) return raw;
   return `${raw} m³`;
+}
+
+
+
+let lastWorkerUiAuditText = "";
+
+const WORKER_UI_PERMISSION_MAP = {
+  daily_work: { label: "Ime gradilišta i datum/godina", window: "Osnovno: gradilište i datum", worker: true },
+  workers: { label: "Radnici na gradilištu", window: "Radnici na gradilištu", worker: true },
+  machines: { label: "Rad sa mašinom", window: "Mašina koju sam koristio", worker: true },
+  vehicles: { label: "Rad sa kamionom / vozilom", window: "Vozilo / ture / m³", worker: true },
+  lowloader: { label: "Prevoz mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
+  fuel: { label: "Sipanje goriva u svoju mašinu", window: "Sipanje goriva", worker: true },
+  field_tanker: { label: "Tankanje goriva cisternom", window: "Tankanje goriva cisternom", worker: true },
+  materials: { label: "Materijal", window: "Materijal", worker: true },
+  leave_request: { label: "Zahtev za slobodan dan / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
+  warehouse: { label: "Magacin", window: "Magacin", worker: true },
+  defects: { label: "Prijava kvara", window: "Prijava kvara", worker: true },
+
+  // Direkcijska prava nisu radnički prozori. Ako ih ima običan radnik, audit ih označava kao upozorenje.
+  view_reports: { label: "Pregled izveštaja", window: "Direkcija: pregled izveštaja", worker: false },
+  approve_reports: { label: "Odobravanje", window: "Direkcija: odobravanje", worker: false },
+  excel_export: { label: "Izvoz u Excel", window: "Direkcija: Excel", worker: false },
+  manage_people: { label: "Upravljanje osobama", window: "Direkcija: osobe", worker: false },
+  settings: { label: "Podešavanja firme", window: "Direkcija: podešavanja", worker: false }
+};
+
+function permissionIsEnabled(value) {
+  return value === true || value === "true" || value === 1 || value === "1" || value === "yes";
+}
+
+function normalizePermissions(raw) {
+  if (!raw) return {};
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw) || {}; } catch { return {}; }
+  }
+  if (typeof raw === "object") return raw;
+  return {};
+}
+
+function isLikelyWorkerUser(person, perms) {
+  const title = `${person.function_title || ""} ${person.role || ""}`.toLowerCase();
+  const hasWorkerPerm = Object.entries(perms).some(([key, value]) => permissionIsEnabled(value) && WORKER_UI_PERMISSION_MAP[key]?.worker);
+  const hasDirectorPerm = Object.entries(perms).some(([key, value]) => permissionIsEnabled(value) && WORKER_UI_PERMISSION_MAP[key] && !WORKER_UI_PERMISSION_MAP[key].worker);
+  if (title.includes("direkc") || title.includes("admin") || title.includes("direktor")) return false;
+  return hasWorkerPerm || !hasDirectorPerm;
+}
+
+async function runWorkerUiAudit() {
+  const box = $("#workerUiAuditResult");
+  if (!box) return;
+  try {
+    if (!currentCompany?.id) {
+      box.innerHTML = `<p class="muted">Prvo se prijavi kao Direkcija i učitaj firmu.</p>`;
+      return;
+    }
+
+    box.innerHTML = `<p class="muted">Proveravam radničke prozore...</p>`;
+
+    const { data, error } = await sb
+      .from("company_users")
+      .select("id, first_name, last_name, function_title, access_code, role, permissions, active")
+      .eq("company_id", currentCompany.id)
+      .eq("active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    const people = data || [];
+    if (!people.length) {
+      lastWorkerUiAuditText = "Nema aktivnih korisnika za proveru.";
+      box.innerHTML = `<p class="muted">Nema aktivnih korisnika za proveru.</p>`;
+      return;
+    }
+
+    const cards = [];
+    const plain = [];
+    let warningCount = 0;
+    let okCount = 0;
+
+    for (const person of people) {
+      const perms = normalizePermissions(person.permissions);
+      const fullName = `${person.first_name || ""} ${person.last_name || ""}`.trim() || person.access_code || "Korisnik";
+      const enabledKeys = Object.entries(perms)
+        .filter(([key, value]) => permissionIsEnabled(value) && key !== "allowed_material_ids" && key !== "allowed_material_names")
+        .map(([key]) => key);
+
+      const unknownKeys = enabledKeys.filter(key => !WORKER_UI_PERMISSION_MAP[key]);
+      const workerWindows = [];
+      const directorPerms = [];
+      const duplicateWindows = [];
+      const seenWindows = new Map();
+
+      for (const key of enabledKeys) {
+        const meta = WORKER_UI_PERMISSION_MAP[key];
+        if (!meta) continue;
+        if (meta.worker) {
+          workerWindows.push(meta.window);
+          if (seenWindows.has(meta.window)) duplicateWindows.push(meta.window);
+          seenWindows.set(meta.window, true);
+        } else {
+          directorPerms.push(meta.label);
+        }
+      }
+
+      const likelyWorker = isLikelyWorkerUser(person, perms);
+      const issues = [];
+      if (likelyWorker && directorPerms.length) issues.push(`Ima direkcijske dozvole: ${directorPerms.join(", ")}`);
+      if (likelyWorker && !workerWindows.length) issues.push("Nema nijednu radničku rubriku za popunjavanje.");
+      if (duplicateWindows.length) issues.push(`Duplirani prozori: ${[...new Set(duplicateWindows)].join(", ")}`);
+      if (unknownKeys.length) issues.push(`Nepoznate/stare dozvole u profilu: ${unknownKeys.join(", ")}`);
+
+      if (issues.length) warningCount += 1; else okCount += 1;
+
+      const status = issues.length ? "⚠️ Proveriti" : "✅ OK";
+      plain.push(`${fullName} (${person.access_code || "bez šifre"}) - ${status}`);
+      plain.push(`Radnički prozori: ${workerWindows.join(" | ") || "nema"}`);
+      if (issues.length) plain.push(`Upozorenja: ${issues.join("; ")}`);
+      plain.push("---");
+
+      cards.push(`
+        <div class="item audit-person-card ${issues.length ? "audit-warning" : "audit-ok"}">
+          <div class="item-main">
+            <strong>${escapeHtml(fullName)}</strong>
+            <small>${escapeHtml(person.function_title || "")} · šifra: ${escapeHtml(person.access_code || "")}</small><br/>
+            <span class="pill">${status}</span>
+            <span class="pill">${workerWindows.length} radnička prozora</span>
+          </div>
+          <div class="audit-details">
+            <b>Treba da vidi:</b>
+            <div>${workerWindows.length ? workerWindows.map(w => `<span class="pill">${escapeHtml(w)}</span>`).join(" ") : `<span class="muted">Nema radničkih prozora</span>`}</div>
+            ${issues.length ? `<div class="audit-issues"><b>Upozorenja:</b><ul>${issues.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>` : `<p class="muted">Nema dupliranih/nebitnih prozora po dozvolama.</p>`}
+          </div>
+        </div>
+      `);
+    }
+
+    lastWorkerUiAuditText = `PROVERA RADNIČKIH PROZORA\nFirma: ${currentCompany.name || currentCompany.company_code || ""}\nOK: ${okCount}\nZa proveru: ${warningCount}\n\n${plain.join("\n")}`;
+    box.innerHTML = `
+      <div class="audit-summary">
+        <span class="pill">✅ OK: ${okCount}</span>
+        <span class="pill">⚠️ Za proveru: ${warningCount}</span>
+      </div>
+      <div class="list">${cards.join("")}</div>
+    `;
+  } catch (e) {
+    lastWorkerUiAuditText = `Greška u proveri: ${e.message}`;
+    box.innerHTML = `<p class="error-text">Greška u proveri: ${escapeHtml(e.message)}</p>`;
+    toast(e.message, true);
+  }
+}
+
+async function copyWorkerUiAudit() {
+  try {
+    if (!lastWorkerUiAuditText) await runWorkerUiAudit();
+    const text = lastWorkerUiAuditText || "Nema dijagnostike.";
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      toast("Dijagnostika kopirana.");
+      return;
+    }
+    const area = document.createElement("textarea");
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+    toast("Dijagnostika kopirana.");
+  } catch (e) {
+    toast("Ne mogu da kopiram dijagnostiku: " + e.message, true);
+  }
 }
 
 function csvEscape(v) {
