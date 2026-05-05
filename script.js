@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.9";
+const APP_VERSION = "1.21.0";
 
 
 let sb = null;
@@ -2271,14 +2271,72 @@ function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
   return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => assetOptionHtml(v, selected, formatAssetLabel)).join("");
 }
 
+
+function findVehicleAssetForSmartInput(searchValue) {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return null;
+  const vehicles = (workerAssetOptions || []).filter(isVehicleAsset);
+
+  // Interni broj ima prednost. Ako je broj tačan, uzmi sredstvo odmah.
+  // Ovo čuva praktičan rad na terenu: radnik zna broj, ne treba da bira iz tri polja.
+  const exactCode = (workerAssetOptions || []).find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
+  if (exactCode) return exactCode;
+
+  const exactVehicleCode = vehicles.find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
+  if (exactVehicleCode) return exactVehicleCode;
+
+  const exactName = vehicles.find(asset => {
+    const name = normalizeVehicleSearch(getAssetName(asset));
+    const reg = normalizeVehicleSearch(getAssetRegistration(asset));
+    const label = normalizeVehicleSearch(formatAssetLabel(asset));
+    return name === q || reg === q || label === q;
+  });
+  if (exactName) return exactName;
+
+  const matches = vehicles.filter(asset => vehicleMatchesSearch(asset, searchValue));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function updateVehicleSmartResult(entryEl, asset, manualValue) {
+  const result = entryEl.querySelector(".v-picked");
+  if (!result) return;
+  if (asset) {
+    result.className = "asset-smart-result v-picked ok";
+    result.textContent = `Pronađeno vozilo: ${formatAssetLabel(asset)}`;
+    return;
+  }
+  const value = String(manualValue || "").trim();
+  if (value) {
+    result.className = "asset-smart-result v-picked warn";
+    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    return;
+  }
+  result.className = "asset-smart-result v-picked";
+  result.textContent = "Upiši broj vozila, tablice ili naziv ako nije na listi.";
+}
+
 function refreshOneVehicleSelect(entryEl) {
   const sel = entryEl.querySelector(".v-name");
   if (!sel) return;
-  const old = sel.value;
   const search = entryEl.querySelector(".v-search")?.value || "";
-  sel.innerHTML = buildVehicleOptionsHtml(old, search);
-  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
-  autoSelectExactAssetCode(sel, search);
+  const custom = entryEl.querySelector(".v-custom");
+  const exact = findVehicleAssetForSmartInput(search);
+
+  sel.innerHTML = buildVehicleOptionsHtml(exact ? getAssetName(exact) : "", search);
+
+  if (exact) {
+    const assetId = String(exact.id || "");
+    const option = Array.from(sel.options || []).find(o => String(o.dataset.assetId || "") === assetId)
+      || Array.from(sel.options || []).find(o => normalizeVehicleSearch(o.dataset.assetCode || "") === normalizeVehicleSearch(getAssetCode(exact)))
+      || Array.from(sel.options || []).find(o => o.value === getAssetName(exact));
+    if (option) sel.value = option.value;
+    if (custom) custom.value = "";
+    updateVehicleSmartResult(entryEl, exact, "");
+  } else {
+    if (custom) custom.value = String(search || "").trim();
+    updateVehicleSmartResult(entryEl, null, search);
+  }
+  refreshFuelMachineOptions();
 }
 
 function refreshVehicleSelects() {
@@ -2330,6 +2388,7 @@ function addVehicleEntry(values = {}) {
   if (!list) return;
   const idx = list.querySelectorAll(".vehicle-entry").length + 1;
   const selectedName = values.name || values.vehicle || values.asset_id || "";
+  const initialSearch = values.asset_code || values.vehicle_code || values.code || values.custom || values.vehicle_custom || selectedName || values.registration || "";
   const div = document.createElement("div");
   div.className = "entry-card vehicle-entry";
   div.innerHTML = `
@@ -2338,15 +2397,13 @@ function addVehicleEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Interni broj / pretraga vozila</label>
-    <input class="v-search asset-code-search" placeholder="upisati broj vozila, npr. KAM-05" value="" />
+    <label>Vozilo / interni broj</label>
+    <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
+    <div class="asset-smart-result v-picked">Upiši broj vozila, tablice ili naziv ako nije na listi.</div>
+    <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Direkcije</button>
 
-    <label>Vozilo iz Direkcije</label>
-    <select class="v-name">${buildVehicleOptionsHtml(selectedName)}</select>
-    <p class="field-hint">Ako je lista prazna, proveri da li je vozilo dodato u istoj firmi i da je Tip = Vozilo.</p>
-
-    <label>Ako vozilo nije u listi, upiši ručno</label>
-    <input class="v-custom" placeholder="npr. zamensko vozilo" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
+    <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
+    <input class="v-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
 
     <div class="mini-grid">
       <div>
@@ -2392,7 +2449,22 @@ function addVehicleEntry(values = {}) {
   });
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
   div.querySelector(".v-tours").addEventListener("input", () => updateVehicleCubic(div));
+  const refreshVehiclesBtn = div.querySelector(".refresh-vehicle-assets");
+  if (refreshVehiclesBtn) refreshVehiclesBtn.addEventListener("click", async () => {
+    try {
+      refreshVehiclesBtn.disabled = true;
+      refreshVehiclesBtn.textContent = "Učitavam...";
+      await loadWorkerAssets();
+      refreshOneVehicleSelect(div);
+      updateVehicleCubic(div);
+      toast(workerAssetOptions.length ? "Vozila iz Direkcije su osvežena." : "Nema učitanih vozila. Proveri firmu radnika i listu u Direkciji.", !workerAssetOptions.length);
+    } finally {
+      refreshVehiclesBtn.disabled = false;
+      refreshVehiclesBtn.textContent = "Osveži vozila iz Direkcije";
+    }
+  });
   list.appendChild(div);
+  preventNumberInputScrollChanges(div);
   refreshOneVehicleSelect(div);
   updateVehicleCubic(div);
   refreshFuelMachineOptions();
