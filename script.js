@@ -1297,6 +1297,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
+          <th>Tip</th>
           <th>Mašina/vozilo</th>
           <th>Litara</th>
           <th>MTČ/KM pri sipanju</th>
@@ -1308,7 +1309,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
         ${fuels.map((f, i) => `
           <tr>
             <td>${i + 1}</td>
-            <td>${val(f.machine)}</td>
+            <td>${val(f.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
+            <td>${val(f.asset_name || f.machine || f.vehicle)}</td>
             <td>${val(f.liters)}</td>
             <td>${val(f.reading)}</td>
             <td>${val(f.by)}</td>
@@ -1324,6 +1326,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Gradilište</th>
+          <th>Tip</th>
           <th>Mašina/vozilo</th>
           <th>Trenutni MTČ/KM</th>
           <th>Sipano litara</th>
@@ -1335,7 +1338,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <tr>
             <td>${i + 1}</td>
             <td>${val(ft.site_name)}</td>
-            <td>${val(ft.asset_name || ft.machine)}</td>
+            <td>${val(ft.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
+            <td>${val(ft.asset_name || ft.machine || ft.vehicle)}</td>
             <td>${val(ft.reading || ft.mtc_km)}</td>
             <td>${val(ft.liters)}</td>
             <td>${val(ft.receiver || ft.received_by)}</td>
@@ -3082,7 +3086,21 @@ function collectWorkerData() {
   const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || leaveFallbackSiteName;
   const reportSiteId = selectedSite.site_id || null;
 
+  const reportSectionsSent = {
+    workers: canWorkers && getWorkerEntries().length > 0,
+    machines: machines.length > 0,
+    vehicles: vehicles.length > 0,
+    lowloader: lowloaderMoves.length > 0,
+    field_tanker: fieldTankerEntries.length > 0,
+    fuel: fuelEntries.length > 0,
+    materials: materialEntries.length > 0,
+    leave_request: !!(canLeaveRequest && hasLeaveRequestData(leaveRequest)),
+    warehouse: !!(canWarehouse && (($("#wrWarehouseItem")?.value || "").trim() || ($("#wrWarehouseQty")?.value || "").trim())),
+    defects: !!(canDefects && (($("#wrDefect")?.value || "").trim() || ($("#wrDefectAssetName")?.value || "").trim()))
+  };
+
   return {
+    report_sections_sent: reportSectionsSent,
     site_id: reportSiteId,
     site_name: reportSiteName,
     // v1.16.3: Ime gradilišta i datum/godina čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
@@ -3284,19 +3302,28 @@ const EXPORT_COLUMNS = [
   { key:"lowloader_km_end", label:"Završna kilometraža labudice" },
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
+  { key:"fuel_type", label:"Tip za sipanje goriva" },
   { key:"fuel_for", label:"Gorivo sipano u" },
   { key:"fuel_liters", label:"Količina goriva u litrima" },
   { key:"fuel_reading", label:"Stanje MTČ/KM kod sipanja" },
   { key:"fuel_by", label:"Gorivo sipao" },
   { key:"fuel_receiver", label:"Gorivo primio" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
+  { key:"field_tanker_type", label:"Tip tankovanog sredstva" },
   { key:"field_tanker_asset", label:"Mašina/vozilo koje je tankovano" },
   { key:"field_tanker_reading", label:"Stanje MTČ/KM pri tankovanju" },
   { key:"field_tanker_liters", label:"Sipano litara iz cisterne" },
   { key:"field_tanker_receiver", label:"Gorivo primio iz cisterne" },
+  { key:"material_action", label:"Radnja sa materijalom" },
   { key:"material", label:"Materijal" },
   { key:"quantity", label:"Količina" },
   { key:"unit", label:"Jedinica" },
+  { key:"material_note", label:"Napomena za materijal" },
+  { key:"leave_type", label:"Vrsta odsustva" },
+  { key:"leave_date", label:"Datum slobodnog dana" },
+  { key:"leave_from", label:"Godišnji od" },
+  { key:"leave_to", label:"Godišnji do" },
+  { key:"leave_note", label:"Napomena za odsustvo" },
   { key:"defect", label:"Opis kvara" },
   { key:"status", label:"Status izveštaja" },
   { key:"note", label:"Napomena" }
@@ -3337,7 +3364,7 @@ const EXPORT_GROUPS = [
     id: "fuel",
     title: "Sipanje goriva",
     hint: "Gorivo koje je radnik sipao u svoju mašinu ili vozilo.",
-    keys: ["fuel_for", "fuel_liters", "fuel_reading", "fuel_by", "fuel_receiver"]
+    keys: ["fuel_type", "fuel_for", "fuel_liters", "fuel_reading", "fuel_by", "fuel_receiver"]
   },
   {
     id: "lowloader",
@@ -3349,13 +3376,19 @@ const EXPORT_GROUPS = [
     id: "fieldTanker",
     title: "Tankanje goriva cisternom",
     hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
-    keys: ["field_tanker_site", "field_tanker_asset", "field_tanker_reading", "field_tanker_liters", "field_tanker_receiver"]
+    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset", "field_tanker_reading", "field_tanker_liters", "field_tanker_receiver"]
   },
   {
     id: "material",
     title: "Materijal",
     hint: "Materijal, količina i jedinica mere.",
-    keys: ["material", "quantity", "unit"]
+    keys: ["material_action", "material", "quantity", "unit", "material_note"]
+  },
+  {
+    id: "leave",
+    title: "Zahtev za slobodan dan / godišnji odmor",
+    hint: "Zahtevi radnika za slobodan dan ili godišnji odmor.",
+    keys: ["leave_type", "leave_date", "leave_from", "leave_to", "leave_note"]
   },
   {
     id: "defects",
@@ -3491,7 +3524,9 @@ function flattenReportRowsForExport(r) {
   const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length);
+  const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : []);
+  const leaveRequest = d.leave_request || {};
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length, materials.length);
   const rows = [];
 
   for (let i = 0; i < maxRows; i++) {
@@ -3501,6 +3536,7 @@ function flattenReportRowsForExport(r) {
     const ll = lowloaders[i] || {};
     const f = fuels[i] || {};
     const ft = fieldTankers[i] || {};
+    const mat = materials[i] || {};
     rows.push({
       date: r.report_date || "",
       worker: reportPersonName(r),
@@ -3531,19 +3567,28 @@ function flattenReportRowsForExport(r) {
       lowloader_km_end: ll.km_end || "",
       lowloader_km: ll.km_total || "",
       lowloader_machine: ll.machine || "",
-      fuel_for: f.machine || "",
+      fuel_type: f.asset_kind === "vehicle" ? "Vozilo" : (f.asset_kind === "machine" ? "Mašina" : ""),
+      fuel_for: f.asset_name || f.machine || f.vehicle || "",
       fuel_liters: f.liters || d.fuel_liters || "",
       fuel_reading: f.reading || d.fuel_readings || "",
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || "",
       field_tanker_site: ft.site_name || "",
-      field_tanker_asset: ft.asset_name || ft.machine || "",
+      field_tanker_type: ft.asset_kind === "vehicle" ? "Vozilo" : (ft.asset_kind === "machine" ? "Mašina" : ""),
+      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || "",
       field_tanker_reading: ft.reading || ft.mtc_km || "",
       field_tanker_liters: ft.liters || "",
       field_tanker_receiver: ft.receiver || ft.received_by || "",
-      material: d.material || "",
-      quantity: d.quantity || "",
-      unit: d.unit || "",
+      material_action: mat.action || mat.material_action || "",
+      material: mat.material || mat.name || d.material || "",
+      quantity: mat.quantity || mat.qty || d.quantity || "",
+      unit: mat.unit || d.unit || "",
+      material_note: mat.note || "",
+      leave_type: d.leave_request_type || leaveRequest.leave_label || leaveRequest.label || "",
+      leave_date: d.leave_date || leaveRequest.leave_date || leaveRequest.date || "",
+      leave_from: d.leave_from || leaveRequest.date_from || "",
+      leave_to: d.leave_to || leaveRequest.date_to || "",
+      leave_note: d.leave_note || leaveRequest.leave_note || leaveRequest.note || "",
       defect: d.defect || "",
       status: r.status || "",
       note: d.note || ""
