@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1166" />
+  <link rel="stylesheet" href="style.css?v=1168" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -31,28 +31,28 @@
 
   <main class="shell">
     <section id="viewHome" class="view active">
-      <div class="hero card">
-        <h2>Izaberite ulaz</h2>
-        <p>Super Admin odobrava firme. Direkcija upravlja ljudima i izveštajima. Radnik samo popunjava i šalje.</p>
-        <div class="grid three">
-          <button class="big-btn" data-goto="AdminLogin">
-            <span>🛡️</span>
-            Super Admin
-            <small>odobravanje firmi</small>
-          </button>
-          <button class="big-btn" data-goto="DirectorLogin">
-            <span>🏢</span>
-            Direkcija
-            <small>firma i kancelarija</small>
-          </button>
-          <button class="big-btn" data-goto="WorkerLogin">
+      <div class="hero card home-hero">
+        <h2>Terenski ulaz</h2>
+        <p class="home-intro">Radnik brzo ulazi u terenski unos. Direkcija i Super Admin su sekundarni ulazi za kancelariju.</p>
+        <div class="grid three home-entry-grid">
+          <button class="big-btn worker-entry" data-goto="WorkerLogin">
             <span>👷</span>
             Radnik
             <small>terenski unos</small>
           </button>
+          <button class="big-btn director-entry secondary-entry" data-goto="DirectorLogin">
+            <span>🏢</span>
+            Direkcija
+            <small>firma i kancelarija</small>
+          </button>
+          <button class="big-btn admin-entry secondary-entry" data-goto="AdminLogin">
+            <span>🛡️</span>
+            Super Admin
+            <small>odobravanje firmi</small>
+          </button>
         </div>
       </div>
-      <div class="notice">
+      <div class="notice home-mvp-notice">
         <strong>MVP pravilo:</strong> radnik ne vidi staru arhivu. Popuni izveštaj, pošalje Direkciji, forma se čisti.
       </div>
     </section>
@@ -551,6 +551,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1166"></script>
+  <script src="script.js?v=1168"></script>
 </body>
 </html>

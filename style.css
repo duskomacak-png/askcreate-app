@@ -1,4 +1,4 @@
-/* Start Work PRO v1.16.2 — stable light UI
+/* Start Work PRO v1.16.8 — stable light UI
    Cilj: čitljiv poslovni izgled bez dark/glass preklapanja.
    Ne menjati ID/class nazive koje koristi script.js. */
 
@@ -347,4 +347,89 @@ pre{white-space:pre-wrap;word-break:break-word}
 /* v1.16.2: sigurnosno sakrivanje starih polja za opis/sate u Osnovnom dnevnom radu */
 .hidden-by-rule {
   display: none !important;
+}
+
+
+/* v1.16.8 — mobilni početni ekran: radnik prvi, admin ulazi sekundarni */
+.home-entry-grid .worker-entry{
+  border-color:rgba(47,125,70,.35);
+}
+
+@media(max-width:700px){
+  .app-brand-header{
+    padding:22px 24px;
+    position:static;
+  }
+  .app-brand-header .brand-kicker{
+    font-size:11px;
+    letter-spacing:.14em;
+  }
+  .app-brand-header h1{
+    font-size:34px;
+    margin:8px 0 10px;
+  }
+  .app-brand-header p{
+    font-size:18px;
+    line-height:1.35;
+  }
+  #viewHome .shell,
+  .shell{
+    padding-left:12px;
+    padding-right:12px;
+  }
+  .home-hero{
+    padding:16px;
+  }
+  .home-hero h2{
+    font-size:30px;
+    margin-bottom:8px;
+  }
+  .home-intro,
+  .home-mvp-notice{
+    display:none!important;
+  }
+  .home-entry-grid{
+    gap:10px;
+  }
+  .home-entry-grid .worker-entry{
+    order:-2;
+    min-height:118px;
+    background:var(--green);
+    color:#fff;
+    border-color:var(--green);
+    font-size:24px;
+    box-shadow:0 14px 28px rgba(47,125,70,.22);
+  }
+  .home-entry-grid .worker-entry span,
+  .home-entry-grid .worker-entry small{
+    color:#fff;
+  }
+  .home-entry-grid .worker-entry small{
+    opacity:.92;
+  }
+  .home-entry-grid .director-entry{order:1}
+  .home-entry-grid .admin-entry{order:2}
+  .home-entry-grid .secondary-entry{
+    min-height:64px;
+    padding:12px 14px;
+    display:grid;
+    grid-template-columns:34px 1fr;
+    grid-template-rows:auto auto;
+    column-gap:10px;
+    align-items:center;
+    font-size:16px;
+    box-shadow:none;
+  }
+  .home-entry-grid .secondary-entry span{
+    grid-row:1 / 3;
+    font-size:23px;
+    margin:0;
+  }
+  .home-entry-grid .secondary-entry small{
+    margin:1px 0 0;
+    font-size:12px;
+  }
+  .footer{
+    display:none;
+  }
 }

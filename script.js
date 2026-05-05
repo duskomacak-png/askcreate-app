@@ -1575,11 +1575,35 @@ function refreshMachineDatalists() {
   $$("#machineEntries .machine-entry").forEach(entry => refreshOneMachineSelect(entry));
 }
 
+function normalizeWorkerAssetRows(rows) {
+  return (Array.isArray(rows) ? rows : []).map(a => ({
+    ...a,
+    name: getAssetName(a),
+    registration: getAssetRegistration(a),
+    asset_type: a.asset_type || a.type || a.assetType || a.category || "",
+    type: a.type || a.asset_type || a.assetType || a.category || ""
+  })).filter(a => a.name || a.registration);
+}
+
+function mergeAssetRows(primary = [], fallback = []) {
+  const map = new Map();
+  [...primary, ...fallback].forEach(a => {
+    const key = String(a.id || `${a.name || ""}|${a.registration || ""}|${a.asset_type || a.type || ""}`);
+    if (!map.has(key)) map.set(key, a);
+  });
+  return Array.from(map.values());
+}
+
 async function loadWorkerAssets() {
   const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
   workerAssetOptions = [];
 
   if (!worker) return;
+
+  let rpcRows = [];
+  let directRows = [];
+  let rpcError = null;
+  let directError = null;
 
   try {
     const { data, error } = await sb.rpc("worker_list_assets", {
@@ -1587,23 +1611,37 @@ async function loadWorkerAssets() {
       p_access_code: worker.access_code
     });
     if (error) throw error;
-
-    workerAssetOptions = (Array.isArray(data) ? data : []).map(a => ({
-      ...a,
-      name: getAssetName(a),
-      registration: getAssetRegistration(a),
-      asset_type: a.asset_type || a.type || a.assetType || a.category || "",
-      type: a.type || a.asset_type || a.assetType || a.category || ""
-    })).filter(a => a.name || a.registration);
-    refreshVehicleSelects();
-    refreshMachineDatalists();
-    refreshFieldTankerSelectors();
+    rpcRows = normalizeWorkerAssetRows(data);
   } catch (e) {
-    workerAssetOptions = [];
-    refreshVehicleSelects();
-    refreshMachineDatalists();
-    refreshFieldTankerSelectors();
-    toast("Mašine/vozila za radnika nisu učitana. Pokreni SQL za v1.12.2/v1.12.4: worker_list_assets. Detalj: " + (e.message || e), true);
+    rpcError = e;
+  }
+
+  // v1.16.7: dodat sigurnosni fallback.
+  // Direkcija čuva mašine i vozila u tabeli assets. Ako RPC worker_list_assets vrati prazno,
+  // pokušavamo direktno iz iste tabele po company_id koji radnik dobija na login-u.
+  // Ovo ne menja Supabase SQL; samo koristi postojeći company_id iz worker_login rezultata.
+  if ((!rpcRows.length) && worker.company_id) {
+    try {
+      const { data, error } = await sb
+        .from("assets")
+        .select("*")
+        .eq("company_id", worker.company_id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      directRows = normalizeWorkerAssetRows(data);
+    } catch (e) {
+      directError = e;
+    }
+  }
+
+  workerAssetOptions = mergeAssetRows(rpcRows, directRows);
+
+  refreshVehicleSelects();
+  refreshMachineDatalists();
+  refreshFieldTankerSelectors();
+
+  if (!workerAssetOptions.length && (rpcError || directError)) {
+    toast("Mašine/vozila nisu učitana za radnika. RPC worker_list_assets/direct assets nisu vratili podatke. Detalj: " + ((rpcError && rpcError.message) || (directError && directError.message) || "nema podataka"), true);
   }
 }
 
