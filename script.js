@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.1";
+const APP_VERSION = "1.21.2";
 
 
 let sb = null;
@@ -3116,24 +3116,33 @@ function refreshFieldTankerSelectors() {
     }
     const assetSelect = card.querySelector(".ft-asset-select");
     if (assetSelect) {
-      const old = assetSelect.value;
       const kindEl = card.querySelector(".ft-asset-kind");
       let kind = kindEl?.value || "machine";
       const search = card.querySelector(".ft-asset-search")?.value || "";
-      const exact = findAssetByExactCode(search);
-      if (exact && kindEl) {
-        const exactKind = getCanonicalAssetKind(exact);
-        if (exactKind !== kind) {
+      const custom = card.querySelector(".ft-asset-custom");
+      const asset = findFuelAssetForSmartInput(search, kind);
+      if (asset && kindEl) {
+        const exactKind = getCanonicalAssetKind(asset);
+        if (exactKind && exactKind !== kind) {
           kindEl.value = exactKind;
           kind = exactKind;
         }
       }
-      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, old, search);
-      if (old && Array.from(assetSelect.options).some(o => o.value === old)) assetSelect.value = old;
-      autoSelectExactAssetCode(assetSelect, search);
+      const selectedValue = asset ? (getAssetName(asset) || getAssetCode(asset) || getAssetRegistration(asset)) : "";
+      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, selectedValue, search);
+      if (asset) {
+        const name = getAssetName(asset) || getAssetRegistration(asset) || getAssetCode(asset) || "";
+        if (Array.from(assetSelect.options).some(o => o.value === name)) assetSelect.value = name;
+        if (custom) custom.value = "";
+        updateFieldTankerSmartResult(card, asset, "");
+      } else {
+        if (custom) custom.value = String(search || "").trim();
+        updateFieldTankerSmartResult(card, null, search);
+      }
     }
   });
 }
+
 
 function addFieldTankerEntry(values = {}) {
   const list = $("#fieldTankerEntries");
@@ -3168,15 +3177,11 @@ function addFieldTankerEntry(values = {}) {
       <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
     </select>
 
-    <label>Interni broj / pretraga sredstva</label>
-    <input class="ft-asset-search asset-code-search" placeholder="upisati broj: 101, KAM-05, AG-01" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || "")}" />
-
-    <label>Izaberi iz Direkcije</label>
-    <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || "")}</select>
-    <p class="field-hint">Kad izabereš mašinu, vidiš samo mašine. Kad izabereš vozilo, vidiš samo vozila. Kad izabereš ostalo, vidiš agregat, vibro ploču i ostalu opremu iz Direkcija → Mašine / vozila.</p>
-
-    <label>Ručno ako nije na listi</label>
-    <input class="ft-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice · Ostalo: agregat/vibro ploča" value="${escapeHtml(manualAsset)}" />
+    <label>Sredstvo / interni broj</label>
+    <input class="ft-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}" />
+    <div class="asset-smart-result ft-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
+    <select class="ft-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}</select>
+    <input class="ft-asset-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualAsset)}" />
 
     <label>Trenutna kilometraža / KM</label>
     <input class="ft-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
@@ -3201,18 +3206,26 @@ function addFieldTankerEntry(values = {}) {
     const kindEl = div.querySelector(".ft-asset-kind");
     let kindNow = kindEl?.value || "machine";
     const searchNow = div.querySelector(".ft-asset-search")?.value || "";
-    const exact = findAssetByExactCode(searchNow);
-    if (exact && kindEl) {
-      const exactKind = getCanonicalAssetKind(exact);
-      if (exactKind !== kindNow) {
-        kindEl.value = exactKind;
-        kindNow = exactKind;
+    const custom = div.querySelector(".ft-asset-custom");
+    const asset = findFuelAssetForSmartInput(searchNow, kindNow);
+    if (asset && kindEl) {
+      const assetKind = getCanonicalAssetKind(asset);
+      if (assetKind && assetKind !== kindNow) {
+        kindEl.value = assetKind;
+        kindNow = assetKind;
       }
     }
-    const oldValue = assetSelect.value;
-    assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kindNow, oldValue, searchNow);
-    if (oldValue && Array.from(assetSelect.options).some(o => o.value === oldValue)) assetSelect.value = oldValue;
-    autoSelectExactAssetCode(assetSelect, searchNow);
+    const selectedValue = asset ? (getAssetName(asset) || getAssetCode(asset) || getAssetRegistration(asset)) : "";
+    assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kindNow, selectedValue, searchNow);
+    if (asset) {
+      const name = getAssetName(asset) || getAssetRegistration(asset) || getAssetCode(asset) || "";
+      if (Array.from(assetSelect.options).some(o => o.value === name)) assetSelect.value = name;
+      if (custom) custom.value = "";
+      updateFieldTankerSmartResult(div, asset, "");
+    } else {
+      if (custom) custom.value = String(searchNow || "").trim();
+      updateFieldTankerSmartResult(div, null, searchNow);
+    }
   }
   div.querySelector(".ft-asset-kind")?.addEventListener("change", refreshThisFieldTankerAssetSelect);
   div.querySelector(".ft-asset-search")?.addEventListener("input", refreshThisFieldTankerAssetSelect);
@@ -3485,25 +3498,91 @@ function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "", searchV
   return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => assetOptionHtml(asset, selected, a => formatFuelKindAssetLabel(a, getCanonicalAssetKind(a)))).join("");
 }
 
+
+function findFuelAssetForSmartInput(searchValue, kind = "machine") {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return null;
+  const exactCode = findAssetByExactCode(searchValue);
+  if (exactCode) return exactCode;
+  const assets = (workerAssetOptions || [])
+    .filter(asset => filterAssetsByFuelKind(asset, kind))
+    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
+  const exact = assets.find(asset => {
+    const code = normalizeVehicleSearch(getAssetCode(asset));
+    const name = normalizeVehicleSearch(getAssetName(asset));
+    const reg = normalizeVehicleSearch(getAssetRegistration(asset));
+    const label = normalizeVehicleSearch(formatFuelKindAssetLabel(asset, kind));
+    return code === q || name === q || reg === q || label === q;
+  });
+  if (exact) return exact;
+  const matches = assets.filter(asset => machineMatchesSearch(asset, searchValue));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function updateFuelSmartResult(entryEl, asset, manualValue) {
+  const result = entryEl.querySelector(".f-picked");
+  if (!result) return;
+  if (asset) {
+    result.className = "asset-smart-result f-picked ok";
+    result.textContent = `Pronađeno sredstvo: ${formatFuelKindAssetLabel(asset, getCanonicalAssetKind(asset))}`;
+    return;
+  }
+  const value = String(manualValue || "").trim();
+  if (value) {
+    result.className = "asset-smart-result f-picked warn";
+    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    return;
+  }
+  result.className = "asset-smart-result f-picked";
+  result.textContent = "Upiši interni broj, naziv ili tablice sredstva.";
+}
+
+function updateFieldTankerSmartResult(entryEl, asset, manualValue) {
+  const result = entryEl.querySelector(".ft-picked");
+  if (!result) return;
+  if (asset) {
+    result.className = "asset-smart-result ft-picked ok";
+    result.textContent = `Pronađeno sredstvo: ${formatFuelKindAssetLabel(asset, getCanonicalAssetKind(asset))}`;
+    return;
+  }
+  const value = String(manualValue || "").trim();
+  if (value) {
+    result.className = "asset-smart-result ft-picked warn";
+    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    return;
+  }
+  result.className = "asset-smart-result ft-picked";
+  result.textContent = "Upiši interni broj, naziv ili tablice sredstva.";
+}
+
 function refreshOneFuelAssetSelect(entryEl) {
   const sel = entryEl.querySelector(".f-asset-select");
   if (!sel) return;
   const kindEl = entryEl.querySelector(".f-asset-kind");
   let kind = kindEl?.value || "machine";
-  const old = sel.value;
   const search = entryEl.querySelector(".f-asset-search")?.value || "";
-  const exact = findAssetByExactCode(search);
-  if (exact && kindEl) {
-    const exactKind = getCanonicalAssetKind(exact);
-    if (exactKind !== kind) {
-      kindEl.value = exactKind;
-      kind = exactKind;
+  const custom = entryEl.querySelector(".f-asset-custom");
+  const asset = findFuelAssetForSmartInput(search, kind);
+  if (asset && kindEl) {
+    const assetKind = getCanonicalAssetKind(asset);
+    if (assetKind && assetKind !== kind) {
+      kindEl.value = assetKind;
+      kind = assetKind;
     }
   }
-  sel.innerHTML = buildFuelAssetOptionsHtml(kind, old, search);
-  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
-  autoSelectExactAssetCode(sel, search);
+  const selectedValue = asset ? (getAssetName(asset) || getAssetCode(asset) || getAssetRegistration(asset)) : "";
+  sel.innerHTML = buildFuelAssetOptionsHtml(kind, selectedValue, search);
+  if (asset) {
+    const name = getAssetName(asset) || getAssetRegistration(asset) || getAssetCode(asset) || "";
+    if (Array.from(sel.options).some(o => o.value === name)) sel.value = name;
+    if (custom) custom.value = "";
+    updateFuelSmartResult(entryEl, asset, "");
+  } else {
+    if (custom) custom.value = String(search || "").trim();
+    updateFuelSmartResult(entryEl, null, search);
+  }
 }
+
 
 function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
@@ -3530,15 +3609,11 @@ function addFuelEntry(values = {}) {
       <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
     </select>
 
-    <label>Interni broj / pretraga sredstva</label>
-    <input class="f-asset-search asset-code-search" placeholder="upisati broj: 101, KAM-05, AG-01" value="${escapeHtml(values.asset_code || values.fuel_asset_code || "")}" />
-
-    <label>Izaberi iz Direkcije</label>
-    <select class="f-asset-select"></select>
-
-    <label>Ručno ako nije na listi</label>
-    <input class="f-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice · Ostalo: agregat/vibro ploča" value="${escapeHtml(manualAsset)}" />
-    <p class="hint">Ako je firmina mašina/vozilo/oprema, izaberi iz liste Direkcije. Ako nije na listi, upiši ručno broj mašine, tablice vozila ili naziv opreme.</p>
+    <label>Sredstvo / interni broj</label>
+    <input class="f-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.fuel_asset_code || manualAsset || selectedAsset || "")}" />
+    <div class="asset-smart-result f-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
+    <select class="f-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1"></select>
+    <input class="f-asset-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualAsset)}" />
 
     <div class="mini-grid">
       <div>
@@ -3558,7 +3633,7 @@ function addFuelEntry(values = {}) {
     <label>Ko je sipao</label>
     <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
 
-    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. Možeš popuniti oba ako firma traži. Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
+    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
