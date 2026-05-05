@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1204" />
+  <link rel="stylesheet" href="style.css?v=1205" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -333,6 +333,46 @@
           <h3>Izvoz u Excel</h3>
           <p class="muted">Ovde stoje dnevni izveštaji koje je Direkcija označila. Odaberi koje podatke želiš u Excel fajlu.</p>
 
+          <div class="export-box smart-export-box">
+            <h4>Brzi filter za poseban Excel</h4>
+            <p class="muted">Za Direkciju: izaberi šta želiš da izvučeš, period, gradilište ili radnika. Aplikacija sama označi izveštaje i kolone.</p>
+            <div class="smart-export-grid">
+              <label>Vrsta exporta
+                <select id="smartExportType">
+                  <option value="all">Sve iz izabranih izveštaja</option>
+                  <option value="fuel_all">Sva sipanja goriva</option>
+                  <option value="fuel_own">Sipanje goriva u svoju mašinu/vozilo/opremu</option>
+                  <option value="fuel_tanker">Tankanje goriva cisternom</option>
+                  <option value="hours_workers">Radni sati radnika</option>
+                  <option value="machines">Rad mašina / MTČ</option>
+                  <option value="vehicles">Vozila / ture / m³</option>
+                  <option value="lowloader">Prevoz mašine labudicom</option>
+                  <option value="materials">Materijal</option>
+                  <option value="warehouse">Magacin</option>
+                  <option value="leave">Slobodni dani / godišnji</option>
+                  <option value="defects">Kvarovi</option>
+                </select>
+              </label>
+              <label>Od datuma
+                <input id="smartExportFrom" type="date" />
+              </label>
+              <label>Do datuma
+                <input id="smartExportTo" type="date" />
+              </label>
+              <label>Gradilište
+                <input id="smartExportSite" placeholder="npr. Zmaj" />
+              </label>
+              <label>Radnik / ime / šifra
+                <input id="smartExportWorker" placeholder="npr. Duško, dus1506" />
+              </label>
+            </div>
+            <div class="row compact">
+              <button id="applySmartExportBtn" class="primary" type="button">🔎 Pripremi poseban Excel</button>
+              <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filter</button>
+            </div>
+            <p id="smartExportInfo" class="hint">Primer: izaberi “Sva sipanja goriva”, datume za mesec dana i gradilište Zmaj.</p>
+          </div>
+
           <div class="export-box">
             <h4>Izabrani izveštaji</h4>
             <p id="exportSelectedCount" class="pill">0 izveštaja označeno za export</p>
@@ -608,6 +648,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1204"></script>
+  <script src="script.js?v=1205"></script>
 </body>
 </html>

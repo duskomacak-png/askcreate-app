@@ -612,3 +612,28 @@ button.small {
     width: 100%;
   }
 }
+
+
+.smart-export-box {
+  border: 1px solid rgba(15, 122, 59, 0.22);
+  background: linear-gradient(180deg, rgba(15,122,59,0.06), rgba(255,255,255,0.92));
+}
+.smart-export-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.smart-export-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 700;
+}
+.smart-export-grid input,
+.smart-export-grid select {
+  min-height: 42px;
+}
+@media (max-width: 900px) {
+  .smart-export-grid { grid-template-columns: 1fr; }
+}

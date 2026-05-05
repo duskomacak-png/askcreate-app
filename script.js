@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.4";
+const APP_VERSION = "1.20.5";
 
 
 let sb = null;
@@ -3950,6 +3950,7 @@ function downloadBlob(blob, fileName) {
 
 const EXPORT_SELECTION_KEY = "swp_export_report_ids";
 const EXPORT_COLUMN_KEY = "swp_export_columns";
+const SMART_EXPORT_KEY = "swp_smart_export_settings";
 
 const EXPORT_COLUMNS = [
   { key:"date", label:"Datum" },
@@ -4305,11 +4306,316 @@ function flattenReportRowsForExport(r) {
   return rows;
 }
 
+
+const SMART_EXPORT_PRESETS = {
+  all: {
+    title: "Sve iz izabranih izveštaja",
+    keys: EXPORT_COLUMNS.map(c => c.key)
+  },
+  fuel_all: {
+    title: "Sva sipanja goriva",
+    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
+  },
+  fuel_own: {
+    title: "Sipanje goriva u svoju mašinu/vozilo/opremu",
+    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","status"]
+  },
+  fuel_tanker: {
+    title: "Tankanje goriva cisternom",
+    keys: ["date","worker","site","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
+  },
+  hours_workers: {
+    title: "Radni sati radnika",
+    keys: ["date","site","worker","function","hours","description","crew_worker","crew_hours","status"]
+  },
+  machines: {
+    title: "Rad mašina / MTČ",
+    keys: ["date","site","worker","machine_code","machine","machine_start","machine_end","machine_hours","machine_work","status"]
+  },
+  vehicles: {
+    title: "Vozila / ture / m³",
+    keys: ["date","site","worker","vehicle_code","vehicle","registration","capacity","km_start","km_end","route","tours","cubic","manual_cubic","status"]
+  },
+  lowloader: {
+    title: "Prevoz mašine labudicom",
+    keys: ["date","site","worker","lowloader_plates","lowloader_from","lowloader_to","lowloader_km_start","lowloader_km_end","lowloader_km","lowloader_machine","status"]
+  },
+  materials: {
+    title: "Materijal",
+    keys: ["date","site","worker","material_action","material","quantity","unit","material_note","status"]
+  },
+  warehouse: {
+    title: "Magacin",
+    keys: ["date","site","worker","warehouse_type","warehouse_item","warehouse_qty","status"]
+  },
+  leave: {
+    title: "Slobodni dani / godišnji",
+    keys: ["date","site","worker","leave_type","leave_date","leave_from","leave_to","leave_note","status"]
+  },
+  defects: {
+    title: "Kvarovi",
+    keys: ["date","site","worker","defect","status","note"]
+  }
+};
+
+function getSmartExportSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SMART_EXPORT_KEY) || "{}");
+    return {
+      type: saved.type || "all",
+      from: saved.from || "",
+      to: saved.to || "",
+      site: saved.site || "",
+      worker: saved.worker || ""
+    };
+  } catch {
+    return { type:"all", from:"", to:"", site:"", worker:"" };
+  }
+}
+
+function setSmartExportSettings(settings) {
+  const clean = {
+    type: settings.type || "all",
+    from: settings.from || "",
+    to: settings.to || "",
+    site: settings.site || "",
+    worker: settings.worker || ""
+  };
+  localStorage.setItem(SMART_EXPORT_KEY, JSON.stringify(clean));
+  return clean;
+}
+
+function smartExportReportMatches(r, settings) {
+  const d = r.data || {};
+  const date = String(r.report_date || "").slice(0, 10);
+  if (settings.from && date && date < settings.from) return false;
+  if (settings.to && date && date > settings.to) return false;
+  const siteQ = normalizeSearch(settings.site || "");
+  if (siteQ) {
+    const siteText = normalizeSearch([d.site_name, d.site, r.site_name].filter(Boolean).join(" "));
+    if (!siteText.includes(siteQ)) return false;
+  }
+  const workerQ = normalizeSearch(settings.worker || "");
+  if (workerQ) {
+    const workerText = normalizeSearch([
+      reportPersonName(r),
+      r.company_users?.first_name,
+      r.company_users?.last_name,
+      r.company_users?.function_title,
+      d.created_by_worker,
+      d.worker_name,
+      d.access_code,
+      d.worker_code
+    ].filter(Boolean).join(" "));
+    if (!workerText.includes(workerQ)) return false;
+  }
+  return true;
+}
+
+function baseExportRow(r) {
+  const d = r.data || {};
+  return {
+    date: r.report_date || "",
+    worker: reportPersonName(r),
+    function: r.company_users?.function_title || "",
+    site: d.site_name || "",
+    hours: d.hours || "",
+    description: d.description || "",
+    status: r.status || "",
+    note: d.note || ""
+  };
+}
+
+function smartRowsForReport(r, type) {
+  if (!type || type === "all") return flattenReportRowsForExport(r);
+  const d = r.data || {};
+  const base = baseExportRow(r);
+  const rows = [];
+  const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
+  const machines = Array.isArray(d.machines) ? d.machines : [];
+  const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
+  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+  const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+  const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+  const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : []);
+  const leaveRequest = d.leave_request || {};
+
+  if (type === "fuel_all" || type === "fuel_own") {
+    fuels.forEach(f => rows.push({
+      ...base,
+      fuel_type: assetKindLabel(f.asset_kind),
+      fuel_asset_code: f.asset_code || "",
+      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || "",
+      fuel_liters: f.liters || d.fuel_liters || "",
+      fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
+      fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
+      fuel_reading: f.reading || f.mtc_km || d.fuel_readings || "",
+      fuel_by: f.by || "",
+      fuel_receiver: f.receiver || d.fuel_receiver || ""
+    }));
+  }
+
+  if (type === "fuel_all" || type === "fuel_tanker") {
+    fieldTankers.forEach(ft => rows.push({
+      ...base,
+      field_tanker_site: ft.site_name || d.site_name || "",
+      field_tanker_type: assetKindLabel(ft.asset_kind),
+      field_tanker_asset_code: ft.asset_code || "",
+      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || "",
+      field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
+      field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
+      field_tanker_reading: ft.reading || ft.mtc_km || "",
+      field_tanker_liters: ft.liters || "",
+      field_tanker_receiver: ft.receiver || ft.received_by || ""
+    }));
+  }
+
+  if (type === "hours_workers") {
+    if (workers.length) {
+      workers.forEach(w => rows.push({
+        ...base,
+        crew_worker: w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || "",
+        crew_hours: w.hours || ""
+      }));
+    } else if (base.hours || base.description) {
+      rows.push(base);
+    }
+  }
+
+  if (type === "machines") {
+    machines.forEach(m => rows.push({
+      ...base,
+      machine_code: m.asset_code || m.machine_code || "",
+      machine: m.name || d.machine || "",
+      machine_start: m.start || d.mtc_start || "",
+      machine_end: m.end || d.mtc_end || "",
+      machine_hours: m.hours || d.machine_hours || "",
+      machine_work: m.work || ""
+    }));
+  }
+
+  if (type === "vehicles") {
+    vehicles.forEach(v => rows.push({
+      ...base,
+      vehicle_code: v.asset_code || v.vehicle_code || "",
+      vehicle: v.name || v.vehicle || d.vehicle || "",
+      registration: v.registration || "",
+      capacity: v.capacity || "",
+      km_start: v.km_start || d.km_start || "",
+      km_end: v.km_end || d.km_end || "",
+      route: v.route || d.route || "",
+      tours: v.tours || d.tours || "",
+      cubic: v.cubic_m3 || v.cubic_auto || "",
+      manual_cubic: v.cubic_manual || ""
+    }));
+  }
+
+  if (type === "lowloader") {
+    lowloaders.forEach(ll => rows.push({
+      ...base,
+      lowloader_plates: ll.plates || ll.registration || "",
+      lowloader_from: ll.from_site || ll.from_address || "",
+      lowloader_to: ll.to_site || ll.to_address || "",
+      lowloader_km_start: ll.km_start || "",
+      lowloader_km_end: ll.km_end || "",
+      lowloader_km: ll.km_total || "",
+      lowloader_machine: ll.machine || ""
+    }));
+  }
+
+  if (type === "materials") {
+    materials.forEach(mat => rows.push({
+      ...base,
+      material_action: mat.action || mat.material_action || "",
+      material: mat.material || mat.name || d.material || "",
+      quantity: mat.quantity || mat.qty || d.quantity || "",
+      unit: mat.unit || d.unit || "",
+      material_note: mat.note || ""
+    }));
+  }
+
+  if (type === "warehouse") {
+    if (d.warehouse_type || d.warehouse_item || d.warehouse_qty) {
+      rows.push({
+        ...base,
+        warehouse_type: d.warehouse_type || "",
+        warehouse_item: d.warehouse_item || "",
+        warehouse_qty: d.warehouse_qty || ""
+      });
+    }
+  }
+
+  if (type === "leave") {
+    if (d.leave_request_type || d.leave_date || d.leave_from || d.leave_to || leaveRequest.label || leaveRequest.leave_label) {
+      rows.push({
+        ...base,
+        leave_type: d.leave_request_type || leaveRequest.leave_label || leaveRequest.label || "",
+        leave_date: d.leave_date || leaveRequest.leave_date || leaveRequest.date || "",
+        leave_from: d.leave_from || leaveRequest.date_from || "",
+        leave_to: d.leave_to || leaveRequest.date_to || "",
+        leave_note: d.leave_note || leaveRequest.leave_note || leaveRequest.note || ""
+      });
+    }
+  }
+
+  if (type === "defects") {
+    if (d.defect || d.defect_description || d.problem_description) {
+      rows.push({ ...base, defect: d.defect || d.defect_description || d.problem_description || "" });
+    }
+  }
+
+  return rows;
+}
+
+window.applySmartExportFilters = () => {
+  const settings = setSmartExportSettings({
+    type: $("#smartExportType")?.value || "all",
+    from: $("#smartExportFrom")?.value || "",
+    to: $("#smartExportTo")?.value || "",
+    site: $("#smartExportSite")?.value || "",
+    worker: $("#smartExportWorker")?.value || ""
+  });
+  const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
+  const reports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r)).filter(r => smartExportReportMatches(r, settings));
+  setExportSelectedIds(reports.map(r => r.id));
+  setExportColumnKeys(preset.keys);
+  renderExportPanel();
+  const info = $("#smartExportInfo");
+  const rowsCount = reports.flatMap(r => smartRowsForReport(r, settings.type)).length;
+  if (info) info.textContent = `${preset.title}: izabrano ${reports.length} izveštaja, ${rowsCount} redova za Excel.`;
+  toast(`Pripremljen export: ${preset.title}. Izveštaja: ${reports.length}.`);
+};
+
+window.clearSmartExportFilters = () => {
+  setSmartExportSettings({ type:"all", from:"", to:"", site:"", worker:"" });
+  ["#smartExportType", "#smartExportFrom", "#smartExportTo", "#smartExportSite", "#smartExportWorker"].forEach(sel => {
+    const el = $(sel);
+    if (!el) return;
+    el.value = sel === "#smartExportType" ? "all" : "";
+  });
+  const info = $("#smartExportInfo");
+  if (info) info.textContent = "Filter je očišćen. Možeš ručno birati izveštaje i kolone.";
+  toast("Filter za poseban Excel je očišćen.");
+};
+
+function restoreSmartExportControls() {
+  const settings = getSmartExportSettings();
+  if ($("#smartExportType")) $("#smartExportType").value = settings.type;
+  if ($("#smartExportFrom")) $("#smartExportFrom").value = settings.from;
+  if ($("#smartExportTo")) $("#smartExportTo").value = settings.to;
+  if ($("#smartExportSite")) $("#smartExportSite").value = settings.site;
+  if ($("#smartExportWorker")) $("#smartExportWorker").value = settings.worker;
+}
+
 function getExportRowsAndColumns() {
   const reports = getSelectedReportsForExport();
+  const settings = getSmartExportSettings();
+  const type = settings.type || "all";
   const keys = getExportColumnKeys();
   const columns = EXPORT_COLUMNS.filter(c => keys.includes(c.key));
-  const rows = reports.flatMap(flattenReportRowsForExport);
+  const rows = reports
+    .filter(r => smartExportReportMatches(r, settings))
+    .flatMap(r => smartRowsForReport(r, type));
   return { reports, columns, rows };
 }
 
@@ -4319,11 +4625,15 @@ function renderExportPanel() {
   const countBox = $("#exportSelectedCount");
   if (!box || !colsBox) return;
 
+  restoreSmartExportControls();
   const selected = getSelectedReportsForExport();
   const selectedIds = new Set(selected.map(r => r.id));
   const keys = getExportColumnKeys();
+  const settings = getSmartExportSettings();
+  const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
+  const exportRowsCount = selected.filter(r => smartExportReportMatches(r, settings)).flatMap(r => smartRowsForReport(r, settings.type)).length;
 
-  if (countBox) countBox.textContent = `${selected.length} izveštaja označeno za export`;
+  if (countBox) countBox.textContent = `${selected.length} izveštaja označeno · ${exportRowsCount} redova · ${preset.title}`;
 
   box.innerHTML = selected.length ? selected.map(r => {
     const d = r.data || {};
