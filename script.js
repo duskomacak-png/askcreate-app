@@ -1987,7 +1987,8 @@ function addMachineEntry(values = {}) {
 
     <label>Mašina</label>
     <select class="m-name">${buildMachineOptionsHtml(values.name || "")}</select>
-    <p class="field-hint">Ovde se moraju videti mašine koje je Direkcija upisala u Mašine / vozila. Ako lista piše „Nema mašina iz Direkcije”, problem je u učitavanju worker_list_assets ili u tipu mašine.</p>
+    <p class="field-hint">Ovde se moraju videti mašine koje je Direkcija upisala u Mašine / vozila. Ako lista piše „Nema mašina iz Direkcije”, pokreni Supabase SQL v1.17.0 za worker_list_assets.</p>
+    <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Direkcije</button>
 
     <label>Ako mašina nije u listi, upiši ručno</label>
     <input class="m-custom" placeholder="npr. zamenska mašina" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
@@ -2036,6 +2037,19 @@ function addMachineEntry(values = {}) {
   if (machineSearch) machineSearch.addEventListener("input", () => refreshOneMachineSelect(div));
   if (machineSelect) machineSelect.addEventListener("change", refreshFuelMachineOptions);
   if (machineCustom) machineCustom.addEventListener("input", refreshFuelMachineOptions);
+  const refreshMachinesBtn = div.querySelector(".refresh-machine-assets");
+  if (refreshMachinesBtn) refreshMachinesBtn.addEventListener("click", async () => {
+    try {
+      refreshMachinesBtn.disabled = true;
+      refreshMachinesBtn.textContent = "Učitavam...";
+      await loadWorkerAssets();
+      refreshOneMachineSelect(div);
+      toast(workerAssetOptions.length ? "Mašine/vozila iz Direkcije su osvežene." : "Nema učitanih mašina/vozila. Ako ih Direkcija ima, pokreni SQL v1.17.0 worker_list_assets.", !workerAssetOptions.length);
+    } finally {
+      refreshMachinesBtn.disabled = false;
+      refreshMachinesBtn.textContent = "Osveži mašine iz Direkcije";
+    }
+  });
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
   refreshOneMachineSelect(div);
