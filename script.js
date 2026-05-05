@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.7";
+const APP_VERSION = "1.21.8";
 
 
 let sb = null;
@@ -5438,7 +5438,7 @@ function bindEvents() {
       await loadDirectorCompany();
     } catch(e) { toast(e.message, true); }
   });
-  $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
+  if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
