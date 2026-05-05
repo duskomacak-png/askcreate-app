@@ -1150,6 +1150,20 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
 
+  // v1.18.9 — sigurnosna normalizacija materijala
+  // Stari izveštaji mogu imati material_entries kao niz, objekat, tekst, boolean ili null.
+  // .some() i .map() smeju da rade samo nad nizom.
+  const normalizeReportArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === "object") return [value];
+    return [];
+  };
+  const materialEntries =
+    normalizeReportArray(d.material_entries).length ? normalizeReportArray(d.material_entries) :
+    normalizeReportArray(d.material_movements).length ? normalizeReportArray(d.material_movements) :
+    Array.isArray(d.materials) ? d.materials :
+    [];
+
   const reportRows = [];
 
   const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length)
