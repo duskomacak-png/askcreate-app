@@ -1014,8 +1014,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(v.cubic_m3 || v.cubic_auto)}</td>
         <td>${val(v.cubic_manual)}</td>
         <td>${val(ll.plates || ll.registration)}</td>
-        <td>${val(ll.from_address)}</td>
-        <td>${val(ll.to_address)}</td>
+        <td>${val(ll.from_site || ll.from_address)}</td>
+        <td>${val(ll.to_site || ll.to_address)}</td>
+        <td>${val(ll.km_start)}</td>
+        <td>${val(ll.km_end)}</td>
         <td>${val(ll.km_total)}</td>
         <td>${val(ll.machine)}</td>
         <td>${val(f.machine)}</td>
@@ -1058,8 +1060,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>m³ ukupno</th>
             <th>Ručno m³</th>
             <th>Labudica tablice</th>
-            <th>Početna adresa</th>
-            <th>Završna adresa</th>
+            <th>Gradilište preuzimanja</th>
+            <th>Gradilište odvoza</th>
+            <th>Početna km labudice</th>
+            <th>Završna km labudice</th>
             <th>Ukupno km</th>
             <th>Mašina koja se seli</th>
             <th>Gorivo za</th>
@@ -1164,8 +1168,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Tablice labudice</th>
-          <th>Početna adresa</th>
-          <th>Završna adresa</th>
+          <th>Gradilište preuzimanja</th>
+          <th>Gradilište odvoza</th>
+          <th>Početna km</th>
+          <th>Završna km</th>
           <th>Ukupno km</th>
           <th>Mašina koja se seli</th>
         </tr>
@@ -1175,8 +1181,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <tr>
             <td>${i + 1}</td>
             <td>${val(ll.plates || ll.registration)}</td>
-            <td>${val(ll.from_address)}</td>
-            <td>${val(ll.to_address)}</td>
+            <td>${val(ll.from_site || ll.from_address)}</td>
+            <td>${val(ll.to_site || ll.to_address)}</td>
+            <td>${val(ll.km_start)}</td>
+            <td>${val(ll.km_end)}</td>
             <td>${val(ll.km_total)}</td>
             <td>${val(ll.machine)}</td>
           </tr>
@@ -1579,10 +1587,45 @@ function buildLowloaderMachineDatalistOptionsHtml() {
   }).join("");
 }
 
+function buildLowloaderSiteDatalistOptionsHtml() {
+  return (Array.isArray(workerSiteOptions) ? workerSiteOptions : []).map(site => {
+    const name = site.name || site.site_name || site.title || "";
+    const loc = site.location ? ` · ${site.location}` : "";
+    const label = String(name + loc).trim();
+    return label ? `<option value="${escapeHtml(label)}"></option>` : "";
+  }).join("");
+}
+
+function parseLowloaderDecimalInput(value) {
+  const n = Number(String(value || "").replace(",", ".").trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatLowloaderDecimalForInput(value) {
+  if (!Number.isFinite(value)) return "";
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
+}
+
+function updateLowloaderKmTotal(entryEl) {
+  if (!entryEl) return;
+  const start = parseLowloaderDecimalInput(entryEl.querySelector(".ll-km-start")?.value);
+  const end = parseLowloaderDecimalInput(entryEl.querySelector(".ll-km-end")?.value);
+  const totalEl = entryEl.querySelector(".ll-km");
+  if (!totalEl) return;
+  if (start === null || end === null || end < start) {
+    totalEl.value = "";
+    return;
+  }
+  totalEl.value = formatLowloaderDecimalForInput(end - start);
+}
+
 function refreshOneLowloaderMachineSelect(entryEl) {
-  const list = entryEl.querySelector(".ll-machine-list");
-  if (!list) return;
-  list.innerHTML = buildLowloaderMachineDatalistOptionsHtml();
+  const machineList = entryEl.querySelector(".ll-machine-list");
+  if (machineList) machineList.innerHTML = buildLowloaderMachineDatalistOptionsHtml();
+  entryEl.querySelectorAll(".ll-site-list").forEach(list => {
+    list.innerHTML = buildLowloaderSiteDatalistOptionsHtml();
+  });
 }
 
 function refreshLowloaderMachineSelectors() {
@@ -2096,8 +2139,14 @@ function addLowloaderEntry(values = {}) {
   const list = $("#lowloaderEntries");
   if (!list) return;
   const idx = list.querySelectorAll(".lowloader-entry").length + 1;
+  const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}-${idx}`;
   const div = document.createElement("div");
   div.className = "entry-card lowloader-entry";
+  const kmStart = values.km_start || values.start_km || values.odometer_start || "";
+  const kmEnd = values.km_end || values.end_km || values.odometer_end || "";
+  const kmTotal = values.km_total || values.km || "";
+  const fromSite = values.from_site || values.from_address || values.from || "";
+  const toSite = values.to_site || values.to_address || values.to || "";
   div.innerHTML = `
     <div class="entry-card-head">
       <strong>Selidba mašine ${idx}</strong>
@@ -2109,21 +2158,36 @@ function addLowloaderEntry(values = {}) {
 
     <div class="grid two">
       <div>
-        <label>Početna adresa</label>
-        <input class="ll-from" placeholder="odakle se preuzima mašina" value="${escapeHtml(values.from_address || values.from || "")}" />
+        <label>Gradilište sa kog preuzima mašinu</label>
+        <input class="ll-from" list="lowloaderFromSiteList-${uid}" placeholder="izaberi gradilište ili upiši ručno" value="${escapeHtml(fromSite)}" />
+        <datalist class="ll-site-list" id="lowloaderFromSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
       </div>
       <div>
-        <label>Završna adresa</label>
-        <input class="ll-to" placeholder="gde se istovara mašina" value="${escapeHtml(values.to_address || values.to || "")}" />
+        <label>Gradilište gde vozi mašinu</label>
+        <input class="ll-to" list="lowloaderToSiteList-${uid}" placeholder="izaberi gradilište ili upiši ručno" value="${escapeHtml(toSite)}" />
+        <datalist class="ll-site-list" id="lowloaderToSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
       </div>
     </div>
 
-    <label>Ukupno kilometara</label>
-    <input class="ll-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 42" value="${escapeHtml(values.km_total || values.km || "")}" />
+    <div class="grid three">
+      <div>
+        <label>Početna kilometraža</label>
+        <input class="ll-km-start numeric-text" type="text" inputmode="decimal" placeholder="npr. 125000" value="${escapeHtml(kmStart)}" />
+      </div>
+      <div>
+        <label>Završna kilometraža</label>
+        <input class="ll-km-end numeric-text" type="text" inputmode="decimal" placeholder="npr. 125042" value="${escapeHtml(kmEnd)}" />
+      </div>
+      <div>
+        <label>Ukupno kilometara</label>
+        <input class="ll-km numeric-text" type="text" inputmode="decimal" placeholder="automatski" value="${escapeHtml(kmTotal)}" readonly />
+      </div>
+    </div>
+    <p class="field-hint">Ukupno kilometara se računa automatski: završna kilometraža minus početna kilometraža.</p>
 
     <label>Pronađi broj ili ime mašine koju seliš ili upiši ručno</label>
-    <input class="ll-machine" list="lowloaderMachineList-${Date.now()}-${idx}" placeholder="npr. CAT 330, BG321CI, valjak..." value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
-    <datalist class="ll-machine-list" id="lowloaderMachineList-${Date.now()}-${idx}">${buildLowloaderMachineDatalistOptionsHtml()}</datalist>
+    <input class="ll-machine" list="lowloaderMachineList-${uid}" placeholder="npr. CAT 330, BG321CI, valjak..." value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
+    <datalist class="ll-machine-list" id="lowloaderMachineList-${uid}">${buildLowloaderMachineDatalistOptionsHtml()}</datalist>
     <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Direkcije. Ako seliš tuđu/zamensku mašinu, samo je upiši ručno.</p>
   `;
 
@@ -2131,8 +2195,13 @@ function addLowloaderEntry(values = {}) {
     div.remove();
     renumberLowloaderEntries();
   });
+  div.querySelectorAll(".ll-km-start, .ll-km-end").forEach(input => {
+    input.addEventListener("input", () => updateLowloaderKmTotal(div));
+    input.addEventListener("change", () => updateLowloaderKmTotal(div));
+  });
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
+  updateLowloaderKmTotal(div);
   refreshOneLowloaderMachineSelect(div);
 }
 
@@ -2148,6 +2217,9 @@ function getLowloaderEntries() {
     const plates = el.querySelector(".ll-plates")?.value.trim() || "";
     const from = el.querySelector(".ll-from")?.value.trim() || "";
     const to = el.querySelector(".ll-to")?.value.trim() || "";
+    const kmStart = el.querySelector(".ll-km-start")?.value.trim() || "";
+    const kmEnd = el.querySelector(".ll-km-end")?.value.trim() || "";
+    updateLowloaderKmTotal(el);
     const km = el.querySelector(".ll-km")?.value.trim() || "";
     const machine = el.querySelector(".ll-machine")?.value.trim() || "";
     const customMachine = machine;
@@ -2155,15 +2227,18 @@ function getLowloaderEntries() {
       no: i + 1,
       plates,
       registration: plates,
+      from_site: from,
+      to_site: to,
       from_address: from,
       to_address: to,
+      km_start: kmStart,
+      km_end: kmEnd,
       km_total: km,
       machine,
       machine_custom: customMachine
     };
-  }).filter(x => x.plates || x.from_address || x.to_address || x.km_total || x.machine);
+  }).filter(x => x.plates || x.from_address || x.to_address || x.km_start || x.km_end || x.km_total || x.machine);
 }
-
 
 
 function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
@@ -2677,8 +2752,10 @@ const EXPORT_COLUMNS = [
   { key:"cubic", label:"Ukupno kubika" },
   { key:"manual_cubic", label:"Ručno upisani kubici" },
   { key:"lowloader_plates", label:"Tablice labudice" },
-  { key:"lowloader_from", label:"Odakle je mašina preuzeta" },
-  { key:"lowloader_to", label:"Gde je mašina odvezena" },
+  { key:"lowloader_from", label:"Gradilište sa kog je mašina preuzeta" },
+  { key:"lowloader_to", label:"Gradilište gde je mašina odvezena" },
+  { key:"lowloader_km_start", label:"Početna kilometraža labudice" },
+  { key:"lowloader_km_end", label:"Završna kilometraža labudice" },
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
   { key:"fuel_for", label:"Gorivo sipano u" },
@@ -2740,7 +2817,7 @@ const EXPORT_GROUPS = [
     id: "lowloader",
     title: "Prevoz mašine labudicom",
     hint: "Selidba mašine sa jedne lokacije na drugu.",
-    keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km", "lowloader_machine"]
+    keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km_start", "lowloader_km_end", "lowloader_km", "lowloader_machine"]
   },
   {
     id: "fieldTanker",
@@ -2922,8 +2999,10 @@ function flattenReportRowsForExport(r) {
       cubic: v.cubic_m3 || v.cubic_auto || "",
       manual_cubic: v.cubic_manual || "",
       lowloader_plates: ll.plates || ll.registration || "",
-      lowloader_from: ll.from_address || "",
-      lowloader_to: ll.to_address || "",
+      lowloader_from: ll.from_site || ll.from_address || "",
+      lowloader_to: ll.to_site || ll.to_address || "",
+      lowloader_km_start: ll.km_start || "",
+      lowloader_km_end: ll.km_end || "",
       lowloader_km: ll.km_total || "",
       lowloader_machine: ll.machine || "",
       fuel_for: f.machine || "",
