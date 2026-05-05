@@ -1,4 +1,4 @@
-// v1.19.6_WORKER_ASSETS_ROBUST_LOAD - worker asset loading fixed; RPC + direct merge always; tolerant asset type matching
+// v1.19.7_WORKER_ASSETS_ROBUST_LOAD - worker asset loading fixed; RPC + direct merge always; tolerant asset type matching
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.6";
+const APP_VERSION = "1.19.7";
 
 
 let sb = null;
@@ -1782,21 +1782,48 @@ function formatAssetTitleWithCode(asset) {
 }
 
 function getAssetType(asset) {
-  return normalizeAssetType(asset?.asset_type || asset?.type || asset?.assetType || asset?.category || "");
+  // v1.19.7: worker_list_assets u nekim bazama vraća drugačije ime kolone
+  // ili ne vrati asset_type za sva sredstva. Zato čitamo više mogućih naziva.
+  return normalizeAssetType(
+    asset?.asset_type ||
+    asset?.type ||
+    asset?.assetType ||
+    asset?.asset_kind ||
+    asset?.kind ||
+    asset?.category ||
+    asset?.asset_category ||
+    asset?.group ||
+    ""
+  );
 }
 
 function getAssetRegistration(asset) {
-  return String(asset?.registration || asset?.plate || asset?.reg_no || asset?.oznaka || "").trim();
+  return String(asset?.registration || asset?.plate || asset?.plates || asset?.reg_no || asset?.oznaka || "").trim();
+}
+
+function inferAssetTypeFromText(asset) {
+  const text = normalizeAssetType([
+    getAssetName(asset),
+    getAssetRegistration(asset),
+    asset?.description,
+    asset?.note,
+    asset?.capacity ? "capacity" : ""
+  ].filter(Boolean).join(" "));
+
+  if (/\b(kamion|kiper|vozilo|cisterna|labudica|sleper|prikolica|kombi|auto|man|scania|mercedes|iveco|volvo|daf)\b/.test(text)) return "vehicle";
+  if (/\b(agregat|vibro|vibroploca|vibro ploca|ploca|pumpa|kompresor|oprema|alat)\b/.test(text)) return "other";
+  if (/\b(bager|dozer|buldozer|valjak|grader|utovarivac|finiser|masina|cat|komatsu|jcb|liebherr|volvo)\b/.test(text)) return "machine";
+  return "";
 }
 
 function isVehicleAsset(asset) {
-  const t = getAssetType(asset);
-  return ["vehicle", "vozilo", "vehicles", "vozila", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica", "auto", "kombinovano vozilo"].includes(t);
+  const t = getAssetType(asset) || inferAssetTypeFromText(asset);
+  return ["vehicle", "vozilo", "vehicles", "vozila", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica", "sleper", "prikolica", "auto", "kombinovano vozilo"].includes(t);
 }
 
 function isOtherAsset(asset) {
-  const t = getAssetType(asset);
-  return ["other", "ostalo", "alat", "tool", "tools", "oprema", "equipment", "agregat", "vibro", "vibro ploca", "vibroploca"].includes(t);
+  const t = getAssetType(asset) || inferAssetTypeFromText(asset);
+  return ["other", "ostalo", "alat", "tool", "tools", "oprema", "equipment", "agregat", "vibro", "vibro ploca", "vibroploca", "ploca", "pumpa", "kompresor"].includes(t);
 }
 
 function assetKindLabel(kind) {
@@ -1814,10 +1841,12 @@ function formatAssetLabel(asset) {
 }
 
 function isMachineAsset(asset) {
-  const t = getAssetType(asset);
-  if (!t) return true;
+  const t = getAssetType(asset) || inferAssetTypeFromText(asset);
   if (isVehicleAsset(asset) || isOtherAsset(asset)) return false;
-  return ["machine", "machines", "machinery", "masina", "masine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "finiser"].includes(t);
+  // Ako tip nije upisan, tretiramo kao mašinu da se stari podaci ne izgube,
+  // ali vozila/oprema se sada prvo pokušavaju prepoznati po nazivu i drugim poljima.
+  if (!t) return true;
+  return ["machine", "machines", "machinery", "masina", "masine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "finiser", "cat", "komatsu", "jcb", "liebherr"].includes(t);
 }
 
 function formatMachineLabel(asset) {
@@ -1979,14 +2008,21 @@ function refreshMachineDatalists() {
 }
 
 function normalizeWorkerAssetRows(rows) {
-  return (Array.isArray(rows) ? rows : []).map(a => ({
-    ...a,
-    name: getAssetName(a),
-    asset_code: getAssetCode(a),
-    registration: getAssetRegistration(a),
-    asset_type: a.asset_type || a.type || a.assetType || a.category || "",
-    type: a.type || a.asset_type || a.assetType || a.category || ""
-  })).filter(a => a.name || a.registration);
+  return (Array.isArray(rows) ? rows : []).map(a => {
+    const rawType = a.asset_type || a.type || a.assetType || a.asset_kind || a.kind || a.category || a.asset_category || a.group || "";
+    const normalized = {
+      ...a,
+      name: getAssetName(a),
+      asset_code: getAssetCode(a),
+      registration: getAssetRegistration(a),
+      asset_type: rawType,
+      type: a.type || rawType
+    };
+    // Ako RPC ne vrati tip, pokušaj da ga popuniš po nazivu/registraciji.
+    if (!normalized.asset_type) normalized.asset_type = inferAssetTypeFromText(normalized);
+    if (!normalized.type) normalized.type = normalized.asset_type;
+    return normalized;
+  }).filter(a => a.name || a.registration || a.asset_code);
 }
 
 function mergeAssetRows(primary = [], fallback = []) {
@@ -2022,7 +2058,7 @@ async function loadWorkerAssets() {
   }
 
   // Drugi izvor: direktno iz assets po company_id.
-  // VAŽNO v1.19.6: ovo se sada pokušava UVEK kada radnik ima company_id,
+  // VAŽNO v1.19.7: ovo se sada pokušava UVEK kada radnik ima company_id,
   // ne samo kada RPC vrati prazno. Tako radnik vidi mašine i ako je RPC star
   // i ne vraća sva polja/tipove, a ne diramo Supabase SQL.
   if (worker.company_id) {
@@ -2044,6 +2080,7 @@ async function loadWorkerAssets() {
   refreshVehicleSelects();
   refreshMachineDatalists();
   refreshFieldTankerSelectors();
+  refreshFuelMachineOptions();
 
   const machineCount = workerAssetOptions.filter(isMachineAsset).length;
   const vehicleCount = workerAssetOptions.filter(isVehicleAsset).length;
@@ -2053,6 +2090,8 @@ async function loadWorkerAssets() {
     toast("Radniku nisu učitane mašine/vozila. Proveri da li u Direkciji postoje sredstva za ovu firmu i da li je radnik u istoj firmi. Detalj: " + ((directError && directError.message) || (rpcError && rpcError.message) || "nema podataka"), true);
   } else if (!machineCount && (vehicleCount || otherCount)) {
     toast(`Sredstva su učitana, ali nema tipa Mašina. U Direkciji proveri Tip: Mašina. Učitano: vozila ${vehicleCount}, ostalo ${otherCount}.`, true);
+  } else if (machineCount && !vehicleCount && !otherCount) {
+    console.warn("Start Work PRO: učitane su samo mašine. Ako u Direkciji postoje vozila/ostalo, proveri Supabase RPC worker_list_assets da vraća sve asset_type vrednosti.", { workerAssetOptions, rpcError, directError });
   }
 }
 
