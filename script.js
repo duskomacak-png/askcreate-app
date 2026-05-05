@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.6";
+const APP_VERSION = "1.21.7";
 
 
 let sb = null;
@@ -2235,6 +2235,10 @@ function normalizeVehicleSearch(value) {
     .toLowerCase()
     .replace(/[^a-z0-9čćžšđ]/gi, "")
     .trim();
+}
+
+function normalizeSearch(value) {
+  return normalizeVehicleSearch(value);
 }
 
 function vehicleMatchesSearch(asset, searchValue) {
