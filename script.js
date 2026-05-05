@@ -995,13 +995,38 @@ function hasDefectData(r) {
 }
 
 function hasDailyReportData(r) {
+  // v1.18.4: Direkcija ne sme da izgubi prikaz izveštaja zato što filter
+  // ne prepoznaje novu rubriku. Sve što nije poseban kvar i nije arhivirano
+  // mora ostati vidljivo u Dnevnim izveštajima.
   const d = r?.data || {};
-  const hasMachines = Array.isArray(d.machines) && d.machines.some(m => m && Object.values(m).some(Boolean));
-  const hasVehicles = Array.isArray(d.vehicles) && d.vehicles.some(v => v && Object.values(v).some(Boolean));
-  const hasFuel = Array.isArray(d.fuel_entries) && d.fuel_entries.some(f => f && Object.values(f).some(Boolean));
-  const hasMaterialEntries = Array.isArray(d.material_entries || d.material_movements) && (d.material_entries || d.material_movements).some(m => m && Object.values(m).some(Boolean));
-  const hasMaterial = hasMaterialEntries || !!(d.material || d.quantity || d.unit || d.warehouse_type || d.warehouse_item || d.warehouse_qty);
-  return !!(d.description || d.hours || d.site_name || hasMachines || hasVehicles || hasFuel || hasMaterial || d.note);
+  if (!d || typeof d !== "object") return true;
+
+  const arraysToCheck = [
+    d.workers, d.worker_entries, d.machines, d.vehicles,
+    d.lowloader_moves, d.lowloader_entries,
+    d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries,
+    d.material_entries, d.material_movements
+  ];
+  const hasAnyArrayData = arraysToCheck.some(arr =>
+    Array.isArray(arr) && arr.some(item => item && Object.values(item).some(Boolean))
+  );
+
+  const leave = d.leave_request || {};
+  const hasLeave = !!(
+    d.leave_type || d.leave_label || d.leave_date || d.leave_from || d.leave_to || d.leave_note ||
+    leave.type || leave.label || leave.date || leave.date_from || leave.date_to || leave.note
+  );
+
+  const hasKnownField = !!(
+    d.site_name || d.description || d.hours || d.note ||
+    d.material || d.quantity || d.unit || d.warehouse_type || d.warehouse_item || d.warehouse_qty ||
+    d.machine || d.vehicle || d.fuel_liters || d.tours || d.route ||
+    hasLeave || hasAnyArrayData
+  );
+
+  // Ako ne prepoznamo strukturu, ipak prikaži izveštaj. Bolje je da Direkcija
+  // vidi višak nego da joj nestane poslat izveštaj.
+  return true || hasKnownField;
 }
 
 function formatDateTimeLocal(value) {
