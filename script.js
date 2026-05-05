@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.3";
+const APP_VERSION = "1.21.4";
 
 
 let sb = null;
@@ -1871,6 +1871,12 @@ function assetKindLabel(kind) {
   if (kind === "vehicle") return "Vozilo";
   if (kind === "other") return "Ostalo";
   return "Mašina";
+}
+
+function defectImpactLabel(value) {
+  if (value === "zaustavlja_rad") return "Zaustavlja rad";
+  if (value === "moze_nastaviti") return "Može nastaviti rad do popravke";
+  return value || "";
 }
 
 function formatAssetLabel(asset) {
@@ -4403,13 +4409,12 @@ const EXPORT_COLUMNS = [
   { key:"vehicle_code", label:"Broj vozila" },
   { key:"vehicle", label:"Vozilo / kamion" },
   { key:"registration", label:"Registracija" },
-  { key:"capacity", label:"Kapacitet vozila" },
+  { key:"capacity", label:"Kapacitet vozila m³" },
   { key:"km_start", label:"Početna kilometraža" },
   { key:"km_end", label:"Krajnja kilometraža" },
   { key:"route", label:"Relacija vožnje" },
   { key:"tours", label:"Broj tura" },
-  { key:"cubic", label:"Ukupno kubika" },
-  { key:"manual_cubic", label:"Ručno upisani kubici" },
+  { key:"cubic", label:"Ukupno m³" },
   { key:"lowloader_plates", label:"Tablice labudice" },
   { key:"lowloader_from", label:"Gradilište sa kog je mašina preuzeta" },
   { key:"lowloader_to", label:"Gradilište gde je mašina odvezena" },
@@ -4417,22 +4422,22 @@ const EXPORT_COLUMNS = [
   { key:"lowloader_km_end", label:"Završna kilometraža labudice" },
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
-  { key:"fuel_type", label:"Tip za sipanje goriva" },
-  { key:"fuel_asset_code", label:"Broj sredstva za gorivo" },
-  { key:"fuel_for", label:"Gorivo sipano u" },
-  { key:"fuel_liters", label:"Količina goriva u litrima" },
-  { key:"fuel_km", label:"Kilometraža / KM kod sipanja" },
-  { key:"fuel_mtc", label:"MTČ kod sipanja" },
-  { key:"fuel_reading", label:"Staro polje MTČ/KM kod sipanja" },
+  { key:"fuel_type", label:"Tip sredstva" },
+  { key:"fuel_asset_code", label:"Broj sredstva" },
+  { key:"fuel_for", label:"Naziv sredstva" },
+  { key:"fuel_registration", label:"Registracija" },
+  { key:"fuel_liters", label:"Litara" },
+  { key:"fuel_km", label:"KM" },
+  { key:"fuel_mtc", label:"MTČ" },
   { key:"fuel_by", label:"Gorivo sipao" },
   { key:"fuel_receiver", label:"Gorivo primio" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
   { key:"field_tanker_type", label:"Tip tankovanog sredstva" },
   { key:"field_tanker_asset_code", label:"Broj tankovanog sredstva" },
-  { key:"field_tanker_asset", label:"Mašina/vozilo koje je tankovano" },
-  { key:"field_tanker_km", label:"Kilometraža / KM pri tankovanju cisternom" },
+  { key:"field_tanker_asset", label:"Naziv tankovanog sredstva" },
+  { key:"field_tanker_registration", label:"Registracija" },
+  { key:"field_tanker_km", label:"KM pri tankovanju cisternom" },
   { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
-  { key:"field_tanker_reading", label:"Staro polje MTČ/KM pri tankovanju" },
   { key:"field_tanker_liters", label:"Sipano litara iz cisterne" },
   { key:"field_tanker_receiver", label:"Gorivo primio iz cisterne" },
   { key:"material_action", label:"Radnja sa materijalom" },
@@ -4448,9 +4453,17 @@ const EXPORT_COLUMNS = [
   { key:"leave_from", label:"Godišnji od" },
   { key:"leave_to", label:"Godišnji do" },
   { key:"leave_note", label:"Napomena za odsustvo" },
+  { key:"defect_type", label:"Tip sredstva u kvaru" },
+  { key:"defect_asset_code", label:"Broj sredstva u kvaru" },
+  { key:"defect_asset", label:"Naziv sredstva u kvaru" },
+  { key:"defect_registration", label:"Registracija sredstva" },
+  { key:"defect_site", label:"Lokacija kvara" },
   { key:"defect", label:"Opis kvara" },
-  { key:"status", label:"Status izveštaja" },
-  { key:"note", label:"Napomena" }
+  { key:"defect_work_impact", label:"Uticaj na rad" },
+  { key:"defect_urgency", label:"Hitnost" },
+  { key:"defect_called_mechanic", label:"Pozvan šef mehanizacije" },
+  { key:"defect_status", label:"Status kvara" },
+  { key:"status", label:"Status izveštaja" }
 ];
 
 const SIMPLE_EXPORT_KEYS = [
@@ -4482,13 +4495,13 @@ const EXPORT_GROUPS = [
     id: "vehicles",
     title: "Vozila / kamioni",
     hint: "Kamioni, kilometraža, relacija, ture i kubici.",
-    keys: ["vehicle_code", "vehicle", "registration", "capacity", "km_start", "km_end", "route", "tours", "cubic", "manual_cubic"]
+    keys: ["vehicle_code", "vehicle", "registration", "capacity", "km_start", "km_end", "route", "tours", "cubic"]
   },
   {
     id: "fuel",
     title: "Sipanje goriva",
     hint: "Gorivo koje je radnik sipao u svoju mašinu ili vozilo.",
-    keys: ["fuel_type", "fuel_asset_code", "fuel_for", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_reading", "fuel_by", "fuel_receiver"]
+    keys: ["fuel_type", "fuel_asset_code", "fuel_for", "fuel_registration", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_by", "fuel_receiver"]
   },
   {
     id: "lowloader",
@@ -4500,7 +4513,7 @@ const EXPORT_GROUPS = [
     id: "fieldTanker",
     title: "Tankanje goriva cisternom",
     hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
-    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset_code", "field_tanker_asset", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
+    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset_code", "field_tanker_asset", "field_tanker_registration", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
   },
   {
     id: "material",
@@ -4524,13 +4537,13 @@ const EXPORT_GROUPS = [
     id: "defects",
     title: "Kvarovi",
     hint: "Kratak prikaz kvara ako se izvozi zajedno sa dnevnim izveštajem.",
-    keys: ["defect"]
+    keys: ["defect_type", "defect_asset_code", "defect_asset", "defect_registration", "defect_site", "defect", "defect_work_impact", "defect_urgency", "defect_called_mechanic", "defect_status"]
   },
   {
     id: "status",
     title: "Status i napomene",
     hint: "Status izveštaja i dodatna napomena.",
-    keys: ["status", "note"]
+    keys: ["status"]
   }
 ];
 
@@ -4691,7 +4704,6 @@ function flattenReportRowsForExport(r) {
       route: v.route || d.route || "",
       tours: v.tours || d.tours || "",
       cubic: v.cubic_m3 || v.cubic_auto || "",
-      manual_cubic: v.cubic_manual || "",
       lowloader_plates: ll.plates || ll.registration || "",
       lowloader_from: ll.from_site || ll.from_address || "",
       lowloader_to: ll.to_site || ll.to_address || "",
@@ -4701,20 +4713,20 @@ function flattenReportRowsForExport(r) {
       lowloader_machine: ll.machine || "",
       fuel_type: assetKindLabel(f.asset_kind),
       fuel_asset_code: f.asset_code || "",
-      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || "",
+      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
+      fuel_registration: f.asset_registration || f.registration || "",
       fuel_liters: f.liters || d.fuel_liters || "",
       fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
       fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
-      fuel_reading: f.reading || f.mtc_km || d.fuel_readings || "",
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || "",
       field_tanker_site: ft.site_name || "",
       field_tanker_type: assetKindLabel(ft.asset_kind),
       field_tanker_asset_code: ft.asset_code || "",
-      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || "",
+      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
+      field_tanker_registration: ft.asset_registration || ft.registration || "",
       field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
-      field_tanker_reading: ft.reading || ft.mtc_km || "",
       field_tanker_liters: ft.liters || "",
       field_tanker_receiver: ft.receiver || ft.received_by || "",
       material_action: mat.action || mat.material_action || "",
@@ -4730,9 +4742,17 @@ function flattenReportRowsForExport(r) {
       leave_from: d.leave_from || leaveRequest.date_from || "",
       leave_to: d.leave_to || leaveRequest.date_to || "",
       leave_note: d.leave_note || leaveRequest.leave_note || leaveRequest.note || "",
+      defect_type: assetKindLabel(d.defect_asset_kind),
+      defect_asset_code: d.defect_asset_code || "",
+      defect_asset: d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
+      defect_registration: d.defect_asset_registration || "",
+      defect_site: d.defect_site_name || d.site_name || "",
       defect: d.defect || "",
-      status: r.status || "",
-      note: d.note || ""
+      defect_work_impact: defectImpactLabel(d.defect_work_impact),
+      defect_urgency: d.defect_urgency || "",
+      defect_called_mechanic: d.called_mechanic_by_phone || d.defect_called_mechanic || "",
+      defect_status: d.defect_status || "",
+      status: r.status || ""
     });
   }
 
@@ -4747,15 +4767,15 @@ const SMART_EXPORT_PRESETS = {
   },
   fuel_all: {
     title: "Sva sipanja goriva",
-    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
+    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_registration","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_registration","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
   },
   fuel_own: {
     title: "Sipanje goriva u svoju mašinu/vozilo/opremu",
-    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","status"]
+    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_registration","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","status"]
   },
   fuel_tanker: {
     title: "Tankanje goriva cisternom",
-    keys: ["date","worker","site","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
+    keys: ["date","worker","site","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_registration","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
   },
   hours_workers: {
     title: "Radni sati radnika",
@@ -4767,7 +4787,7 @@ const SMART_EXPORT_PRESETS = {
   },
   vehicles: {
     title: "Vozila / ture / m³",
-    keys: ["date","site","worker","vehicle_code","vehicle","registration","capacity","km_start","km_end","route","tours","cubic","manual_cubic","status"]
+    keys: ["date","site","worker","vehicle_code","vehicle","registration","capacity","km_start","km_end","route","tours","cubic","status"]
   },
   lowloader: {
     title: "Prevoz mašine labudicom",
@@ -4787,7 +4807,7 @@ const SMART_EXPORT_PRESETS = {
   },
   defects: {
     title: "Kvarovi",
-    keys: ["date","site","worker","defect","status","note"]
+    keys: ["date","site","worker","defect_type","defect_asset_code","defect_asset","defect_registration","defect_site","defect","defect_work_impact","defect_urgency","defect_called_mechanic","defect_status","status"]
   }
 };
 
@@ -4878,11 +4898,11 @@ function smartRowsForReport(r, type) {
       ...base,
       fuel_type: assetKindLabel(f.asset_kind),
       fuel_asset_code: f.asset_code || "",
-      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || "",
+      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
+      fuel_registration: f.asset_registration || f.registration || "",
       fuel_liters: f.liters || d.fuel_liters || "",
       fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
       fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
-      fuel_reading: f.reading || f.mtc_km || d.fuel_readings || "",
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || ""
     }));
@@ -4894,10 +4914,10 @@ function smartRowsForReport(r, type) {
       field_tanker_site: ft.site_name || d.site_name || "",
       field_tanker_type: assetKindLabel(ft.asset_kind),
       field_tanker_asset_code: ft.asset_code || "",
-      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || "",
+      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
+      field_tanker_registration: ft.asset_registration || ft.registration || "",
       field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
-      field_tanker_reading: ft.reading || ft.mtc_km || "",
       field_tanker_liters: ft.liters || "",
       field_tanker_receiver: ft.receiver || ft.received_by || ""
     }));
@@ -4938,8 +4958,7 @@ function smartRowsForReport(r, type) {
       km_end: v.km_end || d.km_end || "",
       route: v.route || d.route || "",
       tours: v.tours || d.tours || "",
-      cubic: v.cubic_m3 || v.cubic_auto || "",
-      manual_cubic: v.cubic_manual || ""
+      cubic: v.cubic_m3 || v.cubic_auto || ""
     }));
   }
 
@@ -4992,8 +5011,20 @@ function smartRowsForReport(r, type) {
   }
 
   if (type === "defects") {
-    if (d.defect || d.defect_description || d.problem_description) {
-      rows.push({ ...base, defect: d.defect || d.defect_description || d.problem_description || "" });
+    if (d.defect || d.defect_description || d.problem_description || d.defect_asset_name || d.defect_asset_code) {
+      rows.push({
+        ...base,
+        defect_type: assetKindLabel(d.defect_asset_kind),
+        defect_asset_code: d.defect_asset_code || "",
+        defect_asset: d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
+        defect_registration: d.defect_asset_registration || "",
+        defect_site: d.defect_site_name || d.site_name || "",
+        defect: d.defect || d.defect_description || d.problem_description || "",
+        defect_work_impact: defectImpactLabel(d.defect_work_impact),
+        defect_urgency: d.defect_urgency || "",
+        defect_called_mechanic: d.called_mechanic_by_phone || d.defect_called_mechanic || "",
+        defect_status: d.defect_status || ""
+      });
     }
   }
 
