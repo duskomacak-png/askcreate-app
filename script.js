@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.0";
+const APP_VERSION = "1.20.1";
 
 
 let sb = null;
@@ -3752,6 +3752,50 @@ function clearWorkerForm() {
   localStorage.removeItem("swp_returned_report_id");
 }
 
+function ensureWorkerDefaultEntries() {
+  const perms = currentWorker?.permissions || {};
+  ensureWorkerDefaultEntries();
+  if (perms.materials && $("#materialEntries") && !$("#materialEntries").children.length) addMaterialEntry();
+  refreshMachineDatalists();
+  refreshVehicleSelects();
+  refreshFuelMachineOptions();
+  refreshFieldTankerSelectors();
+  refreshMaterialEntrySelectors();
+}
+
+async function prepareWorkerFormForNextReport() {
+  clearWorkerForm();
+  if ($("#wrDate")) $("#wrDate").value = today();
+
+  // v1.20.1: Posle uspešnog slanja ne smeju nestati liste mašina/vozila/opreme.
+  // Zato ponovo učitavamo sredstva i odmah vraćamo po jednu praznu karticu za svaku dozvoljenu rubriku.
+  await Promise.allSettled([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
+  ensureWorkerDefaultEntries();
+  renderStoredFieldTankerEntries();
+  updateLeaveRequestVisibility();
+}
+
+async function verifyRecentlySubmittedReport(worker, reportDate) {
+  // Samo dijagnostika. Ako RLS ne dozvoli direktno čitanje, ne smemo blokirati radnika.
+  try {
+    if (!worker?.company_id) return;
+    const { data, error } = await sb
+      .from("reports")
+      .select("id,status,report_date,created_at,submitted_at")
+      .eq("company_id", worker.company_id)
+      .eq("report_date", reportDate)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (error) {
+      console.warn("Start Work PRO: izveštaj je poslat preko RPC, ali direktna provera reports nije dozvoljena ili nije uspela:", error.message);
+      return;
+    }
+    console.log("Start Work PRO: poslednji izveštaji za proveru slanja", data || []);
+  } catch (e) {
+    console.warn("Start Work PRO: provera poslatog izveštaja nije uspela", e);
+  }
+}
+
 function saveDraft() {
   const draft = {
     date: $("#wrDate").value,
@@ -4631,17 +4675,18 @@ function bindEvents() {
       const data = collectWorkerData();
       if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Direkcija.");
     if (await submitReturnedCorrectionIfNeeded(data)) return;
+      const reportDate = $("#wrDate").value || today();
       const { error } = await sb.rpc("submit_worker_report", {
         p_company_code: worker.company_code,
         p_access_code: worker.access_code,
-        p_report_date: $("#wrDate").value || today(),
+        p_report_date: reportDate,
         p_site_id: data.site_id || null,
         p_data: data
       });
       if (error) throw error;
-      clearWorkerForm();
-      $("#wrDate").value = today();
-      toast("Izveštaj je poslat Direkciji ✅ Forma je očišćena.");
+      await verifyRecentlySubmittedReport(worker, reportDate);
+      await prepareWorkerFormForNextReport();
+      toast("Izveštaj je poslat Direkciji ✅ Forma je spremna za sledeći unos.");
     } catch(e) { toast(e.message, true); }
   });
 }
@@ -4708,8 +4753,8 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   if (error) throw error;
 
   localStorage.removeItem("swp_returned_report_id");
-  toast("Ispravljen izveštaj je ponovo poslat Direkciji ✅");
-  clearWorkerForm();
+  await prepareWorkerFormForNextReport();
   loadWorkerReturnedReports();
+  toast("Ispravljen izveštaj je ponovo poslat Direkciji ✅ Forma je spremna za sledeći unos.");
   return true;
 }
