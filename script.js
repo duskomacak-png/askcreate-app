@@ -262,7 +262,8 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "lowloader", title: "Prevoz mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
   { key: "fuel", title: "Sipanje goriva u svoju mašinu", lines: ["Mašina", "MTČ/KM", "Litara", "Ko je sipao / primio"] },
   { key: "field_tanker", title: "Tankanje goriva cisternom", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Gorivo primio"] },
-  { key: "materials", title: "Materijal", lines: ["Vrsta materijala", "Količina", "Jedinica mere"] },
+  { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
+  { key: "leave_request", title: "Zahtev za slobodan dan / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
   { key: "defects", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
   { key: "view_reports", title: "Pregled izveštaja", lines: ["Pregled odobrenih / vraćenih izveštaja ako je uključeno za ovog korisnika"] },
@@ -1373,6 +1374,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
   const hasMaterialEntries = materialEntries.some(entry => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
   const hasMaterial = hasMaterialEntries || safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
+  const leaveRequest = d.leave_request || {};
+  const hasLeaveRequest = safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || (leaveRequest && Object.values(leaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
 
   const hasUsefulEntry = (entry) => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== "");
   const hasWorkers = workers.some(hasUsefulEntry);
@@ -1441,6 +1444,20 @@ function renderReportReadableDetails(d = {}, options = {}) {
               ["Može nastaviti rad", d.defect_can_continue],
               ["Šef mehanizacije pozvan", d.called_mechanic_by_phone],
               ["Status kvara", d.defect_status]
+            ])}
+          </div>
+        </div>` : ""}
+
+      ${hasLeaveRequest ? `
+        <div class="report-section">
+          <h4>Zahtev za slobodan dan / godišnji odmor</h4>
+          <div class="report-kv">
+            ${rows([
+              ["Vrsta zahteva", d.leave_request_type || leaveRequest.leave_label || leaveRequest.label],
+              ["Datum", d.leave_date || leaveRequest.leave_date || leaveRequest.date],
+              ["Od", d.leave_from || leaveRequest.date_from],
+              ["Do", d.leave_to || leaveRequest.date_to],
+              ["Napomena", d.leave_note || leaveRequest.leave_note || leaveRequest.note]
             ])}
           </div>
         </div>` : ""}
@@ -2334,6 +2351,7 @@ function workerSetSections(perms) {
     fuel: "#secFuel",
     field_tanker: "#secFieldTanker",
     materials: "#secMaterials",
+    leave_request: "#secLeaveRequest",
     warehouse: "#secWarehouse",
     defects: "#secDefects"
   };
@@ -2946,7 +2964,9 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     const d = r.data || {};
     $("#wrDate").value = r.report_date || today();
 
-    if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
+    if ($("#wrLeaveType")) $("#wrLeaveType").value = "slobodan_dan";
+  updateLeaveRequestVisibility();
+  if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
@@ -2996,6 +3016,40 @@ window.loadReturnedReportIntoForm = async (reportId) => {
   }
 };
 
+function updateLeaveRequestVisibility() {
+  const type = $("#wrLeaveType")?.value || "slobodan_dan";
+  const single = $("#leaveSingleDayBox");
+  const range = $("#leaveRangeBox");
+  if (single) single.classList.toggle("hidden", type !== "slobodan_dan");
+  if (range) range.classList.toggle("hidden", type !== "godisnji_odmor");
+}
+
+function getLeaveRequestData() {
+  const type = $("#wrLeaveType")?.value || "slobodan_dan";
+  const date = $("#wrLeaveDate")?.value || "";
+  const dateFrom = $("#wrLeaveFrom")?.value || "";
+  const dateTo = $("#wrLeaveTo")?.value || "";
+  const note = $("#wrLeaveNote")?.value.trim() || "";
+  const label = type === "godisnji_odmor" ? "Godišnji odmor" : "Slobodan dan";
+  return {
+    type,
+    label,
+    leave_type: type,
+    leave_label: label,
+    date,
+    leave_date: date,
+    date_from: dateFrom,
+    date_to: dateTo,
+    note,
+    leave_note: note
+  };
+}
+
+function hasLeaveRequestData(req) {
+  if (!req) return false;
+  return !!(req.date || req.date_from || req.date_to || req.note);
+}
+
 function collectWorkerData() {
   const perms = currentWorker?.permissions || {};
   const machines = perms.machines ? getMachineEntries() : [];
@@ -3005,6 +3059,7 @@ function collectWorkerData() {
   const canDaily = !!(perms.daily_work || perms.daily_work_site);
   const canWorkers = !!perms.workers;
   const canMaterials = !!perms.materials;
+  const canLeaveRequest = !!perms.leave_request;
   const canWarehouse = !!perms.warehouse;
   const canDefects = !!perms.defects;
   const canLowloader = !!perms.lowloader;
@@ -3012,6 +3067,7 @@ function collectWorkerData() {
   const lowloaderMoves = canLowloader ? getLowloaderEntries() : [];
   const fieldTankerEntries = canFieldTanker ? getFieldTankerEntries() : [];
   const materialEntries = canMaterials ? getMaterialEntries() : [];
+  const leaveRequest = canLeaveRequest ? getLeaveRequestData() : null;
 
   // v1.17.4: Labudica ne mora imati glavno gradilište iz osnovne rubrike.
   // Ako radnik popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
@@ -3022,7 +3078,8 @@ function collectWorkerData() {
   const lowloaderFallbackSiteName = firstLowloaderMove
     ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Prevoz mašine labudicom")
     : "";
-  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "");
+  const leaveFallbackSiteName = canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za slobodan dan / godišnji odmor" : "";
+  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || leaveFallbackSiteName;
   const reportSiteId = selectedSite.site_id || null;
 
   return {
@@ -3064,6 +3121,13 @@ function collectWorkerData() {
     material: canMaterials ? materialEntries.map(m => `${m.action || ""}: ${m.material || ""}`.trim()).filter(Boolean).join(" | ") : "",
     quantity: canMaterials ? materialEntries.map(m => m.quantity).filter(Boolean).join(" | ") : "",
     unit: canMaterials ? materialEntries.map(m => m.unit).filter(Boolean).join(" | ") : "",
+    leave_request: canLeaveRequest ? leaveRequest : null,
+    leave_request_type: canLeaveRequest && hasLeaveRequestData(leaveRequest) ? leaveRequest.label : "",
+    leave_type: canLeaveRequest ? (leaveRequest?.type || "") : "",
+    leave_date: canLeaveRequest ? (leaveRequest?.date || "") : "",
+    leave_from: canLeaveRequest ? (leaveRequest?.date_from || "") : "",
+    leave_to: canLeaveRequest ? (leaveRequest?.date_to || "") : "",
+    leave_note: canLeaveRequest ? (leaveRequest?.note || "") : "",
     warehouse_type: canWarehouse ? $("#wrWarehouseType").value : "",
     warehouse_item: canWarehouse ? $("#wrWarehouseItem").value.trim() : "",
     warehouse_qty: canWarehouse ? $("#wrWarehouseQty").value.trim() : "",
@@ -3080,10 +3144,12 @@ function collectWorkerData() {
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrLeaveType","wrLeaveDate","wrLeaveFrom","wrLeaveTo","wrLeaveNote","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
+  if ($("#wrLeaveType")) $("#wrLeaveType").value = "slobodan_dan";
+  updateLeaveRequestVisibility();
   if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
   if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
   if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
@@ -3113,7 +3179,9 @@ function loadDraft() {
     $("#wrDate").value = draft.date || today();
     const d = draft.data || {};
 
-    if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
+    if ($("#wrLeaveType")) $("#wrLeaveType").value = "slobodan_dan";
+  updateLeaveRequestVisibility();
+  if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
     if ($("#machineEntries")) $("#machineEntries").innerHTML = "";
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
@@ -3132,8 +3200,9 @@ function loadDraft() {
     (d.material_entries || d.material_movements || []).forEach(m => addMaterialEntry(m));
 
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_name", wrDefectSiteName:"defect_site_name", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_name", wrDefectSiteName:"defect_site_name", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
+    updateLeaveRequestVisibility();
   } catch {}
 }
 
@@ -3906,6 +3975,7 @@ function bindEvents() {
   });
 
   $("#saveDraftBtn").addEventListener("click", saveDraft);
+  if ($("#wrLeaveType")) $("#wrLeaveType").addEventListener("change", updateLeaveRequestVisibility);
 
   $("#submitReportBtn").addEventListener("click", async () => {
     try {
@@ -3950,7 +4020,9 @@ async function openWorkerForm() {
   if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
   if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
   if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
+  updateLeaveRequestVisibility();
 }
+
 
 async function boot() {
   installNavigationFallback();
