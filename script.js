@@ -1,5 +1,5 @@
-// v1.19.8_WORKER_ASSET_CODE_UNIVERSAL - broj sredstva bira mašinu/vozilo/ostalo i ne koči ga stari filter
-/* START WORK PRO by AskCreate - MVP v1
+// v1.21.5_PROFESSIONAL_LABELS - profesionalizovani nazivi i jasniji radnički moduli
+/* START WORK PRO by AskCreate - Start Work PRO
    VAŽNO:
    1) SUPABASE_URL je već upisan.
    2) SUPABASE_KEY zameni tvojim Publishable key iz supabase-podaci.txt.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.21.4";
+const APP_VERSION = "1.21.5";
 
 
 let sb = null;
@@ -142,13 +142,13 @@ async function signOut() {
 
 async function ensureAdmin() {
   const { data, error } = await sb.from("app_admins").select("*").eq("email", "duskomacak@gmail.com").maybeSingle();
-  if (error || !data || !data.active) throw new Error("Ovaj nalog nema Super Admin dozvolu.");
+  if (error || !data || !data.active) throw new Error("Ovaj nalog nema Administrator sistema dozvolu.");
   return true;
 }
 
 async function loadAdmin() {
   await ensureAdmin();
-  setInternalHeader("Admin soba", "Odobravanje firmi", true);
+  setInternalHeader("Admin soba", "Odobravanje izveštaja firmi", true);
   show("AdminDashboard");
   await Promise.all([loadApprovedCompanies(), loadCompanies()]);
 }
@@ -203,7 +203,7 @@ window.adminSetCompanyStatus = async (id, status) => {
 async function loadDirectorCompany() {
   const { data: userData } = await sb.auth.getUser();
   const email = userData?.user?.email;
-  if (!email) throw new Error("Nema aktivnog Direkcija login-a.");
+  if (!email) throw new Error("Nema aktivnog Uprava login-a.");
 
   const { data, error } = await sb.from("companies").select("*").eq("owner_email", email).maybeSingle();
   if (error) throw error;
@@ -214,7 +214,7 @@ async function loadDirectorCompany() {
   }
   currentCompany = data;
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
-  setInternalHeader("Direkcija", (currentCompany?.name || activeCompany?.name || "Firma"), true);
+  setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
   ensureDirectorTopLogoutButton();
   showCurrentCompanyLoginInfo();
@@ -256,21 +256,21 @@ function clearPersonForm() {
 
 
 const WORKER_PREVIEW_SECTIONS = [
-  { key: "daily_work", title: "Ime gradilišta i datum/godina", lines: ["Datum / godina", "Gradilište iz liste Direkcije"] },
+  { key: "daily_work", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Uprave"] },
   { key: "workers", title: "Radnici na gradilištu", lines: ["Ime i prezime radnika", "Sati rada", "+ Dodaj radnika"] },
-  { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz Direkcije ili ručni unos", "Početni i završni MTČ", "Sati rada"] },
-  { key: "vehicles", title: "Rad sa kamionom / vozilom", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
-  { key: "lowloader", title: "Prevoz mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
-  { key: "fuel", title: "Sipanje goriva u svoju mašinu", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
-  { key: "field_tanker", title: "Tankanje goriva cisternom", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Gorivo primio"] },
+  { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
+  { key: "vehicles", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
+  { key: "lowloader", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
+  { key: "fuel", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
+  { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Gorivo primio"] },
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
-  { key: "leave_request", title: "Zahtev za slobodan dan / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
+  { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
-  { key: "defects", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
+  { key: "defects", title: "Evidencija kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
   { key: "view_reports", title: "Pregled izveštaja", lines: ["Pregled odobrenih / vraćenih izveštaja ako je uključeno za ovog korisnika"] },
-  { key: "approve_reports", title: "Odobravanje", lines: ["Odobravanje ili vraćanje izveštaja, samo za ovlašćene korisnike"] },
+  { key: "approve_reports", title: "Odobravanje izveštaja", lines: ["Odobravanje izveštaja ili vraćanje izveštaja, samo za ovlašćene korisnike"] },
   { key: "excel_export", title: "Izvoz u Excel", lines: ["Priprema i preuzimanje Excel/CSV izvoza"] },
-  { key: "manage_people", title: "Upravljanje osobama", lines: ["Dodavanje i izmena ljudi u firmi"] },
+  { key: "manage_people", title: "Upravljanje korisnicima", lines: ["Dodavanje i izmena ljudi u firmi"] },
   { key: "settings", title: "Podešavanja firme", lines: ["Osnovna podešavanja firme"] }
 ];
 
@@ -465,7 +465,7 @@ function setAssetFormMode(mode = "add") {
   const title = document.querySelector("#assetFormTitle");
   const btn = document.querySelector("#addAssetBtn");
   const cancel = document.querySelector("#cancelEditAssetBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi mašinu / vozilo" : "+ Dodaj mašinu / vozilo";
+  if (title) title.textContent = editing ? "✏️ Uredi sredstvo" : "+ Dodaj sredstvo";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
@@ -1000,7 +1000,7 @@ function hasDefectData(r) {
 }
 
 function hasDailyReportData(r) {
-  // v1.18.5: Direkcija ne sme da izgubi prikaz izveštaja zato što filter
+  // v1.18.5: Uprava ne sme da izgubi prikaz izveštaja zato što filter
   // ne prepoznaje novu rubriku. Sve što nije poseban kvar i nije arhivirano
   // mora ostati vidljivo u Dnevnim izveštajima.
   const d = r?.data || {};
@@ -1029,7 +1029,7 @@ function hasDailyReportData(r) {
     hasLeave || hasAnyArrayData
   );
 
-  // Ako ne prepoznamo strukturu, ipak prikaži izveštaj. Bolje je da Direkcija
+  // Ako ne prepoznamo strukturu, ipak prikaži izveštaj. Bolje je da Uprava
   // vidi višak nego da joj nestane poslat izveštaj.
   return true || hasKnownField;
 }
@@ -1113,7 +1113,7 @@ function defectHtml(r) {
       <span class="pill">Status: ${escapeHtml(status)}</span>
       <span class="pill">Gradilište/lokacija: ${escapeHtml(d.defect_site_name || d.site_name || "bez gradilišta")}</span>
       <span class="pill">Mašina/vozilo: ${escapeHtml(assetName)}</span>
-      ${d.defect_work_impact ? `<span class="pill">Uticaj na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
+      ${d.defect_work_impact ? `<span class="pill">Uticaj kvara na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
       ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
       <div class="report-kv">
@@ -1263,7 +1263,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>Relacija</th>
             <th>Ture</th>
             <th>m³ ukupno</th>
-            <th>Ručno m³</th>
+            <th>Van evidencije m³</th>
             <th>Labudica tablice</th>
             <th>Gradilište preuzimanja</th>
             <th>Gradilište odvoza</th>
@@ -1364,7 +1364,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>Relacija</th>
           <th>Ture</th>
           <th>m³ ukupno</th>
-          <th>Ručno m³</th>
+          <th>Van evidencije m³</th>
         </tr>
       </thead>
       <tbody>
@@ -1421,7 +1421,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Tip</th>
+          <th>Kategorija</th>
           <th>Broj</th>
           <th>Mašina/vozilo</th>
           <th>Litara</th>
@@ -1454,7 +1454,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Gradilište</th>
-          <th>Tip</th>
+          <th>Kategorija</th>
           <th>Broj</th>
           <th>Mašina/vozilo</th>
           <th>Trenutna kilometraža / KM</th>
@@ -1587,7 +1587,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
               ["Gradilište/lokacija sredstva", d.defect_site_name || d.site_name],
               ["Opis kvara", d.defect],
               ["Hitnost", d.defect_urgency],
-              ["Uticaj na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
+              ["Uticaj kvara na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
               ["Šef mehanizacije pozvan", d.called_mechanic_by_phone],
               ["Status kvara", d.defect_status]
             ])}
@@ -1596,7 +1596,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
       ${hasLeaveRequest ? `
         <div class="report-section">
-          <h4>Zahtev za slobodan dan / godišnji odmor</h4>
+          <h4>Zahtev za odsustvo / godišnji odmor</h4>
           <div class="report-kv">
             ${rows([
               ["Vrsta zahteva", d.leave_request_type || leaveRequest.leave_label || leaveRequest.label],
@@ -1869,7 +1869,7 @@ function isOtherAsset(asset) {
 
 function assetKindLabel(kind) {
   if (kind === "vehicle") return "Vozilo";
-  if (kind === "other") return "Ostalo";
+  if (kind === "other") return "Oprema / ostalo";
   return "Mašina";
 }
 
@@ -1904,7 +1904,7 @@ function formatMachineLabel(asset) {
 }
 
 function formatOtherAssetLabel(asset) {
-  const parts = [formatAssetTitleWithCode(asset) || "Ostalo"];
+  const parts = [formatAssetTitleWithCode(asset) || "Oprema / ostalo"];
   const reg = getAssetRegistration(asset);
   if (reg) parts.push(reg);
   return parts.filter(Boolean).join(" · ");
@@ -1917,9 +1917,9 @@ function filterAssetsByFuelKind(asset, kind) {
 }
 
 function fuelKindEmptyText(kind) {
-  if (kind === "vehicle") return "Nema vozila iz Direkcije";
-  if (kind === "other") return "Nema opreme / ostalog iz Direkcije";
-  return "Nema mašina iz Direkcije";
+  if (kind === "vehicle") return "Nema vozila iz Uprave";
+  if (kind === "other") return "Nema opreme / ostalog iz Uprave";
+  return "Nema mašina iz Uprave";
 }
 
 function fuelKindChooseText(kind) {
@@ -2017,10 +2017,10 @@ function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
   }
 
   if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Direkcije</option>`;
+    return `<option value="">Nema sredstava iz Uprave</option>`;
   }
   if (!machines.length) {
-    return q ? `<option value="">Nema mašine za taj broj/pretragu</option>` : `<option value="">Nema mašina iz Direkcije</option>`;
+    return q ? `<option value="">Nema mašine za taj broj/pretragu</option>` : `<option value="">Nema mašina iz Uprave</option>`;
   }
 
   return `<option value="">Odaberi mašinu</option>` + machines.map(m => assetOptionHtml(m, selected, formatMachineLabel)).join("");
@@ -2055,11 +2055,11 @@ function updateMachineSmartResult(entryEl, asset, manualValue) {
   const value = String(manualValue || "").trim();
   if (value) {
     result.className = "asset-smart-result m-picked warn";
-    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
     return;
   }
   result.className = "asset-smart-result m-picked";
-  result.textContent = "Upiši broj mašine iz Direkcije ili naziv ako nije na listi.";
+  result.textContent = "Upiši broj mašine iz Uprave ili naziv ako nije na listi.";
 }
 
 function refreshOneMachineSelect(entryEl) {
@@ -2222,11 +2222,11 @@ async function loadWorkerAssets() {
   const otherCount = workerAssetOptions.filter(isOtherAsset).length;
 
   if (!workerAssetOptions.length) {
-    toast("Radniku nisu učitane mašine/vozila. Proveri da li u Direkciji postoje sredstva za ovu firmu i da li je radnik u istoj firmi. Detalj: " + ((directError && directError.message) || (rpcError && rpcError.message) || "nema podataka"), true);
+    toast("Radniku nisu učitane mašine/vozila. Proveri da li u Upravi postoje sredstva za ovu firmu i da li je radnik u istoj firmi. Detalj: " + ((directError && directError.message) || (rpcError && rpcError.message) || "nema podataka"), true);
   } else if (!machineCount && (vehicleCount || otherCount)) {
-    toast(`Sredstva su učitana, ali nema tipa Mašina. U Direkciji proveri Tip: Mašina. Učitano: vozila ${vehicleCount}, ostalo ${otherCount}.`, true);
+    toast(`Sredstva su učitana, ali nema tipa Mašina. U Upravi proveri Kategorija: Mašina. Učitano: vozila ${vehicleCount}, ostalo ${otherCount}.`, true);
   } else if (machineCount && !vehicleCount && !otherCount) {
-    console.warn("Start Work PRO: učitane su samo mašine. Ako u Direkciji postoje vozila/ostalo, proveri Supabase RPC worker_list_assets da vraća sve asset_type vrednosti.", { workerAssetOptions, rpcError, directError });
+    console.warn("Start Work PRO: učitane su samo mašine. Ako u Upravi postoje vozila/ostalo, proveri Supabase RPC worker_list_assets da vraća sve asset_type vrednosti.", { workerAssetOptions, rpcError, directError });
   }
 }
 
@@ -2267,10 +2267,10 @@ function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
   }
 
   if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Direkcije</option>`;
+    return `<option value="">Nema sredstava iz Uprave</option>`;
   }
   if (!vehicles.length) {
-    return q ? `<option value="">Nema sredstva za taj broj/pretragu</option>` : `<option value="">Nema vozila iz Direkcije</option>`;
+    return q ? `<option value="">Nema sredstva za taj broj/pretragu</option>` : `<option value="">Nema vozila iz Uprave</option>`;
   }
 
   return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => assetOptionHtml(v, selected, formatAssetLabel)).join("");
@@ -2313,7 +2313,7 @@ function updateVehicleSmartResult(entryEl, asset, manualValue) {
   const value = String(manualValue || "").trim();
   if (value) {
     result.className = "asset-smart-result v-picked warn";
-    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
     return;
   }
   result.className = "asset-smart-result v-picked";
@@ -2405,7 +2405,7 @@ function addVehicleEntry(values = {}) {
     <label>Vozilo / interni broj</label>
     <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
     <div class="asset-smart-result v-picked">Upiši broj vozila, tablice ili naziv ako nije na listi.</div>
-    <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Direkcije</button>
+    <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Uprave</button>
 
     <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
     <input class="v-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
@@ -2459,10 +2459,10 @@ function addVehicleEntry(values = {}) {
       await loadWorkerAssets();
       refreshOneVehicleSelect(div);
       updateVehicleCubic(div);
-      toast(workerAssetOptions.length ? "Vozila iz Direkcije su osvežena." : "Nema učitanih vozila. Proveri firmu radnika i listu u Direkciji.", !workerAssetOptions.length);
+      toast(workerAssetOptions.length ? "Vozila iz Uprave su osvežena." : "Nema učitanih vozila. Proveri firmu radnika i listu u Upravi.", !workerAssetOptions.length);
     } finally {
       refreshVehiclesBtn.disabled = false;
-      refreshVehiclesBtn.textContent = "Osveži vozila iz Direkcije";
+      refreshVehiclesBtn.textContent = "Osveži vozila iz Uprave";
     }
   });
   list.appendChild(div);
@@ -2512,7 +2512,7 @@ async function loadWorkerSites(selectedName = "") {
   }
 
   select.innerHTML = `<option value="">Učitavam gradilišta...</option>`;
-  if (hint) hint.textContent = "Gradilišta se učitavaju iz Direkcije.";
+  if (hint) hint.textContent = "Gradilišta se učitavaju iz Uprave.";
 
   try {
     const { data, error } = await sb.rpc("worker_list_sites", {
@@ -2526,7 +2526,7 @@ async function loadWorkerSites(selectedName = "") {
     workerSiteOptions = sites;
     if (!sites.length) {
       select.innerHTML = `<option value="">Nema aktivnih gradilišta</option>`;
-      if (hint) hint.textContent = "Direkcija još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
+      if (hint) hint.textContent = "Uprava još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
       refreshFieldTankerSelectors();
       return;
     }
@@ -2544,7 +2544,7 @@ async function loadWorkerSites(selectedName = "") {
     }
     refreshFieldTankerSelectors();
 
-    if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Direkcija.";
+    if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Uprava.";
   } catch (e) {
     select.innerHTML = `<option value="">Gradilišta nisu učitana</option>`;
     if (hint) hint.textContent = "Pokreni Supabase SQL za v1.12.1: worker_list_sites. Detalj: " + (e.message || e);
@@ -2581,7 +2581,7 @@ function buildWorkerMaterialOptionsHtml(selectedValue = "") {
   const materials = normalizeWorkerMaterialList(workerMaterialOptions);
 
   if (!materials.length) {
-    return `<option value="">Nema materijala iz Direkcije</option>`;
+    return `<option value="">Nema materijala iz Uprave</option>`;
   }
 
   return `<option value="">Odaberi vrstu materijala</option>` + materials.map(m => {
@@ -2666,7 +2666,7 @@ function buildMaterialUnitOptionsHtml(selectedValue = "") {
     { value: "paleta", label: "paleta" },
     { value: "kamion", label: "kamion" },
     { value: "tura", label: "tura" },
-    { value: "ručno", label: "ručno / druga mera" }
+    { value: "ručno", label: "druga mera" }
   ];
   return units.map(u => `<option value="${escapeHtml(u.value)}" ${selected === u.value ? "selected" : ""}>${escapeHtml(u.label)}</option>`).join("");
 }
@@ -2705,10 +2705,10 @@ function addMaterialEntry(values = {}) {
       <option value="ugradnja" ${action === "ugradnja" ? "selected" : ""}>Ugradnja materijala</option>
     </select>
 
-    <label>Vrsta materijala iz Direkcije</label>
+    <label>Vrsta materijala iz Uprave</label>
     <select class="mat-select"></select>
 
-    <label>Ručno ako nije u listi</label>
+    <label>Van evidencije ako nije u listi</label>
     <input class="mat-manual" placeholder="npr. kamen 0-31, pesak, rizla..." value="${escapeHtml(manualMaterial)}" />
 
     <div class="mini-grid">
@@ -2779,7 +2779,7 @@ function getMaterialEntries() {
 
 function workerSetSections(perms) {
   // v1.16.5 pravilo:
-  // "Ime gradilišta i datum/godina" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Direkcije.
+  // "Gradilište i datum izveštaja" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Uprave.
   // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
   const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
 
@@ -2873,8 +2873,8 @@ function addMachineEntry(values = {}) {
 
     <label>Mašina / interni broj</label>
     <input class="m-search asset-code-search smart-asset-input" placeholder="upiši broj ili naziv mašine, npr. 1 ili CAT 330" value="${escapeHtml(initialSearch)}" />
-    <div class="asset-smart-result m-picked">Upiši broj mašine iz Direkcije ili naziv ako nije na listi.</div>
-    <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Direkcije</button>
+    <div class="asset-smart-result m-picked">Upiši broj mašine iz Uprave ili naziv ako nije na listi.</div>
+    <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Uprave</button>
 
     <select class="m-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildMachineOptionsHtml(values.name || "")}</select>
     <input class="m-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
@@ -2891,7 +2891,7 @@ function addMachineEntry(values = {}) {
     </div>
 
     <label>Ukupno sati rada</label>
-    <input class="m-hours numeric-text" type="text" inputmode="decimal" placeholder="automatski ili ručno" value="${escapeHtml(values.hours || "")}" />
+    <input class="m-hours numeric-text" type="text" inputmode="decimal" placeholder="automatski ili upiši" value="${escapeHtml(values.hours || "")}" />
 
     <label>Opis rada za ovu mašinu</label>
     <input class="m-work" placeholder="iskop, utovar, ravnanje..." value="${escapeHtml(values.work || "")}" />
@@ -2930,10 +2930,10 @@ function addMachineEntry(values = {}) {
       refreshMachinesBtn.textContent = "Učitavam...";
       await loadWorkerAssets();
       refreshOneMachineSelect(div);
-      toast(workerAssetOptions.length ? "Mašine/vozila iz Direkcije su osvežene." : "Nema učitanih mašina/vozila. Proveri firmu radnika i listu u Direkciji.", !workerAssetOptions.length);
+      toast(workerAssetOptions.length ? "Mašine/vozila iz Uprave su osvežene." : "Nema učitanih mašina/vozila. Proveri firmu radnika i listu u Upravi.", !workerAssetOptions.length);
     } finally {
       refreshMachinesBtn.disabled = false;
-      refreshMachinesBtn.textContent = "Osveži mašine iz Direkcije";
+      refreshMachinesBtn.textContent = "Osveži mašine iz Uprave";
     }
   });
   list.appendChild(div);
@@ -2988,12 +2988,12 @@ function addLowloaderEntry(values = {}) {
     <div class="grid two">
       <div>
         <label>Gradilište sa kog preuzima mašinu</label>
-        <input class="ll-from" list="lowloaderFromSiteList-${uid}" placeholder="izaberi gradilište ili upiši ručno" value="${escapeHtml(fromSite)}" />
+        <input class="ll-from" list="lowloaderFromSiteList-${uid}" placeholder="izaberi gradilište ili upiši naziv" value="${escapeHtml(fromSite)}" />
         <datalist class="ll-site-list" id="lowloaderFromSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
       </div>
       <div>
         <label>Gradilište gde vozi mašinu</label>
-        <input class="ll-to" list="lowloaderToSiteList-${uid}" placeholder="izaberi gradilište ili upiši ručno" value="${escapeHtml(toSite)}" />
+        <input class="ll-to" list="lowloaderToSiteList-${uid}" placeholder="izaberi gradilište ili upiši naziv" value="${escapeHtml(toSite)}" />
         <datalist class="ll-site-list" id="lowloaderToSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
       </div>
     </div>
@@ -3017,7 +3017,7 @@ function addLowloaderEntry(values = {}) {
     <label>Interni broj ili ime mašine koju seliš</label>
     <input class="ll-machine asset-code-search" list="lowloaderMachineList-${uid}" placeholder="upisati broj mašine, npr. 101" value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
     <datalist class="ll-machine-list" id="lowloaderMachineList-${uid}">${buildLowloaderMachineDatalistOptionsHtml()}</datalist>
-    <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Direkcije. Ako seliš tuđu/zamensku mašinu, samo je upiši ručno.</p>
+    <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Uprave. Ako seliš tuđu/zamensku mašinu, samo je upiši naziv.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -3072,7 +3072,7 @@ function getLowloaderEntries() {
 
 function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
   const selected = String(selectedValue || "").trim().toLowerCase();
-  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Direkcije</option>`;
+  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Uprave</option>`;
   return `<option value="">Odaberi gradilište</option>` + workerSiteOptions.map(site => {
     const name = site.name || "Gradilište";
     const loc = site.location ? ` · ${site.location}` : "";
@@ -3102,7 +3102,7 @@ function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "", 
   }
 
   if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Direkcije</option>`;
+    return `<option value="">Nema sredstava iz Uprave</option>`;
   }
   if (!assets.length) {
     return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
@@ -3168,18 +3168,18 @@ function addFieldTankerEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Gradilište iz Direkcije</label>
+    <label>Gradilište iz Uprave</label>
     <select class="ft-site-select">${buildFieldTankerSiteOptionsHtml(selectedSite)}</select>
-    <p class="field-hint">Ako gradilište nije u listi, upiši ga ručno ispod.</p>
+    <p class="field-hint">Ako gradilište nije u evidenciji, upiši naziv ispod.</p>
 
-    <label>Upiši ručno gradilište ako nije u listi</label>
+    <label>Upiši naziv gradilište ako nije u listi</label>
     <input class="ft-site-custom" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_custom || values.manual_site || "")}" />
 
-    <label>Šta je tankovano</label>
+    <label>Vrsta sredstva</label>
     <select class="ft-asset-kind">
       <option value="machine" ${kind === "machine" ? "selected" : ""}>Mašina</option>
       <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
-      <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
+      <option value="other" ${kind === "other" ? "selected" : ""}>Oprema / ostalo</option>
     </select>
 
     <label>Sredstvo / interni broj</label>
@@ -3328,7 +3328,7 @@ function normalizeStoredFieldTankerEntry(entry = {}, index = 0) {
 
 function validateFieldTankerEntryForMemory(entry) {
   if (!entry.site_name) return "Upiši ili izaberi gradilište/lokaciju za svako sipanje.";
-  if (!entry.asset_name) return "Izaberi mašinu/vozilo ili upiši ručno šta je tankovano.";
+  if (!entry.asset_name) return "Izaberi mašinu/vozilo ili upiši naziv šta je tankovano.";
   if (!entry.liters) return "Upiši koliko litara je sipano.";
   if (entry.asset_kind === "vehicle" && !entry.km && !entry.current_km) return "Za vozilo upiši kilometražu / KM.";
   if (entry.asset_kind === "machine" && !entry.mtc && !entry.current_mtc) return "Za mašinu upiši trenutni MTČ.";
@@ -3427,7 +3427,7 @@ function buildFieldTankerMemoryReportData(entries = []) {
       tanker_fuel_memory: true
     },
     site_id: first.site_id || null,
-    site_name: first.site_name || "Tankanje goriva cisternom",
+    site_name: first.site_name || "Evidencija goriva – cisterna",
     field_tanker_entries: entries.map(normalizeStoredFieldTankerEntry),
     tanker_fuel_entries: entries.map(normalizeStoredFieldTankerEntry),
     fuel_liters: totalLiters || "",
@@ -3468,7 +3468,7 @@ async function sendStoredFieldTankerEntries() {
       $("#fieldTankerEntries").innerHTML = "";
       addFieldTankerEntry();
     }
-    toast(`Sva memorisana sipanja su poslata Direkciji ✅ (${entries.length})`);
+    toast(`Sva memorisana sipanja su poslata Upravi ✅ (${entries.length})`);
   } catch(e) {
     toast(e.message, true);
   }
@@ -3494,7 +3494,7 @@ function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "", searchV
   }
 
   if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Direkcije</option>`;
+    return `<option value="">Nema sredstava iz Uprave</option>`;
   }
   if (!assets.length) {
     return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
@@ -3535,7 +3535,7 @@ function updateFuelSmartResult(entryEl, asset, manualValue) {
   const value = String(manualValue || "").trim();
   if (value) {
     result.className = "asset-smart-result f-picked warn";
-    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
     return;
   }
   result.className = "asset-smart-result f-picked";
@@ -3553,7 +3553,7 @@ function updateFieldTankerSmartResult(entryEl, asset, manualValue) {
   const value = String(manualValue || "").trim();
   if (value) {
     result.className = "asset-smart-result ft-picked warn";
-    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
     return;
   }
   result.className = "asset-smart-result ft-picked";
@@ -3581,7 +3581,7 @@ function findDefectAssetForSmartInput(searchValue) {
 function formatDefectAssetLabel(asset) {
   if (!asset) return "";
   const kind = getCanonicalAssetKind(asset);
-  const kindLabel = kind === "vehicle" ? "Vozilo" : kind === "other" ? "Ostalo" : "Mašina";
+  const kindLabel = kind === "vehicle" ? "Vozilo" : kind === "other" ? "Oprema / ostalo" : "Mašina";
   return `${kindLabel}: ${formatFuelKindAssetLabel(asset, kind)}`;
 }
 
@@ -3598,7 +3598,7 @@ function updateDefectAssetSmartResult() {
   }
   if (value) {
     result.className = "asset-smart-result defect-picked warn";
-    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
     return;
   }
   result.className = "asset-smart-result defect-picked";
@@ -3684,11 +3684,11 @@ function addFuelEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Šta je tankovano</label>
+    <label>Vrsta sredstva</label>
     <select class="f-asset-kind">
       <option value="machine" ${kind === "machine" ? "selected" : ""}>Mašina</option>
       <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
-      <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
+      <option value="other" ${kind === "other" ? "selected" : ""}>Oprema / ostalo</option>
     </select>
 
     <label>Sredstvo / interni broj</label>
@@ -3812,7 +3812,7 @@ async function loadWorkerReturnedReports() {
       const d = r.data || {};
       const title = d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni izveštaj";
       const site = d.site_name || d.defect_site_name || "Bez gradilišta";
-      const reason = r.returned_reason || "Direkcija nije upisala razlog.";
+      const reason = r.returned_reason || "Uprava nije upisala razlog.";
       const opis = d.defect || d.description || d.note || "";
       return `
         <div class="returned-item">
@@ -3893,7 +3893,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     });
 
     localStorage.setItem("swp_returned_report_id", reportId);
-    toast("Izveštaj je otvoren. Ispravi ga i pošalji ponovo Direkciji.");
+    toast("Izveštaj je otvoren. Ispravi ga i pošalji ponovo Upravi.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch(e) {
     toast(e.message, true);
@@ -3960,11 +3960,11 @@ function collectWorkerData() {
     m.from_site || m.to_site || m.from_address || m.to_address || m.machine || m.plates
   ) || null;
   const lowloaderFallbackSiteName = firstLowloaderMove
-    ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Prevoz mašine labudicom")
+    ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Transport mašine labudicom")
     : "";
-  const leaveFallbackSiteName = canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za slobodan dan / godišnji odmor" : "";
+  const leaveFallbackSiteName = canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za odsustvo / godišnji odmor" : "";
   const firstFieldTankerEntry = fieldTankerEntries.find(x => x.site_name || x.site_id) || null;
-  const fieldTankerFallbackSiteName = firstFieldTankerEntry ? (firstFieldTankerEntry.site_name || "Tankanje goriva cisternom") : "";
+  const fieldTankerFallbackSiteName = firstFieldTankerEntry ? (firstFieldTankerEntry.site_name || "Evidencija goriva – cisterna") : "";
   const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || (canFieldTanker && fieldTankerEntries.length ? fieldTankerFallbackSiteName : "") || leaveFallbackSiteName;
   const reportSiteId = selectedSite.site_id || firstFieldTankerEntry?.site_id || null;
 
@@ -3985,7 +3985,7 @@ function collectWorkerData() {
     report_sections_sent: reportSectionsSent,
     site_id: reportSiteId,
     site_name: reportSiteName,
-    // v1.16.3: Ime gradilišta i datum/godina čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
+    // v1.16.3: Gradilište i datum izveštaja čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
     // Opis rada i sati rada ne šaljemo pod ovom rubrikom.
     description: "",
     hours: "",
@@ -4166,24 +4166,24 @@ function formatCapacityM3(value) {
 let lastWorkerUiAuditText = "";
 
 const WORKER_UI_PERMISSION_MAP = {
-  daily_work: { label: "Ime gradilišta i datum/godina", window: "Osnovno: gradilište i datum", worker: true },
+  daily_work: { label: "Gradilište i datum izveštaja", window: "Osnovno: gradilište i datum", worker: true },
   workers: { label: "Radnici na gradilištu", window: "Radnici na gradilištu", worker: true },
-  machines: { label: "Rad sa mašinom", window: "Mašina koju sam koristio", worker: true },
-  vehicles: { label: "Rad sa kamionom / vozilom", window: "Vozilo / ture / m³", worker: true },
-  lowloader: { label: "Prevoz mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
-  fuel: { label: "Sipanje goriva u svoju mašinu", window: "Sipanje goriva", worker: true },
-  field_tanker: { label: "Tankanje goriva cisternom", window: "Tankanje goriva cisternom", worker: true },
+  machines: { label: "Rad sa mašinom", window: "Evidencija rada mašine", worker: true },
+  vehicles: { label: "Rad vozila / kamiona", window: "Vozilo / ture / m³", worker: true },
+  lowloader: { label: "Transport mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
+  fuel: { label: "Evidencija goriva – korisnik", window: "Sipanje goriva", worker: true },
+  field_tanker: { label: "Evidencija goriva – cisterna", window: "Evidencija goriva – cisterna", worker: true },
   materials: { label: "Materijal", window: "Materijal", worker: true },
-  leave_request: { label: "Zahtev za slobodan dan / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
+  leave_request: { label: "Zahtev za odsustvo / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
   warehouse: { label: "Magacin", window: "Magacin", worker: true },
-  defects: { label: "Prijava kvara", window: "Prijava kvara", worker: true },
+  defects: { label: "Evidencija kvara", window: "Evidencija kvara", worker: true },
 
-  // Direkcijska prava nisu radnički prozori. Ako ih ima običan radnik, audit ih označava kao upozorenje.
-  view_reports: { label: "Pregled izveštaja", window: "Direkcija: pregled izveštaja", worker: false },
-  approve_reports: { label: "Odobravanje", window: "Direkcija: odobravanje", worker: false },
-  excel_export: { label: "Izvoz u Excel", window: "Direkcija: Excel", worker: false },
-  manage_people: { label: "Upravljanje osobama", window: "Direkcija: osobe", worker: false },
-  settings: { label: "Podešavanja firme", window: "Direkcija: podešavanja", worker: false }
+  // Upravljačka prava nisu radnički prozori. Ako ih ima običan radnik, audit ih označava kao upozorenje.
+  view_reports: { label: "Pregled izveštaja", window: "Uprava: pregled izveštaja", worker: false },
+  approve_reports: { label: "Odobravanje izveštaja", window: "Uprava: odobravanje", worker: false },
+  excel_export: { label: "Izvoz u Excel", window: "Uprava: Excel", worker: false },
+  manage_people: { label: "Upravljanje korisnicima", window: "Uprava: osobe", worker: false },
+  settings: { label: "Podešavanja firme", window: "Uprava: podešavanja", worker: false }
 };
 
 function permissionIsEnabled(value) {
@@ -4212,7 +4212,7 @@ async function runWorkerUiAudit() {
   if (!box) return;
   try {
     if (!currentCompany?.id) {
-      box.innerHTML = `<p class="muted">Prvo se prijavi kao Direkcija i učitaj firmu.</p>`;
+      box.innerHTML = `<p class="muted">Prvo se prijavi kao Uprava i učitaj firmu.</p>`;
       return;
     }
 
@@ -4422,7 +4422,7 @@ const EXPORT_COLUMNS = [
   { key:"lowloader_km_end", label:"Završna kilometraža labudice" },
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
-  { key:"fuel_type", label:"Tip sredstva" },
+  { key:"fuel_type", label:"Kategorija sredstva" },
   { key:"fuel_asset_code", label:"Broj sredstva" },
   { key:"fuel_for", label:"Naziv sredstva" },
   { key:"fuel_registration", label:"Registracija" },
@@ -4432,7 +4432,7 @@ const EXPORT_COLUMNS = [
   { key:"fuel_by", label:"Gorivo sipao" },
   { key:"fuel_receiver", label:"Gorivo primio" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
-  { key:"field_tanker_type", label:"Tip tankovanog sredstva" },
+  { key:"field_tanker_type", label:"Kategorija tankovanog sredstva" },
   { key:"field_tanker_asset_code", label:"Broj tankovanog sredstva" },
   { key:"field_tanker_asset", label:"Naziv tankovanog sredstva" },
   { key:"field_tanker_registration", label:"Registracija" },
@@ -4453,13 +4453,13 @@ const EXPORT_COLUMNS = [
   { key:"leave_from", label:"Godišnji od" },
   { key:"leave_to", label:"Godišnji do" },
   { key:"leave_note", label:"Napomena za odsustvo" },
-  { key:"defect_type", label:"Tip sredstva u kvaru" },
+  { key:"defect_type", label:"Kategorija sredstva u kvaru" },
   { key:"defect_asset_code", label:"Broj sredstva u kvaru" },
   { key:"defect_asset", label:"Naziv sredstva u kvaru" },
   { key:"defect_registration", label:"Registracija sredstva" },
   { key:"defect_site", label:"Lokacija kvara" },
   { key:"defect", label:"Opis kvara" },
-  { key:"defect_work_impact", label:"Uticaj na rad" },
+  { key:"defect_work_impact", label:"Uticaj kvara na rad" },
   { key:"defect_urgency", label:"Hitnost" },
   { key:"defect_called_mechanic", label:"Pozvan šef mehanizacije" },
   { key:"defect_status", label:"Status kvara" },
@@ -4505,13 +4505,13 @@ const EXPORT_GROUPS = [
   },
   {
     id: "lowloader",
-    title: "Prevoz mašine labudicom",
+    title: "Transport mašine labudicom",
     hint: "Selidba mašine sa jedne lokacije na drugu.",
     keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km_start", "lowloader_km_end", "lowloader_km", "lowloader_machine"]
   },
   {
     id: "fieldTanker",
-    title: "Tankanje goriva cisternom",
+    title: "Evidencija goriva – cisterna",
     hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
     keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset_code", "field_tanker_asset", "field_tanker_registration", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
   },
@@ -4529,7 +4529,7 @@ const EXPORT_GROUPS = [
   },
   {
     id: "leave",
-    title: "Zahtev za slobodan dan / godišnji odmor",
+    title: "Zahtev za odsustvo / godišnji odmor",
     hint: "Zahtevi radnika za slobodan dan ili godišnji odmor.",
     keys: ["leave_type", "leave_date", "leave_from", "leave_to", "leave_note"]
   },
@@ -4770,11 +4770,11 @@ const SMART_EXPORT_PRESETS = {
     keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_registration","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_registration","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
   },
   fuel_own: {
-    title: "Sipanje goriva u svoju mašinu/vozilo/opremu",
+    title: "Evidencija goriva – korisnik/vozilo/opremu",
     keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_registration","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","status"]
   },
   fuel_tanker: {
-    title: "Tankanje goriva cisternom",
+    title: "Evidencija goriva – cisterna",
     keys: ["date","worker","site","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_registration","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
   },
   hours_workers: {
@@ -4790,7 +4790,7 @@ const SMART_EXPORT_PRESETS = {
     keys: ["date","site","worker","vehicle_code","vehicle","registration","capacity","km_start","km_end","route","tours","cubic","status"]
   },
   lowloader: {
-    title: "Prevoz mašine labudicom",
+    title: "Transport mašine labudicom",
     keys: ["date","site","worker","lowloader_plates","lowloader_from","lowloader_to","lowloader_km_start","lowloader_km_end","lowloader_km","lowloader_machine","status"]
   },
   materials: {
@@ -5279,7 +5279,7 @@ async function sendDefectNow() {
       created_by_worker: worker.full_name,
       function_title: worker.function_title,
       called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
-      sent_to: "direkcija_mehanizacija_direktor"
+      sent_to: "uprava_mehanizacija_direktor"
     };
 
     const { error } = await sb.rpc("submit_worker_report", {
@@ -5292,7 +5292,7 @@ async function sendDefectNow() {
 
     if (error) throw error;
 
-    toast("Kvar je evidentiran odmah 🚨 Direkcija i direktor mogu pratiti vreme rešavanja.");
+    toast("Kvar je evidentiran odmah 🚨 Uprava i direktor mogu pratiti vreme rešavanja.");
   } catch(e) {
     toast(e.message, true);
   }
@@ -5409,7 +5409,7 @@ function bindEvents() {
   $("#directorSignupBtn").addEventListener("click", async () => {
     try {
       await signUp($("#directorEmail").value.trim(), $("#directorPassword").value);
-      toast("Direkcija email registrovan. Ako stigne potvrda, potvrdi email pa se prijavi.");
+      toast("Uprava email registrovan. Ako stigne potvrda, potvrdi email pa se prijavi.");
     } catch(e) { toast(e.message, true); }
   });
   $("#directorLoginBtn").addEventListener("click", async () => {
@@ -5522,7 +5522,7 @@ function bindEvents() {
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Radnik nije prijavljen.");
       const data = collectWorkerData();
-      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Direkcija.");
+      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Uprava.");
     if (await submitReturnedCorrectionIfNeeded(data)) return;
       const reportDate = $("#wrDate").value || today();
       const { error } = await sb.rpc("submit_worker_report", {
@@ -5535,7 +5535,7 @@ function bindEvents() {
       if (error) throw error;
       await verifyRecentlySubmittedReport(worker, reportDate);
       await prepareWorkerFormForNextReport();
-      toast("Izveštaj je poslat Direkciji ✅ Forma je spremna za sledeći unos.");
+      toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
     } catch(e) { toast(e.message, true); }
   });
 }
@@ -5604,6 +5604,6 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   localStorage.removeItem("swp_returned_report_id");
   await prepareWorkerFormForNextReport();
   loadWorkerReturnedReports();
-  toast("Ispravljen izveštaj je ponovo poslat Direkciji ✅ Forma je spremna za sledeći unos.");
+  toast("Ispravljen izveštaj je ponovo poslat Upravi ✅ Forma je spremna za sledeći unos.");
   return true;
 }
