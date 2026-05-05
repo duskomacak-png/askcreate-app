@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.7";
+const APP_VERSION = "1.20.8";
 
 
 let sb = null;
@@ -3952,7 +3952,7 @@ async function runWorkerUiAudit() {
 
     const { data, error } = await sb
       .from("company_users")
-      .select("id, first_name, last_name, function_title, access_code, role, permissions, active")
+      .select("id, first_name, last_name, function_title, access_code, permissions, active")
       .eq("company_id", currentCompany.id)
       .eq("active", true)
       .order("created_at", { ascending: false });
