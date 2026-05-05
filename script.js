@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.0";
+const APP_VERSION = "1.19.1";
 
 
 let sb = null;
@@ -261,7 +261,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz Direkcije ili ručni unos", "Početni i završni MTČ", "Sati rada"] },
   { key: "vehicles", title: "Rad sa kamionom / vozilom", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
   { key: "lowloader", title: "Prevoz mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
-  { key: "fuel", title: "Sipanje goriva u svoju mašinu", lines: ["Mašina", "MTČ/KM", "Litara", "Ko je sipao / primio"] },
+  { key: "fuel", title: "Sipanje goriva u svoju mašinu", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
   { key: "field_tanker", title: "Tankanje goriva cisternom", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Gorivo primio"] },
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
   { key: "leave_request", title: "Zahtev za slobodan dan / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
@@ -1203,9 +1203,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(ll.km_end)}</td>
         <td>${val(ll.km_total)}</td>
         <td>${val(ll.machine)}</td>
-        <td>${val(f.machine)}</td>
+        <td>${val(f.asset_name || f.machine || f.vehicle)}</td>
         <td>${val(f.liters)}</td>
-        <td>${val(f.reading)}</td>
+        <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
+        <td>${val(f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""))}</td>
         <td>${val(f.by)}</td>
         <td>${val(f.receiver || d.fuel_receiver)}</td>
         <td>${val(ft.site_name)}</td>
@@ -1252,7 +1253,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>Mašina koja se seli</th>
             <th>Gorivo za</th>
             <th>Litara</th>
-            <th>MTČ/KM gorivo</th>
+            <th>Gorivo KM</th>
+            <th>Gorivo MTČ</th>
             <th>Sipao</th>
             <th>Primio</th>
             <th>Cisterna gradilište</th>
@@ -1385,7 +1387,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>Tip</th>
           <th>Mašina/vozilo</th>
           <th>Litara</th>
-          <th>MTČ/KM pri sipanju</th>
+          <th>KM pri sipanju</th>
+          <th>MTČ pri sipanju</th>
           <th>Sipao</th>
           <th>Primio</th>
         </tr>
@@ -1397,7 +1400,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(f.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
             <td>${val(f.asset_name || f.machine || f.vehicle)}</td>
             <td>${val(f.liters)}</td>
-            <td>${val(f.reading)}</td>
+            <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
+            <td>${val(f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""))}</td>
             <td>${val(f.by)}</td>
             <td>${val(f.receiver || d.fuel_receiver)}</td>
           </tr>
@@ -3096,6 +3100,9 @@ function addFuelEntry(values = {}) {
   const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
   const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
   const manualAsset = values.asset_custom || values.machine_custom || values.vehicle_custom || "";
+  const oldReading = values.reading || values.mtc_km || "";
+  const kmValue = values.km || values.current_km || values.kilometers || values.odometer || (kind === "vehicle" ? oldReading : "");
+  const mtcValue = values.mtc || values.current_mtc || values.machine_mtc || (kind === "machine" ? oldReading : "");
   const div = document.createElement("div");
   div.className = "entry-card fuel-entry";
   div.innerHTML = `
@@ -3123,15 +3130,19 @@ function addFuelEntry(values = {}) {
         <input class="f-liters" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
       </div>
       <div>
-        <label>MTČ / KM pri sipanju</label>
-        <input class="f-reading" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 1255.0" value="${escapeHtml(values.reading || "")}" />
+        <label>Trenutna kilometraža / KM</label>
+        <input class="f-km numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
+      </div>
+      <div>
+        <label>Trenutni MTČ</label>
+        <input class="f-mtc numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 1255.0" value="${escapeHtml(mtcValue)}" />
       </div>
     </div>
 
     <label>Ko je sipao</label>
     <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
 
-    <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
+    <p class="hint">Za vozilo upiši KM. Za mašinu upiši MTČ. Možeš popuniti oba ako firma traži. Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
@@ -3154,6 +3165,10 @@ function getFuelEntries() {
     const select = el.querySelector(".f-asset-select");
     const option = select?.options ? select.options[select.selectedIndex] : null;
     const assetName = custom || selected;
+    const km = el.querySelector(".f-km")?.value.trim() || "";
+    const mtc = el.querySelector(".f-mtc")?.value.trim() || "";
+    const oldReading = el.querySelector(".f-reading")?.value.trim() || "";
+    const reading = mtc || km || oldReading; // backward-compatible summary for older report/excel code
     return {
       no: i + 1,
       asset_kind: kind,
@@ -3166,11 +3181,16 @@ function getFuelEntries() {
       vehicle: kind === "vehicle" ? assetName : "",
       vehicle_custom: kind === "vehicle" ? custom : "",
       liters: el.querySelector(".f-liters")?.value || "",
-      reading: el.querySelector(".f-reading")?.value || "",
+      km,
+      current_km: km,
+      mtc,
+      current_mtc: mtc,
+      reading,
+      mtc_km: reading,
       by: el.querySelector(".f-by")?.value.trim() || "",
       receiver: currentWorker?.full_name || ""
     };
-  }).filter(f => f.asset_name || f.liters || f.reading || f.by);
+  }).filter(f => f.asset_name || f.liters || f.km || f.mtc || f.reading || f.by);
 }
 
 function refreshFuelMachineOptions() {
@@ -3411,7 +3431,9 @@ function collectWorkerData() {
     mtc_end: machines.map(m => m.end).filter(Boolean).join(" | "),
     machine_hours: machines.map(m => m.hours).filter(Boolean).join(" | "),
     fuel_liters: fuelEntries.reduce((sum, f) => sum + parseDecimalInput(f.liters), 0) || "",
-    fuel_readings: fuelEntries.map(f => f.reading).filter(Boolean).join(" | "),
+    fuel_km: fuelEntries.map(f => f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "")).filter(Boolean).join(" | "),
+    fuel_mtc: fuelEntries.map(f => f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "")).filter(Boolean).join(" | "),
+    fuel_readings: fuelEntries.map(f => f.reading || f.mtc_km).filter(Boolean).join(" | "),
     fuel_by: fuelEntries.map(f => f.by).filter(Boolean).join(" | "),
     fuel_receiver: currentWorker?.full_name || "",
 
@@ -3592,7 +3614,9 @@ const EXPORT_COLUMNS = [
   { key:"fuel_type", label:"Tip za sipanje goriva" },
   { key:"fuel_for", label:"Gorivo sipano u" },
   { key:"fuel_liters", label:"Količina goriva u litrima" },
-  { key:"fuel_reading", label:"Stanje MTČ/KM kod sipanja" },
+  { key:"fuel_km", label:"Kilometraža / KM kod sipanja" },
+  { key:"fuel_mtc", label:"MTČ kod sipanja" },
+  { key:"fuel_reading", label:"Staro polje MTČ/KM kod sipanja" },
   { key:"fuel_by", label:"Gorivo sipao" },
   { key:"fuel_receiver", label:"Gorivo primio" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
@@ -3653,7 +3677,7 @@ const EXPORT_GROUPS = [
     id: "fuel",
     title: "Sipanje goriva",
     hint: "Gorivo koje je radnik sipao u svoju mašinu ili vozilo.",
-    keys: ["fuel_type", "fuel_for", "fuel_liters", "fuel_reading", "fuel_by", "fuel_receiver"]
+    keys: ["fuel_type", "fuel_for", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_reading", "fuel_by", "fuel_receiver"]
   },
   {
     id: "lowloader",
@@ -3859,7 +3883,9 @@ function flattenReportRowsForExport(r) {
       fuel_type: f.asset_kind === "vehicle" ? "Vozilo" : (f.asset_kind === "machine" ? "Mašina" : ""),
       fuel_for: f.asset_name || f.machine || f.vehicle || "",
       fuel_liters: f.liters || d.fuel_liters || "",
-      fuel_reading: f.reading || d.fuel_readings || "",
+      fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
+      fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
+      fuel_reading: f.reading || f.mtc_km || d.fuel_readings || "",
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || "",
       field_tanker_site: ft.site_name || "",
