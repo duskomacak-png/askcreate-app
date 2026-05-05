@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.1";
+const APP_VERSION = "1.20.2";
 
 
 let sb = null;
@@ -3862,7 +3862,19 @@ function parseDecimalInput(value) {
 }
 
 function preventNumberInputScrollChanges(root = document) {
-  root.querySelectorAll('input[type="number"]').forEach(input => {
+  // Radnik na terenu često skroluje preko forme. Native input[type=number]
+  // u Chrome/Edge može sam da promeni vrednost (npr. 4,5 -> 4,51) preko
+  // točkića/trackpad-a ili strelica. Zato sva numerička polja zaključavamo
+  // kao tekstualni unos sa decimalnom tastaturom. Parsiranje već podržava
+  // i zarez i tačku preko parseDecimalInput().
+  root.querySelectorAll('input[type="number"], input.numeric-text').forEach(input => {
+    if (input.type === "number") {
+      input.type = "text";
+      input.inputMode = "decimal";
+      input.classList.add("numeric-text");
+      input.setAttribute("autocomplete", "off");
+      input.setAttribute("data-fixed-number", "1");
+    }
     if (input.dataset.noWheelBound === "1") return;
     input.dataset.noWheelBound = "1";
     input.addEventListener("wheel", (event) => {
@@ -3870,7 +3882,9 @@ function preventNumberInputScrollChanges(root = document) {
       input.blur();
     }, { passive: false });
     input.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowUp" || event.key === "ArrowDown") event.preventDefault();
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        event.preventDefault();
+      }
     });
   });
 }
