@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1192" />
+  <link rel="stylesheet" href="style.css?v=1193" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -260,8 +260,11 @@
             </select>
             <label>Registracija / oznaka</label>
             <input id="assetReg" placeholder="BG-123-AA / interna oznaka" />
-            <label>Kapacitet</label>
-            <input id="assetCapacity" placeholder="npr. 12m3" />
+            <label>Kapacitet vozila (m³)</label>
+            <div class="unit-input">
+              <input id="assetCapacity" inputmode="decimal" placeholder="npr. 18" />
+              <span class="unit-suffix">m³</span>
+            </div>
             <div class="row asset-form-actions"><button id="addAssetBtn" class="primary">Sačuvaj</button><button id="cancelEditAssetBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
           <div class="card">
@@ -602,6 +605,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1192"></script>
+  <script src="script.js?v=1193"></script>
 </body>
 </html>

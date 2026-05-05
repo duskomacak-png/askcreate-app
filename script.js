@@ -1,4 +1,4 @@
-// v1.19.0_FIELD_TANKER_KM_MTC_SPLIT - field tanker memory with separate KM and MTČ; reports still avoid company_users embed
+// v1.19.2_ASSET_CAPACITY_M3_SUFFIX - capacity entry shows m³ suffix; no SQL/RPC changes
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.1";
+const APP_VERSION = "1.19.2";
 
 
 let sb = null;
@@ -622,7 +622,7 @@ async function loadAssets() {
     <div class="item management-item">
       <div class="item-main">
         <strong>${escapeHtml(a.name)}</strong>
-        <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(a.capacity || "")}</small>
+        <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(formatCapacityM3(a.capacity))}</small>
       </div>
       <div class="management-actions asset-actions-v1117">
         <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Uredi</button>
@@ -925,7 +925,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
       if (searchMatch(text, q)) results.push({
         type:"Mašina / vozilo",
         title:a.name,
-        subtitle:`${a.asset_type} · ${a.registration || ""} · ${a.capacity || ""}`,
+        subtitle:`${a.asset_type} · ${a.registration || ""} · ${formatCapacityM3(a.capacity)}`,
         actions:`<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Uredi</button><button class="danger-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>`
       });
     });
@@ -3535,6 +3535,13 @@ function loadDraft() {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function formatCapacityM3(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (/m\s*(³|3)|kub|kubic/i.test(raw)) return raw;
+  return `${raw} m³`;
 }
 
 function csvEscape(v) {

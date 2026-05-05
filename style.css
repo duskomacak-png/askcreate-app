@@ -126,6 +126,10 @@ textarea{min-height:100px;resize:vertical}
 input::placeholder,textarea::placeholder{color:#8a9a90}
 input:focus,select:focus,textarea:focus{border-color:var(--green-2);box-shadow:0 0 0 3px rgba(79,159,93,.18)}
 select option{background:#ffffff!important;color:var(--text)!important}
+
+.unit-input{position:relative;display:flex;align-items:center}
+.unit-input input{padding-right:54px}
+.unit-input .unit-suffix{position:absolute;right:15px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:900;pointer-events:none}
 input[type="checkbox"],input[type="radio"]{width:auto;min-height:auto;box-shadow:none;margin-right:8px;accent-color:var(--green)}
 input[type="number"]{appearance:textfield;-moz-appearance:textfield}
 input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{appearance:none;-webkit-appearance:none;margin:0}
