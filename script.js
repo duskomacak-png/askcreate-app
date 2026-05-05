@@ -1,3 +1,4 @@
+// v1.18.6_FORCE_NO_EMBED_REPORTS - no Supabase embedded relationships for reports/company_users
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -1076,12 +1077,14 @@ async function enrichReportsWithUsers(reports = []) {
 async function loadReports() {
   if (!currentCompany) return;
 
+  // v1.18.6: reports se čitaju BEZ Supabase embed veze company_users(...).
+  // U ovoj bazi postoji više FK veza reports -> company_users i embed upit ruši prikaz.
   const { data, error } = await sb
     .from("reports")
-    .select("*")
+    .select("id, company_id, user_id, site_id, report_date, status, data, returned_reason, submitted_at, approved_at, exported_at, created_at, archived, deleted_at, exported")
     .eq("company_id", currentCompany.id)
     .neq("status", "archived")
-    .order("submitted_at", { ascending:false });
+    .order("created_at", { ascending:false });
 
   if (error) return toast(error.message, true);
 
