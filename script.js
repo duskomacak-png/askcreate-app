@@ -1,4 +1,4 @@
-// v1.19.4_ASSET_INTERNAL_CODE - asset internal number/code visible across worker selects/reports; requires assets.asset_code column
+// v1.19.5_WORKER_ASSET_CODE_INPUTS - dedicated worker code search fields for assets; requires assets.asset_code column
 /* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.4";
+const APP_VERSION = "1.19.5";
 
 
 let sb = null;
@@ -1862,6 +1862,18 @@ function machineMatchesSearch(asset, searchValue) {
   return haystack.includes(q);
 }
 
+function autoSelectExactAssetCode(selectEl, searchValue) {
+  if (!selectEl) return;
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return;
+  const options = Array.from(selectEl.options || []).filter(o => o.value);
+  const exact = options.find(o => normalizeVehicleSearch(o.dataset.assetCode || "") === q);
+  if (exact) {
+    selectEl.value = exact.value;
+    selectEl.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
+
 function getMachineAssetsFromDirection() {
   return workerAssetOptions
     .filter(isMachineAsset)
@@ -1896,6 +1908,7 @@ function refreshOneMachineSelect(entryEl) {
   const search = entryEl.querySelector(".m-search")?.value || "";
   sel.innerHTML = buildMachineOptionsHtml(old, search);
   if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+  autoSelectExactAssetCode(sel, search);
 }
 
 function buildLowloaderMachineDatalistOptionsHtml() {
@@ -2075,6 +2088,7 @@ function refreshOneVehicleSelect(entryEl) {
   const search = entryEl.querySelector(".v-search")?.value || "";
   sel.innerHTML = buildVehicleOptionsHtml(old, search);
   if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+  autoSelectExactAssetCode(sel, search);
 }
 
 function refreshVehicleSelects() {
@@ -2134,8 +2148,8 @@ function addVehicleEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Pronađi vozilo po registraciji ili nazivu</label>
-    <input class="v-search" placeholder="npr. BG123AA, DAF, MAN..." value="" />
+    <label>Interni broj / pretraga vozila</label>
+    <input class="v-search asset-code-search" placeholder="upisati broj vozila, npr. KAM-05" value="" />
 
     <label>Vozilo iz Direkcije</label>
     <select class="v-name">${buildVehicleOptionsHtml(selectedName)}</select>
@@ -2592,8 +2606,8 @@ function addMachineEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Pretraži mašinu iz Direkcije</label>
-    <input class="m-search" placeholder="kucaj broj, naziv ili oznaku: 101, CAT, 330, D6R..." value="" />
+    <label>Interni broj / pretraga mašine</label>
+    <input class="m-search asset-code-search" placeholder="upisati broj mašine, npr. 101" value="" />
 
     <label>Mašina</label>
     <select class="m-name">${buildMachineOptionsHtml(values.name || "")}</select>
@@ -2738,8 +2752,8 @@ function addLowloaderEntry(values = {}) {
     </div>
     <p class="field-hint">Ukupno kilometara se računa automatski: završna kilometraža minus početna kilometraža.</p>
 
-    <label>Pronađi broj ili ime mašine koju seliš ili upiši ručno</label>
-    <input class="ll-machine" list="lowloaderMachineList-${uid}" placeholder="npr. CAT 330, BG321CI, valjak..." value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
+    <label>Interni broj ili ime mašine koju seliš</label>
+    <input class="ll-machine asset-code-search" list="lowloaderMachineList-${uid}" placeholder="upisati broj mašine, npr. 101" value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
     <datalist class="ll-machine-list" id="lowloaderMachineList-${uid}">${buildLowloaderMachineDatalistOptionsHtml()}</datalist>
     <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Direkcije. Ako seliš tuđu/zamensku mašinu, samo je upiši ručno.</p>
   `;
@@ -2805,14 +2819,18 @@ function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
   }).join("");
 }
 
-function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "") {
+function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "", searchValue = "") {
   const selected = String(selectedValue || "").trim();
-  const assets = (workerAssetOptions || [])
+  const allAssets = (workerAssetOptions || [])
     .filter(asset => filterAssetsByFuelKind(asset, kind))
     .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
+  const assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
 
-  if (!assets.length) {
+  if (!allAssets.length) {
     return `<option value="">${fuelKindEmptyText(kind)}</option>`;
+  }
+  if (!assets.length) {
+    return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
   }
 
   return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => {
@@ -2838,8 +2856,10 @@ function refreshFieldTankerSelectors() {
     if (assetSelect) {
       const old = assetSelect.value;
       const kind = card.querySelector(".ft-asset-kind")?.value || "machine";
-      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, old);
+      const search = card.querySelector(".ft-asset-search")?.value || "";
+      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, old, search);
       if (old && Array.from(assetSelect.options).some(o => o.value === old)) assetSelect.value = old;
+      autoSelectExactAssetCode(assetSelect, search);
     }
   });
 }
@@ -2877,8 +2897,11 @@ function addFieldTankerEntry(values = {}) {
       <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
     </select>
 
+    <label>Interni broj / pretraga sredstva</label>
+    <input class="ft-asset-search asset-code-search" placeholder="upisati broj: 101, KAM-05, AG-01" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || "")}" />
+
     <label>Izaberi iz Direkcije</label>
-    <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset)}</select>
+    <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || "")}</select>
     <p class="field-hint">Kad izabereš mašinu, vidiš samo mašine. Kad izabereš vozilo, vidiš samo vozila. Kad izabereš ostalo, vidiš agregat, vibro ploču i ostalu opremu iz Direkcija → Mašine / vozila.</p>
 
     <label>Ručno ako nije na listi</label>
@@ -2901,12 +2924,18 @@ function addFieldTankerEntry(values = {}) {
     div.remove();
     renumberFieldTankerEntries();
   });
-  div.querySelector(".ft-asset-kind")?.addEventListener("change", () => {
+  function refreshThisFieldTankerAssetSelect() {
     const assetSelect = div.querySelector(".ft-asset-select");
-    if (assetSelect) {
-      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(div.querySelector(".ft-asset-kind")?.value || "machine", "");
-    }
-  });
+    if (!assetSelect) return;
+    const kindNow = div.querySelector(".ft-asset-kind")?.value || "machine";
+    const searchNow = div.querySelector(".ft-asset-search")?.value || "";
+    const oldValue = assetSelect.value;
+    assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kindNow, oldValue, searchNow);
+    if (oldValue && Array.from(assetSelect.options).some(o => o.value === oldValue)) assetSelect.value = oldValue;
+    autoSelectExactAssetCode(assetSelect, searchNow);
+  }
+  div.querySelector(".ft-asset-kind")?.addEventListener("change", refreshThisFieldTankerAssetSelect);
+  div.querySelector(".ft-asset-search")?.addEventListener("input", refreshThisFieldTankerAssetSelect);
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
   refreshFieldTankerSelectors();
@@ -3147,14 +3176,18 @@ async function sendStoredFieldTankerEntries() {
   }
 }
 
-function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "") {
+function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "", searchValue = "") {
   const selected = String(selectedValue || "").trim();
-  const assets = (workerAssetOptions || [])
+  const allAssets = (workerAssetOptions || [])
     .filter(asset => filterAssetsByFuelKind(asset, kind))
     .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
+  const assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
 
-  if (!assets.length) {
+  if (!allAssets.length) {
     return `<option value="">${fuelKindEmptyText(kind)}</option>`;
+  }
+  if (!assets.length) {
+    return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
   }
 
   return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => {
@@ -3172,8 +3205,10 @@ function refreshOneFuelAssetSelect(entryEl) {
   if (!sel) return;
   const kind = entryEl.querySelector(".f-asset-kind")?.value || "machine";
   const old = sel.value;
-  sel.innerHTML = buildFuelAssetOptionsHtml(kind, old);
+  const search = entryEl.querySelector(".f-asset-search")?.value || "";
+  sel.innerHTML = buildFuelAssetOptionsHtml(kind, old, search);
   if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+  autoSelectExactAssetCode(sel, search);
 }
 
 function addFuelEntry(values = {}) {
@@ -3200,6 +3235,9 @@ function addFuelEntry(values = {}) {
       <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
       <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
     </select>
+
+    <label>Interni broj / pretraga sredstva</label>
+    <input class="f-asset-search asset-code-search" placeholder="upisati broj: 101, KAM-05, AG-01" value="${escapeHtml(values.asset_code || values.fuel_asset_code || "")}" />
 
     <label>Izaberi iz Direkcije</label>
     <select class="f-asset-select"></select>
@@ -3231,6 +3269,7 @@ function addFuelEntry(values = {}) {
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
   div.querySelector(".f-asset-kind")?.addEventListener("change", () => refreshOneFuelAssetSelect(div));
+  div.querySelector(".f-asset-search")?.addEventListener("input", () => refreshOneFuelAssetSelect(div));
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
   refreshOneFuelAssetSelect(div);
