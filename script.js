@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.3";
+const APP_VERSION = "1.20.4";
 
 
 let sb = null;
@@ -1168,7 +1168,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
     [];
 
   const reportRows = [];
-  const previewLeaveRequest = d.leave_request || {};
+  const leaveRequest = d.leave_request || {};
+  const previewLeaveRequest = leaveRequest;
   const previewHasLeave = !!(safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || Object.values(previewLeaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
   const previewHasWarehouse = !!(safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty));
 
@@ -1521,7 +1522,6 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
   const hasMaterialEntries = materialEntries.some(entry => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
   const hasMaterial = hasMaterialEntries || safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
-  const leaveRequest = d.leave_request || {};
   const hasLeaveRequest = safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || (leaveRequest && Object.values(leaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
 
   const hasUsefulEntry = (entry) => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== "");
