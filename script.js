@@ -2558,6 +2558,57 @@ window.loadReturnedReportIntoForm = async (reportId) => {
   }
 };
 
+function lowloaderHasUsableLocation(move) {
+  if (!move) return false;
+  return !!(
+    String(move.from_site || "").trim() ||
+    String(move.to_site || "").trim() ||
+    String(move.from_address || "").trim() ||
+    String(move.to_address || "").trim()
+  );
+}
+
+function getFirstLowloaderLocation(move) {
+  if (!move) return "";
+  return String(
+    move.from_site ||
+    move.from_address ||
+    move.to_site ||
+    move.to_address ||
+    ""
+  ).trim();
+}
+
+function applyStandaloneReportSiteFallback(data) {
+  if (!data || data.site_name) return data;
+
+  const lowloaderMoves = Array.isArray(data.lowloader_moves)
+    ? data.lowloader_moves
+    : (Array.isArray(data.lowloader_entries) ? data.lowloader_entries : []);
+
+  const lowloaderMove = lowloaderMoves.find(lowloaderHasUsableLocation);
+  if (lowloaderMove) {
+    data.site_id = null;
+    data.site_name = getFirstLowloaderLocation(lowloaderMove) || "Prevoz mašine labudicom";
+    data.main_site_auto_filled_from = "lowloader";
+  }
+
+  return data;
+}
+
+function isWorkerReportAllowedWithoutMainSite(data) {
+  if (!data) return false;
+  if (String(data.site_name || "").trim()) return true;
+
+  const lowloaderMoves = Array.isArray(data.lowloader_moves)
+    ? data.lowloader_moves
+    : (Array.isArray(data.lowloader_entries) ? data.lowloader_entries : []);
+
+  if (lowloaderMoves.some(lowloaderHasUsableLocation)) return true;
+
+  return false;
+}
+
 function collectWorkerData() {
   const perms = currentWorker?.permissions || {};
   const machines = perms.machines ? getMachineEntries() : [];
@@ -2573,9 +2624,22 @@ function collectWorkerData() {
   const canFieldTanker = !!perms.field_tanker;
   const lowloaderMoves = canLowloader ? getLowloaderEntries() : [];
   const fieldTankerEntries = canFieldTanker ? getFieldTankerEntries() : [];
+
+  // v1.17.4: Labudica ne mora imati glavno gradilište iz osnovne rubrike.
+  // Ako radnik popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
+  // iz prvog unosa labudice ili generički naziv, a p_site_id ostaje null.
+  const firstLowloaderMove = lowloaderMoves.find(m =>
+    m.from_site || m.to_site || m.from_address || m.to_address || m.machine || m.plates
+  ) || null;
+  const lowloaderFallbackSiteName = firstLowloaderMove
+    ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Prevoz mašine labudicom")
+    : "";
+  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "");
+  const reportSiteId = selectedSite.site_id || null;
+
   return {
-    site_id: selectedSite.site_id,
-    site_name: selectedSite.site_name,
+    site_id: reportSiteId,
+    site_name: reportSiteName,
     // v1.16.3: Ime gradilišta i datum/godina čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
     // Opis rada i sati rada ne šaljemo pod ovom rubrikom.
     description: "",
@@ -3458,7 +3522,10 @@ function bindEvents() {
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Radnik nije prijavljen.");
       const data = collectWorkerData();
-      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Direkcija.");
+      applyStandaloneReportSiteFallback(data);
+      if (!isWorkerReportAllowedWithoutMainSite(data)) {
+        throw new Error("Odaberi gradilište iz liste. Ako radiš samo prevoz mašine labudicom, popuni gradilište/adresu preuzimanja ili odvoza u rubrici labudice.");
+      }
     if (await submitReturnedCorrectionIfNeeded(data)) return;
       const { error } = await sb.rpc("submit_worker_report", {
         p_company_code: worker.company_code,
