@@ -2472,10 +2472,43 @@ function getFieldTankerEntries() {
   }).filter(x => x.site_name || x.asset_name || x.reading || x.liters || x.receiver);
 }
 
+function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "") {
+  const selected = String(selectedValue || "").trim();
+  const isVehicle = kind === "vehicle";
+  const assets = (workerAssetOptions || [])
+    .filter(asset => isVehicle ? isVehicleAsset(asset) : isMachineAsset(asset))
+    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
+
+  if (!assets.length) {
+    return `<option value="">${isVehicle ? "Nema vozila iz Direkcije" : "Nema mašina iz Direkcije"}</option>`;
+  }
+
+  return `<option value="">${isVehicle ? "Odaberi vozilo" : "Odaberi mašinu"}</option>` + assets.map(asset => {
+    const name = getAssetName(asset) || getAssetRegistration(asset) || "";
+    const reg = getAssetRegistration(asset);
+    const label = isVehicle ? formatAssetLabel(asset) : formatMachineLabel(asset);
+    const value = name || label;
+    const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(reg || "")}" data-asset-type="${escapeHtml(asset.asset_type || asset.type || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+function refreshOneFuelAssetSelect(entryEl) {
+  const sel = entryEl.querySelector(".f-asset-select");
+  if (!sel) return;
+  const kind = entryEl.querySelector(".f-asset-kind")?.value || "machine";
+  const old = sel.value;
+  sel.innerHTML = buildFuelAssetOptionsHtml(kind, old);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+}
+
 function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
   if (!list) return;
   const idx = list.querySelectorAll(".fuel-entry").length + 1;
+  const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
+  const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
+  const manualAsset = values.asset_custom || values.machine_custom || values.vehicle_custom || "";
   const div = document.createElement("div");
   div.className = "entry-card fuel-entry";
   div.innerHTML = `
@@ -2484,11 +2517,18 @@ function addFuelEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Za koju mašinu / vozilo</label>
-    <select class="f-machine"></select>
+    <label>Šta je tankovano</label>
+    <select class="f-asset-kind">
+      <option value="machine" ${kind === "vehicle" ? "" : "selected"}>Mašina</option>
+      <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
+    </select>
 
-    <label>Ako mašina nije gore dodata, upiši ručno</label>
-    <input class="f-machine-custom" placeholder="npr. agregat / druga mašina" value="${escapeHtml(values.machine_custom || "")}" />
+    <label>Izaberi iz Direkcije</label>
+    <select class="f-asset-select"></select>
+
+    <label>Ručno ako nije na listi</label>
+    <input class="f-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice" value="${escapeHtml(manualAsset)}" />
+    <p class="hint">Ako je firmina mašina/vozilo, izaberi iz liste Direkcije. Ako nije na listi, upiši ručno broj mašine ili tablice vozila.</p>
 
     <div class="mini-grid">
       <div>
@@ -2508,38 +2548,46 @@ function addFuelEntry(values = {}) {
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
+  div.querySelector(".f-asset-kind")?.addEventListener("change", () => refreshOneFuelAssetSelect(div));
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
-  refreshFuelMachineOptions();
+  refreshOneFuelAssetSelect(div);
 
-  if (values.machine) div.querySelector(".f-machine").value = values.machine;
+  if (selectedAsset) {
+    const sel = div.querySelector(".f-asset-select");
+    if (Array.from(sel.options).some(o => o.value === selectedAsset)) sel.value = selectedAsset;
+  }
 }
 
 function getFuelEntries() {
   return $$("#fuelEntries .fuel-entry").map((el, i) => {
-    const selected = el.querySelector(".f-machine")?.value || "";
-    const custom = el.querySelector(".f-machine-custom")?.value.trim() || "";
+    const kind = el.querySelector(".f-asset-kind")?.value || "machine";
+    const selected = el.querySelector(".f-asset-select")?.value || "";
+    const custom = el.querySelector(".f-asset-custom")?.value.trim() || "";
+    const select = el.querySelector(".f-asset-select");
+    const option = select?.options ? select.options[select.selectedIndex] : null;
+    const assetName = custom || selected;
     return {
       no: i + 1,
-      machine: custom || selected,
+      asset_kind: kind,
+      asset_type: kind,
+      asset_id: custom ? null : (option?.dataset?.assetId || null),
+      asset_name: assetName,
+      asset_custom: custom,
+      machine: assetName,
       machine_custom: custom,
+      vehicle: kind === "vehicle" ? assetName : "",
+      vehicle_custom: kind === "vehicle" ? custom : "",
       liters: el.querySelector(".f-liters")?.value || "",
       reading: el.querySelector(".f-reading")?.value || "",
       by: el.querySelector(".f-by")?.value.trim() || "",
       receiver: currentWorker?.full_name || ""
     };
-  }).filter(f => f.machine || f.liters || f.reading || f.by);
+  }).filter(f => f.asset_name || f.liters || f.reading || f.by);
 }
 
 function refreshFuelMachineOptions() {
-  const machines = getMachineEntries().map(m => m.name).filter(Boolean);
-  const vehicles = getVehicleEntries().map(v => v.name).filter(Boolean);
-  const choices = [...machines, ...vehicles].filter(Boolean);
-  $$("#fuelEntries .f-machine").forEach(sel => {
-    const old = sel.value;
-    sel.innerHTML = `<option value="">-- izaberi mašinu / vozilo --</option>` + choices.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-    if (choices.includes(old)) sel.value = old;
-  });
+  $$("#fuelEntries .fuel-entry").forEach(entryEl => refreshOneFuelAssetSelect(entryEl));
 }
 
 
