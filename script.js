@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.8";
+const APP_VERSION = "1.20.9";
 
 
 let sb = null;
@@ -2021,14 +2021,62 @@ function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
   return `<option value="">Odaberi mašinu</option>` + machines.map(m => assetOptionHtml(m, selected, formatMachineLabel)).join("");
 }
 
+function findMachineAssetForSmartInput(searchValue) {
+  const q = normalizeVehicleSearch(searchValue);
+  if (!q) return null;
+  const machines = getMachineAssetsFromDirection();
+  const exactCode = (workerAssetOptions || []).find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
+  if (exactCode) return exactCode;
+  const exactMachineCode = machines.find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
+  if (exactMachineCode) return exactMachineCode;
+  const exactName = machines.find(asset => {
+    const name = normalizeVehicleSearch(getAssetName(asset));
+    const label = normalizeVehicleSearch(formatMachineLabel(asset));
+    return name === q || label === q;
+  });
+  if (exactName) return exactName;
+  const matches = machines.filter(asset => machineMatchesSearch(asset, searchValue));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function updateMachineSmartResult(entryEl, asset, manualValue) {
+  const result = entryEl.querySelector(".m-picked");
+  if (!result) return;
+  if (asset) {
+    result.className = "asset-smart-result m-picked ok";
+    result.textContent = `Pronađena mašina: ${formatMachineLabel(asset)}`;
+    return;
+  }
+  const value = String(manualValue || "").trim();
+  if (value) {
+    result.className = "asset-smart-result m-picked warn";
+    result.textContent = `Nije pronađeno u Direkciji. Biće poslato kao ručni unos: ${value}`;
+    return;
+  }
+  result.className = "asset-smart-result m-picked";
+  result.textContent = "Upiši broj mašine iz Direkcije ili naziv ako nije na listi.";
+}
+
 function refreshOneMachineSelect(entryEl) {
   const sel = entryEl.querySelector(".m-name");
   if (!sel) return;
-  const old = sel.value;
   const search = entryEl.querySelector(".m-search")?.value || "";
-  sel.innerHTML = buildMachineOptionsHtml(old, search);
-  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
-  autoSelectExactAssetCode(sel, search);
+  const custom = entryEl.querySelector(".m-custom");
+  const exact = findMachineAssetForSmartInput(search);
+  sel.innerHTML = buildMachineOptionsHtml(exact ? getAssetName(exact) : "", search);
+  if (exact) {
+    const assetId = String(exact.id || "");
+    const option = Array.from(sel.options || []).find(o => String(o.dataset.assetId || "") === assetId)
+      || Array.from(sel.options || []).find(o => normalizeVehicleSearch(o.dataset.assetCode || "") === normalizeVehicleSearch(getAssetCode(exact)))
+      || Array.from(sel.options || []).find(o => o.value === getAssetName(exact));
+    if (option) sel.value = option.value;
+    if (custom) custom.value = "";
+    updateMachineSmartResult(entryEl, exact, "");
+  } else {
+    if (custom) custom.value = String(search || "").trim();
+    updateMachineSmartResult(entryEl, null, search);
+  }
+  refreshFuelMachineOptions();
 }
 
 function buildLowloaderMachineDatalistOptionsHtml() {
@@ -2742,36 +2790,34 @@ function addMachineEntry(values = {}) {
   const idx = list.querySelectorAll(".machine-entry").length + 1;
   const div = document.createElement("div");
   div.className = "entry-card machine-entry";
+  const initialSearch = values.asset_code || values.machine_code || values.code || values.custom || values.machine_custom || values.name || "";
   div.innerHTML = `
     <div class="entry-card-head">
       <strong>Mašina ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Interni broj / pretraga mašine</label>
-    <input class="m-search asset-code-search" placeholder="upisati broj mašine, npr. 101" value="" />
-
-    <label>Mašina</label>
-    <select class="m-name">${buildMachineOptionsHtml(values.name || "")}</select>
-    <p class="field-hint">Ovde se moraju videti mašine koje je Direkcija upisala u Mašine / vozila. Ako lista piše „Nema mašina”, proveri da je Tip = Mašina i da je radnik u istoj firmi.</p>
+    <label>Mašina / interni broj</label>
+    <input class="m-search asset-code-search smart-asset-input" placeholder="upiši broj ili naziv mašine, npr. 1 ili CAT 330" value="${escapeHtml(initialSearch)}" />
+    <div class="asset-smart-result m-picked">Upiši broj mašine iz Direkcije ili naziv ako nije na listi.</div>
     <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Direkcije</button>
 
-    <label>Ako mašina nije u listi, upiši ručno</label>
-    <input class="m-custom" placeholder="npr. zamenska mašina" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
+    <select class="m-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildMachineOptionsHtml(values.name || "")}</select>
+    <input class="m-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
 
     <div class="mini-grid">
       <div>
         <label>Početni sati / MTČ</label>
-        <input class="m-start" type="number" step="0.1" placeholder="npr. 1250.5" value="${escapeHtml(values.start || "")}" />
+        <input class="m-start numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(values.start || "")}" />
       </div>
       <div>
         <label>Završni sati / MTČ</label>
-        <input class="m-end" type="number" step="0.1" placeholder="npr. 1258.5" value="${escapeHtml(values.end || "")}" />
+        <input class="m-end numeric-text" type="text" inputmode="decimal" placeholder="npr. 1258.5" value="${escapeHtml(values.end || "")}" />
       </div>
     </div>
 
     <label>Ukupno sati rada</label>
-    <input class="m-hours" type="number" step="0.1" placeholder="automatski ili ručno" value="${escapeHtml(values.hours || "")}" />
+    <input class="m-hours numeric-text" type="text" inputmode="decimal" placeholder="automatski ili ručno" value="${escapeHtml(values.hours || "")}" />
 
     <label>Opis rada za ovu mašinu</label>
     <input class="m-work" placeholder="iskop, utovar, ravnanje..." value="${escapeHtml(values.work || "")}" />
@@ -2782,8 +2828,8 @@ function addMachineEntry(values = {}) {
   const hoursEl = div.querySelector(".m-hours");
 
   function calcHours() {
-    const s = parseFloat(startEl.value);
-    const e = parseFloat(endEl.value);
+    const s = parseFloat(String(startEl.value || "").replace(",", "."));
+    const e = parseFloat(String(endEl.value || "").replace(",", "."));
     if (!Number.isNaN(s) && !Number.isNaN(e) && e >= s) {
       hoursEl.value = (Math.round((e - s) * 10) / 10).toString();
     }
