@@ -7,7 +7,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.14.4";
+const APP_VERSION = "1.17.9";
 
 
 let sb = null;
@@ -18,6 +18,7 @@ let editingMaterialId = null;
 let currentWorker = null;
 let workerAssetOptions = [];
 let workerSiteOptions = [];
+let workerMaterialOptions = [];
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -997,7 +998,8 @@ function hasDailyReportData(r) {
   const hasMachines = Array.isArray(d.machines) && d.machines.some(m => m && Object.values(m).some(Boolean));
   const hasVehicles = Array.isArray(d.vehicles) && d.vehicles.some(v => v && Object.values(v).some(Boolean));
   const hasFuel = Array.isArray(d.fuel_entries) && d.fuel_entries.some(f => f && Object.values(f).some(Boolean));
-  const hasMaterial = !!(d.material || d.quantity || d.unit || d.warehouse_type || d.warehouse_item || d.warehouse_qty);
+  const hasMaterialEntries = Array.isArray(d.material_entries || d.material_movements) && (d.material_entries || d.material_movements).some(m => m && Object.values(m).some(Boolean));
+  const hasMaterial = hasMaterialEntries || !!(d.material || d.quantity || d.unit || d.warehouse_type || d.warehouse_item || d.warehouse_qty);
   return !!(d.description || d.hours || d.site_name || hasMachines || hasVehicles || hasFuel || hasMaterial || d.note);
 }
 
@@ -1341,9 +1343,36 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </tbody>
     </table>` : `<p class="report-empty">Nema terenskih sipanja cisternom.</p>`;
 
+  const materialTable = materialEntries.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Radnja</th>
+          <th>Materijal</th>
+          <th>Količina</th>
+          <th>Jedinica</th>
+          <th>Napomena</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${materialEntries.map((m, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(m.action || m.material_action)}</td>
+            <td>${val(m.material || m.name)}</td>
+            <td>${val(m.quantity || m.qty)}</td>
+            <td>${val(m.unit)}</td>
+            <td>${val(m.note)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : ``;
+
   const showDefectSection = options.showDefect === true;
   const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
-  const hasMaterial = safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
+  const hasMaterialEntries = materialEntries.some(entry => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
+  const hasMaterial = hasMaterialEntries || safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
 
   const hasUsefulEntry = (entry) => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== "");
   const hasWorkers = workers.some(hasUsefulEntry);
@@ -1419,7 +1448,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       ${hasMaterial ? `
         <div class="report-section">
           <h4>Materijal / magacin</h4>
-          <div class="report-kv">
+          ${hasMaterialEntries ? materialTable : `<div class="report-kv">
             ${rows([
               ["Materijal", d.material],
               ["Količina", d.quantity],
@@ -1428,7 +1457,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
               ["Magacin stavka", d.warehouse_item],
               ["Magacin količina", d.warehouse_qty]
             ])}
-          </div>
+          </div>`}
         </div>` : ""}
 
       <details class="report-section report-excel-section report-excel-details">
@@ -2059,6 +2088,229 @@ async function loadWorkerSites(selectedName = "") {
   }
 }
 
+
+function normalizeWorkerMaterialList(rows = []) {
+  const seen = new Set();
+  return (Array.isArray(rows) ? rows : [])
+    .map(m => {
+      if (typeof m === "string") return { name: m, unit: "", category: "" };
+      return {
+        id: m?.id || "",
+        name: m?.name || m?.material || m?.title || m?.label || "",
+        unit: m?.unit || "",
+        category: m?.category || ""
+      };
+    })
+    .filter(m => {
+      const key = String(m.name || "").trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), "sr"));
+}
+
+function buildWorkerMaterialOptionsHtml(selectedValue = "") {
+  const selected = String(selectedValue || "").trim();
+  const materials = normalizeWorkerMaterialList(workerMaterialOptions);
+
+  if (!materials.length) {
+    return `<option value="">Nema materijala iz Direkcije</option>`;
+  }
+
+  return `<option value="">Odaberi vrstu materijala</option>` + materials.map(m => {
+    const labelParts = [m.name];
+    if (m.unit) labelParts.push(m.unit);
+    if (m.category) labelParts.push(m.category);
+    const label = labelParts.filter(Boolean).join(" · ");
+    const isSelected = selected && selected === m.name ? "selected" : "";
+    return `<option value="${escapeHtml(m.name)}" data-material-id="${escapeHtml(m.id || "")}" data-unit="${escapeHtml(m.unit || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+function refreshWorkerMaterialSelect(selectedValue = "") {
+  const select = $("#wrMaterialSelect");
+  if (!select) return;
+  const old = selectedValue || select.value || "";
+  select.innerHTML = buildWorkerMaterialOptionsHtml(old);
+  if (old && Array.from(select.options).some(o => o.value === old)) select.value = old;
+}
+
+function getSelectedWorkerMaterial() {
+  const manual = $("#wrMaterialManual")?.value?.trim() || "";
+  const selected = $("#wrMaterialSelect")?.value?.trim() || "";
+  return manual || selected;
+}
+
+async function loadWorkerMaterials(selectedValue = "") {
+  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+  const permissionNames = worker?.permissions?.allowed_material_names || [];
+
+  try {
+    let materials = normalizeWorkerMaterialList(permissionNames);
+
+    if (!materials.length && worker?.company_id && sb) {
+      const { data, error } = await sb.rpc("director_list_materials", {
+        p_company_id: worker.company_id
+      });
+      if (!error) materials = normalizeWorkerMaterialList(data || []);
+    }
+
+    if (!materials.length && worker?.company_id && sb) {
+      const { data, error } = await sb
+        .from("materials")
+        .select("id,name,unit,category")
+        .eq("company_id", worker.company_id)
+        .order("name", { ascending: true });
+      if (!error) materials = normalizeWorkerMaterialList(data || []);
+    }
+
+    workerMaterialOptions = materials;
+  } catch (e) {
+    workerMaterialOptions = normalizeWorkerMaterialList(permissionNames);
+  }
+
+  refreshWorkerMaterialSelect(selectedValue);
+  refreshMaterialEntrySelectors();
+}
+
+function refreshOneMaterialEntrySelect(entryEl) {
+  const sel = entryEl.querySelector(".mat-select");
+  if (!sel) return;
+  const old = sel.value || "";
+  sel.innerHTML = buildWorkerMaterialOptionsHtml(old);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+}
+
+function refreshMaterialEntrySelectors() {
+  $$("#materialEntries .material-entry").forEach(entryEl => refreshOneMaterialEntrySelect(entryEl));
+}
+
+
+function buildMaterialUnitOptionsHtml(selectedValue = "") {
+  const selected = String(selectedValue || "").trim();
+  const units = [
+    { value: "", label: "Odaberi meru" },
+    { value: "t", label: "t — tona" },
+    { value: "m³", label: "m³ — kubik" },
+    { value: "kg", label: "kg" },
+    { value: "m", label: "m — metar" },
+    { value: "m²", label: "m² — kvadrat" },
+    { value: "kom", label: "kom — komad" },
+    { value: "paleta", label: "paleta" },
+    { value: "kamion", label: "kamion" },
+    { value: "tura", label: "tura" },
+    { value: "ručno", label: "ručno / druga mera" }
+  ];
+  return units.map(u => `<option value="${escapeHtml(u.value)}" ${selected === u.value ? "selected" : ""}>${escapeHtml(u.label)}</option>`).join("");
+}
+
+function updateMaterialUnitManualVisibility(entryEl) {
+  if (!entryEl) return;
+  const sel = entryEl.querySelector(".mat-unit");
+  const manualWrap = entryEl.querySelector(".mat-unit-manual-wrap");
+  if (!sel || !manualWrap) return;
+  manualWrap.classList.toggle("hidden", sel.value !== "ručno");
+}
+
+function addMaterialEntry(values = {}) {
+  const list = $("#materialEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".material-entry").length + 1;
+  const action = values.action || values.material_action || values.type || "ulaz";
+  const selectedMaterial = values.material || values.name || "";
+  const manualMaterial = values.material_custom || values.manual || "";
+  const savedUnit = values.unit || values.measure || values.measure_unit || "";
+  const isKnownUnit = ["", "t", "m³", "kg", "m", "m²", "kom", "paleta", "kamion", "tura"].includes(savedUnit);
+  const unitSelectValue = isKnownUnit ? savedUnit : (savedUnit ? "ručno" : "");
+  const unitManualValue = isKnownUnit ? "" : savedUnit;
+  const div = document.createElement("div");
+  div.className = "entry-card material-entry";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Materijal ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+
+    <label>Radnja sa materijalom</label>
+    <select class="mat-action">
+      <option value="ulaz" ${action === "ulaz" ? "selected" : ""}>Ulaz materijala na gradilište</option>
+      <option value="izlaz" ${action === "izlaz" ? "selected" : ""}>Izlaz materijala sa gradilišta</option>
+      <option value="ugradnja" ${action === "ugradnja" ? "selected" : ""}>Ugradnja materijala</option>
+    </select>
+
+    <label>Vrsta materijala iz Direkcije</label>
+    <select class="mat-select"></select>
+
+    <label>Ručno ako nije u listi</label>
+    <input class="mat-manual" placeholder="npr. kamen 0-31, pesak, rizla..." value="${escapeHtml(manualMaterial)}" />
+
+    <div class="mini-grid">
+      <div>
+        <label>Količina <span class="muted">(ako treba)</span></label>
+        <input class="mat-qty numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 24" value="${escapeHtml(values.quantity || values.qty || "")}" />
+      </div>
+      <div>
+        <label>Jedinica mere</label>
+        <select class="mat-unit">${buildMaterialUnitOptionsHtml(unitSelectValue)}</select>
+      </div>
+      <div class="mat-unit-manual-wrap hidden">
+        <label>Ručna mera</label>
+        <input class="mat-unit-manual" placeholder="npr. džak, bala, set..." value="${escapeHtml(unitManualValue)}" />
+      </div>
+      <div>
+        <label>Napomena <span class="muted">(opciono)</span></label>
+        <input class="mat-note" placeholder="npr. dovezao Marko / vraćeno u bazu" value="${escapeHtml(values.note || "")}" />
+      </div>
+    </div>
+  `;
+  div.querySelector(".remove-entry").addEventListener("click", () => { div.remove(); renumberMaterialEntries(); });
+  div.querySelector(".mat-unit")?.addEventListener("change", () => updateMaterialUnitManualVisibility(div));
+  updateMaterialUnitManualVisibility(div);
+  list.appendChild(div);
+  preventNumberInputScrollChanges(div);
+  refreshOneMaterialEntrySelect(div);
+  if (selectedMaterial) {
+    const sel = div.querySelector(".mat-select");
+    if (Array.from(sel.options).some(o => o.value === selectedMaterial)) sel.value = selectedMaterial;
+  }
+}
+
+function renumberMaterialEntries() {
+  $$("#materialEntries .material-entry").forEach((card, i) => {
+    const title = card.querySelector(".entry-card-head strong");
+    if (title) title.textContent = `Materijal ${i + 1}`;
+  });
+}
+
+function getMaterialEntries() {
+  return $$("#materialEntries .material-entry").map((el, i) => {
+    const action = el.querySelector(".mat-action")?.value || "";
+    const selected = el.querySelector(".mat-select")?.value || "";
+    const manual = el.querySelector(".mat-manual")?.value.trim() || "";
+    const select = el.querySelector(".mat-select");
+    const option = select?.options ? select.options[select.selectedIndex] : null;
+    const materialName = manual || selected;
+    const unitSelect = el.querySelector(".mat-unit")?.value || "";
+    const unitManual = el.querySelector(".mat-unit-manual")?.value.trim() || "";
+    const selectedMaterialDefaultUnit = option?.dataset?.unit || "";
+    const finalUnit = unitSelect === "ručno" ? unitManual : (unitSelect || selectedMaterialDefaultUnit || "");
+    return {
+      no: i + 1,
+      action,
+      material_action: action,
+      material: materialName,
+      name: materialName,
+      material_id: manual ? null : (option?.dataset?.materialId || null),
+      material_custom: manual,
+      quantity: el.querySelector(".mat-qty")?.value.trim() || "",
+      unit: finalUnit,
+      measure_unit: finalUnit,
+      note: el.querySelector(".mat-note")?.value.trim() || ""
+    };
+  }).filter(m => m.action || m.material || m.quantity || m.note);
+}
+
 function workerSetSections(perms) {
   // v1.16.5 pravilo:
   // "Ime gradilišta i datum/godina" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Direkcije.
@@ -2628,6 +2880,7 @@ window.addFuelEntry = addFuelEntry;
 window.addVehicleEntry = addVehicleEntry;
 window.addFieldTankerEntry = addFieldTankerEntry;
 window.addLowloaderEntry = addLowloaderEntry;
+window.addMaterialEntry = addMaterialEntry;
 window.renumberLowloaderEntries = renumberLowloaderEntries;
 window.refreshFuelMachineOptions = refreshFuelMachineOptions;
 
@@ -2708,6 +2961,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
     }
     (d.fuel_entries || []).forEach(f => addFuelEntry(f));
+    (d.material_entries || d.material_movements || []).forEach(m => addMaterialEntry(m));
 
     Object.entries({
       wrSiteName:"site_name",
@@ -2718,9 +2972,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       wrKmEnd:"km_end",
       wrRoute:"route",
       wrTours:"tours",
-      wrMaterial:"material",
-      wrQuantity:"quantity",
-      wrUnit:"unit",
+      wrMaterialManual:"material",
       wrWarehouseType:"warehouse_type",
       wrWarehouseItem:"warehouse_item",
       wrWarehouseQty:"warehouse_qty",
@@ -2759,6 +3011,7 @@ function collectWorkerData() {
   const canFieldTanker = !!perms.field_tanker;
   const lowloaderMoves = canLowloader ? getLowloaderEntries() : [];
   const fieldTankerEntries = canFieldTanker ? getFieldTankerEntries() : [];
+  const materialEntries = canMaterials ? getMaterialEntries() : [];
 
   // v1.17.4: Labudica ne mora imati glavno gradilište iz osnovne rubrike.
   // Ako radnik popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
@@ -2806,9 +3059,11 @@ function collectWorkerData() {
     route: vehicles.map(v => v.route).filter(Boolean).join(" | "),
     tours: vehicles.map(v => v.tours).filter(Boolean).join(" | "),
     cubic_m3: vehicles.map(v => v.cubic_m3).filter(Boolean).join(" | "),
-    material: canMaterials ? $("#wrMaterial").value.trim() : "",
-    quantity: canMaterials ? $("#wrQuantity").value : "",
-    unit: canMaterials ? $("#wrUnit").value.trim() : "",
+    material_entries: materialEntries,
+    material_movements: materialEntries,
+    material: canMaterials ? materialEntries.map(m => `${m.action || ""}: ${m.material || ""}`.trim()).filter(Boolean).join(" | ") : "",
+    quantity: canMaterials ? materialEntries.map(m => m.quantity).filter(Boolean).join(" | ") : "",
+    unit: canMaterials ? materialEntries.map(m => m.unit).filter(Boolean).join(" | ") : "",
     warehouse_type: canWarehouse ? $("#wrWarehouseType").value : "",
     warehouse_item: canWarehouse ? $("#wrWarehouseItem").value.trim() : "",
     warehouse_qty: canWarehouse ? $("#wrWarehouseQty").value.trim() : "",
@@ -2825,7 +3080,7 @@ function collectWorkerData() {
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrMaterial","wrQuantity","wrUnit","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
@@ -2835,6 +3090,7 @@ function clearWorkerForm() {
   if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
   if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
   if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
+  if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
   if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
@@ -2863,6 +3119,7 @@ function loadDraft() {
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
     if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
     if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
+    if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
     (d.workers || d.worker_entries || []).forEach(w => addWorkerEntry(w));
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
@@ -2872,9 +3129,10 @@ function loadDraft() {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
     }
     (d.fuel_entries || []).forEach(f => addFuelEntry(f));
+    (d.material_entries || d.material_movements || []).forEach(m => addMaterialEntry(m));
 
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterial:"material", wrQuantity:"quantity", wrUnit:"unit", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_name", wrDefectSiteName:"defect_site_name", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_name", wrDefectSiteName:"defect_site_name", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
   } catch {}
 }
@@ -3682,7 +3940,7 @@ async function openWorkerForm() {
   workerSetSections(currentWorker.permissions || {});
   setInternalHeader("Terenski unos", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   show("WorkerForm");
-  await Promise.all([loadWorkerSites(), loadWorkerAssets()]);
+  await Promise.all([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
   loadDraft();
   loadWorkerReturnedReports();
   const perms = currentWorker.permissions || {};
