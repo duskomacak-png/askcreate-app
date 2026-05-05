@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1175" />
+  <link rel="stylesheet" href="style.css?v=1176" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -209,9 +209,21 @@
             </div>
             <div class="row person-form-actions"><button id="addPersonBtn" class="primary">Sačuvaj osobu</button><button id="cancelEditPersonBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
-          <div class="card">
-            <h3>Ljudi u firmi</h3>
-            <div id="peopleList" class="list"></div>
+          <div class="right-stack">
+            <div id="workerPreviewCard" class="card worker-preview-card hidden">
+              <div class="worker-preview-head">
+                <div>
+                  <p class="preview-eyebrow">Pregled pre čuvanja</p>
+                  <h3>Kako će radnik videti unos</h3>
+                </div>
+                <button id="hideWorkerPreviewBtn" class="secondary small-action" type="button">Skloni</button>
+              </div>
+              <div id="workerPreviewBody" class="worker-preview-body"></div>
+            </div>
+            <div class="card">
+              <h3>Ljudi u firmi</h3>
+              <div id="peopleList" class="list"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -551,6 +563,6 @@
     <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1175"></script>
+  <script src="script.js?v=1176"></script>
 </body>
 </html>

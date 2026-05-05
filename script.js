@@ -249,6 +249,102 @@ function clearPersonForm() {
   editingPersonId = null;
   setPersonFormMode("add");
   refreshPersonMaterialPermissions();
+  hideWorkerPreview();
+}
+
+
+const WORKER_PREVIEW_SECTIONS = [
+  { key: "daily_work", title: "Ime gradilišta i datum/godina", lines: ["Datum / godina", "Gradilište iz liste Direkcije"] },
+  { key: "workers", title: "Radnici na gradilištu", lines: ["Ime i prezime radnika", "Sati rada", "+ Dodaj radnika"] },
+  { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz Direkcije ili ručni unos", "Početni i završni MTČ", "Sati rada"] },
+  { key: "vehicles", title: "Rad sa kamionom / vozilom", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
+  { key: "lowloader", title: "Prevoz mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
+  { key: "fuel", title: "Sipanje goriva u svoju mašinu", lines: ["Mašina", "MTČ/KM", "Litara", "Ko je sipao / primio"] },
+  { key: "field_tanker", title: "Tankanje goriva cisternom", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Gorivo primio"] },
+  { key: "materials", title: "Materijal", lines: ["Vrsta materijala", "Količina", "Jedinica mere"] },
+  { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
+  { key: "defects", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
+  { key: "view_reports", title: "Pregled izveštaja", lines: ["Pregled odobrenih / vraćenih izveštaja ako je uključeno za ovog korisnika"] },
+  { key: "approve_reports", title: "Odobravanje", lines: ["Odobravanje ili vraćanje izveštaja, samo za ovlašćene korisnike"] },
+  { key: "excel_export", title: "Izvoz u Excel", lines: ["Priprema i preuzimanje Excel/CSV izvoza"] },
+  { key: "manage_people", title: "Upravljanje osobama", lines: ["Dodavanje i izmena ljudi u firmi"] },
+  { key: "settings", title: "Podešavanja firme", lines: ["Osnovna podešavanja firme"] }
+];
+
+function getPersonPreviewData() {
+  const first = $("#personFirst")?.value.trim() || "Radnik";
+  const last = $("#personLast")?.value.trim() || "";
+  const role = $("#personFunction")?.value.trim() || "terenski unos";
+  const code = $("#personCode")?.value.trim() || "šifra radnika";
+  const selectedKeys = $$(".perm:checked").map(ch => ch.value);
+  const materialNames = $$(".material-perm:checked").map(ch => ch.dataset.name || ch.value).filter(Boolean);
+  return { first, last, role, code, selectedKeys, materialNames };
+}
+
+function renderWorkerPreview(show = true) {
+  const card = $("#workerPreviewCard");
+  const body = $("#workerPreviewBody");
+  if (!card || !body) return;
+
+  const d = getPersonPreviewData();
+  const hasAnyFormValue = ["personFirst", "personLast", "personFunction", "personCode"].some(id => ($("#" + id)?.value || "").trim());
+  const hasSelection = d.selectedKeys.length > 0 || d.materialNames.length > 0;
+
+  if (!show || (!hasAnyFormValue && !hasSelection)) {
+    card.classList.add("hidden");
+    body.innerHTML = "";
+    return;
+  }
+
+  const selected = WORKER_PREVIEW_SECTIONS.filter(s => d.selectedKeys.includes(s.key));
+  const sectionHtml = selected.length ? selected.map(section => `
+    <div class="worker-preview-section">
+      <strong>${escapeHtml(section.title)}</strong>
+      <ul>${section.lines.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
+    </div>
+  `).join("") : `<p class="muted">Još nije štiklirana nijedna rubrika. Kad štikliraš rubriku levo, ovde se odmah vidi šta radnik dobija.</p>`;
+
+  const materialsHtml = d.materialNames.length ? `
+    <div class="worker-preview-section">
+      <strong>Dozvoljeni materijali</strong>
+      <ul>${d.materialNames.map(name => `<li>${escapeHtml(name)}</li>`).join("")}</ul>
+    </div>
+  ` : "";
+
+  body.innerHTML = `
+    <div class="phone-preview-shell">
+      <div class="phone-preview-topbar">Terenski unos</div>
+      <div class="phone-preview-card">
+        <h4>Dobrodošli, ${escapeHtml((d.first + " " + d.last).trim())}</h4>
+        <p>${escapeHtml(currentCompany?.name || "Firma")} · ${escapeHtml(d.role)}</p>
+        <small>Šifra radnika: ${escapeHtml(d.code)}</small>
+      </div>
+      <div class="phone-preview-card">
+        <h4>Rubrike koje će radnik videti</h4>
+        ${sectionHtml}
+        ${materialsHtml}
+      </div>
+    </div>
+  `;
+  card.classList.remove("hidden");
+}
+
+function hideWorkerPreview() {
+  renderWorkerPreview(false);
+}
+
+function bindPersonPreviewEvents() {
+  ["personFirst", "personLast", "personFunction", "personCode"].forEach(id => {
+    const el = $("#" + id);
+    if (el) el.addEventListener("input", () => renderWorkerPreview(true));
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target?.classList?.contains("perm") || e.target?.classList?.contains("material-perm")) {
+      renderWorkerPreview(true);
+    }
+  });
+  const hideBtn = $("#hideWorkerPreviewBtn");
+  if (hideBtn) hideBtn.addEventListener("click", hideWorkerPreview);
 }
 
 window.editPerson = async (id) => {
@@ -275,6 +371,7 @@ window.editPerson = async (id) => {
     await refreshPersonMaterialPermissions(selectedMaterialIds);
 
     setPersonFormMode("edit");
+    renderWorkerPreview(true);
     toast("Profil radnika je otvoren za izmenu.");
     const title = $("#personFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1473,6 +1570,7 @@ async function refreshPersonMaterialPermissions(selectedIds = null) {
     return;
   }
   renderPersonMaterialPermissions(data || [], selectedIds);
+  renderWorkerPreview(true);
 }
 
 
@@ -3416,6 +3514,7 @@ function bindEvents() {
   }));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
+  bindPersonPreviewEvents();
 
   $("#addSiteBtn").addEventListener("click", async () => {
     try {
