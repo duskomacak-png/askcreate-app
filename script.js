@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.20.2";
+const APP_VERSION = "1.20.3";
 
 
 let sb = null;
@@ -1168,8 +1168,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
     [];
 
   const reportRows = [];
+  const previewLeaveRequest = d.leave_request || {};
+  const previewHasLeave = !!(safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || Object.values(previewLeaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
+  const previewHasWarehouse = !!(safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty));
 
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length)
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length, materialEntries.length, previewHasLeave ? 1 : 0, previewHasWarehouse ? 1 : 0)
   for (let i = 0; i < maxRows; i++) {
     const w = workers[i] || {};
     const m = machines[i] || {};
@@ -1177,6 +1180,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
     const ll = lowloaders[i] || {};
     const f = fuels[i] || {};
     const ft = fieldTankers[i] || {};
+    const mat = materialEntries[i] || {};
     reportRows.push(`
       <tr>
         <td>${i + 1}</td>
@@ -1218,6 +1222,19 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""))}</td>
         <td>${val(ft.liters)}</td>
         <td>${val(ft.receiver || ft.received_by)}</td>
+        <td>${val(mat.action || mat.material_action)}</td>
+        <td>${val(mat.material || mat.name || d.material)}</td>
+        <td>${val(mat.quantity || mat.qty || d.quantity)}</td>
+        <td>${val(mat.unit || d.unit)}</td>
+        <td>${val(mat.note || d.material_note)}</td>
+        <td>${val(d.leave_request_type || leaveRequest.leave_label || leaveRequest.label)}</td>
+        <td>${val(d.leave_date || leaveRequest.leave_date || leaveRequest.date)}</td>
+        <td>${val(d.leave_from || leaveRequest.date_from)}</td>
+        <td>${val(d.leave_to || leaveRequest.date_to)}</td>
+        <td>${val(d.leave_note || leaveRequest.leave_note || leaveRequest.note)}</td>
+        <td>${val(d.warehouse_type)}</td>
+        <td>${val(d.warehouse_item)}</td>
+        <td>${val(d.warehouse_qty)}</td>
       </tr>
     `);
   }
@@ -1266,6 +1283,19 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>Cisterna MTČ</th>
             <th>Cisterna litara</th>
             <th>Gorivo primio</th>
+            <th>Radnja materijala</th>
+            <th>Materijal</th>
+            <th>Količina</th>
+            <th>Jedinica</th>
+            <th>Napomena materijala</th>
+            <th>Vrsta odsustva</th>
+            <th>Datum slobodnog dana</th>
+            <th>Godišnji od</th>
+            <th>Godišnji do</th>
+            <th>Napomena odsustva</th>
+            <th>Magacin tip</th>
+            <th>Magacin stavka</th>
+            <th>Magacin količina</th>
           </tr>
         </thead>
         <tbody>${reportRows.join("")}</tbody>
@@ -1297,6 +1327,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
+          <th>Broj</th>
           <th>Mašina</th>
           <th>Početak MTČ/KM</th>
           <th>Kraj MTČ/KM</th>
@@ -1475,6 +1506,17 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </tbody>
     </table>` : ``;
 
+
+
+  const hasWarehouse = safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
+  const warehouseBox = hasWarehouse ? `<div class="report-kv report-sub-kv">
+    ${rows([
+      ["Magacin tip", d.warehouse_type],
+      ["Magacin stavka", d.warehouse_item],
+      ["Magacin količina", d.warehouse_qty]
+    ])}
+  </div>` : "";
+
   const showDefectSection = options.showDefect === true;
   const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
   const hasMaterialEntries = materialEntries.some(entry => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
@@ -1570,7 +1612,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       ${hasMaterial ? `
         <div class="report-section">
           <h4>Materijal / magacin</h4>
-          ${hasMaterialEntries ? materialTable : `<div class="report-kv">
+          ${hasMaterialEntries ? materialTable + warehouseBox : `<div class="report-kv">
             ${rows([
               ["Materijal", d.material],
               ["Količina", d.quantity],
@@ -3964,6 +4006,9 @@ const EXPORT_COLUMNS = [
   { key:"quantity", label:"Količina" },
   { key:"unit", label:"Jedinica" },
   { key:"material_note", label:"Napomena za materijal" },
+  { key:"warehouse_type", label:"Magacin tip" },
+  { key:"warehouse_item", label:"Magacin stavka" },
+  { key:"warehouse_qty", label:"Magacin količina" },
   { key:"leave_type", label:"Vrsta odsustva" },
   { key:"leave_date", label:"Datum slobodnog dana" },
   { key:"leave_from", label:"Godišnji od" },
@@ -4028,6 +4073,12 @@ const EXPORT_GROUPS = [
     title: "Materijal",
     hint: "Materijal, količina i jedinica mere.",
     keys: ["material_action", "material", "quantity", "unit", "material_note"]
+  },
+  {
+    id: "warehouse",
+    title: "Magacin",
+    hint: "Ulaz/izlaz/stanje u magacinu ako radnik ima tu rubriku.",
+    keys: ["warehouse_type", "warehouse_item", "warehouse_qty"]
   },
   {
     id: "leave",
@@ -4237,6 +4288,9 @@ function flattenReportRowsForExport(r) {
       quantity: mat.quantity || mat.qty || d.quantity || "",
       unit: mat.unit || d.unit || "",
       material_note: mat.note || "",
+      warehouse_type: d.warehouse_type || "",
+      warehouse_item: d.warehouse_item || "",
+      warehouse_qty: d.warehouse_qty || "",
       leave_type: d.leave_request_type || leaveRequest.leave_label || leaveRequest.label || "",
       leave_date: d.leave_date || leaveRequest.leave_date || leaveRequest.date || "",
       leave_from: d.leave_from || leaveRequest.date_from || "",
