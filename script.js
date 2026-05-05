@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.19.2";
+const APP_VERSION = "1.19.3";
 
 
 let sb = null;
@@ -1203,7 +1203,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(ll.km_end)}</td>
         <td>${val(ll.km_total)}</td>
         <td>${val(ll.machine)}</td>
-        <td>${val(f.asset_name || f.machine || f.vehicle)}</td>
+        <td>${val(f.asset_name || f.machine || f.vehicle || f.other)}</td>
         <td>${val(f.liters)}</td>
         <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
         <td>${val(f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""))}</td>
@@ -1397,8 +1397,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
         ${fuels.map((f, i) => `
           <tr>
             <td>${i + 1}</td>
-            <td>${val(f.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
-            <td>${val(f.asset_name || f.machine || f.vehicle)}</td>
+            <td>${val(assetKindLabel(f.asset_kind))}</td>
+            <td>${val(f.asset_name || f.machine || f.vehicle || f.other)}</td>
             <td>${val(f.liters)}</td>
             <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
             <td>${val(f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""))}</td>
@@ -1428,8 +1428,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <tr>
             <td>${i + 1}</td>
             <td>${val(ft.site_name)}</td>
-            <td>${val(ft.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
-            <td>${val(ft.asset_name || ft.machine || ft.vehicle)}</td>
+            <td>${val(assetKindLabel(ft.asset_kind))}</td>
+            <td>${val(ft.asset_name || ft.machine || ft.vehicle || ft.other)}</td>
             <td>${val(ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""))}</td>
             <td>${val(ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""))}</td>
             <td>${val(ft.liters)}</td>
@@ -1757,6 +1757,17 @@ function isVehicleAsset(asset) {
   return ["vehicle", "vozilo", "vehicles", "vozila", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica", "auto", "kombinovano vozilo"].includes(t);
 }
 
+function isOtherAsset(asset) {
+  const t = getAssetType(asset);
+  return ["other", "ostalo", "alat", "tool", "tools", "oprema", "equipment", "agregat", "vibro", "vibro ploca", "vibro ploča", "vibroploca", "vibroploča"].includes(t);
+}
+
+function assetKindLabel(kind) {
+  if (kind === "vehicle") return "Vozilo";
+  if (kind === "other") return "Ostalo";
+  return "Mašina";
+}
+
 function formatAssetLabel(asset) {
   const parts = [getAssetName(asset) || "Vozilo"];
   const reg = getAssetRegistration(asset);
@@ -1768,8 +1779,8 @@ function formatAssetLabel(asset) {
 function isMachineAsset(asset) {
   const t = getAssetType(asset);
   if (!t) return true;
-  if (isVehicleAsset(asset)) return false;
-  return ["machine", "machines", "machinery", "masina", "masine", "mašina", "mašine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "utovarivač", "finišer", "finiser", "oprema"].includes(t) || !isVehicleAsset(asset);
+  if (isVehicleAsset(asset) || isOtherAsset(asset)) return false;
+  return ["machine", "machines", "machinery", "masina", "masine", "mašina", "mašine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "utovarivač", "finišer", "finiser"].includes(t);
 }
 
 function formatMachineLabel(asset) {
@@ -1777,6 +1788,37 @@ function formatMachineLabel(asset) {
   const reg = getAssetRegistration(asset);
   if (reg) parts.push(reg);
   return parts.filter(Boolean).join(" · ");
+}
+
+function formatOtherAssetLabel(asset) {
+  const parts = [getAssetName(asset) || "Ostalo"];
+  const reg = getAssetRegistration(asset);
+  if (reg) parts.push(reg);
+  return parts.filter(Boolean).join(" · ");
+}
+
+function filterAssetsByFuelKind(asset, kind) {
+  if (kind === "vehicle") return isVehicleAsset(asset);
+  if (kind === "other") return isOtherAsset(asset);
+  return isMachineAsset(asset);
+}
+
+function fuelKindEmptyText(kind) {
+  if (kind === "vehicle") return "Nema vozila iz Direkcije";
+  if (kind === "other") return "Nema opreme / ostalog iz Direkcije";
+  return "Nema mašina iz Direkcije";
+}
+
+function fuelKindChooseText(kind) {
+  if (kind === "vehicle") return "Odaberi vozilo";
+  if (kind === "other") return "Odaberi ostalo / opremu";
+  return "Odaberi mašinu";
+}
+
+function formatFuelKindAssetLabel(asset, kind) {
+  if (kind === "vehicle") return formatAssetLabel(asset);
+  if (kind === "other") return formatOtherAssetLabel(asset);
+  return formatMachineLabel(asset);
 }
 
 function machineMatchesSearch(asset, searchValue) {
@@ -2726,19 +2768,18 @@ function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
 
 function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "") {
   const selected = String(selectedValue || "").trim();
-  const isVehicle = kind === "vehicle";
   const assets = (workerAssetOptions || [])
-    .filter(asset => isVehicle ? isVehicleAsset(asset) : isMachineAsset(asset))
+    .filter(asset => filterAssetsByFuelKind(asset, kind))
     .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
 
   if (!assets.length) {
-    return `<option value="">${isVehicle ? "Nema vozila iz Direkcije" : "Nema mašina iz Direkcije"}</option>`;
+    return `<option value="">${fuelKindEmptyText(kind)}</option>`;
   }
 
-  return `<option value="">${isVehicle ? "Odaberi vozilo" : "Odaberi mašinu"}</option>` + assets.map(asset => {
+  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => {
     const name = getAssetName(asset) || getAssetRegistration(asset) || "";
     const reg = getAssetRegistration(asset);
-    const label = isVehicle ? formatAssetLabel(asset) : formatMachineLabel(asset);
+    const label = formatFuelKindAssetLabel(asset, kind);
     const value = name || label;
     const type = asset.asset_type || asset.type || "";
     const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
@@ -2770,7 +2811,7 @@ function addFieldTankerEntry(values = {}) {
   const idx = list.querySelectorAll(".field-tanker-entry").length + 1;
   const selectedSite = values.site_name || values.site || "";
   const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
-  const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
+  const kind = values.asset_kind || values.asset_type || values.kind || (values.other ? "other" : (values.vehicle ? "vehicle" : "machine"));
   const oldReading = values.reading || values.mtc_km || "";
   const kmValue = values.km || values.current_km || values.kilometers || values.odometer || (kind === "vehicle" ? oldReading : "");
   const mtcValue = values.mtc || values.current_mtc || values.machine_mtc || (kind === "machine" ? oldReading : "");
@@ -2792,16 +2833,17 @@ function addFieldTankerEntry(values = {}) {
 
     <label>Šta je tankovano</label>
     <select class="ft-asset-kind">
-      <option value="machine" ${kind === "vehicle" ? "" : "selected"}>Mašina</option>
+      <option value="machine" ${kind === "machine" ? "selected" : ""}>Mašina</option>
       <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
+      <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
     </select>
 
     <label>Izaberi iz Direkcije</label>
     <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset)}</select>
-    <p class="field-hint">Kad izabereš mašinu, vidiš samo mašine. Kad izabereš vozilo, vidiš samo vozila iz Direkcija → Mašine / vozila.</p>
+    <p class="field-hint">Kad izabereš mašinu, vidiš samo mašine. Kad izabereš vozilo, vidiš samo vozila. Kad izabereš ostalo, vidiš agregat, vibro ploču i ostalu opremu iz Direkcija → Mašine / vozila.</p>
 
     <label>Ručno ako nije na listi</label>
-    <input class="ft-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice" value="${escapeHtml(manualAsset)}" />
+    <input class="ft-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice · Ostalo: agregat/vibro ploča" value="${escapeHtml(manualAsset)}" />
 
     <label>Trenutna kilometraža / KM</label>
     <input class="ft-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
@@ -2864,10 +2906,12 @@ function getFieldTankerEntries() {
       asset_id: manualAsset ? null : (assetOption?.dataset?.assetId || null),
       asset_name: asset,
       asset_custom: manualAsset,
-      machine: asset,
+      machine: kind === "machine" ? asset : "",
       vehicle: kind === "vehicle" ? asset : "",
+      other: kind === "other" ? asset : "",
       vehicle_custom: kind === "vehicle" ? manualAsset : "",
       machine_custom: kind === "machine" ? manualAsset : "",
+      other_custom: kind === "other" ? manualAsset : "",
       km,
       current_km: km,
       mtc,
@@ -2991,7 +3035,7 @@ function renderStoredFieldTankerEntries() {
       <div class="stored-fuel-item">
         <div>
           <strong>${index + 1}. ${escapeHtml(entry.site_name || "Bez lokacije")}</strong>
-          <small>${escapeHtml(entry.asset_kind === "vehicle" ? "Vozilo" : "Mašina")} · ${escapeHtml(entry.asset_name || "")}</small>
+          <small>${escapeHtml(assetKindLabel(entry.asset_kind))} · ${escapeHtml(entry.asset_name || "")}</small>
           <small>${escapeHtml(entry.liters || "0")} L · KM: ${escapeHtml(entry.km || entry.current_km || "-")} · MTČ: ${escapeHtml(entry.mtc || entry.current_mtc || "-")} · Primio: ${escapeHtml(entry.receiver || "-")}</small>
         </div>
         <button type="button" class="danger-small stored-fuel-remove" data-local-id="${escapeHtml(entry.local_id)}">Ukloni</button>
@@ -3065,19 +3109,18 @@ async function sendStoredFieldTankerEntries() {
 
 function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "") {
   const selected = String(selectedValue || "").trim();
-  const isVehicle = kind === "vehicle";
   const assets = (workerAssetOptions || [])
-    .filter(asset => isVehicle ? isVehicleAsset(asset) : isMachineAsset(asset))
+    .filter(asset => filterAssetsByFuelKind(asset, kind))
     .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
 
   if (!assets.length) {
-    return `<option value="">${isVehicle ? "Nema vozila iz Direkcije" : "Nema mašina iz Direkcije"}</option>`;
+    return `<option value="">${fuelKindEmptyText(kind)}</option>`;
   }
 
-  return `<option value="">${isVehicle ? "Odaberi vozilo" : "Odaberi mašinu"}</option>` + assets.map(asset => {
+  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => {
     const name = getAssetName(asset) || getAssetRegistration(asset) || "";
     const reg = getAssetRegistration(asset);
-    const label = isVehicle ? formatAssetLabel(asset) : formatMachineLabel(asset);
+    const label = formatFuelKindAssetLabel(asset, kind);
     const value = name || label;
     const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
     return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(reg || "")}" data-asset-type="${escapeHtml(asset.asset_type || asset.type || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
@@ -3097,7 +3140,7 @@ function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
   if (!list) return;
   const idx = list.querySelectorAll(".fuel-entry").length + 1;
-  const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
+  const kind = values.asset_kind || values.asset_type || values.kind || (values.other ? "other" : (values.vehicle ? "vehicle" : "machine"));
   const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
   const manualAsset = values.asset_custom || values.machine_custom || values.vehicle_custom || "";
   const oldReading = values.reading || values.mtc_km || "";
@@ -3113,16 +3156,17 @@ function addFuelEntry(values = {}) {
 
     <label>Šta je tankovano</label>
     <select class="f-asset-kind">
-      <option value="machine" ${kind === "vehicle" ? "" : "selected"}>Mašina</option>
+      <option value="machine" ${kind === "machine" ? "selected" : ""}>Mašina</option>
       <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
+      <option value="other" ${kind === "other" ? "selected" : ""}>Ostalo</option>
     </select>
 
     <label>Izaberi iz Direkcije</label>
     <select class="f-asset-select"></select>
 
     <label>Ručno ako nije na listi</label>
-    <input class="f-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice" value="${escapeHtml(manualAsset)}" />
-    <p class="hint">Ako je firmina mašina/vozilo, izaberi iz liste Direkcije. Ako nije na listi, upiši ručno broj mašine ili tablice vozila.</p>
+    <input class="f-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice · Ostalo: agregat/vibro ploča" value="${escapeHtml(manualAsset)}" />
+    <p class="hint">Ako je firmina mašina/vozilo/oprema, izaberi iz liste Direkcije. Ako nije na listi, upiši ručno broj mašine, tablice vozila ili naziv opreme.</p>
 
     <div class="mini-grid">
       <div>
@@ -3142,7 +3186,7 @@ function addFuelEntry(values = {}) {
     <label>Ko je sipao</label>
     <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
 
-    <p class="hint">Za vozilo upiši KM. Za mašinu upiši MTČ. Možeš popuniti oba ako firma traži. Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
+    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. Možeš popuniti oba ako firma traži. Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
@@ -3176,10 +3220,12 @@ function getFuelEntries() {
       asset_id: custom ? null : (option?.dataset?.assetId || null),
       asset_name: assetName,
       asset_custom: custom,
-      machine: assetName,
-      machine_custom: custom,
+      machine: kind === "machine" ? assetName : "",
+      machine_custom: kind === "machine" ? custom : "",
       vehicle: kind === "vehicle" ? assetName : "",
       vehicle_custom: kind === "vehicle" ? custom : "",
+      other: kind === "other" ? assetName : "",
+      other_custom: kind === "other" ? custom : "",
       liters: el.querySelector(".f-liters")?.value || "",
       km,
       current_km: km,
@@ -3887,8 +3933,8 @@ function flattenReportRowsForExport(r) {
       lowloader_km_end: ll.km_end || "",
       lowloader_km: ll.km_total || "",
       lowloader_machine: ll.machine || "",
-      fuel_type: f.asset_kind === "vehicle" ? "Vozilo" : (f.asset_kind === "machine" ? "Mašina" : ""),
-      fuel_for: f.asset_name || f.machine || f.vehicle || "",
+      fuel_type: assetKindLabel(f.asset_kind),
+      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || "",
       fuel_liters: f.liters || d.fuel_liters || "",
       fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
       fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
@@ -3896,8 +3942,8 @@ function flattenReportRowsForExport(r) {
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || "",
       field_tanker_site: ft.site_name || "",
-      field_tanker_type: ft.asset_kind === "vehicle" ? "Vozilo" : (ft.asset_kind === "machine" ? "Mašina" : ""),
-      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || "",
+      field_tanker_type: assetKindLabel(ft.asset_kind),
+      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || "",
       field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_reading: ft.reading || ft.mtc_km || "",
