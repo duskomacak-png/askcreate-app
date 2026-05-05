@@ -906,7 +906,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
       sb.from("assets").select("*").eq("company_id", currentCompany.id),
       sb.from("sites").select("*").eq("company_id", currentCompany.id),
       sb.from("materials").select("*").eq("company_id", currentCompany.id),
-      sb.from("reports").select("id, report_date, status, returned_reason, data, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("created_at", { ascending:false }).limit(150)
+      sb.from("reports").select("id, company_id, user_id, site_id, report_date, status, returned_reason, data, submitted_at, created_at, archived, deleted_at").eq("company_id", currentCompany.id).neq("status", "archived").order("created_at", { ascending:false }).limit(150)
     ]);
 
     if (peopleRes.data) peopleRes.data.forEach(p => {
@@ -949,9 +949,10 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
       });
     });
 
+    if (reportsRes.data) reportsRes.data = await enrichReportsWithUsers(reportsRes.data);
     if (reportsRes.data) reportsRes.data.forEach(r => {
       const d = r.data || {};
-      const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "";
+      const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "");
       const text = `${person} ${r.status} ${r.report_date} ${d.site_name || ""} ${d.description || ""} ${d.machine || ""} ${d.vehicle || ""} ${d.material || ""} ${d.defect || ""} ${d.note || ""}`;
       if (searchMatch(text, q)) results.push({
         type:"Izveštaj",
@@ -995,7 +996,7 @@ function hasDefectData(r) {
 }
 
 function hasDailyReportData(r) {
-  // v1.18.4: Direkcija ne sme da izgubi prikaz izveštaja zato što filter
+  // v1.18.5: Direkcija ne sme da izgubi prikaz izveštaja zato što filter
   // ne prepoznaje novu rubriku. Sve što nije poseban kvar i nije arhivirano
   // mora ostati vidljivo u Dnevnim izveštajima.
   const d = r?.data || {};
@@ -1040,11 +1041,51 @@ function formatDateTimeLocal(value) {
   }
 }
 
+
+function reportUserFallback(r) {
+  const d = r?.data || {};
+  return {
+    first_name: d.first_name || d.worker_first_name || d.created_by_first_name || (d.created_by_worker || d.worker_name || "").split(" ")[0] || "",
+    last_name: d.last_name || d.worker_last_name || d.created_by_last_name || (d.created_by_worker || d.worker_name || "").split(" ").slice(1).join(" ") || "",
+    function_title: d.function_title || d.worker_function || d.role || ""
+  };
+}
+
+async function enrichReportsWithUsers(reports = []) {
+  const list = Array.isArray(reports) ? reports : [];
+  const ids = [...new Set(list.map(r => r && r.user_id).filter(Boolean))];
+  if (!ids.length) {
+    return list.map(r => ({ ...r, company_users: r.company_users || reportUserFallback(r) }));
+  }
+
+  try {
+    const { data: users, error } = await sb
+      .from("company_users")
+      .select("id, first_name, last_name, function_title")
+      .in("id", ids);
+
+    if (error) throw error;
+    const map = new Map((users || []).map(u => [u.id, u]));
+    return list.map(r => ({ ...r, company_users: map.get(r.user_id) || r.company_users || reportUserFallback(r) }));
+  } catch (e) {
+    console.warn("Ne mogu da povežem reports sa company_users, koristim data fallback:", e);
+    return list.map(r => ({ ...r, company_users: r.company_users || reportUserFallback(r) }));
+  }
+}
+
 async function loadReports() {
   if (!currentCompany) return;
-  const { data, error } = await sb.from("reports").select("*, company_users(first_name,last_name,function_title)").eq("company_id", currentCompany.id).neq("status", "archived").order("submitted_at", { ascending:false });
+
+  const { data, error } = await sb
+    .from("reports")
+    .select("*")
+    .eq("company_id", currentCompany.id)
+    .neq("status", "archived")
+    .order("submitted_at", { ascending:false });
+
   if (error) return toast(error.message, true);
-  directorReportsCache = data || [];
+
+  directorReportsCache = await enrichReportsWithUsers(data || []);
   const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
   renderDefectsList();
@@ -1517,7 +1558,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
 function reportHtml(r) {
   const d = r.data || {};
-  const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : "Nepoznat korisnik";
+  const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
 
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
 
@@ -3538,7 +3579,7 @@ function getSelectedReportsForExport() {
 }
 
 function reportPersonName(r) {
-  return r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : "";
+  return r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : ((r.data || {}).created_by_worker || (r.data || {}).worker_name || "");
 }
 
 function flattenReportRowsForExport(r) {
