@@ -3,202 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Start Work PRO</title>
-    <link rel="manifest" href="manifest.json">
+    <title>SW PRO | Uprava</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Favicon and touch icons -->
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icons/icon-192.png">
-    <meta name="theme-color" content="#155e41">
+    <meta name="theme-color" content="#1e293b">
 </head>
 <body>
 
-    <!-- Top bar / Admin Header -->
-    <header class="top-bar">
-        <div class="logo-area">
-            <span class="logo-text">Start Work <b>PRO</b></span>
-        </div>
-        <div class="company-selector">
-            <select id="companySelect" class="form-select">
-                <option value="1">Gradnja DOO</option>
+    <aside class="sidebar">
+        <div class="sidebar-header">Start Work PRO</div>
+        <ul class="nav-list">
+            <li class="active"><a href="#">📊 Dnevni izveštaji</a></li>
+            <li><a href="#">🚜 Mašine i Vozila</a></li>
+            <li><a href="#">👷 Radnici i Sati</a></li>
+            <li><a href="#">⛽ Gorivo / Cisterna</a></li>
+            <li><a href="#">⚠️ Kvarovi</a></li>
+            <li><a href="#">🏗️ Gradilišta</a></li>
+            <li><a href="#">📈 Excel Export</a></li>
+            <li><a href="#">⚙️ Podešavanja</a></li>
+        </ul>
+    </aside>
+
+    <div class="main-area">
+        <header class="top-bar">
+            <div>Firma: <b>Gradnja DOO</b></div>
+            <div>Korisnik: <b>Admin (Direkcija)</b> | <span class="action-link" id="logoutBtn">Odjavi se</span></div>
+        </header>
+
+        <section class="filter-bar">
+            <input type="date" id="dateFrom" value="2026-05-07">
+            <span>do</span>
+            <input type="date" id="dateTo" value="2026-05-07">
+            <select id="siteFilter">
+                <option value="">Sva gradilišta</option>
+                <option value="1">Stambeni blok A</option>
             </select>
+            <input type="text" placeholder="Pretraži radnika ili mašinu..." style="width: 250px;">
+            <button class="btn btn-primary">Filtriraj</button>
+            <button class="btn">Resetuj</button>
+        </section>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Datum</th>
+                        <th>Radnik</th>
+                        <th>Gradilište</th>
+                        <th>Mašina / KM</th>
+                        <th>Gorivo (L)</th>
+                        <th>Kvar</th>
+                        <th>Status</th>
+                        <th>Akcije</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#4251</td>
+                        <td>07.05.2026.</td>
+                        <td>Nikola Jovanović</td>
+                        <td>Most na Dunavu</td>
+                        <td>CAT 330 (8.5h)</td>
+                        <td>120 L</td>
+                        <td>-</td>
+                        <td><span class="status status-novo">Novo</span></td>
+                        <td><span class="action-link">Pregledaj</span> | <span class="action-link">Excel</span></td>
+                    </tr>
+                    <tr style="background: #fff5f5;">
+                        <td>#4250</td>
+                        <td>07.05.2026.</td>
+                        <td>Marko Lazić</td>
+                        <td>Tunel 1</td>
+                        <td>MAN Kiper (12 tura)</td>
+                        <td>-</td>
+                        <td><span class="status status-kvar">PUKLO CREVO</span></td>
+                        <td><span class="status status-novo">Novo</span></td>
+                        <td><span class="action-link">POGLEDAJ KVAR</span></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <div class="user-profile">
-            <span class="user-name">Marko Petrović – Direkcija</span>
-            <button id="logoutBtn" class="btn-logout">Logout</button>
-        </div>
-    </header>
-
-    <div class="app-container">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <nav>
-                <ul>
-                    <li class="active"><a href="#"><i class="icon-home"></i> Početna</a></li>
-                    <li><a href="#"><i class="icon-users"></i> Ljudi i funkcije</a></li>
-                    <li><a href="#"><i class="icon-sites"></i> Gradilišta</a></li>
-                    <li><a href="#"><i class="icon-assets"></i> Sredstva rada</a></li>
-                    <li><a href="#"><i class="icon-materials"></i> Materijali</a></li>
-                    <li><a href="#"><i class="icon-reports"></i> Dnevni izveštaji</a></li>
-                    <li><a href="#"><i class="icon-defects"></i> Kvarovi</a></li>
-                    <li><a href="#"><i class="icon-excel"></i> Izvoz u Excel</a></li>
-                    <li><a href="#"><i class="icon-settings"></i> Podešavanja</a></li>
-                </ul>
-            </nav>
-            <div class="sidebar-footer">
-                <a href="#" class="support-link">Pomoć i podrška</a>
-            </div>
-        </aside>
-
-        <!-- Main Content Dashboard -->
-        <main class="main-content">
-            <div class="welcome-section">
-                <h1>Dobrodošli nazad, Marko</h1>
-                <div class="dashboard-controls">
-                    <button class="btn-subtle" id="themeToggleBtn">Svetla tema</button>
-                    <input type="date" class="form-input" id="dashboardDate" value="2025-05-20">
-                </div>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-icon users-icon"></span>
-                        <div class="stat-number">14</div>
-                    </div>
-                    <div class="stat-title">Aktivnih radnika</div>
-                    <a href="#" class="stat-link">Vidi detalje &rarr;</a>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-icon sites-icon"></span>
-                        <div class="stat-number">8</div>
-                    </div>
-                    <div class="stat-title">Aktivnih gradilišta</div>
-                    <a href="#" class="stat-link">Vidi detalje &rarr;</a>
-                </div>
-
-                <div class="stat-card active-action">
-                    <div class="stat-header">
-                        <span class="stat-icon pending-icon"></span>
-                        <div class="stat-number" style="color: #f97316;">6</div>
-                    </div>
-                    <div class="stat-title" style="color: #ea580c;">Izveštaja čeka odobrenje</div>
-                    <a href="#" class="stat-link" style="color: #ea580c;">Vidi detalje &rarr;</a>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-icon fuel-icon"></span>
-                        <div class="stat-number">542 <small style="font-size: 14px; font-weight: normal;">L</small></div>
-                    </div>
-                    <div class="stat-title">Goriva danas</div>
-                    <a href="#" class="stat-link">Vidi detalje &rarr;</a>
-                </div>
-            </div>
-
-            <div class="content-grid">
-                <div class="activity-panel">
-                    <div class="panel-header">
-                        <h2>Nedavne aktivnosti</h2>
-                        <button class="btn-subtle">Pogledaj sve</button>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Datum</th>
-                                    <th>Radnik</th>
-                                    <th>Gradilište</th>
-                                    <th>Rubrike</th>
-                                    <th>Status</th>
-                                    <th>Akcije</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>20.05.2025.</td>
-                                    <td>Nikola Jovanović</td>
-                                    <td>Stambeni kompleks Sunrise</td>
-                                    <td>Zidarski radovi</td>
-                                    <td><span class="badge badge-novo">Novo</span></td>
-                                    <td>
-                                        <div class="action-dropdown">
-                                            <button class="btn-action">Pogledaj</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>20.05.2025.</td>
-                                    <td>Marko Lazić</td>
-                                    <td>Poslovni objekat Delta</td>
-                                    <td>Betoniranje</td>
-                                    <td><span class="badge badge-odobreno">Odobreno</span></td>
-                                    <td>
-                                        <div class="action-dropdown">
-                                            <button class="btn-action">Pogledaj</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>19.05.2025.</td>
-                                    <td>Milan Stanković</td>
-                                    <td>Nadogradnja škole</td>
-                                    <td>Elektro radovi</td>
-                                    <td><span class="badge badge-vraceno">Vraćeno</span></td>
-                                    <td>
-                                        <div class="action-dropdown">
-                                            <button class="btn-action">Pogledaj</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>19.05.2025.</td>
-                                    <td>Petar Petrović</td>
-                                    <td>Stambeni kompleks Sunrise</td>
-                                    <td>Zidarski radovi</td>
-                                    <td><span class="badge badge-odobreno">Odobreno</span></td>
-                                    <td>
-                                        <div class="action-dropdown">
-                                            <button class="btn-action">Pogledaj</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>18.05.2025.</td>
-                                    <td>Aleksandar Đurić</td>
-                                    <td>Poslovni objekat Delta</td>
-                                    <td>Hidroizolacija</td>
-                                    <td><span class="badge badge-novo">Novo</span></td>
-                                    <td>
-                                        <div class="action-dropdown">
-                                            <button class="btn-action">Pogledaj</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Right sidebar actions -->
-                <div class="quick-actions-panel">
-                    <h2>Brze akcije</h2>
-                    <button class="btn-main-action"><span class="plus-icon">+</span> Novi radnik</button>
-                    <button class="btn-main-action"><span class="plus-icon">+</span> Novo gradilište</button>
-                    <button class="btn-secondary-action">Pregledaj sve izveštaje</button>
-                    <button class="btn-main-action"><span class="plus-icon">+</span> Novi izveštaj</button>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- PWA manual fallback UI -->
-    <div id="pwaFallback" class="pwa-fallback" style="display: none;">
-        <p>Preuzmi Start Work PRO za brži pristup bez otvaranja browsera.</p>
-        <button id="installAppBtn" class="btn-install">Preuzmi app</button>
     </div>
 
     <script src="script.js"></script>

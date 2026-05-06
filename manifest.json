@@ -3,8 +3,8 @@
   "short_name": "SW PRO",
   "start_url": "index.html?v=1226",
   "display": "standalone",
-  "background_color": "#155e41",
-  "theme_color": "#155e41",
+  "background_color": "#1e293b",
+  "theme_color": "#1e293b",
   "icons": [
     {
       "src": "icons/icon-192.png",
