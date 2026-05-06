@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.2";
+const APP_VERSION = "1.22.3";
 
 
 let sb = null;
@@ -1227,66 +1227,111 @@ function renderReportReadableDetails(d = {}, options = {}) {
     `);
   }
 
+  const excelPreviewRows = [];
+  const addPreview = (section, rowLabel, field, value) => {
+    if (!safe(value)) return;
+    excelPreviewRows.push(`<tr><td>${esc(section)}</td><td>${esc(rowLabel || "")}</td><td>${esc(field)}</td><td>${val(value)}</td></tr>`);
+  };
+
+  addPreview("Osnovni podaci", "", "Gradilište", d.site_name);
+  addPreview("Osnovni podaci", "", "Opis rada", d.description);
+  addPreview("Osnovni podaci", "", "Sati rada", d.hours);
+
+  workers.forEach((w, i) => {
+    const row = `Radnik ${i + 1}`;
+    addPreview("Radnici na gradilištu", row, "Ime i prezime", w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" "));
+    addPreview("Radnici na gradilištu", row, "Sati", w.hours);
+  });
+
+  machines.forEach((m, i) => {
+    const row = `Mašina ${i + 1}`;
+    addPreview("Evidencija rada mašine", row, "Broj", m.asset_code || m.machine_code);
+    addPreview("Evidencija rada mašine", row, "Mašina", m.name);
+    addPreview("Evidencija rada mašine", row, "MTČ/KM početak", m.start);
+    addPreview("Evidencija rada mašine", row, "MTČ/KM kraj", m.end);
+    addPreview("Evidencija rada mašine", row, "Ukupno sati", m.hours);
+    addPreview("Evidencija rada mašine", row, "Opis rada", m.work);
+  });
+
+  vehicles.forEach((v, i) => {
+    const row = `Vozilo ${i + 1}`;
+    addPreview("Evidencija rada vozila", row, "Broj", v.asset_code || v.vehicle_code);
+    addPreview("Evidencija rada vozila", row, "Vozilo", v.name || v.vehicle);
+    addPreview("Evidencija rada vozila", row, "Registracija", v.registration);
+    addPreview("Evidencija rada vozila", row, "Kapacitet m³", v.capacity);
+    addPreview("Evidencija rada vozila", row, "KM početak", v.km_start);
+    addPreview("Evidencija rada vozila", row, "KM kraj", v.km_end);
+    addPreview("Evidencija rada vozila", row, "Relacija", v.route);
+    addPreview("Evidencija rada vozila", row, "Broj tura", v.tours);
+    addPreview("Evidencija rada vozila", row, "Ukupno m³", v.cubic_m3 || v.cubic_auto);
+  });
+
+  lowloaders.forEach((ll, i) => {
+    const row = `Transport ${i + 1}`;
+    addPreview("Transport mašine labudicom", row, "Tablice labudice", ll.plates || ll.registration);
+    addPreview("Transport mašine labudicom", row, "Od lokacije", ll.from_site || ll.from_address);
+    addPreview("Transport mašine labudicom", row, "Do lokacije", ll.to_site || ll.to_address);
+    addPreview("Transport mašine labudicom", row, "KM početak", ll.km_start);
+    addPreview("Transport mašine labudicom", row, "KM kraj", ll.km_end);
+    addPreview("Transport mašine labudicom", row, "Ukupno km", ll.km_total);
+    addPreview("Transport mašine labudicom", row, "Mašina koja se seli", ll.machine);
+  });
+
+  fuels.forEach((f, i) => {
+    const row = `Gorivo ${i + 1}`;
+    addPreview("Evidencija goriva", row, "Tip sredstva", assetKindLabel(f.asset_kind));
+    addPreview("Evidencija goriva", row, "Broj sredstva", f.asset_code);
+    addPreview("Evidencija goriva", row, "Sredstvo", f.asset_name || f.machine || f.vehicle || f.other);
+    addPreview("Evidencija goriva", row, "Litara", f.liters);
+    addPreview("Evidencija goriva", row, "KM", f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""));
+    addPreview("Evidencija goriva", row, "MTČ", f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""));
+    addPreview("Evidencija goriva", row, "Sipao", f.by);
+    addPreview("Evidencija goriva", row, "Primio", f.receiver || d.fuel_receiver);
+  });
+
+  fieldTankers.forEach((ft, i) => {
+    const row = `Cisterna ${i + 1}`;
+    addPreview("Evidencija goriva – cisterna", row, "Gradilište", ft.site_name);
+    addPreview("Evidencija goriva – cisterna", row, "Tip sredstva", assetKindLabel(ft.asset_kind));
+    addPreview("Evidencija goriva – cisterna", row, "Broj sredstva", ft.asset_code);
+    addPreview("Evidencija goriva – cisterna", row, "Sredstvo", ft.asset_name || ft.machine || ft.vehicle || ft.other);
+    addPreview("Evidencija goriva – cisterna", row, "KM", ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""));
+    addPreview("Evidencija goriva – cisterna", row, "MTČ", ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""));
+    addPreview("Evidencija goriva – cisterna", row, "Litara", ft.liters);
+    addPreview("Evidencija goriva – cisterna", row, "Primio gorivo", ft.receiver || ft.received_by);
+  });
+
+  materialEntries.forEach((m, i) => {
+    const row = `Materijal ${i + 1}`;
+    addPreview("Materijal", row, "Radnja", m.action || m.material_action);
+    addPreview("Materijal", row, "Materijal", m.material || m.name);
+    addPreview("Materijal", row, "Količina", m.quantity || m.qty);
+    addPreview("Materijal", row, "Jedinica", m.unit);
+    addPreview("Materijal", row, "Napomena", m.note);
+  });
+
+  addPreview("Magacin", "", "Tip promene", d.warehouse_type);
+  addPreview("Magacin", "", "Stavka", d.warehouse_item);
+  addPreview("Magacin", "", "Količina", d.warehouse_qty);
+
+  addPreview("Zahtev za odsustvo", "", "Vrsta zahteva", d.leave_request_type || leaveRequest.leave_label || leaveRequest.label);
+  addPreview("Zahtev za odsustvo", "", "Datum", d.leave_date || leaveRequest.leave_date || leaveRequest.date);
+  addPreview("Zahtev za odsustvo", "", "Od", d.leave_from || leaveRequest.date_from);
+  addPreview("Zahtev za odsustvo", "", "Do", d.leave_to || leaveRequest.date_to);
+  addPreview("Zahtev za odsustvo", "", "Napomena", d.leave_note || leaveRequest.leave_note || leaveRequest.note);
+
   const excelTable = `
-    <div class="report-excel-wrap">
-      <table class="report-excel-table">
+    <div class="report-excel-wrap report-excel-compact-wrap">
+      <table class="report-excel-table report-excel-compact-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Gradilište</th>
-            <th>Sati radnika</th>
-            <th>Opis rada</th>
-            <th>Radnik u ekipi</th>
-            <th>Sati radnika u ekipi</th>
-            <th>Mašina</th>
-            <th>MTČ/KM početak</th>
-            <th>MTČ/KM kraj</th>
-            <th>Sati mašine</th>
-            <th>Rad mašine</th>
-            <th>Vozilo</th>
-            <th>Registracija</th>
-            <th>Kapacitet m³</th>
-            <th>KM početak</th>
-            <th>KM kraj</th>
-            <th>Relacija</th>
-            <th>Ture</th>
-            <th>m³ ukupno</th>
-            <th>Van evidencije m³</th>
-            <th>Labudica tablice</th>
-            <th>Od lokacije</th>
-            <th>Do lokacije</th>
-            <th>Početna km labudice</th>
-            <th>Završna km labudice</th>
-            <th>Ukupno km</th>
-            <th>Mašina koja se seli</th>
-            <th>Gorivo za</th>
-            <th>Litara</th>
-            <th>Gorivo KM</th>
-            <th>Gorivo MTČ</th>
-            <th>Sipao</th>
-            <th>Primio</th>
-            <th>Cisterna gradilište</th>
-            <th>Cisterna mašina/vozilo</th>
-            <th>Cisterna KM</th>
-            <th>Cisterna MTČ</th>
-            <th>Cisterna litara</th>
-            <th>Primio gorivo</th>
-            <th>Radnja materijala</th>
-            <th>Materijal</th>
-            <th>Količina</th>
-            <th>Jedinica</th>
-            <th>Napomena materijala</th>
-            <th>Vrsta odsustva</th>
-            <th>Datum slobodnog dana</th>
-            <th>Godišnji od</th>
-            <th>Godišnji do</th>
-            <th>Napomena odsustva</th>
-            <th>Magacin tip</th>
-            <th>Magacin stavka</th>
-            <th>Magacin količina</th>
+            <th>Sekcija</th>
+            <th>Red</th>
+            <th>Polje</th>
+            <th>Vrednost</th>
           </tr>
         </thead>
-        <tbody>${reportRows.join("")}</tbody>
+        <tbody>${excelPreviewRows.join("") || `<tr><td colspan="4"><span class="report-empty">Nema podataka za Excel pregled.</span></td></tr>`}</tbody>
       </table>
     </div>`;
 
@@ -1611,7 +1656,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
       <details class="report-section report-excel-section report-excel-details">
         <summary>📊 Prikaži Excel pregled izveštaja</summary>
-        <p class="field-hint">Ovo je samo širok Excel prikaz. Za čitanje koristi pregled iznad, a za firmu koristi export u Excel.</p>
+        <p class="field-hint">Ovo je kompaktan Excel pregled ovog izveštaja: sekcija, red, polje i vrednost. Za preuzimanje fajla koristi glavni izvoz u Excel.</p>
         ${excelTable}
       </details>
     </div>

@@ -808,3 +808,13 @@ button.small {
 .report-paper-view .report-excel-details summary{font-weight:700;color:#1f3326;cursor:pointer}
 .paper-footer-note{font-size:.82em;color:#66716a;text-align:right}
 @media print{.report-paper-view{font-size:12px!important;padding:0!important}.report-paper-view .report-excel-details{display:none!important}}
+
+
+/* v1.22.3 — kompaktan Excel pregled jednog izveštaja */
+.report-paper-view .report-excel-compact-wrap{border-radius:3px;background:#fff;overflow:auto;border:1px solid #c8d2cc}
+.report-paper-view .report-excel-compact-table{min-width:720px;width:100%;font-size:.94em;border-collapse:collapse}
+.report-paper-view .report-excel-compact-table th{background:#edf1ee;color:#203728;border:1px solid #c8d2cc;text-align:left;white-space:nowrap}
+.report-paper-view .report-excel-compact-table td{border:1px solid #d8e0db;vertical-align:top;text-align:left!important;background:#fff}
+.report-paper-view .report-excel-compact-table td:nth-child(1){font-weight:700;color:#1f3326;white-space:nowrap}
+.report-paper-view .report-excel-compact-table td:nth-child(2){white-space:nowrap;color:#55645c}
+.report-paper-view .report-excel-compact-table td:nth-child(3){font-weight:600;color:#293b30;white-space:nowrap}
