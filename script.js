@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.1";
+const APP_VERSION = "1.22.2";
 
 
 let sb = null;
@@ -250,7 +250,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "vehicles", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
   { key: "lowloader", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
   { key: "fuel", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
-  { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Gorivo primio"] },
+  { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
   { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
@@ -479,7 +479,7 @@ window.editAsset = async (id) => {
       .eq("company_id", currentCompany.id)
       .maybeSingle();
     if (error) throw error;
-    if (!asset) throw new Error("Mašina/vozilo nije pronađeno.");
+    if (!asset) throw new Error("Sredstvo nije pronađeno.");
 
     editingAssetId = asset.id;
     document.querySelector("#assetCode").value = asset.asset_code || asset.internal_code || asset.code || "";
@@ -488,7 +488,7 @@ window.editAsset = async (id) => {
     document.querySelector("#assetReg").value = asset.registration || "";
     document.querySelector("#assetCapacity").value = asset.capacity || "";
     setAssetFormMode("edit");
-    toast("Mašina/vozilo je otvoreno za izmenu.");
+    toast("Sredstvo je otvoreno za izmenu.");
     const title = document.querySelector("#assetFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (e) {
@@ -523,11 +523,11 @@ async function saveAssetForm() {
         .eq("id", editingAssetId)
         .eq("company_id", currentCompany.id);
       if (error) throw error;
-      toast("Mašina/vozilo je izmenjeno.");
+      toast("Sredstvo je izmenjeno.");
     } else {
       const { error } = await sb.from("assets").insert(payload);
       if (error) throw error;
-      toast("Mašina/vozilo dodato.");
+      toast("Sredstvo dodato.");
     }
 
     clearAssetForm();
@@ -827,7 +827,7 @@ window.deleteAsset = async (id, name = "") => {
     .eq("company_id", currentCompany.id);
 
   if (error) return toast(error.message, true);
-  toast("Mašina/vozilo je trajno obrisano iz baze.");
+  toast("Sredstvo je trajno obrisano iz baze.");
   if (editingAssetId === id) clearAssetForm();
   loadAssets();
   if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
@@ -1100,8 +1100,8 @@ function defectHtml(r) {
       <span class="pill">Prijavljeno: ${escapeHtml(formatDateTimeLocal(reportedAt))}</span>
       <span class="pill">Status: ${escapeHtml(status)}</span>
       <span class="pill">Gradilište/lokacija: ${escapeHtml(d.defect_site_name || d.site_name || "bez gradilišta")}</span>
-      <span class="pill">Mašina/vozilo: ${escapeHtml(assetName)}</span>
-      ${d.defect_work_impact ? `<span class="pill">Uticaj kvara na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
+      <span class="pill">Sredstvo: ${escapeHtml(assetName)}</span>
+      ${d.defect_work_impact ? `<span class="pill">Uticaj na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
       ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
       <div class="report-kv">
@@ -1253,8 +1253,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>m³ ukupno</th>
             <th>Van evidencije m³</th>
             <th>Labudica tablice</th>
-            <th>Gradilište preuzimanja</th>
-            <th>Gradilište odvoza</th>
+            <th>Od lokacije</th>
+            <th>Do lokacije</th>
             <th>Početna km labudice</th>
             <th>Završna km labudice</th>
             <th>Ukupno km</th>
@@ -1270,7 +1270,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <th>Cisterna KM</th>
             <th>Cisterna MTČ</th>
             <th>Cisterna litara</th>
-            <th>Gorivo primio</th>
+            <th>Primio gorivo</th>
             <th>Radnja materijala</th>
             <th>Materijal</th>
             <th>Količina</th>
@@ -1317,9 +1317,9 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>#</th>
           <th>Broj</th>
           <th>Mašina</th>
-          <th>Početak MTČ/KM</th>
-          <th>Kraj MTČ/KM</th>
-          <th>Sati</th>
+          <th>MTČ/KM početak</th>
+          <th>MTČ/KM kraj</th>
+          <th>Ukupno sati</th>
           <th>Rad</th>
         </tr>
       </thead>
@@ -1351,8 +1351,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>KM kraj</th>
           <th>Relacija</th>
           <th>Ture</th>
-          <th>m³ ukupno</th>
-          <th>Van evidencije m³</th>
+          <th>Ukupno m³</th>
         </tr>
       </thead>
       <tbody>
@@ -1368,7 +1367,6 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(v.route)}</td>
             <td>${val(v.tours)}</td>
             <td>${val(v.cubic_m3 || v.cubic_auto)}</td>
-            <td>${val(v.cubic_manual)}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -1380,10 +1378,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Tablice labudice</th>
-          <th>Gradilište preuzimanja</th>
-          <th>Gradilište odvoza</th>
-          <th>Početna km</th>
-          <th>Završna km</th>
+          <th>Od lokacije</th>
+          <th>Do lokacije</th>
+          <th>KM početak</th>
+          <th>KM kraj</th>
           <th>Ukupno km</th>
           <th>Mašina koja se seli</th>
         </tr>
@@ -1409,12 +1407,12 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Kategorija</th>
+          <th>Tip sredstva</th>
           <th>Broj</th>
-          <th>Mašina/vozilo</th>
+          <th>Sredstvo</th>
           <th>Litara</th>
-          <th>KM pri sipanju</th>
-          <th>MTČ pri sipanju</th>
+          <th>KM</th>
+          <th>MTČ</th>
           <th>Sipao</th>
           <th>Primio</th>
         </tr>
@@ -1442,13 +1440,13 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Gradilište</th>
-          <th>Kategorija</th>
+          <th>Tip sredstva</th>
           <th>Broj</th>
-          <th>Mašina/vozilo</th>
-          <th>Trenutna kilometraža / KM</th>
-          <th>Trenutni MTČ</th>
-          <th>Sipano litara</th>
-          <th>Gorivo primio</th>
+          <th>Sredstvo</th>
+          <th>KM</th>
+          <th>MTČ</th>
+          <th>Litara</th>
+          <th>Primio gorivo</th>
         </tr>
       </thead>
       <tbody>
@@ -1523,7 +1521,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
   return `
     <div class="report-readable">
       ${hasBasic ? `<div class="report-section report-main-summary">
-        <h4>Osnovno</h4>
+        <h4>Osnovni podaci</h4>
         <div class="report-kv">
           ${rows([
             ["Gradilište", d.site_name],
@@ -1535,48 +1533,48 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </div>` : ""}
 
       ${hasWorkers ? `<div class="report-section">
-        <h4>Radnici / sati po radniku</h4>
+        <h4>Radnici na gradilištu</h4>
         ${workerTable}
       </div>` : ""}
 
       ${hasMachines ? `<div class="report-section">
-        <h4>Mašine</h4>
+        <h4>Evidencija rada mašine</h4>
         ${machineTable}
       </div>` : ""}
 
       ${hasVehicles ? `<div class="report-section">
-        <h4>Vozila / ture / m³</h4>
+        <h4>Evidencija rada vozila</h4>
         ${vehicleTable}
       </div>` : ""}
 
       ${hasLowloaders ? `<div class="report-section">
-        <h4>Vozilo labudica / selidba mašine</h4>
+        <h4>Transport mašine labudicom</h4>
         ${lowloaderTable}
       </div>` : ""}
 
       ${hasFuels ? `<div class="report-section">
-        <h4>Gorivo</h4>
+        <h4>Evidencija goriva</h4>
         ${fuelTable}
       </div>` : ""}
 
       ${hasFieldTankers ? `<div class="report-section">
-        <h4>Cisterna / tankanje goriva na terenu</h4>
+        <h4>Evidencija goriva – cisterna</h4>
         ${fieldTankerTable}
       </div>` : ""}
 
       ${hasDefect ? `
         <div class="report-section">
-          <h4>Kvar</h4>
+          <h4>Evidencija kvara</h4>
           <div class="report-kv">
             ${rows([
               ["Broj sredstva", d.defect_asset_code],
-              ["Mašina/vozilo/oprema u kvaru", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle],
+              ["Sredstvo/oprema u kvaru", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle],
               ["Registracija", d.defect_asset_registration],
-              ["Gradilište/lokacija sredstva", d.defect_site_name || d.site_name],
+              ["Lokacija", d.defect_site_name || d.site_name],
               ["Opis kvara", d.defect],
               ["Hitnost", d.defect_urgency],
-              ["Uticaj kvara na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
-              ["Šef mehanizacije pozvan", d.called_mechanic_by_phone],
+              ["Uticaj na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
+              ["Pozvan šef mehanizacije", d.called_mechanic_by_phone],
               ["Status kvara", d.defect_status]
             ])}
           </div>
@@ -1584,7 +1582,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
       ${hasLeaveRequest ? `
         <div class="report-section">
-          <h4>Zahtev za odsustvo / godišnji odmor</h4>
+          <h4>Zahtev za odsustvo</h4>
           <div class="report-kv">
             ${rows([
               ["Vrsta zahteva", d.leave_request_type || leaveRequest.leave_label || leaveRequest.label],
@@ -1598,7 +1596,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
       ${hasMaterial ? `
         <div class="report-section">
-          <h4>Materijal / magacin</h4>
+          <h4>Materijal i magacin</h4>
           ${hasMaterialEntries ? materialTable + warehouseBox : `<div class="report-kv">
             ${rows([
               ["Materijal", d.material],
@@ -1629,9 +1627,9 @@ function getReportFilledSections(d = {}) {
 
   if (hasValue(d.site_name) || hasValue(d.description) || hasValue(d.hours) || hasValue(d.note)) sections.push("Osnovno");
   if (arr(d.workers).some(hasEntry) || arr(d.worker_entries).some(hasEntry)) sections.push("Radnici");
-  if (arr(d.machines).some(hasEntry)) sections.push("Mašine");
-  if (arr(d.vehicles).some(hasEntry)) sections.push("Vozila");
-  if (arr(d.lowloader_moves).some(hasEntry) || arr(d.lowloader_entries).some(hasEntry)) sections.push("Labudica");
+  if (arr(d.machines).some(hasEntry)) sections.push("Mašina");
+  if (arr(d.vehicles).some(hasEntry)) sections.push("Vozilo");
+  if (arr(d.lowloader_moves).some(hasEntry) || arr(d.lowloader_entries).some(hasEntry)) sections.push("Transport");
   if (arr(d.fuel_entries).some(hasEntry)) sections.push("Gorivo");
   if (arr(d.field_tanker_entries).some(hasEntry) || arr(d.tanker_fuel_entries).some(hasEntry)) sections.push("Cisterna");
   if (hasValue(d.defect) || hasValue(d.defect_asset_name) || hasValue(d.defect_urgency) || hasValue(d.defect_work_impact)) sections.push("Kvar");
@@ -1689,7 +1687,7 @@ function reportHtml(r) {
       </div>
 
       <details class="report-paper-details">
-        <summary><span class="open-report-btn">Otvori izveštaj</span></summary>
+        <summary><span class="open-report-btn">Otvori papirni pregled</span></summary>
 
         <div class="report-toolbar no-print">
           <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', -0.1)">A−</button>
@@ -1701,7 +1699,7 @@ function reportHtml(r) {
         <section class="report-paper-view" id="paper-${r.id}" style="--report-zoom:1">
           <div class="paper-title-block">
             <h3>${escapeHtml(title)}</h3>
-            <p>Start Work PRO · uredan pregled izveštaja sa terena</p>
+            <p>Start Work PRO · pregled dnevnog izveštaja za kontrolu i odobravanje</p>
           </div>
 
           <table class="paper-meta-table">
@@ -3260,17 +3258,17 @@ function addFieldTankerEntry(values = {}) {
     <select class="ft-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}</select>
     <input class="ft-asset-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualAsset)}" />
 
-    <label>Trenutna kilometraža / KM</label>
+    <label>KM</label>
     <input class="ft-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
 
-    <label>Trenutni MTČ</label>
+    <label>MTČ</label>
     <input class="ft-mtc numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(mtcValue)}" />
     <p class="field-hint">Ako tankuješ vozilo, obavezno upiši KM. Ako tankuješ mašinu, obavezno upiši MTČ. Možeš popuniti oba ako firma tako traži.</p>
 
-    <label>Sipano litara</label>
+    <label>Litara</label>
     <input class="ft-liters numeric-text" type="text" inputmode="decimal" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
 
-    <label>Gorivo primio</label>
+    <label>Primio gorivo</label>
     <input class="ft-receiver" placeholder="ime i prezime vozača / rukovaoca" value="${escapeHtml(values.receiver || values.received_by || "")}" />
   `;
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -3775,11 +3773,11 @@ function addFuelEntry(values = {}) {
         <input class="f-liters" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
       </div>
       <div>
-        <label>Trenutna kilometraža / KM</label>
+        <label>KM</label>
         <input class="f-km numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
       </div>
       <div>
-        <label>Trenutni MTČ</label>
+        <label>MTČ</label>
         <input class="f-mtc numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 1255.0" value="${escapeHtml(mtcValue)}" />
       </div>
     </div>
@@ -4502,7 +4500,7 @@ const EXPORT_COLUMNS = [
   { key:"fuel_km", label:"KM" },
   { key:"fuel_mtc", label:"MTČ" },
   { key:"fuel_by", label:"Gorivo sipao" },
-  { key:"fuel_receiver", label:"Gorivo primio" },
+  { key:"fuel_receiver", label:"Primio gorivo" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
   { key:"field_tanker_type", label:"Kategorija tankovanog sredstva" },
   { key:"field_tanker_asset_code", label:"Broj tankovanog sredstva" },
@@ -4510,8 +4508,8 @@ const EXPORT_COLUMNS = [
   { key:"field_tanker_registration", label:"Registracija" },
   { key:"field_tanker_km", label:"KM pri tankovanju cisternom" },
   { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
-  { key:"field_tanker_liters", label:"Sipano litara iz cisterne" },
-  { key:"field_tanker_receiver", label:"Gorivo primio iz cisterne" },
+  { key:"field_tanker_liters", label:"Litara iz cisterne" },
+  { key:"field_tanker_receiver", label:"Primio gorivo iz cisterne" },
   { key:"material_action", label:"Radnja sa materijalom" },
   { key:"material", label:"Materijal" },
   { key:"quantity", label:"Količina" },
@@ -4531,7 +4529,7 @@ const EXPORT_COLUMNS = [
   { key:"defect_registration", label:"Registracija sredstva" },
   { key:"defect_site", label:"Lokacija kvara" },
   { key:"defect", label:"Opis kvara" },
-  { key:"defect_work_impact", label:"Uticaj kvara na rad" },
+  { key:"defect_work_impact", label:"Uticaj na rad" },
   { key:"defect_urgency", label:"Hitnost" },
   { key:"defect_called_mechanic", label:"Pozvan šef mehanizacije" },
   { key:"defect_status", label:"Status kvara" },

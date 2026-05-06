@@ -773,3 +773,38 @@ button.small {
   .report-paper-details[open] .report-paper-view{position:absolute;left:0;top:0;width:100%;max-width:none;margin:0;box-shadow:none;border:0}
   .no-print{display:none!important}
 }
+
+
+/* v1.22.2 — zategnut papirni pregled izveštaja */
+.report-row-item{border-radius:6px;box-shadow:0 1px 5px rgba(15,34,21,.06)}
+.report-list-grid{background:#fff;border-bottom:1px solid #dfe7e1}
+.report-paper-details summary{background:#f8faf8;border-bottom:1px solid #dfe7e1}
+.report-toolbar{position:sticky;top:0;z-index:4;background:#f3f7f4;border-bottom:1px solid #d7e1da}
+.report-paper-view{max-width:1180px;border-radius:3px;box-shadow:0 6px 18px rgba(0,0,0,.08);font-family:Arial, Helvetica, sans-serif}
+.paper-title-block{border-bottom:2px solid #1f3326;margin-bottom:16px;padding-bottom:12px}
+.paper-title-block h3{font-size:1.38em;text-transform:uppercase;color:#1e3325}
+.paper-title-block p{font-size:.86em;color:#5e6b62}
+.paper-meta-table{font-size:.95em;margin-bottom:20px}
+.paper-meta-table th{background:#eef2ef;color:#1e3325;white-space:nowrap}
+.paper-meta-table td{background:#fff}
+.report-paper-view .report-section{margin:20px 0 22px;padding:0;background:#fff;border:0;box-shadow:none}
+.report-paper-view .report-section h4{font-size:1.05em;letter-spacing:.01em;text-transform:uppercase;border-bottom:2px solid #c8d2cc;color:#1e3325;margin:0 0 9px;padding:0 0 6px}
+.report-paper-view .report-main-summary h4{margin-top:0}
+.report-paper-view .report-kv{border:1px solid #c8d2cc;background:#fff}
+.report-paper-view .report-kv b,.report-paper-view .report-kv span{padding:.48em .62em;border-bottom:1px solid #e0e6e2}
+.report-paper-view .report-kv b{background:#f2f4f3;font-weight:700;color:#22392a}
+.report-paper-view .report-mini-table{min-width:720px;font-size:.94em}
+.report-paper-view .report-mini-table th{background:#edf1ee;color:#203728;border:1px solid #c8d2cc;text-transform:none;white-space:nowrap}
+.report-paper-view .report-mini-table td{border:1px solid #d8e0db;vertical-align:top}
+.report-paper-view .report-mini-table td:first-child,
+.report-paper-view .report-mini-table th:first-child{text-align:center;width:42px}
+.report-paper-view .report-mini-table td:nth-child(4),
+.report-paper-view .report-mini-table td:nth-child(5),
+.report-paper-view .report-mini-table td:nth-child(6),
+.report-paper-view .report-mini-table td:nth-child(8),
+.report-paper-view .report-mini-table td:nth-child(9){text-align:right}
+.report-paper-view .report-empty{color:#7b8580;font-style:italic;margin:6px 0}
+.report-paper-view .report-excel-details{background:#f8faf8;border:1px solid #d5ded8;border-radius:3px}
+.report-paper-view .report-excel-details summary{font-weight:700;color:#1f3326;cursor:pointer}
+.paper-footer-note{font-size:.82em;color:#66716a;text-align:right}
+@media print{.report-paper-view{font-size:12px!important;padding:0!important}.report-paper-view .report-excel-details{display:none!important}}
