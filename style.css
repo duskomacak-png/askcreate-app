@@ -1075,3 +1075,324 @@ td {
     font-size: 16px;
   }
 }
+
+/* =========================================================
+   Start Work PRO - REAL BUSINESS APP LAYOUT v1.23.4
+   Cilj: Uprava kao profesionalni SaaS dashboard sa slike.
+   Funkcije ostaju na istim ID-jevima i istim tabovima.
+   ========================================================= */
+:root{
+  --pro-green:#0f766e;
+  --pro-green-dark:#075f55;
+  --pro-orange:#f97316;
+  --pro-bg:#f7faf9;
+  --pro-surface:#ffffff;
+  --pro-text:#0f172a;
+  --pro-muted:#64748b;
+  --pro-border:#e2e8f0;
+  --pro-soft-green:#e8f5ef;
+  --pro-soft-orange:#fff4ea;
+  --pro-shadow:0 12px 30px rgba(15,23,42,.07);
+  --pro-shadow-soft:0 6px 16px rgba(15,23,42,.05);
+}
+
+body.in-app{
+  background:var(--pro-bg)!important;
+  color:var(--pro-text)!important;
+}
+
+body.in-app .internal-header{
+  background:#fff!important;
+  color:var(--pro-text)!important;
+  border-bottom:1px solid var(--pro-border)!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.04)!important;
+  min-height:76px;
+  padding:14px 28px!important;
+}
+body.in-app .internal-header strong,
+body.in-app .internal-header small{color:var(--pro-text)!important}
+body.in-app .internal-header > div:first-child{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+body.in-app .internal-header > div:first-child::before{
+  content:"🏢";
+  width:44px;height:44px;
+  display:grid;place-items:center;
+  border:1px solid var(--pro-border);
+  border-radius:12px;
+  background:#fff;
+  font-size:22px;
+}
+body.in-app #internalTitle{font-size:17px;font-weight:900;letter-spacing:-.02em}
+body.in-app #internalSubtitle{display:block;font-size:13px;color:var(--pro-muted)!important;margin-top:2px}
+body.in-app #internalLogoutBtn{
+  background:#fff!important;
+  color:var(--pro-text)!important;
+  border:1px solid var(--pro-border)!important;
+  box-shadow:none!important;
+  padding:10px 14px!important;
+}
+
+body.in-app .shell{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+}
+
+#viewDirectorDashboard.director-business-page.active{
+  display:grid!important;
+  grid-template-columns:280px minmax(0,1fr);
+  min-height:calc(100vh - 76px);
+  background:var(--pro-bg)!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+  border-radius:0!important;
+}
+
+.director-sidebar{
+  position:sticky;
+  top:76px;
+  align-self:start;
+  height:calc(100vh - 76px);
+  background:#fff;
+  border-right:1px solid var(--pro-border);
+  padding:26px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+.director-logo-box{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 8px 18px;
+  border-bottom:1px solid var(--pro-border);
+}
+.director-logo-mark{
+  width:46px;height:46px;
+  display:grid;place-items:center;
+  border-radius:14px;
+  background:linear-gradient(135deg,#ff7a1a,#f15a24);
+  color:#fff;
+  font-weight:1000;
+  font-size:26px;
+  box-shadow:0 10px 20px rgba(249,115,22,.22);
+}
+.director-logo-box strong{display:block;font-size:22px;line-height:1;color:var(--pro-text)}
+.director-logo-box span{display:block;font-weight:1000;color:#f97316;margin-top:4px}
+
+.director-nav-tabs{
+  display:grid!important;
+  gap:8px!important;
+  margin:0!important;
+  flex:1;
+  align-content:start;
+}
+.director-nav-tabs .tab{
+  width:100%;
+  border:0!important;
+  background:transparent!important;
+  color:#334155!important;
+  border-radius:12px!important;
+  padding:13px 14px!important;
+  text-align:left;
+  font-size:15px;
+  font-weight:850;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  box-shadow:none!important;
+  white-space:normal!important;
+}
+.director-nav-tabs .tab:hover{background:#f1f5f9!important;color:var(--pro-green)!important;transform:none!important}
+.director-nav-tabs .tab.active{
+  background:var(--pro-soft-green)!important;
+  color:var(--pro-green-dark)!important;
+  box-shadow:inset 3px 0 0 var(--pro-green)!important;
+}
+.director-help-link{
+  margin-top:auto;
+  border-top:1px solid var(--pro-border);
+  padding:18px 10px 0;
+  color:#334155;
+  font-weight:800;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.director-workspace{
+  padding:26px 28px 32px;
+  min-width:0;
+}
+.director-business-topline{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:20px;
+}
+.company-switch-pill,
+.director-user-pill,
+.hero-date-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  background:#fff;
+  border:1px solid var(--pro-border);
+  border-radius:12px;
+  padding:12px 16px;
+  box-shadow:var(--pro-shadow-soft);
+  color:var(--pro-text);
+  font-weight:850;
+}
+.director-user-pill{color:#334155;font-weight:750}
+.business-eyebrow{margin:0 0 5px;color:var(--pro-green);font-size:12px;text-transform:uppercase;letter-spacing:.11em;font-weight:1000}
+.director-business-hero{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+  margin:0 0 18px!important;
+}
+.director-business-hero h2{font-size:34px!important;margin:0 0 6px!important;color:var(--pro-text)!important;letter-spacing:-.035em}
+.director-business-hero p{margin:0;color:var(--pro-muted)}
+
+.business-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:16px;
+  margin-bottom:20px;
+}
+.business-kpi-card{
+  background:#fff;
+  border:1px solid var(--pro-border);
+  border-radius:16px;
+  padding:20px;
+  box-shadow:var(--pro-shadow);
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:15px;
+  min-height:142px;
+  transition:.18s ease;
+}
+.business-kpi-card:hover{transform:translateY(-3px);box-shadow:0 18px 35px rgba(15,23,42,.10)}
+.business-kpi-card.kpi-warning{border-color:#fdba74;background:linear-gradient(135deg,#fff,#fff7ed)}
+.kpi-icon{
+  width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-size:27px;
+}
+.kpi-icon.green{background:var(--pro-soft-green)}
+.kpi-icon.orange{background:var(--pro-soft-orange);color:var(--pro-orange)}
+.business-kpi-card strong{display:block;font-size:42px;line-height:1;color:var(--pro-text);letter-spacing:-.04em}
+.business-kpi-card span{display:block;color:#334155;margin-top:6px;font-weight:650}
+.business-kpi-card button{
+  grid-column:1 / -1;
+  align-self:end;
+  justify-self:start;
+  background:transparent!important;
+  color:var(--pro-green)!important;
+  border:0!important;
+  padding:0!important;
+  font-weight:900;
+  box-shadow:none!important;
+}
+.kpi-warning button,.kpi-warning strong{color:var(--pro-orange)!important}
+
+.business-searchbar{
+  background:#fff!important;
+  border:1px solid var(--pro-border)!important;
+  border-radius:16px!important;
+  box-shadow:var(--pro-shadow-soft)!important;
+  padding:12px!important;
+}
+.business-searchbar input{border:0!important;background:#f8fafc!important;border-radius:12px!important}
+
+.director-content-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 270px;
+  gap:18px;
+  align-items:start;
+}
+.director-content-main{min-width:0}
+#viewDirectorDashboard .tab-panel.active > .card,
+#viewDirectorDashboard .tab-panel.active .grid > .card,
+#viewDirectorDashboard .tab-panel.active .right-stack > .card,
+#viewDirectorDashboard .tab-panel.active .right-stack > .worker-preview-card{
+  border:1px solid var(--pro-border)!important;
+  border-radius:16px!important;
+  box-shadow:var(--pro-shadow)!important;
+  background:#fff!important;
+}
+#viewDirectorDashboard .tab-panel h3{font-size:20px;color:var(--pro-text)!important;letter-spacing:-.02em}
+
+.business-quick-actions{
+  position:sticky;
+  top:96px;
+  border:1px solid var(--pro-border)!important;
+  border-radius:16px!important;
+  box-shadow:var(--pro-shadow)!important;
+  padding:18px!important;
+}
+.business-quick-actions h3{font-size:20px;margin-bottom:16px;color:var(--pro-text)!important}
+.quick-action{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border-radius:14px!important;
+  padding:16px!important;
+  margin-bottom:12px;
+  font-weight:900;
+  text-align:left;
+}
+.quick-action.green{
+  background:linear-gradient(135deg,#047857,#065f46)!important;
+  color:#fff!important;
+  border:0!important;
+  box-shadow:0 12px 22px rgba(4,120,87,.20)!important;
+}
+.quick-action.light{background:#f8fafc!important;color:var(--pro-text)!important;border:1px solid var(--pro-border)!important}
+.quick-action.outline{background:#fff!important;color:var(--pro-green-dark)!important;border:1px solid var(--pro-green)!important}
+.quick-action span{font-size:22px}
+
+#viewDirectorDashboard .item,
+#viewDirectorDashboard .management-item,
+#viewDirectorDashboard .report-item{
+  border:1px solid var(--pro-border)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 4px 12px rgba(15,23,42,.04)!important;
+}
+#viewDirectorDashboard .pill{
+  background:#ecfdf5!important;
+  color:#047857!important;
+  border-color:#bbf7d0!important;
+}
+#viewDirectorDashboard th{background:#f1f5f9!important;color:#334155!important}
+#viewDirectorDashboard .primary{background:var(--pro-green)!important;border-color:var(--pro-green)!important;color:#fff!important}
+#viewDirectorDashboard .secondary{background:#fff!important;color:var(--pro-text)!important;border-color:var(--pro-border)!important}
+
+@media(max-width:1180px){
+  #viewDirectorDashboard.director-business-page.active{grid-template-columns:230px minmax(0,1fr)}
+  .business-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .director-content-grid{grid-template-columns:1fr}
+  .business-quick-actions{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .business-quick-actions h3{grid-column:1 / -1;margin-bottom:4px}
+  .quick-action{margin:0}
+}
+@media(max-width:820px){
+  #viewDirectorDashboard.director-business-page.active{display:block!important}
+  .director-sidebar{position:static;height:auto;border-right:0;border-bottom:1px solid var(--pro-border);padding:16px}
+  .director-nav-tabs{display:flex!important;overflow-x:auto;grid-auto-flow:column;grid-auto-columns:max-content;flex-wrap:nowrap!important;padding-bottom:6px}
+  .director-nav-tabs .tab{width:auto;white-space:nowrap!important}
+  .director-help-link{display:none}
+  .director-workspace{padding:16px}
+  .director-business-topline{flex-direction:column;align-items:stretch}
+  .business-kpi-grid{grid-template-columns:1fr}
+  .business-quick-actions{grid-template-columns:1fr}
+}

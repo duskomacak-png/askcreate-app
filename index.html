@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1231" />
+  <link rel="stylesheet" href="style.css?v=1234" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -136,38 +136,80 @@
       </div>
     </section>
 
-    <section id="viewDirectorDashboard" class="view">
-      <div class="dashboard-head">
-        <div>
-          <h2>Uprava</h2>
-          <p id="directorCompanyLabel">Firma</p>
+    <section id="viewDirectorDashboard" class="view director-business-page">
+      <aside class="director-sidebar" aria-label="Uprava navigacija">
+        <div class="director-logo-box">
+          <div class="director-logo-mark">S</div>
+          <div>
+            <strong>Start Work</strong>
+            <span>PRO</span>
+          </div>
         </div>
-        
-      </div>
-
-      <div class="tabs">
-        <button class="tab active" data-tab="people">Ljudi</button>
-        <button class="tab" data-tab="sites">Gradilišta</button>
-        <button class="tab" data-tab="assets">Mašine i vozila</button>
-        <button class="tab" data-tab="materials">Materijali</button>
-        <button class="tab" data-tab="reports">Dnevni izveštaji</button>
-        <button class="tab" data-tab="defects">Kvarovi</button>
-        <button class="tab" data-tab="export">Izvoz u Excel</button>
-      </div>
-
-      <div class="director-searchbar">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔎</span>
-          <input id="directorGlobalSearch" type="search" placeholder="Pretraži bazu: radnik, mašina, vozilo, gradilište, materijal, izveštaj..." />
+        <div class="tabs director-nav-tabs">
+          <button class="tab active" data-tab="people">🏠 Početna / Ljudi</button>
+          <button class="tab" data-tab="sites">🏗️ Gradilišta</button>
+          <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
+          <button class="tab" data-tab="materials">📦 Materijali</button>
+          <button class="tab" data-tab="reports">📄 Dnevni izveštaji</button>
+          <button class="tab" data-tab="defects">🛠️ Kvarovi</button>
+          <button class="tab" data-tab="export">📊 Izvoz u Excel</button>
         </div>
-        <button id="directorSearchBtn" class="secondary small-action" type="button">Traži</button>
-        <button id="directorClearSearchBtn" class="secondary small-action" type="button">Očisti</button>
-      </div>
-      <div id="directorSearchResults" class="card director-search-results hidden">
-        <h3>Rezultati pretrage</h3>
-        <div id="directorSearchResultsList" class="list"></div>
-      </div>
+        <div class="director-help-link">❔ Pomoć i podrška <span>›</span></div>
+      </aside>
 
+      <div class="director-workspace">
+        <div class="director-business-topline">
+          <div class="company-switch-pill">🏢 <span id="directorBusinessCompanyName">Firma</span></div>
+          <div class="director-user-pill">👤 <span>Uprava / Direkcija</span></div>
+        </div>
+
+        <div class="dashboard-head director-business-hero">
+          <div>
+            <p class="business-eyebrow">Kontrolni panel</p>
+            <h2>Dobrodošli nazad</h2>
+            <p id="directorCompanyLabel">Firma</p>
+          </div>
+          <div class="hero-date-pill">📅 Danas</div>
+        </div>
+
+        <div class="business-kpi-grid" aria-label="Kratak pregled firme">
+          <div class="business-kpi-card">
+            <div class="kpi-icon green">👥</div>
+            <div><strong id="directorMetricPeople">—</strong><span>Aktivnih radnika</span></div>
+            <button type="button" data-business-tab="people">Vidi detalje ›</button>
+          </div>
+          <div class="business-kpi-card">
+            <div class="kpi-icon green">🏗️</div>
+            <div><strong id="directorMetricSites">—</strong><span>Aktivnih gradilišta</span></div>
+            <button type="button" data-business-tab="sites">Vidi detalje ›</button>
+          </div>
+          <div class="business-kpi-card kpi-warning">
+            <div class="kpi-icon orange">📄</div>
+            <div><strong id="directorMetricPendingReports">—</strong><span>Izveštaja čeka odobrenje</span></div>
+            <button type="button" data-business-tab="reports">Vidi detalje ›</button>
+          </div>
+          <div class="business-kpi-card">
+            <div class="kpi-icon green">⛽</div>
+            <div><strong id="directorMetricFuel">—</strong><span>Goriva danas</span></div>
+            <button type="button" data-business-tab="reports">Vidi detalje ›</button>
+          </div>
+        </div>
+
+        <div class="director-searchbar business-searchbar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔎</span>
+            <input id="directorGlobalSearch" type="search" placeholder="Pretraži bazu: radnik, mašina, vozilo, gradilište, materijal, izveštaj..." />
+          </div>
+          <button id="directorSearchBtn" class="secondary small-action" type="button">Traži</button>
+          <button id="directorClearSearchBtn" class="secondary small-action" type="button">Očisti</button>
+        </div>
+        <div id="directorSearchResults" class="card director-search-results hidden">
+          <h3>Rezultati pretrage</h3>
+          <div id="directorSearchResultsList" class="list"></div>
+        </div>
+
+        <div class="director-content-grid">
+          <div class="director-content-main">
       <div id="tabPeople" class="tab-panel active">
         <div class="grid two">
           <div class="card">
@@ -412,7 +454,18 @@
           </div>
         </div>
       </div>
+          </div>
+          <aside class="business-quick-actions card">
+            <h3>Brze akcije</h3>
+            <button type="button" class="quick-action green" data-business-tab="people">➕ Novi radnik <span>›</span></button>
+            <button type="button" class="quick-action green" data-business-tab="sites">➕ Novo gradilište <span>›</span></button>
+            <button type="button" class="quick-action light" data-business-tab="reports">📄 Pregledaj izveštaje <span>›</span></button>
+            <button type="button" class="quick-action outline" data-business-tab="export">📊 Izvoz u Excel <span>›</span></button>
+          </aside>
+        </div>
+      </div>
     </section>
+
 
     <section id="viewWorkerLogin" class="view">
       <div class="card narrow">
@@ -635,6 +688,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1231"></script>
+  <script src="script.js?v=1234"></script>
 </body>
 </html>

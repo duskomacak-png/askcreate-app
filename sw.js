@@ -1,4 +1,4 @@
-const CACHE_NAME = "startwork-pro-v1231";
+const CACHE_NAME = "startwork-pro-v1234";
 const APP_SHELL = [
   "./",
   "./index.html",
