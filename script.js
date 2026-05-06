@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.23.0";
+const APP_VERSION = "1.23.3";
 
 
 let sb = null;
@@ -20,6 +20,72 @@ let currentWorker = null;
 let workerAssetOptions = [];
 let workerSiteOptions = [];
 let workerMaterialOptions = [];
+
+
+const businessStats = {
+  people: 0,
+  sites: 0,
+  pendingReports: 0,
+  fuelToday: 0
+};
+
+function setTextIfExists(selector, value) {
+  const el = $(selector);
+  if (el) el.textContent = value;
+}
+
+function formatBusinessToday() {
+  try {
+    return new Date().toLocaleDateString("sr-RS", { day: "2-digit", month: "long", year: "numeric" });
+  } catch (e) {
+    return today();
+  }
+}
+
+function updateBusinessDashboardStats(partial = {}) {
+  Object.assign(businessStats, partial || {});
+  setTextIfExists("#businessPeopleCount", String(businessStats.people || 0));
+  setTextIfExists("#businessSitesCount", String(businessStats.sites || 0));
+  setTextIfExists("#businessPendingReportsCount", String(businessStats.pendingReports || 0));
+  setTextIfExists("#businessFuelTodayCount", `${Math.round(Number(businessStats.fuelToday || 0))} L`);
+  setTextIfExists("#businessTodayLabel", formatBusinessToday());
+}
+
+function reportNeedsApprovalBusiness(r) {
+  const status = String(r?.status || "").toLowerCase();
+  if (["approved", "odobreno", "archived", "arhivirano", "deleted"].includes(status)) return false;
+  if (["returned", "vraceno", "vraćeno"].includes(status)) return false;
+  return true;
+}
+
+function sumFuelLitersFromData(data) {
+  let total = 0;
+  const seen = new Set();
+  const walk = (value) => {
+    if (!value || typeof value !== "object") return;
+    if (seen.has(value)) return;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      value.forEach(walk);
+      return;
+    }
+    Object.entries(value).forEach(([key, val]) => {
+      const k = String(key || "").toLowerCase();
+      if ((k.includes("liter") || k.includes("litar") || k === "liters" || k === "litres" || k === "fuel_liters") && val !== "") {
+        const n = parseFloat(String(val).replace(",", "."));
+        if (Number.isFinite(n)) total += n;
+      }
+      if (val && typeof val === "object") walk(val);
+    });
+  };
+  walk(data);
+  return total;
+}
+
+function openBusinessTab(tabName) {
+  const btn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  if (btn) btn.click();
+}
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -207,6 +273,7 @@ async function loadDirectorCompany() {
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
+  updateBusinessDashboardStats();
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
   return data;
@@ -574,6 +641,7 @@ async function loadPeople() {
   const list = $("#peopleList");
   if (!list) return;
   list.innerHTML = (data || []).map(renderPersonItem).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
+  updateBusinessDashboardStats({ people: (data || []).length });
 }
 
 async function loadSites() {
@@ -599,6 +667,7 @@ async function loadSites() {
       </div>
     </div>
   `).join("") || `<p class="muted">Nema aktivnih gradilišta.</p>`;
+  updateBusinessDashboardStats({ sites: (data || []).length });
 }
 
 async function loadAssets() {
@@ -1084,6 +1153,14 @@ async function loadReports() {
   directorReportsCache = await enrichReportsWithUsers(data || []);
   const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
+  const todayIso = today();
+  const fuelToday = directorReportsCache
+    .filter(r => String(r.report_date || r.created_at || "").slice(0, 10) === todayIso)
+    .reduce((sum, r) => sum + sumFuelLitersFromData(r.data || {}), 0);
+  updateBusinessDashboardStats({
+    pendingReports: dailyReports.filter(reportNeedsApprovalBusiness).length,
+    fuelToday
+  });
   renderDefectsList();
   renderExportPanel();
 }
@@ -5580,10 +5657,12 @@ function bindEvents() {
     $$(".tab").forEach(b => b.classList.remove("active"));
     $$(".tab-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
-    $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
+    const panel = $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1));
+    if (panel) panel.classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
   }));
+  $$("[data-business-tab]").forEach(btn => btn.addEventListener("click", () => openBusinessTab(btn.dataset.businessTab)));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
   bindPersonPreviewEvents();
