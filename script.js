@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.5";
+const APP_VERSION = "1.22.6";
 
 
 let sb = null;
@@ -4069,6 +4069,20 @@ function collectWorkerData() {
   const fieldTankerEntries = canFieldTanker ? getFieldTankerEntries() : [];
   const materialEntries = canMaterials ? getMaterialEntries() : [];
   const leaveRequest = canLeaveRequest ? getLeaveRequestData() : null;
+
+  const defectAssetPayload = canDefects ? getDefectAssetPayload() : {
+    defect_asset_kind: "",
+    defect_asset_id: "",
+    defect_asset_code: "",
+    defect_asset_name: "",
+    defect_asset_registration: "",
+    defect_manual_asset_name: ""
+  };
+  const defectImpactPayload = canDefects ? getDefectImpactPayload() : {
+    defect_work_impact: "",
+    defect_stops_work: "",
+    defect_can_continue: ""
+  };
 
   // v1.17.4: Labudica ne mora imati glavno gradilište iz osnovne rubrike.
   // Ako radnik popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
