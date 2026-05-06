@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.4";
+const APP_VERSION = "1.22.5";
 
 
 let sb = null;
@@ -77,9 +77,11 @@ function setInternalHeader(title = "", subtitle = "", showHeader = true) {
   if (!header) return;
   const titleEl = $("#internalTitle");
   const subtitleEl = $("#internalSubtitle");
+  const logoutBtn = $("#internalLogoutBtn");
   if (titleEl) titleEl.textContent = title || "Radni prostor";
   if (subtitleEl) subtitleEl.textContent = subtitle || "";
   header.classList.toggle("hidden", !showHeader);
+  if (logoutBtn) logoutBtn.classList.toggle("hidden", !showHeader);
   document.body.classList.toggle("in-app", !!showHeader);
 }
 
@@ -94,7 +96,7 @@ function show(view) {
   if (el) el.classList.add("active");
 
   // Koristimo samo jedno dugme za odjavu: ono na zelenoj traci (#internalLogoutBtn).
-  // Staro dugme iz glavnog topbara ostaje skriveno da ne pravi duplikat.
+  // Staro dugme iz javnog topbara ostaje skriveno da ne pravi duplikat.
   const oldTopbarLogout = $("#logoutBtn");
   if (oldTopbarLogout) oldTopbarLogout.classList.add("hidden");
 }
@@ -5494,6 +5496,7 @@ function bindEvents() {
 
   $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => show(btn.dataset.goto)));
   if ($("#logoutBtn")) $("#logoutBtn").addEventListener("click", signOut);
+  if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", signOut);
 
   $("#adminSignupBtn").addEventListener("click", async () => {
     try {
