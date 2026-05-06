@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1233" />
+  <link rel="stylesheet" href="style.css?v=1231" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -136,77 +136,26 @@
       </div>
     </section>
 
-    <section id="viewDirectorDashboard" class="view business-director-view">
-      <div class="business-app-frame">
-        <aside class="business-sidebar" aria-label="Uprava navigacija">
-          <div class="business-brand">
-            <div class="business-brand-mark">SW</div>
-            <div>
-              <strong>Start Work</strong>
-              <span>PRO</span>
-            </div>
-          </div>
-          <nav class="business-nav">
-            <button class="tab business-nav-item active" data-tab="people" type="button"><span>👥</span>Ljudi i funkcije</button>
-            <button class="tab business-nav-item" data-tab="sites" type="button"><span>🏗️</span>Gradilišta</button>
-            <button class="tab business-nav-item" data-tab="assets" type="button"><span>🚜</span>Sredstva rada</button>
-            <button class="tab business-nav-item" data-tab="materials" type="button"><span>📦</span>Materijali</button>
-            <button class="tab business-nav-item" data-tab="reports" type="button"><span>📄</span>Dnevni izveštaji</button>
-            <button class="tab business-nav-item" data-tab="defects" type="button"><span>🛠️</span>Kvarovi</button>
-            <button class="tab business-nav-item" data-tab="export" type="button"><span>📊</span>Izvoz u Excel</button>
-          </nav>
-          <div class="business-help-card">
-            <b>Pomoć i podrška</b>
-            <small>Terenski izveštaji, gorivo, kvarovi i Excel na jednom mestu.</small>
-          </div>
-        </aside>
+    <section id="viewDirectorDashboard" class="view">
+      <div class="dashboard-head">
+        <div>
+          <h2>Uprava</h2>
+          <p id="directorCompanyLabel">Firma</p>
+        </div>
+        
+      </div>
 
-        <div class="business-main">
-          <div class="business-topline">
-            <div class="business-company-pill">
-              <span>🏢</span>
-              <span id="directorCompanyLabel">Firma</span>
-            </div>
-            <div class="business-user-pill">
-              <span class="business-avatar">U</span>
-              <span>Uprava / Direkcija</span>
-            </div>
-          </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="people">Ljudi</button>
+        <button class="tab" data-tab="sites">Gradilišta</button>
+        <button class="tab" data-tab="assets">Mašine i vozila</button>
+        <button class="tab" data-tab="materials">Materijali</button>
+        <button class="tab" data-tab="reports">Dnevni izveštaji</button>
+        <button class="tab" data-tab="defects">Kvarovi</button>
+        <button class="tab" data-tab="export">Izvoz u Excel</button>
+      </div>
 
-          <div class="business-welcome">
-            <div>
-              <p class="business-eyebrow">Kontrolni panel firme</p>
-              <h2>Dobrodošli nazad</h2>
-              <p>Pregled radnika, gradilišta, dnevnih izveštaja, goriva, kvarova i Excel izvoza.</p>
-            </div>
-            <div class="business-date-card">
-              <span>Danas</span>
-              <strong id="businessTodayLabel">—</strong>
-            </div>
-          </div>
-
-          <div class="business-kpi-grid">
-            <div class="business-kpi-card">
-              <div class="business-kpi-icon green">👥</div>
-              <div><strong id="businessPeopleCount">0</strong><span>Aktivnih radnika</span></div>
-            </div>
-            <div class="business-kpi-card">
-              <div class="business-kpi-icon green">🏗️</div>
-              <div><strong id="businessSitesCount">0</strong><span>Aktivnih gradilišta</span></div>
-            </div>
-            <div class="business-kpi-card warning-card">
-              <div class="business-kpi-icon orange">📄</div>
-              <div><strong id="businessPendingReportsCount">0</strong><span>Izveštaja čeka odobrenje</span></div>
-            </div>
-            <div class="business-kpi-card">
-              <div class="business-kpi-icon green">⛽</div>
-              <div><strong id="businessFuelTodayCount">0 L</strong><span>Goriva danas</span></div>
-            </div>
-          </div>
-
-          <div class="business-workspace">
-            <div class="business-content-column">
-              <div class="director-searchbar business-searchbar">
+      <div class="director-searchbar">
         <div class="search-input-wrap">
           <span class="search-icon">🔎</span>
           <input id="directorGlobalSearch" type="search" placeholder="Pretraži bazu: radnik, mašina, vozilo, gradilište, materijal, izveštaj..." />
@@ -461,17 +410,6 @@
               <button id="copyExcelBtn" class="secondary" type="button">📋 Kopiraj tabelu za Excel</button>
             </div>
           </div>
-        </div>
-      </div>
-            </div>
-              <aside class="business-quick-panel">
-                <h3>Brze akcije</h3>
-                <button class="business-quick-btn primary-quick" data-business-tab="people" type="button"><span>＋</span><b>Novi radnik</b><small>Dodaj osobu i dozvole</small></button>
-                <button class="business-quick-btn primary-quick" data-business-tab="sites" type="button"><span>＋</span><b>Novo gradilište</b><small>Lokacija i aktivni posao</small></button>
-                <button class="business-quick-btn" data-business-tab="reports" type="button"><span>📄</span><b>Pregledaj izveštaje</b><small>Inbox i papirni pregled</small></button>
-                <button class="business-quick-btn" data-business-tab="export" type="button"><span>📊</span><b>Excel izvoz</b><small>Izvuci tabele za firmu</small></button>
-              </aside>
-            </div>
         </div>
       </div>
     </section>
