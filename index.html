@@ -1,703 +1,206 @@
 <!DOCTYPE html>
-<html lang="sr">
+<html lang="bs">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Start Work PRO by AskCreate</title>
-  <meta name="theme-color" content="#0b1220" />
-  <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1229" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Work PRO</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <!-- Favicon and touch icons -->
+    <link rel="icon" type="image/png" href="icons/icon-192.png">
+    <meta name="theme-color" content="#155e41">
 </head>
 <body>
-  <div id="toast" class="toast hidden"></div>
-  <div id="internalHeader" class="internal-header hidden">
-    <div>
-      <strong id="internalTitle">Radni prostor</strong>
-      <small id="internalSubtitle">Firma</small>
-    </div>
-    <button id="internalLogoutBtn" class="ghost hidden" type="button">Odjavi se</button>
-  </div>
 
-  <header class="topbar app-brand-header">
-    <div>
-      <div class="brand-kicker">AskCreate Apps</div>
-      <h1>Start Work PRO</h1>
-      <p>Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel.</p>
-    </div>
-    <button id="logoutBtn" class="ghost hidden">Odjavi se</button>
-  </header>
-
-  <main class="shell">
-    <section id="viewHome" class="view active">
-      <div class="hero card home-hero">
-        <h2>Terenski ulaz</h2>
-        <p class="home-intro">Radnik brzo ulazi u terenski unos. Uprava i Administrator sistema su sekundarni ulazi za kancelariju.</p>
-        <div class="grid three home-entry-grid">
-          <button class="big-btn worker-entry" data-goto="WorkerLogin">
-            <span>👷</span>
-            Radnik
-            <small>terenski unos</small>
-          </button>
-          <button class="big-btn director-entry secondary-entry" data-goto="DirectorLogin">
-            <span>🏢</span>
-            Uprava
-            <small>firma i kancelarija</small>
-          </button>
-          <button class="big-btn admin-entry secondary-entry" data-goto="AdminLogin">
-            <span>🛡️</span>
-            Administrator sistema
-            <small>odobravanje firmi</small>
-          </button>
+    <!-- Top bar / Admin Header -->
+    <header class="top-bar">
+        <div class="logo-area">
+            <span class="logo-text">Start Work <b>PRO</b></span>
         </div>
-      </div>
-      <div class="notice home-mvp-notice">
-        <strong>Pravilo rada:</strong> radnik ne vidi staru arhivu. Popuni izveštaj, pošalje Upravi, forma se čisti.
-      </div>
-    </section>
-
-    <section id="viewAdminLogin" class="view">
-      <div class="card narrow">
-        <button class="back" data-goto="Home">← Nazad</button>
-        <h2>Administrator sistema soba</h2>
-        <p class="muted">Ulaz samo za nalog koji postoji u tabeli <code>app_admins</code>.</p>
-        <label>Email</label>
-        <input id="adminEmail" type="email" value="duskomacak@gmail.com" />
-        <label>Lozinka</label>
-        <input id="adminPassword" type="password" placeholder="Tvoja Supabase Auth lozinka" />
-        <div class="row">
-          <button id="adminLoginBtn" class="primary">Uđi</button>
-          <button id="adminSignupBtn" class="secondary">Prvi put / registruj admin nalog</button>
+        <div class="company-selector">
+            <select id="companySelect" class="form-select">
+                <option value="1">Gradnja DOO</option>
+            </select>
         </div>
-        <p class="hint">Ako Supabase traži potvrdu email-a, otvori Gmail i potvrdi link.</p>
-      </div>
-    </section>
-
-    <section id="viewAdminDashboard" class="view">
-      <div class="dashboard-head">
-        <div>
-          <h2>Admin soba</h2>
-          <p>Dodaješ firme koje tek posle toga mogu da aktiviraju Upravu.</p>
+        <div class="user-profile">
+            <span class="user-name">Marko Petrović – Direkcija</span>
+            <button id="logoutBtn" class="btn-logout">Logout</button>
         </div>
-        <button id="refreshAdminBtn" class="secondary">Osveži</button>
-      </div>
+    </header>
 
-      <div class="grid two">
-        <div class="card">
-          <h3>+ Dodaj odobrenu firmu</h3>
-          <label>Naziv firme</label>
-          <input id="acCompanyName" placeholder="npr. Maki Gradnja" />
-          <label>Email Uprave</label>
-          <input id="acEmail" type="email" placeholder="office@firma.rs" />
-          <label>Šifra firme</label>
-          <input id="acCompanyCode" placeholder="npr. MAKI26" />
-          <label>Pozivni kod</label>
-          <input id="acInviteCode" placeholder="npr. AC-8F42K" />
-          <label>Trial do</label>
-          <input id="acTrialUntil" type="date" />
-<label>Napomena</label>
-          <textarea id="acNote" placeholder="Interna napomena"></textarea>
-          <button id="addApprovedCompanyBtn" class="primary">Sačuvaj firmu</button>
-        </div>
-
-        <div class="card">
-          <h3>Odobrene firme</h3>
-          <div id="approvedCompaniesList" class="list"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3>Registrovane firme</h3>
-        <div id="companiesList" class="list"></div>
-      </div>
-    </section>
-
-    <section id="viewDirectorLogin" class="view">
-      <div class="card narrow">
-        <button class="back" data-goto="Home">← Nazad</button>
-        <h2>Uprava</h2>
-        <p class="muted">Uprava se može aktivirati samo ako je firma prethodno odobrena u administratorskom panelu.</p>
-        <label>Email</label>
-        <input id="directorEmail" type="email" placeholder="office@firma.rs" />
-        <label>Lozinka</label>
-        <input id="directorPassword" type="password" placeholder="Lozinka Uprave" />
-        <div class="row">
-          <button id="directorLoginBtn" class="primary">Prijavi se</button>
-          <button id="directorSignupBtn" class="secondary">Registruj email</button>
-        </div>
-        <hr/>
-        <h3>Aktivacija firme</h3>
-        <label>Šifra firme</label>
-        <input id="directorCompanyCode" placeholder="npr. MAKI26" />
-        <label>Pozivni kod</label>
-        <input id="directorInviteCode" placeholder="npr. AC-8F42K" />
-        <button id="activateCompanyBtn" class="primary">Aktiviraj firmu</button>
-      </div>
-    </section>
-
-    <section id="viewDirectorDashboard" class="view">
-      <div class="director-business-shell">
-        <aside class="director-sidebar" aria-label="Navigacija Uprave">
-          <div class="director-logo-card">
-            <span class="director-logo-mark">SW</span>
-            <div>
-              <strong>Start Work PRO</strong>
-              <small>Uprava / kontrolni centar</small>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <nav>
+                <ul>
+                    <li class="active"><a href="#"><i class="icon-home"></i> Početna</a></li>
+                    <li><a href="#"><i class="icon-users"></i> Ljudi i funkcije</a></li>
+                    <li><a href="#"><i class="icon-sites"></i> Gradilišta</a></li>
+                    <li><a href="#"><i class="icon-assets"></i> Sredstva rada</a></li>
+                    <li><a href="#"><i class="icon-materials"></i> Materijali</a></li>
+                    <li><a href="#"><i class="icon-reports"></i> Dnevni izveštaji</a></li>
+                    <li><a href="#"><i class="icon-defects"></i> Kvarovi</a></li>
+                    <li><a href="#"><i class="icon-excel"></i> Izvoz u Excel</a></li>
+                    <li><a href="#"><i class="icon-settings"></i> Podešavanja</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" class="support-link">Pomoć i podrška</a>
             </div>
-          </div>
-
-          <div class="tabs director-nav-tabs">
-            <button class="tab active" data-tab="people">👥 Ljudi</button>
-            <button class="tab" data-tab="sites">📍 Gradilišta</button>
-            <button class="tab" data-tab="assets">🚜 Mašine i vozila</button>
-            <button class="tab" data-tab="materials">🧱 Materijali</button>
-            <button class="tab" data-tab="reports">📄 Dnevni izveštaji</button>
-            <button class="tab" data-tab="defects">🚨 Kvarovi</button>
-            <button class="tab" data-tab="export">📊 Izvoz u Excel</button>
-          </div>
-
-          <div class="director-side-note">
-            <b>Pravilo</b>
-            <span>Prvo stabilnost, zatim dizajn. Interni ključevi ostaju netaknuti.</span>
-          </div>
         </aside>
 
-        <section class="director-main-panel">
-          <div class="dashboard-head director-business-head">
-            <div>
-              <p class="director-eyebrow">Business dashboard</p>
-              <h2>Uprava</h2>
-              <p id="directorCompanyLabel">Firma</p>
-            </div>
-            <div class="director-head-status">
-              <span class="status-dot"></span>
-              <span>Online radni prostor</span>
-            </div>
-          </div>
-
-          <div class="director-kpi-grid" aria-label="Brzi pregled stanja">
-            <div class="director-kpi-card accent">
-              <small>Izveštaji</small>
-              <strong id="directorStatReports">—</strong>
-              <span>Dnevni inbox</span>
-            </div>
-            <div class="director-kpi-card danger">
-              <small>Kvarovi</small>
-              <strong id="directorStatDefects">—</strong>
-              <span>Posebna evidencija</span>
-            </div>
-            <div class="director-kpi-card">
-              <small>Radnici</small>
-              <strong id="directorStatPeople">—</strong>
-              <span>Aktivni korisnici</span>
-            </div>
-            <div class="director-kpi-card">
-              <small>Sredstva</small>
-              <strong id="directorStatAssets">—</strong>
-              <span>Mašine / vozila / oprema</span>
-            </div>
-          </div>
-
-          <div class="director-work-grid">
-            <div class="director-work-main">
-              <div class="director-searchbar">
-                <div class="search-input-wrap">
-                  <span class="search-icon">🔎</span>
-                  <input id="directorGlobalSearch" type="search" placeholder="Pretraži bazu: radnik, mašina, vozilo, gradilište, materijal, izveštaj..." />
+        <!-- Main Content Dashboard -->
+        <main class="main-content">
+            <div class="welcome-section">
+                <h1>Dobrodošli nazad, Marko</h1>
+                <div class="dashboard-controls">
+                    <button class="btn-subtle" id="themeToggleBtn">Svetla tema</button>
+                    <input type="date" class="form-input" id="dashboardDate" value="2025-05-20">
                 </div>
-                <button id="directorSearchBtn" class="secondary small-action" type="button">Traži</button>
-                <button id="directorClearSearchBtn" class="secondary small-action" type="button">Očisti</button>
-              </div>
-              <div id="directorSearchResults" class="card director-search-results hidden">
-                <h3>Rezultati pretrage</h3>
-                <div id="directorSearchResultsList" class="list"></div>
-              </div>
+            </div>
 
-              <div id="tabPeople" class="tab-panel active">
-        <div class="grid two">
-          <div class="card">
-            <h3 id="personFormTitle">+ Dodaj osobu</h3>
-            <label>Ime</label>
-            <input id="personFirst" placeholder="Duško" />
-            <label>Prezime</label>
-            <input id="personLast" placeholder="Mačak" />
-            <label>Radno mesto</label>
-            <input id="personFunction" placeholder="Bagerista, Vozač, Šef gradilišta..." />
-            <div id="directorWorkerCodeHelpBox" class="code-help-box">
-              <b>Prijava radnika:</b>
-              <span>Šifra firme se uzima automatski iz aktivne firme. Ovde upisuješ samo ličnu šifru radnika.</span>
-            </div>
-            <label>Šifra radnika</label>
-            <input id="personCode" placeholder="npr. zor1234" />
-            <div class="permission-box">
-              <h4>Dodeljene radne rubrike</h4>
-              <label><input type="checkbox" class="perm" value="daily_work" /> Gradilište i datum izveštaja</label>
-              <label><input type="checkbox" class="perm" value="workers" /> Radnici na gradilištu</label>
-              <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
-              <label><input type="checkbox" class="perm" value="vehicles" /> Rad vozila / kamiona</label>
-              <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
-              <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
-              <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
-              <label><input type="checkbox" class="perm" value="materials" /> Materijal</label>
-              <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za odsustvo / godišnji odmor</label>
-              <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
-              <label><input type="checkbox" class="perm" value="defects" /> Evidencija kvara</label>
-              <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
-              <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje izveštaja</label>
-              <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
-              <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje korisnicima</label>
-              <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
-              <div class="material-permission-box">
-                <h4>Materijali koje radnik sme da vidi</h4>
-                <p class="muted tiny">Materijal dodat u tabu Materijali automatski se pojavljuje ovde za štikliranje.</p>
-                <div id="personMaterialPermissions" class="dynamic-check-list"></div>
-              </div>
-            </div>
-            <div class="row person-form-actions"><button id="addPersonBtn" class="primary">Sačuvaj osobu</button><button id="cancelEditPersonBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
-          </div>
-          <div class="right-stack">
-            <div id="workerPreviewCard" class="card worker-preview-card hidden">
-              <div class="worker-preview-head">
-                <div>
-                  <p class="preview-eyebrow">Pregled pre čuvanja</p>
-                  <h3>Pregled radničkog unosa</h3>
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-icon users-icon"></span>
+                        <div class="stat-number">14</div>
+                    </div>
+                    <div class="stat-title">Aktivnih radnika</div>
+                    <a href="#" class="stat-link">Vidi detalje &rarr;</a>
                 </div>
-                <button id="hideWorkerPreviewBtn" class="secondary small-action" type="button">Skloni</button>
-              </div>
-              <div id="workerPreviewBody" class="worker-preview-body"></div>
-            </div>
-            <div class="card">
-              <h3>Ljudi u firmi</h3>
-              <div id="peopleList" class="list"></div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div id="tabSites" class="tab-panel">
-        <div class="grid two">
-          <div class="card">
-            <h3>+ Dodaj gradilište</h3>
-            <label>Naziv</label>
-            <input id="siteName" placeholder="Gradilište 1" />
-            <label>Lokacija / opis</label>
-            <input id="siteLocation" placeholder="Mesto, ulica, deonica..." />
-            <button id="addSiteBtn" class="primary">Sačuvaj gradilište</button>
-          </div>
-          <div class="card">
-            <h3>Gradilišta</h3>
-            <div id="sitesList" class="list"></div>
-          </div>
-        </div>
-      </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-icon sites-icon"></span>
+                        <div class="stat-number">8</div>
+                    </div>
+                    <div class="stat-title">Aktivnih gradilišta</div>
+                    <a href="#" class="stat-link">Vidi detalje &rarr;</a>
+                </div>
 
-      <div id="tabAssets" class="tab-panel">
-        <div class="grid two">
-          <div class="card">
-            <h3 id="assetFormTitle">+ Dodaj sredstvo</h3>
-            <label>Interni broj sredstva</label>
-            <input id="assetCode" placeholder="npr. 101, B-12, KAM-05" autocomplete="off" />
-            <p class="field-hint">Ovaj broj služi da radnik ukuca/pronađe sredstvo po broju, a aplikacija pokaže pravi naziv.</p>
-            <label>Naziv</label>
-            <input id="assetName" placeholder="CAT 330 / MAN kiper" />
-            <label>Kategorija</label>
-            <select id="assetType">
-              <option value="machine">Mašina</option>
-              <option value="vehicle">Vozilo</option>
-              <option value="other">Oprema / ostalo</option>
-            </select>
-            <label>Registracija / oznaka</label>
-            <input id="assetReg" placeholder="BG-123-AA / interna oznaka" />
-            <label>Kapacitet vozila (m³)</label>
-            <div class="unit-input">
-              <input id="assetCapacity" inputmode="decimal" placeholder="npr. 18" />
-              <span class="unit-suffix">m³</span>
-            </div>
-            <div class="row asset-form-actions"><button id="addAssetBtn" class="primary">Sačuvaj</button><button id="cancelEditAssetBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
-          </div>
-          <div class="card">
-            <h3>Mašine i vozila</h3>
-            <div id="assetsList" class="list"></div>
-          </div>
-        </div>
-      </div>
+                <div class="stat-card active-action">
+                    <div class="stat-header">
+                        <span class="stat-icon pending-icon"></span>
+                        <div class="stat-number" style="color: #f97316;">6</div>
+                    </div>
+                    <div class="stat-title" style="color: #ea580c;">Izveštaja čeka odobrenje</div>
+                    <a href="#" class="stat-link" style="color: #ea580c;">Vidi detalje &rarr;</a>
+                </div>
 
-      <div id="tabMaterials" class="tab-panel">
-        <div class="grid two">
-          <div class="card">
-            <h3 id="materialFormTitle">+ Dodaj materijal</h3>
-            <label>Naziv materijala</label>
-            <input id="materialName" placeholder="npr. Kamen 0-31, pesak, rizla..." />
-            <label>Jedinica</label>
-            <select id="materialUnit">
-              <option value="m3">m³</option>
-              <option value="t">tona</option>
-              <option value="kg">kg</option>
-              <option value="kom">kom</option>
-              <option value="l">litar</option>
-              <option value="drugo">drugo</option>
-            </select>
-            <label>Kategorija / napomena</label>
-            <input id="materialCategory" placeholder="npr. tampon, beton, gorivo, ostalo..." />
-            <div class="row material-form-actions"><button id="addMaterialBtn" class="primary">Sačuvaj materijal</button><button id="cancelEditMaterialBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
-          </div>
-          <div class="card">
-            <h3>Spisak materijala</h3>
-            <div id="materialsList" class="list"></div>
-          </div>
-        </div>
-      </div>
-
-      <div id="tabReports" class="tab-panel">
-        <div class="card">
-          <h3>Inbox izveštaja</h3>
-          <p class="muted">Štikliraj dnevne izveštaje koje želiš da prebaciš u izvoz za Excel.</p>
-          <div class="row report-export-toolbar">
-            <button id="selectAllReportsBtn" class="secondary" type="button">✅ Označi sve</button>
-            <button id="clearReportsBtn" class="secondary" type="button">❌ Poništi sve</button>
-            <button id="goExportBtn" class="primary" type="button">➡️ Pošalji u izvoz za Excel</button>
-          </div>
-          <div id="reportsList" class="list"></div>
-        </div>
-      </div>
-
-
-      <div id="tabDefects" class="tab-panel">
-        <div class="card">
-          <h3>Kvarovi</h3>
-          <p class="muted">Ovde se prikazuju samo kvarovi koje radnici prijave. Kvarovi se ne mešaju sa dnevnim izveštajima.</p>
-          <div class="row report-export-toolbar">
-            <button id="refreshDefectsBtn" class="secondary" type="button">🔄 Osveži kvarove</button>
-          </div>
-          <div id="defectsList" class="list"></div>
-        </div>
-      </div>
-
-
-
-
-
-      <div id="tabExport" class="tab-panel">
-        <div class="card">
-          <h3>Izvoz u Excel</h3>
-          <p class="muted">Ovde stoje dnevni izveštaji koje je Uprava označila. Odaberi koje podatke želiš u Excel fajlu.</p>
-
-          <div class="export-box smart-export-box">
-            <h4>Brzi filter za poseban Excel</h4>
-            <p class="muted">Za Upravu: izaberi šta želiš da izvučeš, period, gradilište ili radnika. Aplikacija sama označi izveštaje i kolone.</p>
-            <div class="smart-export-grid">
-              <label>Vrsta exporta
-                <select id="smartExportType">
-                  <option value="all">Sve iz izabranih izveštaja</option>
-                  <option value="fuel_all">Sva sipanja goriva</option>
-                  <option value="fuel_own">Evidencija goriva – korisnik/vozilo/opremu</option>
-                  <option value="fuel_tanker">Evidencija goriva – cisterna</option>
-                  <option value="hours_workers">Radni sati radnika</option>
-                  <option value="machines">Rad mašina / MTČ</option>
-                  <option value="vehicles">Vozila / ture / m³</option>
-                  <option value="lowloader">Transport mašine labudicom</option>
-                  <option value="materials">Materijal</option>
-                  <option value="warehouse">Magacin</option>
-                  <option value="leave">Slobodni dani / godišnji</option>
-                  <option value="defects">Kvarovi</option>
-                </select>
-              </label>
-              <label>Od datuma
-                <input id="smartExportFrom" type="date" />
-              </label>
-              <label>Do datuma
-                <input id="smartExportTo" type="date" />
-              </label>
-              <label>Gradilište
-                <input id="smartExportSite" placeholder="npr. Zmaj" />
-              </label>
-              <label>Radnik / ime / šifra
-                <input id="smartExportWorker" placeholder="npr. Duško, dus1506" />
-              </label>
-            </div>
-            <div class="row compact">
-              <button id="applySmartExportBtn" class="primary" type="button">🔎 Pripremi poseban Excel</button>
-              <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filter</button>
-            </div>
-            <p id="smartExportInfo" class="hint">Primer: izaberi “Sva sipanja goriva”, datume za mesec dana i gradilište Zmaj.</p>
-          </div>
-
-          <div class="export-box">
-            <h4>Izabrani izveštaji</h4>
-            <p id="exportSelectedCount" class="pill">0 izveštaja označeno za export</p>
-            <div id="exportSelectedReportsBox" class="export-selected-list"></div>
-          </div>
-
-          <div class="export-box">
-            <div class="row space-between">
-              <div>
-                <h4>Podaci koje želiš u Excelu</h4>
-                <p class="muted">Izaberi jednostavan pregled za direktora ili detaljan pregled za operativu.</p>
-              </div>
-              <div class="row compact">
-                <button id="simpleExportBtn" class="primary" type="button">Jednostavan Excel</button>
-                <button id="detailedExportBtn" class="secondary" type="button">Detaljan Excel</button>
-              </div>
-            </div>
-            <div class="row compact export-master-actions">
-              <button id="selectAllColumnsBtn" class="secondary" type="button">Označi sve rubrike</button>
-              <button id="clearColumnsBtn" class="secondary" type="button">Poništi sve rubrike</button>
-            </div>
-            <div id="exportColumnsBox" class="export-groups-list"></div>
-          </div>
-
-          <div class="export-box export-download-box">
-            <h4>Preuzimanje / Excel</h4>
-            <p class="muted">Browser ne sme sam da otvori lokalni Excel bez dozvole korisnika. Zato imaš tri sigurne opcije:</p>
-            <div class="row">
-              <button id="exportXlsBtn" class="primary" type="button">📥 Preuzmi Excel tabelu</button>
-              <button id="exportCsvBtn" class="secondary" type="button">📥 Preuzmi CSV za Excel</button>
-              <button id="copyExcelBtn" class="secondary" type="button">📋 Kopiraj tabelu za Excel</button>
-            </div>
-          </div>
-        </div>
-      </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-icon fuel-icon"></span>
+                        <div class="stat-number">542 <small style="font-size: 14px; font-weight: normal;">L</small></div>
+                    </div>
+                    <div class="stat-title">Goriva danas</div>
+                    <a href="#" class="stat-link">Vidi detalje &rarr;</a>
+                </div>
             </div>
 
-            <aside class="director-quick-actions" aria-label="Brze akcije">
-              <div class="quick-card">
-                <h3>Brze akcije</h3>
-                <button class="quick-action-btn" type="button" data-quick-tab="reports">Otvori izveštaje</button>
-                <button class="quick-action-btn" type="button" data-quick-tab="defects">Otvori kvarove</button>
-                <button class="quick-action-btn" type="button" data-quick-tab="export">Pripremi Excel</button>
-              </div>
-              <div class="quick-card muted-card">
-                <h3>Status sistema</h3>
-                <p>Ova verzija menja izgled Uprave, ali ne menja SQL, RPC i slanje izveštaja.</p>
-              </div>
-            </aside>
-          </div>
-        </section>
-      </div>
-    </section>
+            <div class="content-grid">
+                <div class="activity-panel">
+                    <div class="panel-header">
+                        <h2>Nedavne aktivnosti</h2>
+                        <button class="btn-subtle">Pogledaj sve</button>
+                    </div>
 
-    <section id="viewWorkerLogin" class="view">
-      <div class="card narrow">
-        <button class="back" data-goto="Home">← Nazad</button>
-        <h2>Terenski unos</h2>
-        <label>Šifra firme</label>
-        <input id="workerCompanyCode" placeholder="npr. test2026" />
-        <p class="code-login-note">Šifra firme koju je Uprava dobila pri aktivaciji.</p>
-        <div id="workerLoginHelpBox" class="code-help-box">
-              <b>Prijava radnika:</b>
-              <span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Datum</th>
+                                    <th>Radnik</th>
+                                    <th>Gradilište</th>
+                                    <th>Rubrike</th>
+                                    <th>Status</th>
+                                    <th>Akcije</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>20.05.2025.</td>
+                                    <td>Nikola Jovanović</td>
+                                    <td>Stambeni kompleks Sunrise</td>
+                                    <td>Zidarski radovi</td>
+                                    <td><span class="badge badge-novo">Novo</span></td>
+                                    <td>
+                                        <div class="action-dropdown">
+                                            <button class="btn-action">Pogledaj</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>20.05.2025.</td>
+                                    <td>Marko Lazić</td>
+                                    <td>Poslovni objekat Delta</td>
+                                    <td>Betoniranje</td>
+                                    <td><span class="badge badge-odobreno">Odobreno</span></td>
+                                    <td>
+                                        <div class="action-dropdown">
+                                            <button class="btn-action">Pogledaj</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>19.05.2025.</td>
+                                    <td>Milan Stanković</td>
+                                    <td>Nadogradnja škole</td>
+                                    <td>Elektro radovi</td>
+                                    <td><span class="badge badge-vraceno">Vraćeno</span></td>
+                                    <td>
+                                        <div class="action-dropdown">
+                                            <button class="btn-action">Pogledaj</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>19.05.2025.</td>
+                                    <td>Petar Petrović</td>
+                                    <td>Stambeni kompleks Sunrise</td>
+                                    <td>Zidarski radovi</td>
+                                    <td><span class="badge badge-odobreno">Odobreno</span></td>
+                                    <td>
+                                        <div class="action-dropdown">
+                                            <button class="btn-action">Pogledaj</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>18.05.2025.</td>
+                                    <td>Aleksandar Đurić</td>
+                                    <td>Poslovni objekat Delta</td>
+                                    <td>Hidroizolacija</td>
+                                    <td><span class="badge badge-novo">Novo</span></td>
+                                    <td>
+                                        <div class="action-dropdown">
+                                            <button class="btn-action">Pogledaj</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right sidebar actions -->
+                <div class="quick-actions-panel">
+                    <h2>Brze akcije</h2>
+                    <button class="btn-main-action"><span class="plus-icon">+</span> Novi radnik</button>
+                    <button class="btn-main-action"><span class="plus-icon">+</span> Novo gradilište</button>
+                    <button class="btn-secondary-action">Pregledaj sve izveštaje</button>
+                    <button class="btn-main-action"><span class="plus-icon">+</span> Novi izveštaj</button>
+                </div>
             </div>
-            <label>Šifra radnika</label>
-        <input id="workerAccessCode" placeholder="npr. zor1234" />
-        <p class="code-login-note">Šifra radnika koju je Uprava upisala u profilu radnika.</p>
-        <button id="workerLoginBtn" class="primary">Uđi</button>
-        <p class="hint">Browser pamti ulaz na ovom uređaju. Stari izveštaji se ne prikazuju radniku.</p>
-      </div>
-    </section>
+        </main>
+    </div>
 
-    <section id="viewWorkerForm" class="view">
-      <div class="dashboard-head">
-        <div>
-          <h2 id="workerHello">Dobrodošli</h2>
-          <p id="workerCompanyLabel">Terenski obrazac</p>
-        </div>
-        <button id="workerLogoutBtn" class="secondary hidden" type="button" aria-hidden="true">Odjavi uređaj</button>
-      </div>
+    <!-- PWA manual fallback UI -->
+    <div id="pwaFallback" class="pwa-fallback" style="display: none;">
+        <p>Preuzmi Start Work PRO za brži pristup bez otvaranja browsera.</p>
+        <button id="installAppBtn" class="btn-install">Preuzmi app</button>
+    </div>
 
-      <div class="card">
-      <div id="workerReturnedReports" class="returned-panel hidden">
-        <h3>⚠️ Izveštaji vraćeni na dopunu</h3>
-        <p class="hint">Uprava je vratila ove izveštaje. Otvori izveštaj, ispravi podatke i pošalji ponovo.</p>
-        <div id="workerReturnedList" class="returned-list"></div>
-      </div>
-
-        <h3>Terenski unos</h3>
-        <p class="hint">Ako ti Uprava uključi rubriku Gradilište i datum izveštaja, popunjavaš samo datum/godinu i biraš gradilište iz liste Uprave. Ostale rubrike vidiš samo ako su posebno uključene.</p>
-        <label>Datum / godina</label>
-        <input id="wrDate" type="date" />
-
-        <div id="secWorkerSite" class="dyn-section">
-          <label>Ime gradilišta</label>
-          <select id="wrSiteName">
-            <option value="">Učitavam gradilišta...</option>
-          </select>
-          <p id="workerSiteHint" class="hint">Gradilišta dodaje Uprava. Radnik bira sa liste aktivnih gradilišta.</p>
-        </div>
-
-        <div id="secDailyWork" class="dyn-section hidden-by-rule" aria-hidden="true">
-          <!-- v1.16.3: Gradilište i datum izveštaja više ne prikazuje opis rada ni sate.
-               Pravilo: samo Datum / godina + Gradilište iz liste Uprave.
-               Ovaj blok ostaje u HTML-u zbog kompatibilnosti, ali se ne aktivira. -->
-          <h4>Šta je rađeno danas</h4>
-          <label>Opis rada</label>
-          <textarea id="wrDescription" placeholder="Šta je rađeno danas?"></textarea>
-          <label>Sati rada</label>
-          <input id="wrHours" type="number" step="0.5" placeholder="8" />
-        </div>
-
-        <div id="secWorkers" class="dyn-section">
-          <h4>Radnici / sati po radniku</h4>
-          <p class="hint">Ovu rubriku Uprava uključuje za šefa ili osobu koja vodi ekipu. Dodaj svakog radnika posebno i upiši koliko je sati radio taj dan.</p>
-          <div id="workerEntries" class="entry-list"></div>
-          <button id="addWorkerEntryBtn" class="secondary" type="button" onclick="addWorkerEntry()">+ Dodaj novog radnika</button>
-        </div>
-
-        <div id="secMachines" class="dyn-section">
-          <h4>Evidencija rada mašine</h4>
-          <p class="hint">Sredstva dodaje Uprava. Radnik unosi interni broj ili naziv; aplikacija automatski prepoznaje sredstvo ako postoji u evidenciji.</p>
-          <div id="machineEntries" class="entry-list"></div>
-          <button id="addMachineBtn" class="secondary" type="button" onclick="addMachineEntry()">+ Dodaj mašinu</button>
-        </div>
-
-        <div id="secVehicles" class="dyn-section">
-          <h4>Evidencija rada vozila</h4>
-          <p class="hint">Vozila dodaje Uprava. Radnik unosi interni broj, tablice ili naziv; aplikacija automatski prepoznaje vozilo ako postoji u evidenciji.</p>
-          <div id="vehicleEntries" class="entry-list"></div>
-          <button id="addVehicleBtn" class="secondary" type="button" onclick="addVehicleEntry()">+ Dodaj vozilo</button>
-        </div>
-
-        <div id="secLowloader" class="dyn-section">
-          <h4>Transport mašine labudicom</h4>
-          <p class="hint">Ova rubrika se koristi za evidentiranje transporta mašina labudicom. Svaki transport se unosi posebno.</p>
-          <div id="lowloaderEntries" class="entry-list"></div>
-          <button id="addLowloaderBtn" class="secondary" type="button" onclick="addLowloaderEntry()">+ Dodaj selidbu mašine</button>
-        </div>
-
-        <div id="secFuel" class="dyn-section">
-          <h4>Sipanje goriva</h4>
-          <p class="hint">Možeš evidentirati više sipanja goriva i povezati svako sipanje sa konkretnim sredstvom.</p>
-          <div id="fuelEntries" class="entry-list"></div>
-          <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
-          <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
-        </div>
-
-
-
-        <div id="secFieldTanker" class="dyn-section">
-          <h4>Evidencija goriva – cisterna</h4>
-          <p class="hint">Ova rubrika se koristi za evidenciju goriva koje cisterna isporučuje na gradilištu. Svako sipanje se unosi posebno.</p>
-          <div id="fieldTankerEntries" class="entry-list"></div>
-          <button id="addFieldTankerBtn" class="secondary" type="button" onclick="addFieldTankerEntry()">+ Dodaj sipanje</button>
-
-          <div class="fuel-memory-panel">
-            <h5>Memoriši sipanje goriva</h5>
-            <p class="hint">Za operatera goriva: svako sipanje može se sačuvati lokalno na telefonu, a na kraju dana poslati Upravi kao jedan dnevni izveštaj.</p>
-            <div class="row compact-row">
-              <button id="memorizeFieldTankerBtn" class="secondary" type="button">💾 Memoriši trenutna sipanja</button>
-              <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji sva memorišana</button>
-              <button id="clearStoredFieldTankerBtn" class="danger-btn" type="button">Obriši memoriju</button>
-            </div>
-            <div id="storedFieldTankerList" class="stored-fuel-list"></div>
-            <p class="hint">Memorisana sipanja se ne brišu dok Supabase ne potvrdi uspešno slanje.</p>
-          </div>
-        </div>
-
-        <div id="secMaterials" class="dyn-section">
-          <h4>Materijal</h4>
-          <p class="hint">Uprava dodaje listu materijala. Za svaki unos bira se da li je ulaz, izlaz ili ugradnja materijala.</p>
-          <div id="materialEntries" class="entry-list"></div>
-          <button id="addMaterialBtn" class="secondary" type="button" onclick="addMaterialEntry()">+ Dodaj materijal</button>
-          <p class="field-hint">Ako materijal nije u evidenciji, možeš upisati naziv materijala.</p>
-        </div>
-
-
-        <div id="secLeaveRequest" class="dyn-section">
-          <h4>Zahtev za odsustvo / godišnji odmor</h4>
-          <p class="hint">Ova rubrika služi za slanje zahteva za odsustvo ili godišnji odmor.</p>
-          <label>Vrsta zahteva</label>
-          <select id="wrLeaveType">
-            <option value="slobodan_dan">Slobodan dan</option>
-            <option value="godisnji_odmor">Godišnji odmor</option>
-          </select>
-          <div id="leaveSingleDayBox">
-            <label>Datum slobodnog dana</label>
-            <input id="wrLeaveDate" type="date" />
-          </div>
-          <div id="leaveRangeBox" class="hidden">
-            <div class="mini-grid">
-              <div>
-                <label>Godišnji od</label>
-                <input id="wrLeaveFrom" type="date" />
-              </div>
-              <div>
-                <label>Godišnji do</label>
-                <input id="wrLeaveTo" type="date" />
-              </div>
-            </div>
-          </div>
-          <label>Napomena / razlog <span class="muted">(opciono)</span></label>
-          <textarea id="wrLeaveNote" rows="3" placeholder="npr. porodične obaveze, godišnji odmor..."></textarea>
-        </div>
-
-        <div id="secWarehouse" class="dyn-section">
-          <h4>Magacin</h4>
-          <label>Ulaz / izlaz</label>
-          <select id="wrWarehouseType">
-            <option value="">-- izaberi --</option>
-            <option value="ulaz">Ulaz</option>
-            <option value="izlaz">Izlaz</option>
-          </select>
-          <label>Artikal</label>
-          <input id="wrWarehouseItem" />
-          <label>Količina</label>
-          <input id="wrWarehouseQty" />
-        </div>
-
-        <div id="secDefects" class="dyn-section">
-          <h4>Evidencija kvara</h4>
-          <p class="hint">Ovo je važno da Šef mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
-
-          <label>Sredstvo u kvaru / interni broj</label>
-          <input id="wrDefectAssetName" class="asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili registraciju, npr. 1, CAT 330, BG3542RI" autocomplete="off" />
-          <div id="wrDefectAssetPicked" class="asset-smart-result defect-picked">Upiši interni broj, naziv mašine/vozila/opreme ili registraciju.</div>
-
-          <label>Lokacija sredstva</label>
-          <input id="wrDefectSiteName" placeholder="npr. Zemun Zmaj, Beograd, lokacija gde stoji mašina..." />
-          <p class="hint">Upiši gde se nalazi sredstvo u kvaru. Ako je gore već izabrano gradilište, možeš prepisati isti naziv.</p>
-
-          <label>Opis kvara</label>
-          <textarea id="wrDefect" placeholder="npr. puklo crevo, curi ulje, ne pali..."></textarea>
-
-          <label>Uticaj kvara na rad</label>
-          <select id="wrDefectStopsWork">
-            <option value="">-- izaberi --</option>
-            <option value="zaustavlja_rad">Zaustavlja rad</option>
-            <option value="moze_nastaviti">Može nastaviti rad do popravke</option>
-          </select>
-
-          <label>Hitnost</label>
-          <select id="wrDefectUrgency">
-            <option value="">-- izaberi --</option>
-            <option value="nisko">Nisko — može kasnije</option>
-            <option value="srednje">Srednje — treba zakazati popravku</option>
-            <option value="hitno">Hitno — odmah zvati mehanizaciju</option>
-          </select>
-
-          <label>Da li je šef mehanizacije pozvan telefonom?</label>
-          <select id="wrDefectCalledMechanic">
-            <option value="">-- izaberi --</option>
-            <option value="da">Da</option>
-            <option value="ne">Ne</option>
-          </select>
-
-          <button id="sendDefectNowBtn" class="danger-btn" type="button">🚨 Evidentiraj kvar odmah</button>
-          <p class="hint">Ako je kvar hitan, prvo obavesti odgovorno lice. Ova prijava ostaje kao evidencija za Upravu i tehničku službu.</p>
-        </div>
-
-        <div class="row">
-          <button id="saveDraftBtn" class="secondary">Sačuvaj nacrt</button>
-          <button id="submitReportBtn" class="primary">Pošalji Upravi</button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <span>Start Work PRO by AskCreate</span>
-    <span>Start Work PRO</span>
-  </footer>
-
-  <script src="script.js?v=1229"></script>
+    <script src="script.js"></script>
 </body>
 </html>

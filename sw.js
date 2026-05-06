@@ -1,38 +1,31 @@
-const CACHE_NAME = "startwork-pro-v1229";
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./style.css?v=1229",
-  "./script.js?v=1229",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+/* Start Work PRO Service Worker - v1.22.6 */
+const CACHE_NAME = 'sw-pro-v1.22.6';
+const urlsToCache = [
+  './',
+  './index.html',
+  './style.css',
+  './script.js',
+  './manifest.json',
+  './icons/icon-192.png'
 ];
 
-self.addEventListener("install", (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    for (const file of APP_SHELL) {
-      try { await cache.add(file); } catch (e) { console.warn("Cache skip:", file); }
-    }
-    self.skipWaiting();
-  })());
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(urlsToCache);
+      })
+  );
 });
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
-    await self.clients.claim();
-  })());
-});
-
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  event.respondWith((async () => {
-    const cached = await caches.match(event.request);
-    if (cached) return cached;
-    try { return await fetch(event.request); }
-    catch (e) { return caches.match("./index.html"); }
-  })());
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      })
+  );
 });
