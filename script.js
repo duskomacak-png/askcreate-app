@@ -1,4 +1,4 @@
-// v1.22.7_DIRECTOR_EXCEL_LIGHT_DASHBOARD - svetli dashboard za Upravu bez diranja workflow-a
+// v1.22.8_DIRECTOR_EXCEL_LIGHT_DASHBOARD - svetli dashboard za Upravu bez diranja workflow-a
 /* START WORK PRO by AskCreate - Start Work PRO
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.7";
+const APP_VERSION = "1.22.8";
 
 
 let sb = null;
