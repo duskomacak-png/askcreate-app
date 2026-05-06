@@ -1,31 +1,21 @@
-/* Start Work PRO Service Worker - v1.22.6 */
-const CACHE_NAME = 'sw-pro-v1.22.6';
-const urlsToCache = [
-  './',
-  './index.html',
-  './style.css',
-  './script.js',
-  './manifest.json',
-  './icons/icon-192.png'
-];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
-  );
+self.addEventListener('install', (e) => {
+    e.waitUntil(
+        caches.open('sw-v1').then((cache) => {
+            return cache.addAll([
+                '/',
+                '/index.html',
+                '/style.css',
+                '/script.js',
+                '/manifest.json'
+            ]);
+        })
+    );
 });
 
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      })
-  );
+self.addEventListener('fetch', (e) => {
+    e.respondWith(
+        caches.match(e.request).then((cachedResponse) => {
+            return cachedResponse || fetch(e.request);
+        })
+    );
 });
