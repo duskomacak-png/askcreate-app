@@ -1,4 +1,4 @@
-// v1.22.0_UI_CLEANUP - jedno dugme odjave i uklonjena kontrola sistema
+// v1.22.7_DIRECTOR_EXCEL_LIGHT_DASHBOARD - svetli dashboard za Upravu bez diranja workflow-a
 /* START WORK PRO by AskCreate - Start Work PRO
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.6";
+const APP_VERSION = "1.22.7";
 
 
 let sb = null;
@@ -204,11 +204,16 @@ async function loadDirectorCompany() {
     return null;
   }
   currentCompany = data;
-  $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
-  setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
+  const companyLabel = `${data.name} · ${data.company_code} · ${data.status}`;
+  if ($("#directorCompanyLabel")) $("#directorCompanyLabel").textContent = companyLabel;
+  if ($("#directorCompanyShortLabel")) $("#directorCompanyShortLabel").textContent = data.name || "Firma";
+  if ($("#directorDashboardGreeting")) $("#directorDashboardGreeting").textContent = `Dobrodošli nazad`;
+  if ($("#directorTodayLabel")) $("#directorTodayLabel").textContent = new Date().toLocaleDateString("sr-RS", { day:"2-digit", month:"long", year:"numeric" });
+  setInternalHeader("Uprava", (currentCompany?.name || "Firma"), true);
   show("DirectorDashboard");
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
+  renderDirectorHomeDashboard();
   return data;
 }
 
@@ -570,6 +575,8 @@ async function loadPeople() {
     .order("created_at", { ascending:false });
 
   if (error) return toast(error.message, true);
+  directorPeopleCache = data || [];
+  renderDirectorHomeDashboard();
 
   const list = $("#peopleList");
   if (!list) return;
@@ -586,6 +593,8 @@ async function loadSites() {
     .order("created_at", { ascending:false });
 
   if (error) return toast(error.message, true);
+  directorSitesCache = data || [];
+  renderDirectorHomeDashboard();
 
   $("#sitesList").innerHTML = (data || []).map(s => `
     <div class="item management-item">
@@ -610,6 +619,8 @@ async function loadAssets() {
     .order("created_at", { ascending:false });
 
   if (error) return toast(error.message, true);
+  directorAssetsCache = data || [];
+  renderDirectorHomeDashboard();
 
   $("#assetsList").innerHTML = (data || []).map(a => `
     <div class="item management-item">
@@ -641,6 +652,8 @@ async function loadMaterials() {
     if (box) box.innerHTML = `<p class="muted tiny">Materijali nisu učitani.</p>`;
     return;
   }
+  directorMaterialsCache = data || [];
+  renderDirectorHomeDashboard();
 
   if (list) {
     list.innerHTML = (data || []).map(m => `
@@ -875,6 +888,101 @@ function searchMatch(text, q) {
   return String(text || "").toLowerCase().includes(String(q || "").toLowerCase());
 }
 
+
+function activateDirectorTab(tabName) {
+  const btn = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  if (!btn) return;
+  $$(".tab").forEach(b => b.classList.remove("active"));
+  $$(".tab-panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  const panel = $("#tab" + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+  if (panel) panel.classList.add("active");
+  if (tabName === "export") renderExportPanel();
+  if (tabName === "defects") renderDefectsList();
+}
+window.activateDirectorTab = activateDirectorTab;
+
+function getReportWorkerName(r) {
+  const d = r?.data || {};
+  const u = r?.company_users || {};
+  return `${u.first_name || ""} ${u.last_name || ""}`.trim() || d.created_by_worker || d.worker_name || "Nepoznat radnik";
+}
+
+function getReportSectionsLabel(r) {
+  const d = r?.data || {};
+  const sections = [];
+  if (Array.isArray(d.worker_entries || d.workers) && (d.worker_entries || d.workers).length) sections.push("Radnici");
+  if (Array.isArray(d.machines) && d.machines.length) sections.push("Mašina");
+  if (Array.isArray(d.vehicles) && d.vehicles.length) sections.push("Vozilo");
+  if (Array.isArray(d.fuel_entries) && d.fuel_entries.length) sections.push("Gorivo");
+  if (Array.isArray(d.field_tanker_entries || d.tanker_fuel_entries) && (d.field_tanker_entries || d.tanker_fuel_entries).length) sections.push("Cisterna");
+  if (Array.isArray(d.lowloader_moves || d.lowloader_entries) && (d.lowloader_moves || d.lowloader_entries).length) sections.push("Labudica");
+  if (Array.isArray(d.material_entries || d.material_movements) && (d.material_entries || d.material_movements).length) sections.push("Materijal");
+  if (hasDefectData(r)) sections.push("Kvar");
+  if (d.leave_request || d.leave_type || d.leave_date || d.leave_from || d.leave_to) sections.push("Odsustvo");
+  return sections.slice(0, 4).join(", ") || "Dnevni izveštaj";
+}
+
+function statusLabel(status) {
+  const s = String(status || "novo").toLowerCase();
+  if (s === "approved") return "Odobreno";
+  if (s === "returned") return "Vraćeno";
+  if (s === "exported") return "Izvezeno";
+  if (s === "archived") return "Arhivirano";
+  return "Novo";
+}
+
+function statusClass(status) {
+  const s = String(status || "novo").toLowerCase();
+  if (s === "approved") return "ok";
+  if (s === "returned") return "warn";
+  if (s === "exported") return "blue";
+  return "blue";
+}
+
+function sumFuelLitersForToday() {
+  const todayStr = today();
+  let total = 0;
+  (directorReportsCache || []).forEach(r => {
+    if ((r.report_date || "") !== todayStr) return;
+    const d = r.data || {};
+    const fuel = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+    const tanker = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+    [...fuel, ...tanker].forEach(x => { total += parseDecimalInput(x?.liters || x?.fuel_liters || 0); });
+  });
+  return Math.round(total * 100) / 100;
+}
+
+function renderDirectorHomeDashboard() {
+  if (!$("#tabHome")) return;
+  const dailyReports = (directorReportsCache || []).filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
+  const pending = dailyReports.filter(r => !["approved", "archived", "exported"].includes(String(r.status || "").toLowerCase())).length;
+  const fuel = sumFuelLitersForToday();
+  if ($("#directorKpiWorkers")) $("#directorKpiWorkers").textContent = directorPeopleCache.length || 0;
+  if ($("#directorKpiSites")) $("#directorKpiSites").textContent = directorSitesCache.length || 0;
+  if ($("#directorKpiPending")) $("#directorKpiPending").textContent = pending || 0;
+  if ($("#directorKpiFuel")) $("#directorKpiFuel").textContent = `${fuel || 0} L`;
+
+  const rows = dailyReports.slice(0, 7).map(r => {
+    const site = r.data?.site_name || r.data?.defect_site_name || "—";
+    return `<tr>
+      <td>${escapeHtml(r.report_date || "—")}</td>
+      <td>${escapeHtml(getReportWorkerName(r))}</td>
+      <td>${escapeHtml(site)}</td>
+      <td>${escapeHtml(getReportSectionsLabel(r))}</td>
+      <td><span class="director-status ${statusClass(r.status)}">${escapeHtml(statusLabel(r.status))}</span></td>
+      <td><button class="secondary small-action" type="button" onclick="activateDirectorTab('reports')">👁 Pregledaj</button></td>
+    </tr>`;
+  }).join("");
+  const box = $("#directorRecentActivities");
+  if (box) {
+    box.innerHTML = rows ? `<table class="director-activity-table">
+      <thead><tr><th>Datum</th><th>Radnik</th><th>Gradilište</th><th>Rubrike</th><th>Status</th><th>Akcije</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>` : `<p class="muted">Još nema poslatih dnevnih izveštaja.</p>`;
+  }
+}
+
 async function runDirectorGlobalSearch(showEmptyMessage = true) {
   const input = $("#directorGlobalSearch");
   const box = $("#directorSearchResults");
@@ -972,6 +1080,11 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
 }
 
 let directorReportsCache = [];
+let directorPeopleCache = [];
+let directorSitesCache = [];
+let directorAssetsCache = [];
+let directorMaterialsCache = [];
+
 
 function isDefectOnlyReport(r) {
   const d = r?.data || {};
@@ -1086,6 +1199,7 @@ async function loadReports() {
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
   renderDefectsList();
   renderExportPanel();
+  renderDirectorHomeDashboard();
 }
 
 function defectHtml(r) {
@@ -5576,14 +5690,7 @@ function bindEvents() {
   });
   if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
 
-  $$(".tab").forEach(btn => btn.addEventListener("click", () => {
-    $$(".tab").forEach(b => b.classList.remove("active"));
-    $$(".tab-panel").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
-    $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
-    if (btn.dataset.tab === "export") renderExportPanel();
-    if (btn.dataset.tab === "defects") renderDefectsList();
-  }));
+  $$(".tab").forEach(btn => btn.addEventListener("click", () => activateDirectorTab(btn.dataset.tab)));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
   bindPersonPreviewEvents();
