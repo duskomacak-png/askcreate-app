@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.3";
+const APP_VERSION = "1.22.4";
 
 
 let sb = null;
@@ -4179,8 +4179,18 @@ function clearWorkerForm() {
 
 function ensureWorkerDefaultEntries() {
   const perms = currentWorker?.permissions || {};
-  ensureWorkerDefaultEntries();
+
+  // Ne pozivati ovu funkciju samu iz sebe. To je pravilo ranije pravilo
+  // beskonačnu petlju posle slanja izveštaja i radnik je dobijao grešku
+  // iako je RPC slanje možda već prošlo.
+  if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
+  if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
+  if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
+  if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
+  if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
+  if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
   if (perms.materials && $("#materialEntries") && !$("#materialEntries").children.length) addMaterialEntry();
+
   refreshMachineDatalists();
   refreshVehicleSelects();
   refreshFuelMachineOptions();
@@ -5644,8 +5654,13 @@ function bindEvents() {
       });
       if (error) throw error;
       await verifyRecentlySubmittedReport(worker, reportDate);
-      await prepareWorkerFormForNextReport();
-      toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
+      try {
+        await prepareWorkerFormForNextReport();
+        toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
+      } catch (resetError) {
+        console.warn("Start Work PRO: izveštaj je poslat, ali priprema sledeće forme nije uspela:", resetError);
+        toast("Izveštaj je poslat Upravi ✅ Ako forma ne izgleda prazno, odjavi se i uđi ponovo.");
+      }
     } catch(e) { toast(e.message, true); }
   });
 }
@@ -5712,7 +5727,11 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   if (error) throw error;
 
   localStorage.removeItem("swp_returned_report_id");
-  await prepareWorkerFormForNextReport();
+  try {
+    await prepareWorkerFormForNextReport();
+  } catch (resetError) {
+    console.warn("Start Work PRO: ispravka je poslata, ali priprema sledeće forme nije uspela:", resetError);
+  }
   loadWorkerReturnedReports();
   toast("Ispravljen izveštaj je ponovo poslat Upravi ✅ Forma je spremna za sledeći unos.");
   return true;
