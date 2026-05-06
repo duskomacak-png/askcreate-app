@@ -1,9 +1,9 @@
-const CACHE_NAME = "startwork-pro-v1220";
+const CACHE_NAME = "startwork-pro-v1221";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1214",
-  "./script.js?v=1214",
+  "./style.css?v=1221",
+  "./script.js?v=1221",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"

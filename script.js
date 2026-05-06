@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.0";
+const APP_VERSION = "1.22.1";
 
 
 let sb = null;
@@ -1620,42 +1620,122 @@ function renderReportReadableDetails(d = {}, options = {}) {
   `;
 }
 
+
+function getReportFilledSections(d = {}) {
+  const hasValue = (v) => v !== undefined && v !== null && String(v).trim() !== "";
+  const hasEntry = (entry) => entry && typeof entry === "object" && Object.values(entry).some(hasValue);
+  const arr = (v) => Array.isArray(v) ? v : [];
+  const sections = [];
+
+  if (hasValue(d.site_name) || hasValue(d.description) || hasValue(d.hours) || hasValue(d.note)) sections.push("Osnovno");
+  if (arr(d.workers).some(hasEntry) || arr(d.worker_entries).some(hasEntry)) sections.push("Radnici");
+  if (arr(d.machines).some(hasEntry)) sections.push("Mašine");
+  if (arr(d.vehicles).some(hasEntry)) sections.push("Vozila");
+  if (arr(d.lowloader_moves).some(hasEntry) || arr(d.lowloader_entries).some(hasEntry)) sections.push("Labudica");
+  if (arr(d.fuel_entries).some(hasEntry)) sections.push("Gorivo");
+  if (arr(d.field_tanker_entries).some(hasEntry) || arr(d.tanker_fuel_entries).some(hasEntry)) sections.push("Cisterna");
+  if (hasValue(d.defect) || hasValue(d.defect_asset_name) || hasValue(d.defect_urgency) || hasValue(d.defect_work_impact)) sections.push("Kvar");
+  if (arr(d.material_entries).some(hasEntry) || arr(d.material_movements).some(hasEntry) || hasValue(d.material) || hasValue(d.quantity)) sections.push("Materijal");
+  if (hasValue(d.warehouse_type) || hasValue(d.warehouse_item) || hasValue(d.warehouse_qty)) sections.push("Magacin");
+  if (hasValue(d.leave_request_type) || hasValue(d.leave_type) || hasValue(d.leave_date) || hasValue(d.leave_from) || hasValue(d.leave_to) || (d.leave_request && hasEntry(d.leave_request))) sections.push("Odsustvo");
+  return sections.length ? sections : ["Izveštaj"];
+}
+
+window.setReportPaperZoom = function(id, zoom) {
+  const el = document.getElementById(`paper-${id}`);
+  if (!el) return;
+  const next = Math.max(0.8, Math.min(1.5, Number(zoom) || 1));
+  el.style.setProperty("--report-zoom", String(next));
+  const label = document.getElementById(`paperZoom-${id}`);
+  if (label) label.textContent = `${Math.round(next * 100)}%`;
+};
+
+window.changeReportPaperZoom = function(id, delta) {
+  const el = document.getElementById(`paper-${id}`);
+  const current = el ? Number(el.style.getPropertyValue("--report-zoom") || "1") : 1;
+  window.setReportPaperZoom(id, current + delta);
+};
+
 function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
-
+  const title = isDefectOnlyReport(r) ? "EVIDENCIJA KVARA" : "DNEVNI IZVEŠTAJ SA TERENA";
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
+  const sections = getReportFilledSections(d);
+  const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
+  const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
+  const statusText = r.status || "novo";
 
   return `
-    <div class="item report-item">
-      <label class="export-select-row">
-        <input type="checkbox" class="report-export-check" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
-        <span>✅ Izaberi ovaj izveštaj za Excel export</span>
-      </label>
-      <strong>${isDefectOnlyReport(r) ? "🚨 EVIDENCIJA KVARA" : "📄 DNEVNI IZVEŠTAJ"} · ${escapeHtml(r.report_date)}</strong>
-      <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
-
-      <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
-      ${d.hours ? `<span class="pill">${escapeHtml(String(d.hours))} h</span>` : ""}
-      ${d.fuel_liters ? `<span class="pill">${escapeHtml(String(d.fuel_liters))} L</span>` : ""}
-      <p>${escapeHtml(d.description || d.note || "")}</p>
-      ${r.returned_reason ? `<p class="muted">Razlog vraćanja: ${escapeHtml(r.returned_reason)}</p>` : ""}
-      ${renderReportReadableDetails(d)}
-
-      <div class="actions">
-        ${isDefectOnlyReport(r) ? `
-          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
-          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
-          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
-        ` : ""}
-
-        <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
-        <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
-        <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
-        <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
-        <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
+    <article class="report-row-item">
+      <div class="report-list-grid">
+        <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export">
+          <input type="checkbox" class="report-export-check" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
+        </label>
+        <div class="report-list-date">
+          <strong>${escapeHtml(r.report_date || "")}</strong>
+          <small>${escapeHtml(submitted || "")}</small>
+        </div>
+        <div class="report-list-site">
+          <strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong>
+          <small>${escapeHtml(title)}</small>
+        </div>
+        <div class="report-list-worker">
+          <strong>${escapeHtml(person)}</strong>
+          <small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small>
+        </div>
+        <div class="report-list-sections">${sectionsHtml}</div>
+        <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusText)}</span></div>
       </div>
-    </div>`;
+
+      <details class="report-paper-details">
+        <summary><span class="open-report-btn">Otvori izveštaj</span></summary>
+
+        <div class="report-toolbar no-print">
+          <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', -0.1)">A−</button>
+          <button class="secondary" type="button" onclick="setReportPaperZoom('${r.id}', 1)"><span id="paperZoom-${r.id}">100%</span></button>
+          <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', 0.1)">A+</button>
+          <button class="secondary" type="button" onclick="window.print()">Štampaj</button>
+        </div>
+
+        <section class="report-paper-view" id="paper-${r.id}" style="--report-zoom:1">
+          <div class="paper-title-block">
+            <h3>${escapeHtml(title)}</h3>
+            <p>Start Work PRO · uredan pregled izveštaja sa terena</p>
+          </div>
+
+          <table class="paper-meta-table">
+            <tbody>
+              <tr><th>Datum</th><td>${escapeHtml(r.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusText)}</td></tr>
+              <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
+              <tr><th>Radnik</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
+            </tbody>
+          </table>
+
+          ${r.returned_reason ? `<div class="paper-returned-reason"><b>Razlog vraćanja:</b> ${escapeHtml(r.returned_reason)}</div>` : ""}
+
+          ${renderReportReadableDetails(d)}
+
+          <div class="paper-footer-note">
+            Izveštaj poslat iz Start Work PRO · ${escapeHtml(submitted || "")}
+          </div>
+        </section>
+
+        <div class="actions report-action-bar no-print">
+          ${isDefectOnlyReport(r) ? `
+            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
+            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
+            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
+          ` : ""}
+
+          <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
+          <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
+          <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
+          <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
+          <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
+        </div>
+      </details>
+    </article>`;
 }
 
 window.setReportStatus = async (id, status) => {

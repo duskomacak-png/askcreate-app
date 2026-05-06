@@ -680,3 +680,96 @@ button.small {
   font-size: 1.05rem;
   font-weight: 700;
 }
+
+/* v1.22.1 — Direkcija: papirni prikaz dnevnih izveštaja */
+.report-row-item{
+  background:#fff;
+  border:1px solid #d9e1db;
+  border-radius:10px;
+  margin:10px 0;
+  box-shadow:0 2px 10px rgba(16,40,24,.05);
+  overflow:hidden;
+}
+.report-list-grid{
+  display:grid;
+  grid-template-columns:36px minmax(110px,.8fr) minmax(160px,1.2fr) minmax(150px,1.2fr) minmax(180px,1.5fr) minmax(92px,.7fr);
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-bottom:1px solid #e6ece7;
+  background:#fbfdfb;
+}
+.report-list-grid strong{display:block;color:#173b24;font-size:14px;line-height:1.25}
+.report-list-grid small{display:block;color:#66756a;font-size:12px;margin-top:2px}
+.report-list-sections{display:flex;gap:5px;flex-wrap:wrap}
+.report-section-pill{font-size:11px;padding:4px 7px;background:#eef6ef;border-color:#d6e8d9;color:#24432d}
+.report-export-cell{justify-content:center;margin:0}
+.status-chip{display:inline-block;border:1px solid #d7e3da;background:#f4f8f5;color:#24432d;border-radius:999px;padding:5px 8px;font-size:12px;font-weight:800;text-transform:uppercase}
+.status-approved{background:#e7f6ec;border-color:#bce0c7;color:#185c2b}
+.status-returned{background:#fff2d9;border-color:#e9c982;color:#7a4c00}
+.status-exported{background:#e9f0ff;border-color:#bfd0ff;color:#234e9a}
+.report-paper-details summary{list-style:none;cursor:pointer;padding:10px 12px;background:#fff;color:#173b24;font-weight:900;border-bottom:1px solid #eef2ef}
+.report-paper-details summary::-webkit-details-marker{display:none}
+.open-report-btn::after{content:"  ▾";font-weight:900;color:#4f7f5d}
+.report-paper-details[open] .open-report-btn::after{content:"  ▴"}
+.report-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 12px;background:#f7faf7;border-bottom:1px solid #e3eae5}
+.report-paper-view{
+  --report-zoom:1;
+  max-width:1120px;
+  margin:18px auto;
+  padding:28px 30px;
+  background:#fff;
+  color:#1f2d22;
+  border:1px solid #cfd8d2;
+  border-radius:6px;
+  box-shadow:0 8px 24px rgba(16,40,24,.10);
+  font-size:calc(14px * var(--report-zoom));
+  line-height:1.42;
+}
+.paper-title-block{text-align:center;border-bottom:2px solid #223b2a;margin-bottom:14px;padding-bottom:10px}
+.paper-title-block h3{margin:0;color:#173b24;letter-spacing:.04em;font-size:1.45em}
+.paper-title-block p{margin:5px 0 0;color:#66756a;font-size:.9em}
+.paper-meta-table{width:100%;border-collapse:collapse;margin:12px 0 18px;background:#fff}
+.paper-meta-table th,.paper-meta-table td{border:1px solid #cfd8d2;padding:.55em .7em;text-align:left}
+.paper-meta-table th{background:#f0f3f1;color:#173b24;width:18%;font-weight:900}
+.paper-returned-reason{border:1px solid #e1bd76;background:#fff8e8;padding:10px 12px;margin:12px 0;color:#5d3b00}
+.report-paper-view .report-readable{display:block;margin-top:10px}
+.report-paper-view .report-section{
+  border:0;
+  border-radius:0;
+  background:#fff;
+  padding:0;
+  margin:18px 0;
+  overflow-x:auto;
+  box-shadow:none;
+}
+.report-paper-view .report-section h4{
+  color:#173b24;
+  border-bottom:1px solid #9facA5;
+  padding-bottom:5px;
+  margin:0 0 8px;
+  font-size:1.12em;
+  text-transform:none;
+}
+.report-paper-view .report-kv{grid-template-columns:minmax(150px,240px) 1fr;border:1px solid #cfd8d2;gap:0;background:#fff}
+.report-paper-view .report-kv b,.report-paper-view .report-kv span{border-bottom:1px solid #e3e8e5;padding:.5em .65em;min-height:1.3em}
+.report-paper-view .report-kv b{background:#f0f3f1;color:#173b24;border-right:1px solid #e3e8e5}
+.report-paper-view .report-mini-table,.report-paper-view .report-excel-table{min-width:680px;border-collapse:collapse;background:#fff}
+.report-paper-view th,.report-paper-view td{border:1px solid #cfd8d2;padding:.5em .65em;background:#fff}
+.report-paper-view th{background:#f0f3f1;color:#173b24;font-weight:900}
+.report-paper-view td:nth-child(n+3){text-align:left}
+.report-paper-view .report-excel-details{border:1px solid #d6ded8;background:#fbfdfb;padding:10px 12px;margin-top:18px}
+.paper-footer-note{border-top:1px solid #cfd8d2;margin-top:22px;padding-top:8px;color:#66756a;font-size:.86em;text-align:right}
+.report-action-bar{padding:12px;background:#fbfdfb;border-top:1px solid #e3eae5}
+@media(max-width:900px){
+  .report-list-grid{grid-template-columns:30px 1fr;align-items:start}
+  .report-list-sections,.report-list-status{grid-column:2}
+  .report-paper-view{padding:18px 14px;margin:10px;border-radius:4px}
+}
+@media print{
+  body *{visibility:hidden!important}
+  .report-paper-details[open] .report-paper-view,
+  .report-paper-details[open] .report-paper-view *{visibility:visible!important}
+  .report-paper-details[open] .report-paper-view{position:absolute;left:0;top:0;width:100%;max-width:none;margin:0;box-shadow:none;border:0}
+  .no-print{display:none!important}
+}
