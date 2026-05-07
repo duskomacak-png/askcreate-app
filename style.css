@@ -819,148 +819,273 @@ button.small {
 .report-paper-view .report-excel-compact-table td:nth-child(2){white-space:nowrap;color:#55645c}
 .report-paper-view .report-excel-compact-table td:nth-child(3){font-weight:600;color:#293b30;white-space:nowrap}
 
-/* v1.22.7 — Direkcija Excel light dashboard */
-.director-pro-view{
-  --office-bg:#f6f8f7;
-  --office-panel:#ffffff;
-  --office-line:#dbe5de;
-  --office-green:#107c41;
-  --office-green-dark:#0b5f31;
-  --office-green-soft:#e8f5ee;
-  --office-orange:#f26b21;
-  --office-text:#14221a;
-  --office-muted:#66756b;
+/* =========================================================
+   Start Work PRO - Excel Compact Safe Patch v1.22.7
+   Cilj: tanja/manja dugmad, uredniji Excel-like poslovni raspored.
+   SAFE: ne menja ID-jeve, ne dira JS logiku, ne dira Supabase/RPC.
+   ========================================================= */
+
+:root{
+  --bg:#f3f6f4;
+  --bg-soft:#f8faf8;
+  --card:#ffffff;
+  --text:#17231b;
+  --muted:#5f6f66;
+  --border:#d8e0dc;
+  --border-strong:#b9c5bf;
+  --green:#176b3a;
+  --green-2:#2f8b4d;
+  --green-soft:#edf6ef;
+  --yellow:#fff8df;
+  --yellow-border:#e7d49b;
+  --danger:#b42323;
+  --danger-soft:#fff1f1;
+  --warning:#b85c00;
+  --warning-soft:#fff4e8;
+  --shadow:0 3px 10px rgba(16,24,20,.055);
+  --radius:10px;
 }
-.director-pro-view .director-pro-topbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-  margin-bottom:18px;
-  padding:14px 18px;
-  border-radius:16px;
-  background:#fff;
-  border:1px solid var(--office-line);
-  box-shadow:0 8px 24px rgba(20,34,26,.06);
+
+html{background:var(--bg)}
+body{
+  background:#f3f6f4;
+  color:var(--text);
+  font-size:14px;
+  line-height:1.38;
 }
-.director-company-select,.director-user-meta{
-  display:flex;
-  align-items:center;
-  gap:12px;
+
+/* Glavni okvir: više kao kancelarijski softver, manje kao velike kartice */
+.shell{
+  width:min(1280px,100%);
+  padding:14px;
 }
-.director-top-icon,.director-avatar{
-  width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
-  background:var(--office-green-soft);color:var(--office-green);font-weight:900;
+
+/* Header manji i uredniji */
+.topbar,
+.internal-header{
+  padding:10px 14px;
+  min-height:50px;
+  gap:10px;
+  box-shadow:0 2px 8px rgba(20,80,45,.16);
+  border-bottom:1px solid rgba(0,0,0,.10);
 }
-.director-avatar{border-radius:999px;background:linear-gradient(135deg,#0f7c42,#66b47e);color:#fff;letter-spacing:.04em}
-.director-company-select small,.director-user-meta small{display:block;color:var(--office-muted);font-size:12px;margin-top:2px}
-.director-pro-layout{
-  display:grid;
-  grid-template-columns:250px minmax(0,1fr);
-  gap:20px;
-  align-items:start;
+.topbar h1{font-size:28px;margin:0 0 2px}
+.topbar p{font-size:13px}
+.internal-header strong{font-size:15px}
+.internal-header small{font-size:12px}
+
+/* Kartice / sekcije tanje, složenije, Excel-like */
+.card,
+.dashboard-head,
+.item,
+.management-item,
+.report-item,
+.search-result,
+.returned-item,
+.export-selected-item,
+.entry-card,
+.report-section,
+.notice,
+.code-help-box{
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(16,24,20,.045);
+  border:1px solid var(--border);
 }
-.director-sidebar{
-  position:sticky;top:76px;
-  min-height:calc(100vh - 110px);
-  padding:18px 14px;
-  border-radius:18px;
-  background:#fff;
-  border:1px solid var(--office-line);
-  box-shadow:0 10px 30px rgba(20,34,26,.06);
-}
-.director-brand-mini{display:flex;align-items:center;gap:10px;margin:0 6px 20px;color:var(--office-text)}
-.brand-mark-mini{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--office-orange);color:#fff;font-weight:900;font-size:22px}
-.director-brand-mini strong{display:block;font-size:18px;line-height:1}
-.director-brand-mini b{display:block;color:var(--office-orange);font-size:13px;line-height:1.1}
-.director-nav-tabs{display:grid;gap:7px;margin:0}
-.director-nav-tabs .tab{
-  width:100%;
-  justify-content:flex-start;
-  text-align:left;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  border:0;
-  border-radius:12px;
-  background:transparent;
-  color:#34443a;
-  padding:11px 12px;
+.card{padding:14px;margin-bottom:12px}
+.dashboard-head{padding:12px 14px;margin-bottom:12px}
+.dashboard-head h2{font-size:24px;margin:0 0 2px}
+.dashboard-head p{font-size:13px}
+.item,.management-item,.report-item,.search-result,.returned-item,.export-selected-item,.entry-card{padding:10px 12px}
+
+.grid{gap:12px}
+.grid.two,.two-col,.content-grid{gap:12px}
+.row{gap:7px;margin-top:9px}
+.list{gap:7px}
+hr{margin:14px 0}
+
+/* Forme kompaktnije */
+label{
+  margin:8px 0 4px;
+  font-size:12px;
   font-weight:800;
+  color:#223128;
 }
-.director-nav-tabs .tab.active{
-  background:linear-gradient(90deg,#dff2e6,#f4fbf6);
-  color:var(--office-green-dark);
-  box-shadow:inset 4px 0 0 var(--office-green);
-}
-.director-sidebar-help{margin-top:28px;padding:14px 10px;border-top:1px solid var(--office-line);color:var(--office-muted);font-weight:700}
-.director-sidebar-help span{display:inline-grid;place-items:center;width:24px;height:24px;border:1px solid #9ca9a0;border-radius:999px;margin-right:8px}
-.director-main-area{min-width:0}
-.director-dashboard-head{
-  display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:18px;
-}
-.director-dashboard-head h2{font-size:clamp(28px,3vw,40px);margin:0 0 6px;color:var(--office-text);letter-spacing:-.03em}
-.director-date-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--office-line);border-radius:12px;padding:11px 14px;font-weight:800;color:#27382e;box-shadow:0 6px 18px rgba(20,34,26,.04)}
-.director-pro-view .director-searchbar{background:#fff;border:1px solid var(--office-line);border-radius:16px;padding:12px;margin-bottom:18px;box-shadow:0 8px 22px rgba(20,34,26,.05)}
-.director-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
-.director-kpi-card{
-  text-align:left;
-  min-height:160px;
-  display:grid;
-  grid-template-columns:auto 1fr;
-  grid-template-areas:"icon num" "icon label" "foot foot";
-  align-content:center;
-  gap:8px 14px;
+input,select,textarea{
+  min-height:34px;
+  border-radius:7px;
+  padding:7px 9px;
+  font-size:13px;
   background:#fff;
-  border:1px solid var(--office-line);
-  border-radius:16px;
-  padding:22px;
-  box-shadow:0 10px 28px rgba(20,34,26,.07);
-  color:var(--office-text);
 }
-.director-kpi-card:hover{transform:translateY(-1px);box-shadow:0 14px 34px rgba(20,34,26,.10)}
-.kpi-icon{grid-area:icon;width:58px;height:58px;border-radius:14px;display:grid;place-items:center;font-size:28px;background:var(--office-green-soft)}
-.kpi-icon.green{color:var(--office-green)}
-.kpi-icon.orange{color:var(--office-orange);background:#fff0e8}
-.director-kpi-card strong{grid-area:num;font-size:46px;line-height:.95;color:#0d1c14;letter-spacing:-.05em}
-.director-kpi-card span:not(.kpi-icon){grid-area:label;color:#2c3c32;font-weight:800;font-size:18px;line-height:1.2}
-.director-kpi-card small{grid-area:foot;margin-top:12px;padding-top:14px;border-top:1px solid #e5eee8;color:var(--office-green-dark);font-weight:800}
-.director-kpi-warning{border-color:#ffb37f;background:linear-gradient(135deg,#fff 0%,#fff8f3 50%,#fff1e8 100%)}
-.director-kpi-warning strong,.director-kpi-warning span:not(.kpi-icon),.director-kpi-warning small{color:#e35200}
-.director-home-grid{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
-.director-activity-card,.director-quick-actions{border-radius:16px;border:1px solid var(--office-line);box-shadow:0 10px 28px rgba(20,34,26,.07)}
-.section-head-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-.section-head-row h3{margin:0;color:#17261d;font-size:22px}
-.director-activity-table-wrap{overflow:auto;border:1px solid var(--office-line);border-radius:12px;background:#fff}
-.director-activity-table{width:100%;border-collapse:collapse;min-width:780px;font-size:14px}
-.director-activity-table th{background:#eef7f1;color:#173424;font-weight:900;text-align:left;padding:12px 14px;border-bottom:1px solid var(--office-line)}
-.director-activity-table td{padding:12px 14px;border-bottom:1px solid #edf2ee;color:#26382d;vertical-align:middle}
-.director-activity-table tr:last-child td{border-bottom:0}
-.director-status{display:inline-block;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}
-.director-status.ok{background:#e4f5e9;color:#0f7138}
-.director-status.warn{background:#fff0e8;color:#de4c00}
-.director-status.blue{background:#eaf2ff;color:#1b5ea8}
-.director-quick-actions h3{margin-bottom:16px}
-.quick-action{width:100%;border-radius:14px;padding:15px 16px;margin-bottom:12px;border:1px solid var(--office-line);display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:900;text-align:left;background:#fff;color:#143020;box-shadow:0 8px 18px rgba(20,34,26,.05)}
-.quick-action span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:999px;background:#fff;color:inherit;margin-right:8px}
-.quick-action.primary-green{background:linear-gradient(135deg,#0f7c42,#0d6637);color:#fff;border-color:#0d6637}
-.quick-action.primary-green::after,.quick-action.soft::after,.quick-action.outline::after{content:"›";font-size:24px;line-height:1}
-.quick-action.soft{background:#f7faf8;color:#244536}
-.quick-action.outline{background:#fff;color:#0f7138;border-color:#0f7138}
-.director-pro-view .tab-panel:not(.director-home-panel){background:transparent}
-.director-pro-view .tab-panel:not(.director-home-panel) > .grid,
-.director-pro-view .tab-panel:not(.director-home-panel) > .card{animation:directorFade .18s ease-out}
-@keyframes directorFade{from{opacity:.65;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media(max-width:1100px){
-  .director-pro-layout{grid-template-columns:1fr}
-  .director-sidebar{position:static;min-height:auto}
-  .director-nav-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .director-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .director-home-grid{grid-template-columns:1fr}
+textarea{min-height:72px}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 2px rgba(47,139,77,.14)}
+.field-hint,.hint{font-size:12px;margin:4px 0 8px}
+
+/* Dugmad: tanja, manja, poslovna */
+.primary,
+.secondary,
+.ghost,
+.back,
+.big-btn,
+.small-btn,
+.edit-btn,
+.delete-btn,
+.danger-btn,
+.danger-small,
+.archive-btn,
+.archive-report-btn,
+.hard-delete-report-btn,
+.btn-warning,
+.remove-entry,
+button{
+  border-radius:7px;
+  min-height:30px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.15;
 }
-@media(max-width:680px){
-  .director-pro-topbar,.director-dashboard-head{display:grid}
-  .director-nav-tabs{grid-template-columns:1fr}
-  .director-kpi-grid{grid-template-columns:1fr}
-  .director-kpi-card{min-height:130px}
+.primary{background:#176b3a;border-color:#176b3a;color:#fff}
+.primary:hover{background:#125930;border-color:#125930}
+.secondary,.back,.ghost,.small-btn,.edit-btn,.archive-btn,.archive-report-btn{
+  background:#fff;
+  color:#1f2d23;
+  border-color:var(--border-strong);
+}
+.secondary:hover,.back:hover,.ghost:hover,.small-btn:hover,.edit-btn:hover,.archive-btn:hover,.archive-report-btn:hover{
+  background:#f0f7f2;
+  border-color:#8eb99b;
+}
+.small-action,.small-btn{font-size:12px;padding:5px 9px;min-height:28px}
+.remove-entry{padding:5px 8px;min-height:27px}
+.back{margin-bottom:8px}
+
+/* Velika početna dugmad smanjena da ne izgledaju kao crtani meni */
+.big-btn{
+  min-height:92px;
+  padding:14px;
+  font-size:16px;
+  border-radius:10px;
+}
+.big-btn span{font-size:24px;margin-bottom:4px}
+.big-btn small{font-size:12px;margin-top:5px}
+
+/* Tabovi kao Excel/sistemski toolbar */
+.tabs{
+  gap:4px;
+  margin:0 0 10px;
+  border-bottom:1px solid var(--border);
+  padding-bottom:0;
+}
+.tab{
+  border-radius:7px 7px 0 0;
+  min-height:30px;
+  padding:7px 10px;
+  font-size:12px;
+  font-weight:850;
+  background:#f9fbfa;
+  border-color:var(--border);
+  border-bottom-color:var(--border);
+}
+.tab.active{
+  background:#176b3a;
+  color:#fff;
+  border-color:#176b3a;
+}
+
+/* Search bar uredniji */
+.director-searchbar{
+  background:#ffffff;
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:8px;
+  margin-bottom:10px;
+  box-shadow:0 2px 8px rgba(16,24,20,.035);
+}
+.search-input-wrap input{min-height:32px}
+.search-icon{font-size:13px}
+
+/* Liste ljudi, gradilišta, sredstava: manje kartice, više redova na ekranu */
+.item strong,.report-item > strong{font-size:14px;margin-bottom:2px}
+.item small,.report-item > small{font-size:12px;margin-bottom:4px}
+.pill,.badge,.status-pill,.report-section-pill{
+  border-radius:999px;
+  padding:2px 7px;
+  font-size:11px;
+  line-height:1.25;
+}
+.permission-box label,
+.material-permission-option,
+.export-column-check{
+  margin:5px 0;
+  gap:5px;
+  font-size:12px;
+}
+
+/* Tabele kao Excel: sitnije, čiste linije */
+table,
+.report-excel-table,
+.report-mini-table{
+  font-size:12px;
+  border-collapse:collapse;
+  background:#fff;
+}
+th,
+.report-excel-table th,
+.report-mini-table th{
+  background:#eef3ef!important;
+  color:#17231b!important;
+  font-weight:900;
+  border:1px solid #cfd9d3!important;
+  padding:6px 7px!important;
+  white-space:nowrap;
+}
+td,
+.report-excel-table td,
+.report-mini-table td{
+  border:1px solid #d9e1dd!important;
+  padding:5px 7px!important;
+  vertical-align:top;
+}
+.report-excel-wrap,.excel-scroll{
+  border-radius:8px;
+  margin-top:8px;
+}
+.report-toolbar{padding:7px 9px;gap:5px}
+.report-paper-view{
+  padding:14px;
+  border-radius:4px;
+  box-shadow:none;
+  border:1px solid #cfd9d3;
+}
+.paper-meta-table{margin:8px 0 12px}
+.paper-meta-table th,.paper-meta-table td{padding:.38em .5em}
+.report-paper-view .report-section{padding:8px;margin:8px 0;border-radius:4px}
+.report-paper-view .report-section h4{font-size:13px;padding:7px 8px;margin:-8px -8px 8px}
+.report-paper-view th,.report-paper-view td{padding:.35em .5em}
+
+/* Admin/Uprava forme: dva stupca kad ima mesta, da bude složeno kao poslovni panel */
+.smart-export-grid,
+.director-searchbar{
+  gap:8px;
+}
+.export-box,
+.smart-export-box{
+  border-radius:10px;
+  padding:12px;
+}
+
+/* Mobile: i dalje čitljivo, ali ne ogromno */
+@media (max-width:768px){
+  body{font-size:14px}
+  .shell{padding:10px}
+  .card{padding:12px;margin-bottom:10px}
+  .topbar,.internal-header{padding:10px 12px;position:static}
+  .grid.two,.two-col,.content-grid,.grid.three{grid-template-columns:1fr}
+  button,input,select,textarea{min-height:38px;font-size:14px!important}
+  .primary,.secondary,.ghost,.back,.small-btn,.edit-btn,.delete-btn,.danger-btn,.danger-small,.archive-btn,.archive-report-btn,.hard-delete-report-btn,.btn-warning,.remove-entry{min-height:36px;padding:7px 10px;font-size:13px}
+  .row > button,.actions > button,.management-actions > button,.person-actions-v1116 > button,.asset-actions-v1117 > button,.material-actions-v1119 > button,.returned-actions > button,.director-actions > button{flex:1 1 120px}
+  .tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}
+  .tab{white-space:nowrap}
+  .big-btn{min-height:80px}
 }
