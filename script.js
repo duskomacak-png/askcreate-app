@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.23.4";
+const APP_VERSION = "1.23.1";
 
 
 let sb = null;
@@ -83,61 +83,6 @@ function setInternalHeader(title = "", subtitle = "", showHeader = true) {
   header.classList.toggle("hidden", !showHeader);
   if (logoutBtn) logoutBtn.classList.toggle("hidden", !showHeader);
   document.body.classList.toggle("in-app", !!showHeader);
-}
-
-function businessSetText(id, value) {
-  const el = $("#" + id);
-  if (el) el.textContent = value;
-}
-
-function businessUpdateCompanyName() {
-  const name = currentCompany?.name || activeCompany?.name || "Firma";
-  businessSetText("directorBusinessCompanyName", name);
-}
-
-function businessUpdatePeopleCount(list) {
-  businessSetText("directorMetricPeople", Array.isArray(list) ? String(list.length) : "—");
-}
-
-function businessUpdateSitesCount(list) {
-  businessSetText("directorMetricSites", Array.isArray(list) ? String(list.length) : "—");
-}
-
-function businessCollectFuelLiters(data) {
-  let total = 0;
-  const seen = new Set();
-  const walk = (value) => {
-    if (!value || typeof value !== "object") return;
-    if (seen.has(value)) return;
-    seen.add(value);
-    if (Array.isArray(value)) {
-      value.forEach(walk);
-      return;
-    }
-    const possibleKeys = ["liters", "litres", "litra", "litara", "fuel_liters", "fuelLiters", "tanker_liters", "field_tanker_liters"];
-    for (const key of possibleKeys) {
-      if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
-        const n = parseFloat(String(value[key]).replace(",", "."));
-        if (Number.isFinite(n)) total += n;
-      }
-    }
-    Object.values(value).forEach(walk);
-  };
-  walk(data);
-  return total;
-}
-
-function businessUpdateReportsMetrics(list) {
-  const reports = Array.isArray(list) ? list : [];
-  const pending = reports.filter(r => {
-    const status = String(r.status || "").toLowerCase();
-    return status && !["approved", "odobreno", "archived", "arhivirano"].includes(status);
-  }).length;
-  businessSetText("directorMetricPendingReports", String(pending));
-  const todayIso = today();
-  const todayReports = reports.filter(r => String(r.report_date || "").slice(0, 10) === todayIso);
-  const fuel = Math.round(todayReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
-  businessSetText("directorMetricFuel", fuel > 0 ? `${fuel} L` : "— L");
 }
 
 function show(view) {
@@ -260,7 +205,6 @@ async function loadDirectorCompany() {
   }
   currentCompany = data;
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
-  businessUpdateCompanyName();
   setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
   showCurrentCompanyLoginInfo();
@@ -627,7 +571,6 @@ async function loadPeople() {
 
   if (error) return toast(error.message, true);
 
-  businessUpdatePeopleCount(data || []);
   const list = $("#peopleList");
   if (!list) return;
   list.innerHTML = (data || []).map(renderPersonItem).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
@@ -644,7 +587,6 @@ async function loadSites() {
 
   if (error) return toast(error.message, true);
 
-  businessUpdateSitesCount(data || []);
   $("#sitesList").innerHTML = (data || []).map(s => `
     <div class="item management-item">
       <div class="item-main">
@@ -1140,7 +1082,6 @@ async function loadReports() {
   if (error) return toast(error.message, true);
 
   directorReportsCache = await enrichReportsWithUsers(data || []);
-  businessUpdateReportsMetrics(directorReportsCache);
   const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
   renderDefectsList();
@@ -5642,12 +5583,6 @@ function bindEvents() {
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
-  }));
-
-  $$('[data-business-tab]').forEach(btn => btn.addEventListener('click', () => {
-    const target = btn.dataset.businessTab;
-    const tab = document.querySelector(`.tab[data-tab="${target}"]`);
-    if (tab) tab.click();
   }));
   $("#addPersonBtn").addEventListener("click", savePersonForm);
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
