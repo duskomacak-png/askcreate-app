@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.24.1";
+const APP_VERSION = "1.24.2";
 
 
 let sb = null;
@@ -198,6 +198,7 @@ function show(view) {
   $$(".view").forEach(v => v.classList.remove("active"));
   const el = $("#view" + view);
   if (el) el.classList.add("active");
+  if (view === "WorkerLogin") setTimeout(applyWorkerCompanyContextFromUrlOrStorage, 0);
 
   // Koristimo samo jedno dugme za odjavu: ono na zelenoj traci (#internalLogoutBtn).
   // Staro dugme iz javnog topbara ostaje skriveno da ne pravi duplikat.
@@ -319,6 +320,151 @@ function normalizeWhatsappPhone(phone) {
   return p;
 }
 
+
+function getAppPublicBaseUrl() {
+  const url = new URL(window.location.href);
+  let path = url.pathname || "/";
+  path = path.replace(/index\.html$/i, "");
+  if (!path.endsWith("/")) path = path.slice(0, path.lastIndexOf("/") + 1) || "/";
+  return `${url.origin}${path}`;
+}
+
+function buildWorkerCompanyLink(companyCode) {
+  const url = new URL(getAppPublicBaseUrl());
+  url.searchParams.set("ulaz", "radnik");
+  url.searchParams.set("firma", String(companyCode || "").trim());
+  return url.toString();
+}
+
+function buildCompanyQrImageUrl(link, size = 380) {
+  const cleanSize = Math.max(220, Math.min(600, Number(size) || 380));
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${cleanSize}x${cleanSize}&margin=12&data=${encodeURIComponent(link)}`;
+}
+
+function getWorkerCompanyCodeFromUrl() {
+  const params = new URLSearchParams(window.location.search || "");
+  return String(params.get("firma") || params.get("sw_company") || params.get("company") || params.get("company_code") || "").trim();
+}
+
+function setWorkerCompanyQrContext(companyCode, source = "saved") {
+  const code = String(companyCode || "").trim();
+  const input = $("#workerCompanyCode");
+  const notice = $("#workerCompanyQrNotice");
+  if (!input) return false;
+  if (!code) {
+    input.readOnly = false;
+    input.classList.remove("locked-company-code");
+    if (notice) notice.classList.add("hidden");
+    return false;
+  }
+  input.value = code;
+  input.readOnly = true;
+  input.classList.add("locked-company-code");
+  localStorage.setItem("swp_worker_company_code", code);
+  if (notice) {
+    notice.classList.remove("hidden");
+    const strong = notice.querySelector("strong");
+    if (strong) strong.textContent = source === "qr" ? "Firma je učitana preko QR koda." : "Firma je zapamćena na ovom uređaju.";
+  }
+  return true;
+}
+
+function applyWorkerCompanyContextFromUrlOrStorage() {
+  const fromUrl = getWorkerCompanyCodeFromUrl();
+  if (fromUrl) {
+    localStorage.setItem("swp_worker_company_code", fromUrl);
+    return setWorkerCompanyQrContext(fromUrl, "qr");
+  }
+  const saved = localStorage.getItem("swp_worker_company_code") || "";
+  return setWorkerCompanyQrContext(saved, "saved");
+}
+
+window.clearWorkerCompanyQrContext = () => {
+  localStorage.removeItem("swp_worker_company_code");
+  const input = $("#workerCompanyCode");
+  if (input) {
+    input.readOnly = false;
+    input.classList.remove("locked-company-code");
+    input.value = "";
+    input.focus();
+  }
+  const notice = $("#workerCompanyQrNotice");
+  if (notice) notice.classList.add("hidden");
+  toast("Firma je sklonjena. Sada možeš ručno upisati drugu šifru firme.");
+};
+
+function openCompanyQrModal(companyName, companyCode, source = "admin") {
+  const code = String(companyCode || "").trim();
+  if (!code) return toast("Ova firma nema šifru firme, pa QR kod ne može da se napravi.", true);
+  const name = companyName || "Firma";
+  const link = buildWorkerCompanyLink(code);
+  const modal = $("#companyQrModal");
+  if (!modal) return toast("Prozor za QR kod nije pronađen.", true);
+  const title = $("#companyQrTitle");
+  const subtitle = $("#companyQrSubtitle");
+  const kicker = $("#companyQrKicker");
+  const img = $("#companyQrImage");
+  const nameEl = $("#companyQrCompanyName");
+  const codeEl = $("#companyQrCompanyCode");
+  const linkInput = $("#companyQrLink");
+  if (kicker) kicker.textContent = source === "director" ? "QR kod za radnike ove firme" : "Admin QR kod za radnike";
+  if (title) title.textContent = `Radnički ulaz · ${name}`;
+  if (subtitle) subtitle.textContent = "Radnik skenira QR kod, aplikacija sama učita firmu, a radnik upisuje samo svoju šifru radnika.";
+  if (img) img.src = buildCompanyQrImageUrl(link, 420);
+  if (nameEl) nameEl.textContent = name;
+  if (codeEl) codeEl.textContent = code;
+  if (linkInput) linkInput.value = link;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+window.closeCompanyQrModal = () => {
+  const modal = $("#companyQrModal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+};
+
+window.copyCompanyWorkerLinkFromModal = async () => {
+  const input = $("#companyQrLink");
+  const link = input?.value || "";
+  if (!link) return toast("Link nije pronađen.", true);
+  try {
+    await navigator.clipboard.writeText(link);
+    toast("Link za radnike je kopiran.");
+  } catch (e) {
+    window.prompt("Kopiraj link za radnike:", link);
+  }
+};
+
+window.openCompanyWorkerLinkFromModal = () => {
+  const link = $("#companyQrLink")?.value || "";
+  if (!link) return toast("Link nije pronađen.", true);
+  window.open(link, "_blank", "noopener");
+};
+
+window.downloadCompanyQrImageFromModal = () => {
+  const img = $("#companyQrImage");
+  if (!img?.src) return toast("QR slika nije pronađena.", true);
+  const a = document.createElement("a");
+  a.href = img.src;
+  a.download = "startwork-radnicki-qr.png";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+
+window.adminShowWorkerQr = (id) => {
+  const c = findAdminCompanyById(id);
+  if (!c) return toast("Firma nije pronađena.", true);
+  openCompanyQrModal(adminCompanyDisplayName(c), c.company_code, "admin");
+};
+
+window.directorShowWorkerQr = () => {
+  if (!currentCompany) return toast("Firma nije učitana.", true);
+  openCompanyQrModal(currentCompany.name || currentCompany.company_name || "Firma", currentCompany.company_code || currentCompany.code, "director");
+};
+
 function adminMessage(c, type = "renewed") {
   const company = c.company_name || c.name || "vaša firma";
   const validUntil = formatDateSchool(getCompanyPaidUntil(c));
@@ -332,7 +478,7 @@ function adminMessage(c, type = "renewed") {
     return `Poštovani,\n\nVaš Start Work PRO paket je istekao.\n\nFirma: ${company}\nPaket je važio do: ${validUntil}.\n\nMolimo vas da nas kontaktirate radi produženja paketa.\n\nStart Work PRO`;
   }
   if (type === "activation") {
-    return `Poštovani,\n\nVaša firma je dodata u Start Work PRO aplikaciju.\n\nPodaci za prvu aktivaciju:\n\nLink aplikacije: https://askcreate.app\nEmail Uprave: ${email}\nŠifra firme: ${code}\nAktivacioni kod: ${invite}\n\nPrvi korak:\n1. Otvorite aplikaciju.\n2. Kliknite na “Uprava”.\n3. Registrujte email i lozinku.\n4. Unesite šifru firme i aktivacioni kod.\n5. Kliknite “Aktiviraj firmu”.\n\nNakon aktivacije, Uprava se ubuduće prijavljuje samo preko emaila i lozinke.\n\nStart Work PRO`;
+    return `Poštovani,\n\nVaša firma je dodata u Start Work PRO aplikaciju.\n\nPodaci za prvu aktivaciju:\n\nLink aplikacije: https://askcreate.app\nLink za radnike: ${buildWorkerCompanyLink(code)}\nEmail Uprave: ${email}\nŠifra firme: ${code}\nAktivacioni kod: ${invite}\n\nPrvi korak:\n1. Otvorite aplikaciju.\n2. Kliknite na “Uprava”.\n3. Registrujte email i lozinku.\n4. Unesite šifru firme i aktivacioni kod.\n5. Kliknite “Aktiviraj firmu”.\n\nNakon aktivacije, Uprava se ubuduće prijavljuje samo preko emaila i lozinke.\n\nStart Work PRO`;
   }
   return `Poštovani,\n\nVaš Start Work PRO paket je produžen.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nMožete nastaviti normalno korišćenje aplikacije.\n\nHvala na poverenju.\nStart Work PRO`;
 }
@@ -374,6 +520,7 @@ function renderAdminCompanyCard(c, compact = false) {
       <div class="actions admin-crm-actions">
         <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
         <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj radnika</button>
+        <button class="secondary" onclick="adminShowWorkerQr('${c.id}')">📲 QR za radnike</button>
         <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','activation')">📋 Prva aktivacija</button>
         <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','${messageType}')">📋 Poruka</button>
         <button class="secondary" onclick="adminOpenWhatsApp('${c.id}','${messageType}')">💬 WhatsApp</button>
@@ -505,6 +652,7 @@ async function loadCompanies() {
           <div class="actions admin-crm-actions">
             <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
             <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj radnika</button>
+        <button class="secondary" onclick="adminShowWorkerQr('${c.id}')">📲 QR za radnike</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','active')">Aktiviraj</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','expired')">Označi isteklo</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','blocked')">Blokiraj</button>
@@ -6320,6 +6468,7 @@ function bindEvents() {
     } catch(e) { toast(e.message, true); }
   });
   if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
+  if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
@@ -6487,6 +6636,15 @@ async function boot() {
   bindEvents();
   initSupabase();
   $("#wrDate").value = today();
+  const qrCompanyCode = getWorkerCompanyCodeFromUrl();
+  if (qrCompanyCode) {
+    localStorage.removeItem("swp_worker");
+    localStorage.setItem("swp_worker_company_code", qrCompanyCode);
+    show("WorkerLogin");
+    applyWorkerCompanyContextFromUrlOrStorage();
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+    return;
+  }
   const stored = localStorage.getItem("swp_worker");
   if (stored) {
     try {

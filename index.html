@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1241" />
+  <link rel="stylesheet" href="style.css?v=1242" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -220,6 +220,38 @@
       </div>
     </div>
 
+    <div id="companyQrModal" class="company-qr-modal hidden" aria-hidden="true">
+      <div class="company-qr-backdrop" onclick="closeCompanyQrModal()"></div>
+      <div class="company-qr-dialog" role="dialog" aria-modal="true" aria-labelledby="companyQrTitle">
+        <div class="company-qr-top">
+          <div>
+            <p id="companyQrKicker" class="business-eyebrow">QR kod za radnike</p>
+            <h3 id="companyQrTitle">Prijava radnika</h3>
+            <p id="companyQrSubtitle" class="muted">Radnik skenira QR kod, aplikacija sama učita firmu, a radnik upisuje samo svoju šifru.</p>
+          </div>
+          <button class="secondary" type="button" onclick="closeCompanyQrModal()">Zatvori</button>
+        </div>
+        <div class="company-qr-body">
+          <div class="company-qr-image-wrap">
+            <img id="companyQrImage" alt="QR kod za prijavu radnika" />
+          </div>
+          <div class="company-qr-info">
+            <h4 id="companyQrCompanyName">Firma</h4>
+            <p><b>Šifra firme:</b> <span id="companyQrCompanyCode">—</span></p>
+            <p class="school-info">Ovaj QR kod pokazujete radnicima. Kada ga radnik skenira, otvara se Start Work PRO ulaz za tu firmu. Radnik ne bira firmu, nego samo upisuje svoju šifru radnika.</p>
+            <label>Link za radnike</label>
+            <input id="companyQrLink" readonly />
+            <div class="row company-qr-actions">
+              <button class="primary" type="button" onclick="copyCompanyWorkerLinkFromModal()">📋 Kopiraj link</button>
+              <button class="secondary" type="button" onclick="openCompanyWorkerLinkFromModal()">Otvori link</button>
+              <button class="secondary" type="button" onclick="downloadCompanyQrImageFromModal()">⬇️ Sačuvaj QR sliku</button>
+            </div>
+            <p class="hint">Za telefon: otvori ovaj prozor, uvećaj QR ako treba i napravi screenshot/sliku koju možeš poslati radnicima.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <section id="viewDirectorLogin" class="view">
       <div class="card narrow">
         <button class="back" data-goto="Home">← Nazad</button>
@@ -276,7 +308,10 @@
             <h2>Dobrodošli nazad</h2>
             <p id="directorCompanyLabel">Firma</p>
           </div>
-          <div class="hero-date-pill">📅 Danas</div>
+          <div class="director-hero-actions">
+            <button id="directorShowWorkerQrBtn" class="secondary" type="button">📲 Prikaži QR kod za radnike</button>
+            <div class="hero-date-pill">📅 Danas</div>
+          </div>
         </div>
 
         <div id="directorPackageNotice" class="package-notice hidden"></div>
@@ -581,6 +616,11 @@
         <label>Šifra firme</label>
         <input id="workerCompanyCode" placeholder="npr. test2026" />
         <p class="code-login-note">Šifra firme koju je Uprava dobila pri aktivaciji.</p>
+        <div id="workerCompanyQrNotice" class="worker-company-qr-notice hidden">
+          <strong>Firma je učitana preko QR koda.</strong>
+          <span>Radnik sada upisuje samo svoju šifru radnika koju mu je dodelila Direkcija.</span>
+          <button type="button" class="secondary small-action" onclick="clearWorkerCompanyQrContext()">Promeni firmu</button>
+        </div>
         <div id="workerLoginHelpBox" class="code-help-box">
               <b>Prijava radnika:</b>
               <span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>
@@ -795,6 +835,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1241"></script>
+  <script src="script.js?v=1242"></script>
 </body>
 </html>

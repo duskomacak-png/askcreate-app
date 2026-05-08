@@ -1924,3 +1924,115 @@ body[class*="company-brand-"] .internal-header > div:first-child::before{
 .admin-renew-row .small-action{
   white-space:nowrap;
 }
+
+
+/* v1.24.2 - QR kod za radnike po firmi */
+.director-hero-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.worker-company-qr-notice{
+  margin:10px 0 12px;
+  padding:10px 12px;
+  border:1px solid rgba(47,125,70,.22);
+  background:rgba(47,125,70,.08);
+  border-radius:14px;
+  color:#173d28;
+  display:grid;
+  gap:5px;
+}
+.worker-company-qr-notice.hidden{display:none;}
+.worker-company-qr-notice strong{font-size:.92rem;}
+.worker-company-qr-notice span{font-size:.84rem;color:#4b5f52;line-height:1.35;}
+.locked-company-code{
+  background:rgba(47,125,70,.08)!important;
+  border-color:rgba(47,125,70,.35)!important;
+  font-weight:800;
+  color:#173d28;
+}
+.company-qr-modal.hidden{display:none;}
+.company-qr-modal{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+.company-qr-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(7,18,14,.62);
+  backdrop-filter:blur(8px);
+}
+.company-qr-dialog{
+  position:relative;
+  width:min(920px,96vw);
+  max-height:92vh;
+  overflow:auto;
+  background:#f7faf8;
+  border:1px solid rgba(255,255,255,.6);
+  border-radius:26px;
+  box-shadow:0 28px 90px rgba(0,0,0,.34);
+  padding:20px;
+}
+.company-qr-top{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+  border-bottom:1px solid rgba(21,48,34,.10);
+  padding-bottom:14px;
+  margin-bottom:18px;
+}
+.company-qr-top h3{margin:2px 0 4px;font-size:1.35rem;}
+.company-qr-body{
+  display:grid;
+  grid-template-columns:minmax(260px,390px) 1fr;
+  gap:20px;
+  align-items:start;
+}
+.company-qr-image-wrap{
+  background:#fff;
+  border:1px solid rgba(21,48,34,.12);
+  border-radius:24px;
+  padding:18px;
+  box-shadow:0 18px 36px rgba(22,50,35,.10);
+  display:flex;
+  justify-content:center;
+}
+.company-qr-image-wrap img{
+  width:min(100%,380px);
+  height:auto;
+  display:block;
+  border-radius:12px;
+}
+.company-qr-info{
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(21,48,34,.10);
+  border-radius:22px;
+  padding:16px;
+}
+.company-qr-info h4{margin:0 0 8px;font-size:1.15rem;}
+.company-qr-info .school-info{
+  line-height:1.55;
+  color:#43564b;
+  background:rgba(47,125,70,.07);
+  border-left:4px solid var(--brand-primary,#2f7d46);
+  padding:10px 12px;
+  border-radius:12px;
+}
+.company-qr-info input{
+  font-size:.88rem;
+  font-weight:700;
+}
+.company-qr-actions{margin-top:12px;gap:8px;flex-wrap:wrap;}
+@media (max-width:760px){
+  .company-qr-body{grid-template-columns:1fr;}
+  .company-qr-dialog{padding:14px;border-radius:20px;}
+  .company-qr-top{flex-direction:column;}
+}
