@@ -142,7 +142,9 @@
           <h2>Uprava</h2>
           <p id="directorCompanyLabel">Firma</p>
         </div>
-        
+        <div class="dashboard-actions">
+          <button id="systemDiagnosticBtn" class="secondary small-action" type="button">🧪 Test sistema</button>
+        </div>
       </div>
 
       <div class="tabs">
@@ -628,6 +630,25 @@
         </div>
       </div>
     </section>
+  
+
+    <div id="systemDiagnosticModal" class="diagnostic-modal hidden" aria-live="polite">
+      <div class="diagnostic-box">
+        <div class="diagnostic-head">
+          <div>
+            <h3>🧪 Test sistema</h3>
+            <p class="muted tiny">Bezbedna provera: čita podatke i proverava veze, ne pravi i ne briše izveštaje.</p>
+          </div>
+          <button id="closeDiagnosticBtn" class="ghost" type="button">Zatvori</button>
+        </div>
+        <div id="systemDiagnosticSummary" class="diagnostic-summary">Spremno za test.</div>
+        <div id="systemDiagnosticResults" class="diagnostic-results"></div>
+        <div class="row">
+          <button id="copyDiagnosticBtn" class="secondary" type="button">📋 Kopiraj rezultat</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <footer class="footer">

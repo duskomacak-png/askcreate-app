@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.7";
+const APP_VERSION = "1.22.8_DIAGNOSTIC_SAFE";
 
 
 let sb = null;
@@ -5487,6 +5487,199 @@ async function loginWorkerByCode() {
 }
 
 
+// v1.22.8_DIAGNOSTIC_SAFE
+// Bezbedna sistemska dijagnostika za Upravu.
+// Važno: ne pravi, ne menja i ne briše podatke. Radi samo read-only provere i DOM/proveru podešavanja.
+let lastDiagnosticRows = [];
+
+function diagnosticPush(rows, level, title, detail = "") {
+  rows.push({ level, title, detail: String(detail || "") });
+}
+
+function diagnosticLevelLabel(level) {
+  if (level === "ok") return "OK";
+  if (level === "warn") return "UPOZORENJE";
+  return "GREŠKA";
+}
+
+function renderDiagnosticModal(rows, running = false) {
+  const modal = $("#systemDiagnosticModal");
+  const summary = $("#systemDiagnosticSummary");
+  const list = $("#systemDiagnosticResults");
+  if (!modal || !summary || !list) return;
+
+  lastDiagnosticRows = rows || [];
+  const errors = lastDiagnosticRows.filter(r => r.level === "err").length;
+  const warnings = lastDiagnosticRows.filter(r => r.level === "warn").length;
+  const ok = lastDiagnosticRows.filter(r => r.level === "ok").length;
+
+  if (running) {
+    summary.textContent = "Test je u toku...";
+  } else if (errors) {
+    summary.textContent = `Pronađeno: ${errors} greška, ${warnings} upozorenja, ${ok} OK provera.`;
+  } else if (warnings) {
+    summary.textContent = `Nema kritičnih grešaka. Ima ${warnings} upozorenja i ${ok} OK provera.`;
+  } else {
+    summary.textContent = `Sve osnovne provere su OK (${ok}).`;
+  }
+
+  list.innerHTML = lastDiagnosticRows.map(r => `
+    <div class="diagnostic-row ${escapeHtml(r.level)}">
+      <div class="diagnostic-badge">${escapeHtml(diagnosticLevelLabel(r.level))}</div>
+      <div>
+        <div class="diagnostic-title">${escapeHtml(r.title)}</div>
+        ${r.detail ? `<div class="diagnostic-detail">${escapeHtml(r.detail)}</div>` : ""}
+      </div>
+    </div>
+  `).join("") || `<p class="muted">Nema rezultata.</p>`;
+
+  modal.classList.remove("hidden");
+}
+
+async function safeCountQuery(tableName, queryBuilder) {
+  const q = queryBuilder
+    .select("id", { count: "exact", head: true });
+  const { count, error } = await q;
+  if (error) throw error;
+  return count || 0;
+}
+
+async function runSystemDiagnostics() {
+  const rows = [];
+  renderDiagnosticModal([{ level: "warn", title: "Test je pokrenut", detail: "Sačekaj nekoliko sekundi. Ova provera ne šalje izveštaje i ne briše podatke." }], true);
+
+  try {
+    diagnosticPush(rows, "ok", "Verzija aplikacije", `APP_VERSION: ${APP_VERSION}`);
+
+    if (!window.supabase) diagnosticPush(rows, "err", "Supabase biblioteka", "window.supabase nije učitan. Proveri CDN/script u index.html.");
+    else diagnosticPush(rows, "ok", "Supabase biblioteka", "Biblioteka je učitana.");
+
+    if (!sb) initSupabase();
+    if (!sb) diagnosticPush(rows, "err", "Supabase client", "Supabase client nije inicijalizovan.");
+    else diagnosticPush(rows, "ok", "Supabase client", "Client je inicijalizovan.");
+
+    if (!currentCompany?.id) {
+      diagnosticPush(rows, "err", "Firma/Uprava", "Nema učitane firme. Pokreni test tek kada si prijavljen kao Uprava i vidiš dashboard firme.");
+      renderDiagnosticModal(rows);
+      return;
+    }
+    diagnosticPush(rows, "ok", "Firma/Uprava", `${currentCompany.company_name || currentCompany.name || "Firma"} · ID: ${currentCompany.id}`);
+
+    try {
+      const { data: userData, error } = await sb.auth.getUser();
+      if (error) throw error;
+      if (userData?.user?.email) diagnosticPush(rows, "ok", "Auth sesija Uprave", `Prijavljen email: ${userData.user.email}`);
+      else diagnosticPush(rows, "warn", "Auth sesija Uprave", "Nije pronađen prijavljen Supabase user. Ako si u Upravi i sve radi, ovo može biti posledica isteka sesije.");
+    } catch (e) {
+      diagnosticPush(rows, "err", "Auth sesija Uprave", e.message);
+    }
+
+    const requiredDom = [
+      "logoutBtn", "directorCompanyLabel", "peopleList", "sitesList", "assetsList", "materialsList",
+      "reportsList", "defectsList", "exportPreview", "exportXlsBtn", "copyExcelBtn",
+      "workerLoginBtn", "submitReportBtn", "sendDefectNowBtn"
+    ];
+    const missingDom = requiredDom.filter(id => !document.getElementById(id));
+    if (missingDom.length) diagnosticPush(rows, "warn", "HTML elementi", `Nedostaju elementi: ${missingDom.join(", ")}`);
+    else diagnosticPush(rows, "ok", "HTML elementi", "Osnovni elementi za Upravu, radnika, kvarove i Excel postoje.");
+
+    const duplicateIds = Array.from(document.querySelectorAll("[id]"))
+      .map(el => el.id)
+      .filter((id, i, arr) => id && arr.indexOf(id) !== i);
+    const uniqueDuplicates = [...new Set(duplicateIds)];
+    if (uniqueDuplicates.length) diagnosticPush(rows, "warn", "Duplirani HTML ID", `Pronađeno: ${uniqueDuplicates.join(", ")}. Ovo ne mora odmah rušiti app, ali može izazvati čudne klik greške.`);
+    else diagnosticPush(rows, "ok", "Duplirani HTML ID", "Nema dupliranih ID vrednosti.");
+
+    const tableChecks = [
+      { title: "Radnici / ljudi", table: "company_users", query: () => sb.from("company_users").eq("company_id", currentCompany.id) },
+      { title: "Gradilišta", table: "sites", query: () => sb.from("sites").eq("company_id", currentCompany.id) },
+      { title: "Mašine i vozila", table: "assets", query: () => sb.from("assets").eq("company_id", currentCompany.id) },
+      { title: "Izveštaji", table: "reports", query: () => sb.from("reports").eq("company_id", currentCompany.id) }
+    ];
+
+    for (const check of tableChecks) {
+      try {
+        const count = await safeCountQuery(check.table, check.query());
+        diagnosticPush(rows, "ok", `${check.title} tabela`, `Čitanje radi. Broj redova za firmu: ${count}.`);
+      } catch (e) {
+        diagnosticPush(rows, "err", `${check.title} tabela`, `${check.table}: ${e.message}`);
+      }
+    }
+
+    try {
+      const { data, error } = await sb.rpc("director_list_materials", { p_company_id: currentCompany.id });
+      if (error) throw error;
+      diagnosticPush(rows, "ok", "Materijali RPC", `director_list_materials radi. Broj materijala: ${(data || []).length}.`);
+    } catch (e) {
+      diagnosticPush(rows, "err", "Materijali RPC", `director_list_materials ne radi ili SQL funkcija fali: ${e.message}`);
+    }
+
+    try {
+      const { data, error } = await sb
+        .from("reports")
+        .select("id, user_id, data, status, report_date, created_at")
+        .eq("company_id", currentCompany.id)
+        .limit(5);
+      if (error) throw error;
+      const enriched = await enrichReportsWithUsers(data || []);
+      diagnosticPush(rows, "ok", "Reports → users povezivanje", `Bezbedno učitano ${enriched.length} izveštaja. Ne koristi se problematični company_users(...) embed.`);
+    } catch (e) {
+      diagnosticPush(rows, "err", "Reports → users povezivanje", e.message);
+    }
+
+    try {
+      localStorage.setItem("swp_diag_test", "ok");
+      localStorage.removeItem("swp_diag_test");
+      diagnosticPush(rows, "ok", "localStorage", "Čuvanje nacrta/podešavanja u browseru je dostupno.");
+    } catch (e) {
+      diagnosticPush(rows, "err", "localStorage", "Browser ne dozvoljava localStorage. Nacrti mogu praviti problem.");
+    }
+
+    try {
+      const manifest = await fetch("./manifest.json", { cache: "no-store" });
+      diagnosticPush(rows, manifest.ok ? "ok" : "warn", "PWA manifest", `HTTP status: ${manifest.status}`);
+    } catch (e) {
+      diagnosticPush(rows, "warn", "PWA manifest", e.message);
+    }
+
+    if ("serviceWorker" in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        diagnosticPush(rows, reg ? "ok" : "warn", "Service Worker", reg ? "Service Worker je registrovan." : "Service Worker još nije registrovan u ovom browseru.");
+      } catch (e) {
+        diagnosticPush(rows, "warn", "Service Worker", e.message);
+      }
+    } else {
+      diagnosticPush(rows, "warn", "Service Worker", "Ovaj browser ne podržava Service Worker.");
+    }
+
+    if (navigator.onLine) diagnosticPush(rows, "ok", "Internet veza", "Browser je online.");
+    else diagnosticPush(rows, "warn", "Internet veza", "Browser prijavljuje offline režim.");
+
+    diagnosticPush(rows, "warn", "Važna napomena", "Ovo nije automatsko slanje test izveštaja. Namerno ne pravi test radnika, ne šalje izveštaj i ne briše podatke, da ne poremeti bazu. Za kompletan test i dalje proveri ručno: radnik login → pošalji izveštaj → Uprava vidi → vrati na dopunu → Excel.");
+  } catch (e) {
+    diagnosticPush(rows, "err", "Neočekivana greška testa", e.message || String(e));
+  }
+
+  renderDiagnosticModal(rows);
+}
+
+function closeSystemDiagnostics() {
+  const modal = $("#systemDiagnosticModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function copySystemDiagnostics() {
+  const text = (lastDiagnosticRows || []).map(r => `[${diagnosticLevelLabel(r.level)}] ${r.title}\n${r.detail || ""}`).join("\n\n");
+  try {
+    await navigator.clipboard.writeText(text || "Nema rezultata testa.");
+    toast("Rezultat testa je kopiran.");
+  } catch (e) {
+    toast("Ne mogu da kopiram rezultat. Označi tekst ručno iz prozora.", true);
+  }
+}
+
+
 function installNavigationFallback() {
   if (window.__swpNavFallbackInstalled) return;
   window.__swpNavFallbackInstalled = true;
@@ -5575,6 +5768,9 @@ function bindEvents() {
     } catch(e) { toast(e.message, true); }
   });
   if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
+  if ($("#systemDiagnosticBtn")) $("#systemDiagnosticBtn").addEventListener("click", runSystemDiagnostics);
+  if ($("#closeDiagnosticBtn")) $("#closeDiagnosticBtn").addEventListener("click", closeSystemDiagnostics);
+  if ($("#copyDiagnosticBtn")) $("#copyDiagnosticBtn").addEventListener("click", copySystemDiagnostics);
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
