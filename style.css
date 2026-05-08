@@ -2280,3 +2280,224 @@ body.worker-field-theme #viewWorkerForm .dashboard-head{
 body.worker-field-theme #viewWorkerForm > .card{
   margin-top:0!important;
 }
+
+
+/* =========================================================
+   v1.24.7 - WORKER MOBILE POLISH
+   cilj: bolja čitljivost, lepši odjavi se, jači kontrast na terenu
+   ========================================================= */
+body.worker-field-theme{
+  --worker-bg:#07111f;
+  --worker-surface:#0d213b;
+  --worker-surface-2:#0a1b31;
+  --worker-text:#eef4ff;
+  --worker-muted:#b8c7da;
+  --worker-border:rgba(248,113,113,.45);
+  --worker-border-soft:rgba(147,197,253,.28);
+}
+body.worker-field-theme .internal-header{
+  position:sticky;
+  top:0;
+  z-index:60;
+  min-height:unset!important;
+  padding:10px 12px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+}
+body.worker-field-theme .internal-header > div:first-child{
+  gap:10px!important;
+  min-width:0;
+}
+body.worker-field-theme .internal-header > div:first-child::before{
+  width:40px!important;
+  height:40px!important;
+  border-radius:12px!important;
+  font-size:20px!important;
+  background:rgba(255,255,255,.10)!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+}
+body.worker-field-theme #internalTitle{
+  font-size:1rem!important;
+  line-height:1.1!important;
+}
+body.worker-field-theme #internalSubtitle{
+  font-size:.78rem!important;
+  color:#b6c4d8!important;
+  line-height:1.25!important;
+  max-width:56vw;
+  white-space:normal;
+}
+body.worker-field-theme #internalLogoutBtn{
+  display:none!important;
+}
+body.worker-field-theme #viewWorkerForm{
+  padding:12px 10px 20px!important;
+}
+body.worker-field-theme #viewWorkerForm .dashboard-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  padding:16px 16px 14px!important;
+}
+body.worker-field-theme #workerHello{
+  font-size:1.35rem!important;
+  margin-bottom:4px!important;
+}
+body.worker-field-theme #workerCompanyLabel{
+  color:#b7c7db!important;
+  font-size:.92rem!important;
+  line-height:1.35!important;
+}
+body.worker-field-theme #workerLogoutBtn{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:flex-start!important;
+  white-space:nowrap!important;
+  min-height:42px!important;
+  padding:10px 14px!important;
+  border-radius:14px!important;
+  background:rgba(255,255,255,.94)!important;
+  color:#ef4444!important;
+  border:1px solid rgba(248,113,113,.55)!important;
+  box-shadow:0 8px 18px rgba(0,0,0,.18)!important;
+  font-weight:800!important;
+}
+body.worker-field-theme #viewWorkerForm > .card{
+  padding:16px 14px!important;
+}
+body.worker-field-theme #viewWorkerForm h3{
+  font-size:1.45rem!important;
+  margin-bottom:10px!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section,
+body.worker-field-theme #viewWorkerForm .entry-card,
+body.worker-field-theme #viewWorkerForm .returned-panel,
+body.worker-field-theme #viewWorkerForm .fuel-memory-panel{
+  padding:16px 14px!important;
+  border-radius:18px!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section h4,
+body.worker-field-theme #viewWorkerForm .entry-card h4,
+body.worker-field-theme #viewWorkerForm .entry-card h5,
+body.worker-field-theme #viewWorkerForm .entry-card-head strong{
+  color:#f5f9ff!important;
+  font-weight:900!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card-head strong{
+  font-size:1.2rem!important;
+  letter-spacing:-.01em;
+}
+body.worker-field-theme #viewWorkerForm label{
+  color:#eef4ff!important;
+  font-size:1rem!important;
+  margin-bottom:6px!important;
+}
+body.worker-field-theme #viewWorkerForm .hint,
+body.worker-field-theme #viewWorkerForm .field-hint,
+body.worker-field-theme #viewWorkerForm .muted,
+body.worker-field-theme #viewWorkerForm .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .asset-smart-result span,
+body.worker-field-theme #viewWorkerForm .asset-smart-result small{
+  color:#b9c9db!important;
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result{
+  background:rgba(8,18,33,.68)!important;
+  border:1px solid rgba(248,113,113,.22)!important;
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result.ok{
+  background:rgba(22,163,74,.12)!important;
+  border-color:rgba(74,222,128,.25)!important;
+  color:#dcfce7!important;
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result.warn{
+  background:rgba(234,88,12,.12)!important;
+  border-color:rgba(251,146,60,.25)!important;
+  color:#ffedd5!important;
+}
+body.worker-field-theme #viewWorkerForm input,
+body.worker-field-theme #viewWorkerForm select,
+body.worker-field-theme #viewWorkerForm textarea{
+  min-height:52px!important;
+  font-size:1rem!important;
+  padding:14px 16px!important;
+  background:#0a1b31!important;
+  border:1px solid var(--worker-border)!important;
+  color:#eff6ff!important;
+}
+body.worker-field-theme #viewWorkerForm textarea{
+  min-height:110px!important;
+}
+body.worker-field-theme #viewWorkerForm input::placeholder,
+body.worker-field-theme #viewWorkerForm textarea::placeholder{
+  color:#9eafc4!important;
+  opacity:1!important;
+}
+body.worker-field-theme #viewWorkerForm select,
+body.worker-field-theme #viewWorkerForm option{
+  color:#eff6ff!important;
+  -webkit-text-fill-color:#eff6ff!important;
+}
+body.worker-field-theme #viewWorkerForm .remove-entry,
+body.worker-field-theme #viewWorkerForm .danger-small,
+body.worker-field-theme #viewWorkerForm .danger-btn{
+  background:rgba(255,255,255,.95)!important;
+  color:#ef4444!important;
+  border:1px solid rgba(248,113,113,.58)!important;
+  box-shadow:none!important;
+  font-weight:800!important;
+}
+body.worker-field-theme #viewWorkerForm .primary,
+body.worker-field-theme #viewWorkerForm .secondary{
+  min-height:46px!important;
+  font-size:.98rem!important;
+}
+body.worker-field-theme #viewWorkerForm .mini-grid{
+  gap:10px!important;
+}
+@media (max-width:640px){
+  body.worker-field-theme .internal-header{
+    padding:8px 10px!important;
+  }
+  body.worker-field-theme .internal-header > div:first-child::before{
+    width:36px!important;
+    height:36px!important;
+    font-size:18px!important;
+  }
+  body.worker-field-theme #internalTitle{
+    font-size:.96rem!important;
+  }
+  body.worker-field-theme #internalSubtitle{
+    max-width:50vw;
+    font-size:.74rem!important;
+  }
+  body.worker-field-theme #viewWorkerForm{
+    padding:10px 8px 18px!important;
+  }
+  body.worker-field-theme #viewWorkerForm .dashboard-head{
+    padding:14px 12px!important;
+    border-radius:18px!important;
+  }
+  body.worker-field-theme #workerHello{
+    font-size:1.2rem!important;
+  }
+  body.worker-field-theme #workerLogoutBtn{
+    min-height:40px!important;
+    padding:8px 12px!important;
+    font-size:.92rem!important;
+  }
+  body.worker-field-theme #viewWorkerForm > .card,
+  body.worker-field-theme #viewWorkerForm .dyn-section,
+  body.worker-field-theme #viewWorkerForm .entry-card{
+    padding:14px 12px!important;
+  }
+  body.worker-field-theme #viewWorkerForm .entry-card-head{
+    align-items:flex-start!important;
+  }
+  body.worker-field-theme #viewWorkerForm .entry-card-head strong{
+    font-size:1.05rem!important;
+  }
+}

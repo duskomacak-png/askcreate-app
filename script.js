@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.24.6";
+const APP_VERSION = "1.24.7";
 
 
 let sb = null;
@@ -214,6 +214,11 @@ function show(view) {
   // Staro dugme iz javnog topbara ostaje skriveno da ne pravi duplikat.
   const oldTopbarLogout = $("#logoutBtn");
   if (oldTopbarLogout) oldTopbarLogout.classList.add("hidden");
+  const workerLogoutBtn = $("#workerLogoutBtn");
+  if (workerLogoutBtn && view !== "WorkerForm") {
+    workerLogoutBtn.classList.add("hidden");
+    workerLogoutBtn.setAttribute("aria-hidden", "true");
+  }
 }
 
 function today() {
@@ -6638,6 +6643,11 @@ function bindEvents() {
     localStorage.removeItem("swp_worker");
     localStorage.removeItem("swp_draft");
     currentWorker = null;
+    const workerLogout = $("#workerLogoutBtn");
+    if (workerLogout) {
+      workerLogout.classList.add("hidden");
+      workerLogout.setAttribute("aria-hidden", "true");
+    }
     clearCompanyBrandFromBody();
     setInternalHeader("", "", false);
     show("WorkerLogin");
@@ -6711,6 +6721,11 @@ async function openWorkerForm() {
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
   workerSetSections(currentWorker.permissions || {});
   setInternalHeader("Terenski unos", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  const workerLogout = $("#workerLogoutBtn");
+  if (workerLogout) {
+    workerLogout.classList.remove("hidden");
+    workerLogout.setAttribute("aria-hidden", "false");
+  }
   show("WorkerForm");
   await Promise.all([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
   loadDraft();
