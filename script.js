@@ -1,5 +1,5 @@
-// v1.22.0_UI_CLEANUP - jedno dugme odjave i uklonjena kontrola sistema
-/* START WORK PRO by AskCreate - Start Work PRO
+// v1.18.8_REPORTS_NO_EMBED - reports fetched without company_users embed; users enriched in second query
+/* START WORK PRO by AskCreate - MVP v1
    VAŽNO:
    1) SUPABASE_URL je već upisan.
    2) SUPABASE_KEY zameni tvojim Publishable key iz supabase-podaci.txt.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.22.8_DIAGNOSTIC_SAFE";
+const APP_VERSION = "1.18.8";
 
 
 let sb = null;
@@ -44,8 +44,23 @@ function toast(msg, isError = false) {
 
 
 function ensureDirectorTopLogoutButton() {
-  // Nema više dodatnog Odjavi se dugmeta u Upravi.
-  // Koristi se samo glavno dugme na zelenoj traci (#logoutBtn).
+  const dash = $("#viewDirectorDashboard");
+  if (!dash || $("#directorTopLogoutBtn")) return;
+  const head = dash.querySelector(".dashboard-head");
+  if (!head) return;
+  let actions = head.querySelector(".actions") || head.querySelector(".top-actions") || head.querySelector(".head-actions");
+  if (!actions) {
+    actions = document.createElement("div");
+    actions.className = "actions head-actions";
+    head.appendChild(actions);
+  }
+  const btn = document.createElement("button");
+  btn.id = "directorTopLogoutBtn";
+  btn.className = "secondary";
+  btn.type = "button";
+  btn.textContent = "Odjavi se";
+  btn.addEventListener("click", signOut);
+  actions.appendChild(btn);
 }
 
 
@@ -77,11 +92,9 @@ function setInternalHeader(title = "", subtitle = "", showHeader = true) {
   if (!header) return;
   const titleEl = $("#internalTitle");
   const subtitleEl = $("#internalSubtitle");
-  const logoutBtn = $("#internalLogoutBtn");
   if (titleEl) titleEl.textContent = title || "Radni prostor";
   if (subtitleEl) subtitleEl.textContent = subtitle || "";
   header.classList.toggle("hidden", !showHeader);
-  if (logoutBtn) logoutBtn.classList.toggle("hidden", !showHeader);
   document.body.classList.toggle("in-app", !!showHeader);
 }
 
@@ -94,11 +107,7 @@ function show(view) {
   $$(".view").forEach(v => v.classList.remove("active"));
   const el = $("#view" + view);
   if (el) el.classList.add("active");
-
-  // Koristimo samo jedno dugme za odjavu: ono na zelenoj traci (#internalLogoutBtn).
-  // Staro dugme iz javnog topbara ostaje skriveno da ne pravi duplikat.
-  const oldTopbarLogout = $("#logoutBtn");
-  if (oldTopbarLogout) oldTopbarLogout.classList.add("hidden");
+  $("#logoutBtn").classList.toggle("hidden", !["AdminDashboard", "DirectorDashboard"].includes(view));
 }
 
 function today() {
@@ -133,13 +142,13 @@ async function signOut() {
 
 async function ensureAdmin() {
   const { data, error } = await sb.from("app_admins").select("*").eq("email", "duskomacak@gmail.com").maybeSingle();
-  if (error || !data || !data.active) throw new Error("Ovaj nalog nema Administrator sistema dozvolu.");
+  if (error || !data || !data.active) throw new Error("Ovaj nalog nema Super Admin dozvolu.");
   return true;
 }
 
 async function loadAdmin() {
   await ensureAdmin();
-  setInternalHeader("Admin soba", "Odobravanje izveštaja firmi", true);
+  setInternalHeader("Admin soba", "Odobravanje firmi", true);
   show("AdminDashboard");
   await Promise.all([loadApprovedCompanies(), loadCompanies()]);
 }
@@ -194,7 +203,7 @@ window.adminSetCompanyStatus = async (id, status) => {
 async function loadDirectorCompany() {
   const { data: userData } = await sb.auth.getUser();
   const email = userData?.user?.email;
-  if (!email) throw new Error("Nema aktivnog Uprava login-a.");
+  if (!email) throw new Error("Nema aktivnog Direkcija login-a.");
 
   const { data, error } = await sb.from("companies").select("*").eq("owner_email", email).maybeSingle();
   if (error) throw error;
@@ -205,8 +214,9 @@ async function loadDirectorCompany() {
   }
   currentCompany = data;
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
-  setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
+  setInternalHeader("Direkcija", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
+  ensureDirectorTopLogoutButton();
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
   return data;
@@ -246,21 +256,21 @@ function clearPersonForm() {
 
 
 const WORKER_PREVIEW_SECTIONS = [
-  { key: "daily_work", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Uprave"] },
+  { key: "daily_work", title: "Ime gradilišta i datum/godina", lines: ["Datum / godina", "Gradilište iz liste Direkcije"] },
   { key: "workers", title: "Radnici na gradilištu", lines: ["Ime i prezime radnika", "Sati rada", "+ Dodaj radnika"] },
-  { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
-  { key: "vehicles", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
-  { key: "lowloader", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
-  { key: "fuel", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
-  { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
+  { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz Direkcije ili ručni unos", "Početni i završni MTČ", "Sati rada"] },
+  { key: "vehicles", title: "Rad sa kamionom / vozilom", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
+  { key: "lowloader", title: "Prevoz mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
+  { key: "fuel", title: "Sipanje goriva u svoju mašinu", lines: ["Mašina", "MTČ/KM", "Litara", "Ko je sipao / primio"] },
+  { key: "field_tanker", title: "Tankanje goriva cisternom", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Gorivo primio"] },
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
-  { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
+  { key: "leave_request", title: "Zahtev za slobodan dan / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
-  { key: "defects", title: "Evidencija kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
+  { key: "defects", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
   { key: "view_reports", title: "Pregled izveštaja", lines: ["Pregled odobrenih / vraćenih izveštaja ako je uključeno za ovog korisnika"] },
-  { key: "approve_reports", title: "Odobravanje izveštaja", lines: ["Odobravanje izveštaja ili vraćanje izveštaja, samo za ovlašćene korisnike"] },
+  { key: "approve_reports", title: "Odobravanje", lines: ["Odobravanje ili vraćanje izveštaja, samo za ovlašćene korisnike"] },
   { key: "excel_export", title: "Izvoz u Excel", lines: ["Priprema i preuzimanje Excel/CSV izvoza"] },
-  { key: "manage_people", title: "Upravljanje korisnicima", lines: ["Dodavanje i izmena ljudi u firmi"] },
+  { key: "manage_people", title: "Upravljanje osobama", lines: ["Dodavanje i izmena ljudi u firmi"] },
   { key: "settings", title: "Podešavanja firme", lines: ["Osnovna podešavanja firme"] }
 ];
 
@@ -455,13 +465,13 @@ function setAssetFormMode(mode = "add") {
   const title = document.querySelector("#assetFormTitle");
   const btn = document.querySelector("#addAssetBtn");
   const cancel = document.querySelector("#cancelEditAssetBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi sredstvo" : "+ Dodaj sredstvo";
+  if (title) title.textContent = editing ? "✏️ Uredi mašinu / vozilo" : "+ Dodaj mašinu / vozilo";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
 
 function clearAssetForm() {
-  ["assetCode", "assetName", "assetReg", "assetCapacity"].forEach(id => {
+  ["assetName", "assetReg", "assetCapacity"].forEach(id => {
     const el = document.querySelector("#" + id);
     if (el) el.value = "";
   });
@@ -481,16 +491,15 @@ window.editAsset = async (id) => {
       .eq("company_id", currentCompany.id)
       .maybeSingle();
     if (error) throw error;
-    if (!asset) throw new Error("Sredstvo nije pronađeno.");
+    if (!asset) throw new Error("Mašina/vozilo nije pronađeno.");
 
     editingAssetId = asset.id;
-    document.querySelector("#assetCode").value = asset.asset_code || asset.internal_code || asset.code || "";
     document.querySelector("#assetName").value = asset.name || "";
     document.querySelector("#assetType").value = asset.asset_type || "machine";
     document.querySelector("#assetReg").value = asset.registration || "";
     document.querySelector("#assetCapacity").value = asset.capacity || "";
     setAssetFormMode("edit");
-    toast("Sredstvo je otvoreno za izmenu.");
+    toast("Mašina/vozilo je otvoreno za izmenu.");
     const title = document.querySelector("#assetFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (e) {
@@ -501,7 +510,6 @@ window.editAsset = async (id) => {
 async function saveAssetForm() {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
-    const assetCode = document.querySelector("#assetCode")?.value.trim() || "";
     const name = document.querySelector("#assetName").value.trim();
     const assetType = document.querySelector("#assetType").value;
     const registration = document.querySelector("#assetReg").value.trim();
@@ -511,7 +519,6 @@ async function saveAssetForm() {
 
     const payload = {
       company_id: currentCompany.id,
-      asset_code: assetCode,
       name,
       asset_type: assetType,
       registration,
@@ -525,11 +532,11 @@ async function saveAssetForm() {
         .eq("id", editingAssetId)
         .eq("company_id", currentCompany.id);
       if (error) throw error;
-      toast("Sredstvo je izmenjeno.");
+      toast("Mašina/vozilo je izmenjeno.");
     } else {
       const { error } = await sb.from("assets").insert(payload);
       if (error) throw error;
-      toast("Sredstvo dodato.");
+      toast("Mašina/vozilo dodato.");
     }
 
     clearAssetForm();
@@ -614,8 +621,8 @@ async function loadAssets() {
   $("#assetsList").innerHTML = (data || []).map(a => `
     <div class="item management-item">
       <div class="item-main">
-        <strong>${escapeHtml(formatAssetTitleWithCode(a))}</strong>
-        <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(formatCapacityM3(a.capacity))}</small>
+        <strong>${escapeHtml(a.name)}</strong>
+        <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(a.capacity || "")}</small>
       </div>
       <div class="management-actions asset-actions-v1117">
         <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Uredi</button>
@@ -829,7 +836,7 @@ window.deleteAsset = async (id, name = "") => {
     .eq("company_id", currentCompany.id);
 
   if (error) return toast(error.message, true);
-  toast("Sredstvo je trajno obrisano iz baze.");
+  toast("Mašina/vozilo je trajno obrisano iz baze.");
   if (editingAssetId === id) clearAssetForm();
   loadAssets();
   if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
@@ -914,11 +921,11 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
     });
 
     if (assetsRes.data) assetsRes.data.forEach(a => {
-      const text = `${a.asset_code || ""} ${a.internal_code || ""} ${a.code || ""} ${a.name} ${a.asset_type} ${a.registration || ""} ${a.capacity || ""}`;
+      const text = `${a.name} ${a.asset_type} ${a.registration || ""} ${a.capacity || ""}`;
       if (searchMatch(text, q)) results.push({
         type:"Mašina / vozilo",
-        title:formatAssetTitleWithCode(a),
-        subtitle:`broj: ${getAssetCode(a) || "—"} · ${a.asset_type} · ${a.registration || ""} · ${formatCapacityM3(a.capacity)}`,
+        title:a.name,
+        subtitle:`${a.asset_type} · ${a.registration || ""} · ${a.capacity || ""}`,
         actions:`<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Uredi</button><button class="danger-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>`
       });
     });
@@ -990,7 +997,7 @@ function hasDefectData(r) {
 }
 
 function hasDailyReportData(r) {
-  // v1.18.5: Uprava ne sme da izgubi prikaz izveštaja zato što filter
+  // v1.18.5: Direkcija ne sme da izgubi prikaz izveštaja zato što filter
   // ne prepoznaje novu rubriku. Sve što nije poseban kvar i nije arhivirano
   // mora ostati vidljivo u Dnevnim izveštajima.
   const d = r?.data || {};
@@ -1019,7 +1026,7 @@ function hasDailyReportData(r) {
     hasLeave || hasAnyArrayData
   );
 
-  // Ako ne prepoznamo strukturu, ipak prikaži izveštaj. Bolje je da Uprava
+  // Ako ne prepoznamo strukturu, ipak prikaži izveštaj. Bolje je da Direkcija
   // vidi višak nego da joj nestane poslat izveštaj.
   return true || hasKnownField;
 }
@@ -1093,7 +1100,7 @@ function defectHtml(r) {
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : (d.created_by_worker || "Nepoznat radnik");
   const status = d.defect_status || "prijavljen";
   const reportedAt = d.defect_reported_at || r.submitted_at || r.created_at;
-  const assetName = [d.defect_asset_code, d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name)].filter(Boolean).join(" · ") || "—";
+  const assetName = d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name) || "—";
 
   return `
     <div class="item report-item defect-item">
@@ -1102,8 +1109,9 @@ function defectHtml(r) {
       <span class="pill">Prijavljeno: ${escapeHtml(formatDateTimeLocal(reportedAt))}</span>
       <span class="pill">Status: ${escapeHtml(status)}</span>
       <span class="pill">Gradilište/lokacija: ${escapeHtml(d.defect_site_name || d.site_name || "bez gradilišta")}</span>
-      <span class="pill">Sredstvo: ${escapeHtml(assetName)}</span>
-      ${d.defect_work_impact ? `<span class="pill">Uticaj na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
+      <span class="pill">Mašina/vozilo: ${escapeHtml(assetName)}</span>
+      ${d.defect_stops_work ? `<span class="pill">Zaustavlja rad: ${escapeHtml(d.defect_stops_work)}</span>` : ""}
+      ${d.defect_can_continue ? `<span class="pill">Može nastaviti: ${escapeHtml(d.defect_can_continue)}</span>` : ""}
       ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
       <div class="report-kv">
@@ -1157,12 +1165,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
     [];
 
   const reportRows = [];
-  const leaveRequest = d.leave_request || {};
-  const previewLeaveRequest = leaveRequest;
-  const previewHasLeave = !!(safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || Object.values(previewLeaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
-  const previewHasWarehouse = !!(safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty));
 
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length, materialEntries.length, previewHasLeave ? 1 : 0, previewHasWarehouse ? 1 : 0)
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length)
   for (let i = 0; i < maxRows; i++) {
     const w = workers[i] || {};
     const m = machines[i] || {};
@@ -1170,7 +1174,6 @@ function renderReportReadableDetails(d = {}, options = {}) {
     const ll = lowloaders[i] || {};
     const f = fuels[i] || {};
     const ft = fieldTankers[i] || {};
-    const mat = materialEntries[i] || {};
     reportRows.push(`
       <tr>
         <td>${i + 1}</td>
@@ -1200,140 +1203,65 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(ll.km_end)}</td>
         <td>${val(ll.km_total)}</td>
         <td>${val(ll.machine)}</td>
-        <td>${val(f.asset_name || f.machine || f.vehicle || f.other)}</td>
+        <td>${val(f.machine)}</td>
         <td>${val(f.liters)}</td>
-        <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
-        <td>${val(f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""))}</td>
+        <td>${val(f.reading)}</td>
         <td>${val(f.by)}</td>
         <td>${val(f.receiver || d.fuel_receiver)}</td>
         <td>${val(ft.site_name)}</td>
         <td>${val(ft.asset_name || ft.machine)}</td>
-        <td>${val(ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""))}</td>
-        <td>${val(ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""))}</td>
+        <td>${val(ft.reading || ft.mtc_km)}</td>
         <td>${val(ft.liters)}</td>
         <td>${val(ft.receiver || ft.received_by)}</td>
-        <td>${val(mat.action || mat.material_action)}</td>
-        <td>${val(mat.material || mat.name || d.material)}</td>
-        <td>${val(mat.quantity || mat.qty || d.quantity)}</td>
-        <td>${val(mat.unit || d.unit)}</td>
-        <td>${val(mat.note || d.material_note)}</td>
-        <td>${val(d.leave_request_type || leaveRequest.leave_label || leaveRequest.label)}</td>
-        <td>${val(d.leave_date || leaveRequest.leave_date || leaveRequest.date)}</td>
-        <td>${val(d.leave_from || leaveRequest.date_from)}</td>
-        <td>${val(d.leave_to || leaveRequest.date_to)}</td>
-        <td>${val(d.leave_note || leaveRequest.leave_note || leaveRequest.note)}</td>
-        <td>${val(d.warehouse_type)}</td>
-        <td>${val(d.warehouse_item)}</td>
-        <td>${val(d.warehouse_qty)}</td>
       </tr>
     `);
   }
 
-  const excelPreviewRows = [];
-  const addPreview = (section, rowLabel, field, value) => {
-    if (!safe(value)) return;
-    excelPreviewRows.push(`<tr><td>${esc(section)}</td><td>${esc(rowLabel || "")}</td><td>${esc(field)}</td><td>${val(value)}</td></tr>`);
-  };
-
-  addPreview("Osnovni podaci", "", "Gradilište", d.site_name);
-  addPreview("Osnovni podaci", "", "Opis rada", d.description);
-  addPreview("Osnovni podaci", "", "Sati rada", d.hours);
-
-  workers.forEach((w, i) => {
-    const row = `Radnik ${i + 1}`;
-    addPreview("Radnici na gradilištu", row, "Ime i prezime", w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" "));
-    addPreview("Radnici na gradilištu", row, "Sati", w.hours);
-  });
-
-  machines.forEach((m, i) => {
-    const row = `Mašina ${i + 1}`;
-    addPreview("Evidencija rada mašine", row, "Broj", m.asset_code || m.machine_code);
-    addPreview("Evidencija rada mašine", row, "Mašina", m.name);
-    addPreview("Evidencija rada mašine", row, "MTČ/KM početak", m.start);
-    addPreview("Evidencija rada mašine", row, "MTČ/KM kraj", m.end);
-    addPreview("Evidencija rada mašine", row, "Ukupno sati", m.hours);
-    addPreview("Evidencija rada mašine", row, "Opis rada", m.work);
-  });
-
-  vehicles.forEach((v, i) => {
-    const row = `Vozilo ${i + 1}`;
-    addPreview("Evidencija rada vozila", row, "Broj", v.asset_code || v.vehicle_code);
-    addPreview("Evidencija rada vozila", row, "Vozilo", v.name || v.vehicle);
-    addPreview("Evidencija rada vozila", row, "Registracija", v.registration);
-    addPreview("Evidencija rada vozila", row, "Kapacitet m³", v.capacity);
-    addPreview("Evidencija rada vozila", row, "KM početak", v.km_start);
-    addPreview("Evidencija rada vozila", row, "KM kraj", v.km_end);
-    addPreview("Evidencija rada vozila", row, "Relacija", v.route);
-    addPreview("Evidencija rada vozila", row, "Broj tura", v.tours);
-    addPreview("Evidencija rada vozila", row, "Ukupno m³", v.cubic_m3 || v.cubic_auto);
-  });
-
-  lowloaders.forEach((ll, i) => {
-    const row = `Transport ${i + 1}`;
-    addPreview("Transport mašine labudicom", row, "Tablice labudice", ll.plates || ll.registration);
-    addPreview("Transport mašine labudicom", row, "Od lokacije", ll.from_site || ll.from_address);
-    addPreview("Transport mašine labudicom", row, "Do lokacije", ll.to_site || ll.to_address);
-    addPreview("Transport mašine labudicom", row, "KM početak", ll.km_start);
-    addPreview("Transport mašine labudicom", row, "KM kraj", ll.km_end);
-    addPreview("Transport mašine labudicom", row, "Ukupno km", ll.km_total);
-    addPreview("Transport mašine labudicom", row, "Mašina koja se seli", ll.machine);
-  });
-
-  fuels.forEach((f, i) => {
-    const row = `Gorivo ${i + 1}`;
-    addPreview("Evidencija goriva", row, "Tip sredstva", assetKindLabel(f.asset_kind));
-    addPreview("Evidencija goriva", row, "Broj sredstva", f.asset_code);
-    addPreview("Evidencija goriva", row, "Sredstvo", f.asset_name || f.machine || f.vehicle || f.other);
-    addPreview("Evidencija goriva", row, "Litara", f.liters);
-    addPreview("Evidencija goriva", row, "KM", f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""));
-    addPreview("Evidencija goriva", row, "MTČ", f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""));
-    addPreview("Evidencija goriva", row, "Sipao", f.by);
-    addPreview("Evidencija goriva", row, "Primio", f.receiver || d.fuel_receiver);
-  });
-
-  fieldTankers.forEach((ft, i) => {
-    const row = `Cisterna ${i + 1}`;
-    addPreview("Evidencija goriva – cisterna", row, "Gradilište", ft.site_name);
-    addPreview("Evidencija goriva – cisterna", row, "Tip sredstva", assetKindLabel(ft.asset_kind));
-    addPreview("Evidencija goriva – cisterna", row, "Broj sredstva", ft.asset_code);
-    addPreview("Evidencija goriva – cisterna", row, "Sredstvo", ft.asset_name || ft.machine || ft.vehicle || ft.other);
-    addPreview("Evidencija goriva – cisterna", row, "KM", ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""));
-    addPreview("Evidencija goriva – cisterna", row, "MTČ", ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""));
-    addPreview("Evidencija goriva – cisterna", row, "Litara", ft.liters);
-    addPreview("Evidencija goriva – cisterna", row, "Primio gorivo", ft.receiver || ft.received_by);
-  });
-
-  materialEntries.forEach((m, i) => {
-    const row = `Materijal ${i + 1}`;
-    addPreview("Materijal", row, "Radnja", m.action || m.material_action);
-    addPreview("Materijal", row, "Materijal", m.material || m.name);
-    addPreview("Materijal", row, "Količina", m.quantity || m.qty);
-    addPreview("Materijal", row, "Jedinica", m.unit);
-    addPreview("Materijal", row, "Napomena", m.note);
-  });
-
-  addPreview("Magacin", "", "Tip promene", d.warehouse_type);
-  addPreview("Magacin", "", "Stavka", d.warehouse_item);
-  addPreview("Magacin", "", "Količina", d.warehouse_qty);
-
-  addPreview("Zahtev za odsustvo", "", "Vrsta zahteva", d.leave_request_type || leaveRequest.leave_label || leaveRequest.label);
-  addPreview("Zahtev za odsustvo", "", "Datum", d.leave_date || leaveRequest.leave_date || leaveRequest.date);
-  addPreview("Zahtev za odsustvo", "", "Od", d.leave_from || leaveRequest.date_from);
-  addPreview("Zahtev za odsustvo", "", "Do", d.leave_to || leaveRequest.date_to);
-  addPreview("Zahtev za odsustvo", "", "Napomena", d.leave_note || leaveRequest.leave_note || leaveRequest.note);
-
   const excelTable = `
-    <div class="report-excel-wrap report-excel-compact-wrap">
-      <table class="report-excel-table report-excel-compact-table">
+    <div class="report-excel-wrap">
+      <table class="report-excel-table">
         <thead>
           <tr>
-            <th>Sekcija</th>
-            <th>Red</th>
-            <th>Polje</th>
-            <th>Vrednost</th>
+            <th>#</th>
+            <th>Gradilište</th>
+            <th>Sati radnika</th>
+            <th>Opis rada</th>
+            <th>Radnik u ekipi</th>
+            <th>Sati radnika u ekipi</th>
+            <th>Mašina</th>
+            <th>MTČ/KM početak</th>
+            <th>MTČ/KM kraj</th>
+            <th>Sati mašine</th>
+            <th>Rad mašine</th>
+            <th>Vozilo</th>
+            <th>Registracija</th>
+            <th>Kapacitet m³</th>
+            <th>KM početak</th>
+            <th>KM kraj</th>
+            <th>Relacija</th>
+            <th>Ture</th>
+            <th>m³ ukupno</th>
+            <th>Ručno m³</th>
+            <th>Labudica tablice</th>
+            <th>Gradilište preuzimanja</th>
+            <th>Gradilište odvoza</th>
+            <th>Početna km labudice</th>
+            <th>Završna km labudice</th>
+            <th>Ukupno km</th>
+            <th>Mašina koja se seli</th>
+            <th>Gorivo za</th>
+            <th>Litara</th>
+            <th>MTČ/KM gorivo</th>
+            <th>Sipao</th>
+            <th>Primio</th>
+            <th>Cisterna gradilište</th>
+            <th>Cisterna mašina/vozilo</th>
+            <th>Cisterna MTČ/KM</th>
+            <th>Cisterna litara</th>
+            <th>Gorivo primio</th>
           </tr>
         </thead>
-        <tbody>${excelPreviewRows.join("") || `<tr><td colspan="4"><span class="report-empty">Nema podataka za Excel pregled.</span></td></tr>`}</tbody>
+        <tbody>${reportRows.join("")}</tbody>
       </table>
     </div>`;
 
@@ -1362,11 +1290,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Broj</th>
           <th>Mašina</th>
-          <th>MTČ/KM početak</th>
-          <th>MTČ/KM kraj</th>
-          <th>Ukupno sati</th>
+          <th>Početak MTČ/KM</th>
+          <th>Kraj MTČ/KM</th>
+          <th>Sati</th>
           <th>Rad</th>
         </tr>
       </thead>
@@ -1374,7 +1301,6 @@ function renderReportReadableDetails(d = {}, options = {}) {
         ${machines.map((m, i) => `
           <tr>
             <td>${i + 1}</td>
-            <td>${val(m.asset_code || m.machine_code)}</td>
             <td>${val(m.name)}</td>
             <td>${val(m.start)}</td>
             <td>${val(m.end)}</td>
@@ -1390,7 +1316,6 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Broj</th>
           <th>Vozilo</th>
           <th>Reg.</th>
           <th>Kapacitet</th>
@@ -1398,14 +1323,14 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>KM kraj</th>
           <th>Relacija</th>
           <th>Ture</th>
-          <th>Ukupno m³</th>
+          <th>m³ ukupno</th>
+          <th>Ručno m³</th>
         </tr>
       </thead>
       <tbody>
         ${vehicles.map((v, i) => `
           <tr>
             <td>${i + 1}</td>
-            <td>${val(v.asset_code || v.vehicle_code)}</td>
             <td>${val(v.name || v.vehicle)}</td>
             <td>${val(v.registration)}</td>
             <td>${val(v.capacity)}</td>
@@ -1414,6 +1339,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(v.route)}</td>
             <td>${val(v.tours)}</td>
             <td>${val(v.cubic_m3 || v.cubic_auto)}</td>
+            <td>${val(v.cubic_manual)}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -1425,10 +1351,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Tablice labudice</th>
-          <th>Od lokacije</th>
-          <th>Do lokacije</th>
-          <th>KM početak</th>
-          <th>KM kraj</th>
+          <th>Gradilište preuzimanja</th>
+          <th>Gradilište odvoza</th>
+          <th>Početna km</th>
+          <th>Završna km</th>
           <th>Ukupno km</th>
           <th>Mašina koja se seli</th>
         </tr>
@@ -1454,12 +1380,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Tip sredstva</th>
-          <th>Broj</th>
-          <th>Sredstvo</th>
+          <th>Tip</th>
+          <th>Mašina/vozilo</th>
           <th>Litara</th>
-          <th>KM</th>
-          <th>MTČ</th>
+          <th>MTČ/KM pri sipanju</th>
           <th>Sipao</th>
           <th>Primio</th>
         </tr>
@@ -1468,12 +1392,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         ${fuels.map((f, i) => `
           <tr>
             <td>${i + 1}</td>
-            <td>${val(assetKindLabel(f.asset_kind))}</td>
-            <td>${val(f.asset_code)}</td>
-            <td>${val(f.asset_name || f.machine || f.vehicle || f.other)}</td>
+            <td>${val(f.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
+            <td>${val(f.asset_name || f.machine || f.vehicle)}</td>
             <td>${val(f.liters)}</td>
-            <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
-            <td>${val(f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""))}</td>
+            <td>${val(f.reading)}</td>
             <td>${val(f.by)}</td>
             <td>${val(f.receiver || d.fuel_receiver)}</td>
           </tr>
@@ -1487,13 +1409,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Gradilište</th>
-          <th>Tip sredstva</th>
-          <th>Broj</th>
-          <th>Sredstvo</th>
-          <th>KM</th>
-          <th>MTČ</th>
-          <th>Litara</th>
-          <th>Primio gorivo</th>
+          <th>Tip</th>
+          <th>Mašina/vozilo</th>
+          <th>Trenutni MTČ/KM</th>
+          <th>Sipano litara</th>
+          <th>Gorivo primio</th>
         </tr>
       </thead>
       <tbody>
@@ -1501,11 +1421,9 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <tr>
             <td>${i + 1}</td>
             <td>${val(ft.site_name)}</td>
-            <td>${val(assetKindLabel(ft.asset_kind))}</td>
-            <td>${val(ft.asset_code)}</td>
-            <td>${val(ft.asset_name || ft.machine || ft.vehicle || ft.other)}</td>
-            <td>${val(ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""))}</td>
-            <td>${val(ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""))}</td>
+            <td>${val(ft.asset_kind === "vehicle" ? "Vozilo" : "Mašina")}</td>
+            <td>${val(ft.asset_name || ft.machine || ft.vehicle)}</td>
+            <td>${val(ft.reading || ft.mtc_km)}</td>
             <td>${val(ft.liters)}</td>
             <td>${val(ft.receiver || ft.received_by)}</td>
           </tr>
@@ -1539,21 +1457,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </tbody>
     </table>` : ``;
 
-
-
-  const hasWarehouse = safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
-  const warehouseBox = hasWarehouse ? `<div class="report-kv report-sub-kv">
-    ${rows([
-      ["Magacin tip", d.warehouse_type],
-      ["Magacin stavka", d.warehouse_item],
-      ["Magacin količina", d.warehouse_qty]
-    ])}
-  </div>` : "";
-
   const showDefectSection = options.showDefect === true;
   const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
   const hasMaterialEntries = materialEntries.some(entry => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
   const hasMaterial = hasMaterialEntries || safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
+  const leaveRequest = d.leave_request || {};
   const hasLeaveRequest = safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || (leaveRequest && Object.values(leaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
 
   const hasUsefulEntry = (entry) => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== "");
@@ -1568,7 +1476,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
   return `
     <div class="report-readable">
       ${hasBasic ? `<div class="report-section report-main-summary">
-        <h4>Osnovni podaci</h4>
+        <h4>Osnovno</h4>
         <div class="report-kv">
           ${rows([
             ["Gradilište", d.site_name],
@@ -1580,48 +1488,48 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </div>` : ""}
 
       ${hasWorkers ? `<div class="report-section">
-        <h4>Radnici na gradilištu</h4>
+        <h4>Radnici / sati po radniku</h4>
         ${workerTable}
       </div>` : ""}
 
       ${hasMachines ? `<div class="report-section">
-        <h4>Evidencija rada mašine</h4>
+        <h4>Mašine</h4>
         ${machineTable}
       </div>` : ""}
 
       ${hasVehicles ? `<div class="report-section">
-        <h4>Evidencija rada vozila</h4>
+        <h4>Vozila / ture / m³</h4>
         ${vehicleTable}
       </div>` : ""}
 
       ${hasLowloaders ? `<div class="report-section">
-        <h4>Transport mašine labudicom</h4>
+        <h4>Vozilo labudica / selidba mašine</h4>
         ${lowloaderTable}
       </div>` : ""}
 
       ${hasFuels ? `<div class="report-section">
-        <h4>Evidencija goriva</h4>
+        <h4>Gorivo</h4>
         ${fuelTable}
       </div>` : ""}
 
       ${hasFieldTankers ? `<div class="report-section">
-        <h4>Evidencija goriva – cisterna</h4>
+        <h4>Cisterna / tankanje goriva na terenu</h4>
         ${fieldTankerTable}
       </div>` : ""}
 
       ${hasDefect ? `
         <div class="report-section">
-          <h4>Evidencija kvara</h4>
+          <h4>Kvar</h4>
           <div class="report-kv">
             ${rows([
-              ["Broj sredstva", d.defect_asset_code],
-              ["Sredstvo/oprema u kvaru", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle],
-              ["Registracija", d.defect_asset_registration],
-              ["Lokacija", d.defect_site_name || d.site_name],
+              ["Mašina/vozilo u kvaru", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle],
+              ["Gradilište/lokacija mašine", d.defect_site_name || d.site_name],
+              ["Ima kvar", d.defect_exists],
               ["Opis kvara", d.defect],
               ["Hitnost", d.defect_urgency],
-              ["Uticaj na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
-              ["Pozvan šef mehanizacije", d.called_mechanic_by_phone],
+              ["Zaustavlja rad", d.defect_stops_work],
+              ["Može nastaviti rad", d.defect_can_continue],
+              ["Šef mehanizacije pozvan", d.called_mechanic_by_phone],
               ["Status kvara", d.defect_status]
             ])}
           </div>
@@ -1629,7 +1537,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
       ${hasLeaveRequest ? `
         <div class="report-section">
-          <h4>Zahtev za odsustvo</h4>
+          <h4>Zahtev za slobodan dan / godišnji odmor</h4>
           <div class="report-kv">
             ${rows([
               ["Vrsta zahteva", d.leave_request_type || leaveRequest.leave_label || leaveRequest.label],
@@ -1643,8 +1551,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
       ${hasMaterial ? `
         <div class="report-section">
-          <h4>Materijal i magacin</h4>
-          ${hasMaterialEntries ? materialTable + warehouseBox : `<div class="report-kv">
+          <h4>Materijal / magacin</h4>
+          ${hasMaterialEntries ? materialTable : `<div class="report-kv">
             ${rows([
               ["Materijal", d.material],
               ["Količina", d.quantity],
@@ -1658,129 +1566,49 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
       <details class="report-section report-excel-section report-excel-details">
         <summary>📊 Prikaži Excel pregled izveštaja</summary>
-        <p class="field-hint">Ovo je kompaktan Excel pregled ovog izveštaja: sekcija, red, polje i vrednost. Za preuzimanje fajla koristi glavni izvoz u Excel.</p>
+        <p class="field-hint">Ovo je samo širok Excel prikaz. Za čitanje koristi pregled iznad, a za firmu koristi export u Excel.</p>
         ${excelTable}
       </details>
     </div>
   `;
 }
 
-
-function getReportFilledSections(d = {}) {
-  const hasValue = (v) => v !== undefined && v !== null && String(v).trim() !== "";
-  const hasEntry = (entry) => entry && typeof entry === "object" && Object.values(entry).some(hasValue);
-  const arr = (v) => Array.isArray(v) ? v : [];
-  const sections = [];
-
-  if (hasValue(d.site_name) || hasValue(d.description) || hasValue(d.hours) || hasValue(d.note)) sections.push("Osnovno");
-  if (arr(d.workers).some(hasEntry) || arr(d.worker_entries).some(hasEntry)) sections.push("Radnici");
-  if (arr(d.machines).some(hasEntry)) sections.push("Mašina");
-  if (arr(d.vehicles).some(hasEntry)) sections.push("Vozilo");
-  if (arr(d.lowloader_moves).some(hasEntry) || arr(d.lowloader_entries).some(hasEntry)) sections.push("Transport");
-  if (arr(d.fuel_entries).some(hasEntry)) sections.push("Gorivo");
-  if (arr(d.field_tanker_entries).some(hasEntry) || arr(d.tanker_fuel_entries).some(hasEntry)) sections.push("Cisterna");
-  if (hasValue(d.defect) || hasValue(d.defect_asset_name) || hasValue(d.defect_urgency) || hasValue(d.defect_work_impact)) sections.push("Kvar");
-  if (arr(d.material_entries).some(hasEntry) || arr(d.material_movements).some(hasEntry) || hasValue(d.material) || hasValue(d.quantity)) sections.push("Materijal");
-  if (hasValue(d.warehouse_type) || hasValue(d.warehouse_item) || hasValue(d.warehouse_qty)) sections.push("Magacin");
-  if (hasValue(d.leave_request_type) || hasValue(d.leave_type) || hasValue(d.leave_date) || hasValue(d.leave_from) || hasValue(d.leave_to) || (d.leave_request && hasEntry(d.leave_request))) sections.push("Odsustvo");
-  return sections.length ? sections : ["Izveštaj"];
-}
-
-window.setReportPaperZoom = function(id, zoom) {
-  const el = document.getElementById(`paper-${id}`);
-  if (!el) return;
-  const next = Math.max(0.8, Math.min(1.5, Number(zoom) || 1));
-  el.style.setProperty("--report-zoom", String(next));
-  const label = document.getElementById(`paperZoom-${id}`);
-  if (label) label.textContent = `${Math.round(next * 100)}%`;
-};
-
-window.changeReportPaperZoom = function(id, delta) {
-  const el = document.getElementById(`paper-${id}`);
-  const current = el ? Number(el.style.getPropertyValue("--report-zoom") || "1") : 1;
-  window.setReportPaperZoom(id, current + delta);
-};
-
 function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
-  const title = isDefectOnlyReport(r) ? "EVIDENCIJA KVARA" : "DNEVNI IZVEŠTAJ SA TERENA";
+
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
-  const sections = getReportFilledSections(d);
-  const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
-  const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
-  const statusText = r.status || "novo";
 
   return `
-    <article class="report-row-item">
-      <div class="report-list-grid">
-        <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export">
-          <input type="checkbox" class="report-export-check" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
-        </label>
-        <div class="report-list-date">
-          <strong>${escapeHtml(r.report_date || "")}</strong>
-          <small>${escapeHtml(submitted || "")}</small>
-        </div>
-        <div class="report-list-site">
-          <strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong>
-          <small>${escapeHtml(title)}</small>
-        </div>
-        <div class="report-list-worker">
-          <strong>${escapeHtml(person)}</strong>
-          <small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small>
-        </div>
-        <div class="report-list-sections">${sectionsHtml}</div>
-        <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusText)}</span></div>
+    <div class="item report-item">
+      <label class="export-select-row">
+        <input type="checkbox" class="report-export-check" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
+        <span>✅ Izaberi ovaj izveštaj za Excel export</span>
+      </label>
+      <strong>${isDefectOnlyReport(r) ? "🚨 EVIDENCIJA KVARA" : "📄 DNEVNI IZVEŠTAJ"} · ${escapeHtml(r.report_date)}</strong>
+      <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || "")} · status: ${escapeHtml(r.status)}</small><br/>
+
+      <span class="pill">${escapeHtml(d.site_name || "bez gradilišta")}</span>
+      ${d.hours ? `<span class="pill">${escapeHtml(String(d.hours))} h</span>` : ""}
+      ${d.fuel_liters ? `<span class="pill">${escapeHtml(String(d.fuel_liters))} L</span>` : ""}
+      <p>${escapeHtml(d.description || d.note || "")}</p>
+      ${r.returned_reason ? `<p class="muted">Razlog vraćanja: ${escapeHtml(r.returned_reason)}</p>` : ""}
+      ${renderReportReadableDetails(d)}
+
+      <div class="actions">
+        ${isDefectOnlyReport(r) ? `
+          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
+          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
+          <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
+        ` : ""}
+
+        <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
+        <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
+        <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
+        <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
+        <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
       </div>
-
-      <details class="report-paper-details">
-        <summary><span class="open-report-btn">Otvori papirni pregled</span></summary>
-
-        <div class="report-toolbar no-print">
-          <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', -0.1)">A−</button>
-          <button class="secondary" type="button" onclick="setReportPaperZoom('${r.id}', 1)"><span id="paperZoom-${r.id}">100%</span></button>
-          <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', 0.1)">A+</button>
-          <button class="secondary" type="button" onclick="window.print()">Štampaj</button>
-        </div>
-
-        <section class="report-paper-view" id="paper-${r.id}" style="--report-zoom:1">
-          <div class="paper-title-block">
-            <h3>${escapeHtml(title)}</h3>
-            <p>Start Work PRO · pregled dnevnog izveštaja za kontrolu i odobravanje</p>
-          </div>
-
-          <table class="paper-meta-table">
-            <tbody>
-              <tr><th>Datum</th><td>${escapeHtml(r.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusText)}</td></tr>
-              <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
-              <tr><th>Radnik</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
-            </tbody>
-          </table>
-
-          ${r.returned_reason ? `<div class="paper-returned-reason"><b>Razlog vraćanja:</b> ${escapeHtml(r.returned_reason)}</div>` : ""}
-
-          ${renderReportReadableDetails(d)}
-
-          <div class="paper-footer-note">
-            Izveštaj poslat iz Start Work PRO · ${escapeHtml(submitted || "")}
-          </div>
-        </section>
-
-        <div class="actions report-action-bar no-print">
-          ${isDefectOnlyReport(r) ? `
-            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
-            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
-            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
-          ` : ""}
-
-          <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
-          <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
-          <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
-          <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
-          <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
-        </div>
-      </details>
-    </article>`;
+    </div>`;
 }
 
 window.setReportStatus = async (id, status) => {
@@ -1891,16 +1719,7 @@ function getSelectedWorkerSite() {
 
 
 function normalizeAssetType(type) {
-  return String(type || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/š/g, "s")
-    .replace(/đ/g, "dj")
-    .replace(/č/g, "c")
-    .replace(/ć/g, "c")
-    .replace(/ž/g, "z");
+  return String(type || "").trim().toLowerCase();
 }
 
 function getAssetName(asset) {
@@ -1917,83 +1736,21 @@ function getAssetName(asset) {
   ).trim();
 }
 
-function getAssetCode(asset) {
-  return String(
-    asset?.asset_code ||
-    asset?.internal_code ||
-    asset?.code ||
-    asset?.asset_number ||
-    asset?.number ||
-    asset?.inventory_number ||
-    ""
-  ).trim();
-}
-
-function formatAssetTitleWithCode(asset) {
-  const code = getAssetCode(asset);
-  const name = getAssetName(asset) || asset?.name || "Sredstvo";
-  return code ? `${code} · ${name}` : name;
-}
-
 function getAssetType(asset) {
-  // v1.19.7: worker_list_assets u nekim bazama vraća drugačije ime kolone
-  // ili ne vrati asset_type za sva sredstva. Zato čitamo više mogućih naziva.
-  return normalizeAssetType(
-    asset?.asset_type ||
-    asset?.type ||
-    asset?.assetType ||
-    asset?.asset_kind ||
-    asset?.kind ||
-    asset?.category ||
-    asset?.asset_category ||
-    asset?.group ||
-    ""
-  );
+  return normalizeAssetType(asset?.asset_type || asset?.type || asset?.assetType || asset?.category || "");
 }
 
 function getAssetRegistration(asset) {
-  return String(asset?.registration || asset?.plate || asset?.plates || asset?.reg_no || asset?.oznaka || "").trim();
-}
-
-function inferAssetTypeFromText(asset) {
-  const text = normalizeAssetType([
-    getAssetName(asset),
-    getAssetRegistration(asset),
-    asset?.description,
-    asset?.note,
-    asset?.capacity ? "capacity" : ""
-  ].filter(Boolean).join(" "));
-
-  if (/\b(kamion|kiper|vozilo|cisterna|labudica|sleper|prikolica|kombi|auto|man|scania|mercedes|iveco|volvo|daf)\b/.test(text)) return "vehicle";
-  if (/\b(agregat|vibro|vibroploca|vibro ploca|ploca|pumpa|kompresor|oprema|alat)\b/.test(text)) return "other";
-  if (/\b(bager|dozer|buldozer|valjak|grader|utovarivac|finiser|masina|cat|komatsu|jcb|liebherr|volvo)\b/.test(text)) return "machine";
-  return "";
+  return String(asset?.registration || asset?.plate || asset?.reg_no || asset?.oznaka || "").trim();
 }
 
 function isVehicleAsset(asset) {
-  const t = getAssetType(asset) || inferAssetTypeFromText(asset);
-  return ["vehicle", "vozilo", "vehicles", "vozila", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica", "sleper", "prikolica", "auto", "kombinovano vozilo"].includes(t);
-}
-
-function isOtherAsset(asset) {
-  const t = getAssetType(asset) || inferAssetTypeFromText(asset);
-  return ["other", "ostalo", "alat", "tool", "tools", "oprema", "equipment", "agregat", "vibro", "vibro ploca", "vibroploca", "ploca", "pumpa", "kompresor"].includes(t);
-}
-
-function assetKindLabel(kind) {
-  if (kind === "vehicle") return "Vozilo";
-  if (kind === "other") return "Oprema / ostalo";
-  return "Mašina";
-}
-
-function defectImpactLabel(value) {
-  if (value === "zaustavlja_rad") return "Zaustavlja rad";
-  if (value === "moze_nastaviti") return "Može nastaviti rad do popravke";
-  return value || "";
+  const t = getAssetType(asset);
+  return ["vehicle", "vozilo", "vehicles", "vozila", "truck", "kamion", "kiper", "cisterna", "lowloader", "labudica", "auto", "kombinovano vozilo"].includes(t);
 }
 
 function formatAssetLabel(asset) {
-  const parts = [formatAssetTitleWithCode(asset) || "Vozilo"];
+  const parts = [getAssetName(asset) || "Vozilo"];
   const reg = getAssetRegistration(asset);
   if (reg) parts.push(reg);
   if (asset?.capacity) parts.push(asset.capacity);
@@ -2001,57 +1758,23 @@ function formatAssetLabel(asset) {
 }
 
 function isMachineAsset(asset) {
-  const t = getAssetType(asset) || inferAssetTypeFromText(asset);
-  if (isVehicleAsset(asset) || isOtherAsset(asset)) return false;
-  // Ako tip nije upisan, tretiramo kao mašinu da se stari podaci ne izgube,
-  // ali vozila/oprema se sada prvo pokušavaju prepoznati po nazivu i drugim poljima.
+  const t = getAssetType(asset);
   if (!t) return true;
-  return ["machine", "machines", "machinery", "masina", "masine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "finiser", "cat", "komatsu", "jcb", "liebherr"].includes(t);
+  if (isVehicleAsset(asset)) return false;
+  return ["machine", "machines", "machinery", "masina", "masine", "mašina", "mašine", "bager", "dozer", "buldozer", "bulldozer", "valjak", "grader", "utovarivac", "utovarivač", "finišer", "finiser", "oprema"].includes(t) || !isVehicleAsset(asset);
 }
 
 function formatMachineLabel(asset) {
-  const parts = [formatAssetTitleWithCode(asset) || "Mašina"];
+  const parts = [getAssetName(asset) || "Mašina"];
   const reg = getAssetRegistration(asset);
   if (reg) parts.push(reg);
   return parts.filter(Boolean).join(" · ");
-}
-
-function formatOtherAssetLabel(asset) {
-  const parts = [formatAssetTitleWithCode(asset) || "Oprema / ostalo"];
-  const reg = getAssetRegistration(asset);
-  if (reg) parts.push(reg);
-  return parts.filter(Boolean).join(" · ");
-}
-
-function filterAssetsByFuelKind(asset, kind) {
-  if (kind === "vehicle") return isVehicleAsset(asset);
-  if (kind === "other") return isOtherAsset(asset);
-  return isMachineAsset(asset);
-}
-
-function fuelKindEmptyText(kind) {
-  if (kind === "vehicle") return "Nema vozila iz Uprave";
-  if (kind === "other") return "Nema opreme / ostalog iz Uprave";
-  return "Nema mašina iz Uprave";
-}
-
-function fuelKindChooseText(kind) {
-  if (kind === "vehicle") return "Odaberi vozilo";
-  if (kind === "other") return "Odaberi ostalo / opremu";
-  return "Odaberi mašinu";
-}
-
-function formatFuelKindAssetLabel(asset, kind) {
-  if (kind === "vehicle") return formatAssetLabel(asset);
-  if (kind === "other") return formatOtherAssetLabel(asset);
-  return formatMachineLabel(asset);
 }
 
 function machineMatchesSearch(asset, searchValue) {
   const q = normalizeVehicleSearch(searchValue);
   if (!q) return true;
   const haystack = normalizeVehicleSearch([
-    getAssetCode(asset),
     asset?.name,
     asset?.registration,
     asset?.capacity,
@@ -2060,141 +1783,40 @@ function machineMatchesSearch(asset, searchValue) {
   return haystack.includes(q);
 }
 
-function autoSelectExactAssetCode(selectEl, searchValue) {
-  if (!selectEl) return;
-  const q = normalizeVehicleSearch(searchValue);
-  if (!q) return;
-  const options = Array.from(selectEl.options || []).filter(o => o.value);
-  const exact = options.find(o => normalizeVehicleSearch(o.dataset.assetCode || "") === q);
-  if (exact) {
-    selectEl.value = exact.value;
-    selectEl.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-}
-
-function getCanonicalAssetKind(asset) {
-  if (isVehicleAsset(asset)) return "vehicle";
-  if (isOtherAsset(asset)) return "other";
-  return "machine";
-}
-
-function findAssetByExactCode(searchValue) {
-  const q = normalizeVehicleSearch(searchValue);
-  if (!q) return null;
-  return (workerAssetOptions || []).find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q) || null;
-}
-
-function findAssetsByUniversalSearch(searchValue) {
-  const q = normalizeVehicleSearch(searchValue);
-  if (!q) return [];
-  return (workerAssetOptions || []).filter(asset => machineMatchesSearch(asset, searchValue));
-}
-
-function assetOptionHtml(asset, selectedValue = "", labelFormatter = formatMachineLabel) {
-  const name = getAssetName(asset) || getAssetRegistration(asset) || "Sredstvo";
-  const reg = getAssetRegistration(asset);
-  const label = labelFormatter(asset) || formatAssetTitleWithCode(asset) || name;
-  const type = asset.asset_type || asset.type || getCanonicalAssetKind(asset);
-  const selected = String(selectedValue || "").trim();
-  const isSelected = selected && (
-    selected === name ||
-    selected === getAssetCode(asset) ||
-    selected === reg ||
-    selected === String(asset.id || "")
-  ) ? "selected" : "";
-  return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(asset.id || "")}" data-asset-code="${escapeHtml(getAssetCode(asset) || "")}" data-registration="${escapeHtml(reg || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
-}
-
 function getMachineAssetsFromDirection() {
   return workerAssetOptions
     .filter(isMachineAsset)
-    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
+    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
 }
 
 function buildMachineOptionsHtml(selectedValue = "", searchValue = "") {
   const allMachines = getMachineAssetsFromDirection();
-  let machines = allMachines.filter(m => machineMatchesSearch(m, searchValue));
+  const machines = allMachines.filter(m => machineMatchesSearch(m, searchValue));
   const selected = String(selectedValue || "").trim();
-  const q = normalizeVehicleSearch(searchValue);
 
-  // v1.20.0: Interni broj ima prednost i kod rubrike "Rad sa mašinom".
-  // Ranije je ovde stajao uslov getCanonicalAssetKind(exact) === "machine".
-  // Ako RPC/Supabase vrati tip malo drugačije, mašina postoji ali se ne prikaže.
-  // Sada, ako je broj tačan, prikaži sredstvo odmah, pa tek za običnu pretragu koristi filter tipa.
-  const exact = findAssetByExactCode(searchValue);
-  if (exact && !machines.some(m => String(m.id || "") === String(exact.id || ""))) {
-    machines = [exact, ...machines];
-  }
-  if (q && !machines.length) {
-    machines = findAssetsByUniversalSearch(searchValue);
-  }
-
-  if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Uprave</option>`;
+  if (!allMachines.length) {
+    return `<option value="">Nema mašina iz Direkcije</option>`;
   }
   if (!machines.length) {
-    return q ? `<option value="">Nema mašine za taj broj/pretragu</option>` : `<option value="">Nema mašina iz Uprave</option>`;
+    return `<option value="">Nema mašina za tu pretragu</option>`;
   }
 
-  return `<option value="">Odaberi mašinu</option>` + machines.map(m => assetOptionHtml(m, selected, formatMachineLabel)).join("");
-}
-
-function findMachineAssetForSmartInput(searchValue) {
-  const q = normalizeVehicleSearch(searchValue);
-  if (!q) return null;
-  const machines = getMachineAssetsFromDirection();
-  const exactCode = (workerAssetOptions || []).find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
-  if (exactCode) return exactCode;
-  const exactMachineCode = machines.find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
-  if (exactMachineCode) return exactMachineCode;
-  const exactName = machines.find(asset => {
-    const name = normalizeVehicleSearch(getAssetName(asset));
-    const label = normalizeVehicleSearch(formatMachineLabel(asset));
-    return name === q || label === q;
-  });
-  if (exactName) return exactName;
-  const matches = machines.filter(asset => machineMatchesSearch(asset, searchValue));
-  return matches.length === 1 ? matches[0] : null;
-}
-
-function updateMachineSmartResult(entryEl, asset, manualValue) {
-  const result = entryEl.querySelector(".m-picked");
-  if (!result) return;
-  if (asset) {
-    result.className = "asset-smart-result m-picked ok";
-    result.textContent = `Pronađena mašina: ${formatMachineLabel(asset)}`;
-    return;
-  }
-  const value = String(manualValue || "").trim();
-  if (value) {
-    result.className = "asset-smart-result m-picked warn";
-    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
-    return;
-  }
-  result.className = "asset-smart-result m-picked";
-  result.textContent = "Upiši broj mašine iz Uprave ili naziv ako nije na listi.";
+  return `<option value="">Odaberi mašinu</option>` + machines.map(m => {
+    const name = getAssetName(m) || "Mašina";
+    const label = formatMachineLabel(m);
+    const type = m.asset_type || m.type || "";
+    const isSelected = selected && (selected === name || selected === String(m.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(m.id || "")}" data-registration="${escapeHtml(getAssetRegistration(m) || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
 }
 
 function refreshOneMachineSelect(entryEl) {
   const sel = entryEl.querySelector(".m-name");
   if (!sel) return;
+  const old = sel.value;
   const search = entryEl.querySelector(".m-search")?.value || "";
-  const custom = entryEl.querySelector(".m-custom");
-  const exact = findMachineAssetForSmartInput(search);
-  sel.innerHTML = buildMachineOptionsHtml(exact ? getAssetName(exact) : "", search);
-  if (exact) {
-    const assetId = String(exact.id || "");
-    const option = Array.from(sel.options || []).find(o => String(o.dataset.assetId || "") === assetId)
-      || Array.from(sel.options || []).find(o => normalizeVehicleSearch(o.dataset.assetCode || "") === normalizeVehicleSearch(getAssetCode(exact)))
-      || Array.from(sel.options || []).find(o => o.value === getAssetName(exact));
-    if (option) sel.value = option.value;
-    if (custom) custom.value = "";
-    updateMachineSmartResult(entryEl, exact, "");
-  } else {
-    if (custom) custom.value = String(search || "").trim();
-    updateMachineSmartResult(entryEl, null, search);
-  }
-  refreshFuelMachineOptions();
+  sel.innerHTML = buildMachineOptionsHtml(old, search);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
 }
 
 function buildLowloaderMachineDatalistOptionsHtml() {
@@ -2256,27 +1878,19 @@ function refreshMachineDatalists() {
 }
 
 function normalizeWorkerAssetRows(rows) {
-  return (Array.isArray(rows) ? rows : []).map(a => {
-    const rawType = a.asset_type || a.type || a.assetType || a.asset_kind || a.kind || a.category || a.asset_category || a.group || "";
-    const normalized = {
-      ...a,
-      name: getAssetName(a),
-      asset_code: getAssetCode(a),
-      registration: getAssetRegistration(a),
-      asset_type: rawType,
-      type: a.type || rawType
-    };
-    // Ako RPC ne vrati tip, pokušaj da ga popuniš po nazivu/registraciji.
-    if (!normalized.asset_type) normalized.asset_type = inferAssetTypeFromText(normalized);
-    if (!normalized.type) normalized.type = normalized.asset_type;
-    return normalized;
-  }).filter(a => a.name || a.registration || a.asset_code);
+  return (Array.isArray(rows) ? rows : []).map(a => ({
+    ...a,
+    name: getAssetName(a),
+    registration: getAssetRegistration(a),
+    asset_type: a.asset_type || a.type || a.assetType || a.category || "",
+    type: a.type || a.asset_type || a.assetType || a.category || ""
+  })).filter(a => a.name || a.registration);
 }
 
 function mergeAssetRows(primary = [], fallback = []) {
   const map = new Map();
   [...primary, ...fallback].forEach(a => {
-    const key = String(a.id || `${getAssetCode(a) || ""}|${a.name || ""}|${a.registration || ""}|${a.asset_type || a.type || ""}`);
+    const key = String(a.id || `${a.name || ""}|${a.registration || ""}|${a.asset_type || a.type || ""}`);
     if (!map.has(key)) map.set(key, a);
   });
   return Array.from(map.values());
@@ -2293,7 +1907,6 @@ async function loadWorkerAssets() {
   let rpcError = null;
   let directError = null;
 
-  // Prvi izvor: RPC. Ovo je pravilan put za radnika.
   try {
     const { data, error } = await sb.rpc("worker_list_assets", {
       p_company_code: worker.company_code,
@@ -2305,11 +1918,11 @@ async function loadWorkerAssets() {
     rpcError = e;
   }
 
-  // Drugi izvor: direktno iz assets po company_id.
-  // VAŽNO v1.19.7: ovo se sada pokušava UVEK kada radnik ima company_id,
-  // ne samo kada RPC vrati prazno. Tako radnik vidi mašine i ako je RPC star
-  // i ne vraća sva polja/tipove, a ne diramo Supabase SQL.
-  if (worker.company_id) {
+  // v1.16.7: dodat sigurnosni fallback.
+  // Direkcija čuva mašine i vozila u tabeli assets. Ako RPC worker_list_assets vrati prazno,
+  // pokušavamo direktno iz iste tabele po company_id koji radnik dobija na login-u.
+  // Ovo ne menja Supabase SQL; samo koristi postojeći company_id iz worker_login rezultata.
+  if ((!rpcRows.length) && worker.company_id) {
     try {
       const { data, error } = await sb
         .from("assets")
@@ -2323,23 +1936,14 @@ async function loadWorkerAssets() {
     }
   }
 
-  workerAssetOptions = mergeAssetRows(directRows, rpcRows);
+  workerAssetOptions = mergeAssetRows(rpcRows, directRows);
 
   refreshVehicleSelects();
   refreshMachineDatalists();
   refreshFieldTankerSelectors();
-  refreshFuelMachineOptions();
 
-  const machineCount = workerAssetOptions.filter(isMachineAsset).length;
-  const vehicleCount = workerAssetOptions.filter(isVehicleAsset).length;
-  const otherCount = workerAssetOptions.filter(isOtherAsset).length;
-
-  if (!workerAssetOptions.length) {
-    toast("Radniku nisu učitane mašine/vozila. Proveri da li u Upravi postoje sredstva za ovu firmu i da li je radnik u istoj firmi. Detalj: " + ((directError && directError.message) || (rpcError && rpcError.message) || "nema podataka"), true);
-  } else if (!machineCount && (vehicleCount || otherCount)) {
-    toast(`Sredstva su učitana, ali nema tipa Mašina. U Upravi proveri Kategorija: Mašina. Učitano: vozila ${vehicleCount}, ostalo ${otherCount}.`, true);
-  } else if (machineCount && !vehicleCount && !otherCount) {
-    console.warn("Start Work PRO: učitane su samo mašine. Ako u Upravi postoje vozila/ostalo, proveri Supabase RPC worker_list_assets da vraća sve asset_type vrednosti.", { workerAssetOptions, rpcError, directError });
+  if (!workerAssetOptions.length && (rpcError || directError)) {
+    toast("Mašine/vozila nisu učitana za radnika. RPC worker_list_assets/direct assets nisu vratili podatke. Detalj: " + ((rpcError && rpcError.message) || (directError && directError.message) || "nema podataka"), true);
   }
 }
 
@@ -2350,15 +1954,10 @@ function normalizeVehicleSearch(value) {
     .trim();
 }
 
-function normalizeSearch(value) {
-  return normalizeVehicleSearch(value);
-}
-
 function vehicleMatchesSearch(asset, searchValue) {
   const q = normalizeVehicleSearch(searchValue);
   if (!q) return true;
   const haystack = normalizeVehicleSearch([
-    getAssetCode(asset),
     asset?.name,
     asset?.registration,
     asset?.capacity,
@@ -2369,96 +1968,32 @@ function vehicleMatchesSearch(asset, searchValue) {
 
 function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
   const allVehicles = workerAssetOptions.filter(isVehicleAsset);
-  let vehicles = allVehicles.filter(v => vehicleMatchesSearch(v, searchValue));
+  const vehicles = allVehicles.filter(v => vehicleMatchesSearch(v, searchValue));
   const selected = String(selectedValue || "").trim();
-  const q = normalizeVehicleSearch(searchValue);
 
-  // v1.19.8: broj sredstva ne sme da blokira stari filter.
-  // Ako radnik ukuca tačan interni broj, prvo prikaži to sredstvo makar je tip došao čudno iz RPC-a.
-  const exact = findAssetByExactCode(searchValue);
-  if (exact && !vehicles.some(v => String(v.id || "") === String(exact.id || ""))) {
-    vehicles = [exact, ...vehicles];
-  }
-  if (q && !vehicles.length) {
-    vehicles = findAssetsByUniversalSearch(searchValue);
-  }
-
-  if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Uprave</option>`;
+  if (!allVehicles.length) {
+    return `<option value="">Nema vozila iz Direkcije</option>`;
   }
   if (!vehicles.length) {
-    return q ? `<option value="">Nema sredstva za taj broj/pretragu</option>` : `<option value="">Nema vozila iz Uprave</option>`;
+    return `<option value="">Nema vozila za tu pretragu</option>`;
   }
 
-  return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => assetOptionHtml(v, selected, formatAssetLabel)).join("");
-}
-
-
-function findVehicleAssetForSmartInput(searchValue) {
-  const q = normalizeVehicleSearch(searchValue);
-  if (!q) return null;
-  const vehicles = (workerAssetOptions || []).filter(isVehicleAsset);
-
-  // Interni broj ima prednost. Ako je broj tačan, uzmi sredstvo odmah.
-  // Ovo čuva praktičan rad na terenu: radnik zna broj, ne treba da bira iz tri polja.
-  const exactCode = (workerAssetOptions || []).find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
-  if (exactCode) return exactCode;
-
-  const exactVehicleCode = vehicles.find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
-  if (exactVehicleCode) return exactVehicleCode;
-
-  const exactName = vehicles.find(asset => {
-    const name = normalizeVehicleSearch(getAssetName(asset));
-    const reg = normalizeVehicleSearch(getAssetRegistration(asset));
-    const label = normalizeVehicleSearch(formatAssetLabel(asset));
-    return name === q || reg === q || label === q;
-  });
-  if (exactName) return exactName;
-
-  const matches = vehicles.filter(asset => vehicleMatchesSearch(asset, searchValue));
-  return matches.length === 1 ? matches[0] : null;
-}
-
-function updateVehicleSmartResult(entryEl, asset, manualValue) {
-  const result = entryEl.querySelector(".v-picked");
-  if (!result) return;
-  if (asset) {
-    result.className = "asset-smart-result v-picked ok";
-    result.textContent = `Pronađeno vozilo: ${formatAssetLabel(asset)}`;
-    return;
-  }
-  const value = String(manualValue || "").trim();
-  if (value) {
-    result.className = "asset-smart-result v-picked warn";
-    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
-    return;
-  }
-  result.className = "asset-smart-result v-picked";
-  result.textContent = "Upiši broj vozila, tablice ili naziv ako nije na listi.";
+  return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => {
+    const name = v.name || "Vozilo";
+    const label = formatAssetLabel(v);
+    const type = v.asset_type || v.type || "";
+    const isSelected = selected && (selected === name || selected === String(v.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-asset-id="${escapeHtml(v.id || "")}" data-registration="${escapeHtml(v.registration || "")}" data-capacity="${escapeHtml(v.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
 }
 
 function refreshOneVehicleSelect(entryEl) {
   const sel = entryEl.querySelector(".v-name");
   if (!sel) return;
+  const old = sel.value;
   const search = entryEl.querySelector(".v-search")?.value || "";
-  const custom = entryEl.querySelector(".v-custom");
-  const exact = findVehicleAssetForSmartInput(search);
-
-  sel.innerHTML = buildVehicleOptionsHtml(exact ? getAssetName(exact) : "", search);
-
-  if (exact) {
-    const assetId = String(exact.id || "");
-    const option = Array.from(sel.options || []).find(o => String(o.dataset.assetId || "") === assetId)
-      || Array.from(sel.options || []).find(o => normalizeVehicleSearch(o.dataset.assetCode || "") === normalizeVehicleSearch(getAssetCode(exact)))
-      || Array.from(sel.options || []).find(o => o.value === getAssetName(exact));
-    if (option) sel.value = option.value;
-    if (custom) custom.value = "";
-    updateVehicleSmartResult(entryEl, exact, "");
-  } else {
-    if (custom) custom.value = String(search || "").trim();
-    updateVehicleSmartResult(entryEl, null, search);
-  }
-  refreshFuelMachineOptions();
+  sel.innerHTML = buildVehicleOptionsHtml(old, search);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
 }
 
 function refreshVehicleSelects() {
@@ -2471,7 +2006,6 @@ function getSelectedVehicleFromEntry(el) {
   const custom = el.querySelector(".v-custom")?.value.trim() || "";
   return {
     asset_id: custom ? null : (option?.dataset?.assetId || null),
-    asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
     name: custom || (select?.value || ""),
     registration: custom ? "" : (option?.dataset?.registration || ""),
     capacity: custom ? "" : (option?.dataset?.capacity || "")
@@ -2510,7 +2044,6 @@ function addVehicleEntry(values = {}) {
   if (!list) return;
   const idx = list.querySelectorAll(".vehicle-entry").length + 1;
   const selectedName = values.name || values.vehicle || values.asset_id || "";
-  const initialSearch = values.asset_code || values.vehicle_code || values.code || values.custom || values.vehicle_custom || selectedName || values.registration || "";
   const div = document.createElement("div");
   div.className = "entry-card vehicle-entry";
   div.innerHTML = `
@@ -2519,13 +2052,15 @@ function addVehicleEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Vozilo / interni broj</label>
-    <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
-    <div class="asset-smart-result v-picked">Upiši broj vozila, tablice ili naziv ako nije na listi.</div>
-    <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Uprave</button>
+    <label>Pronađi vozilo po registraciji ili nazivu</label>
+    <input class="v-search" placeholder="npr. BG123AA, DAF, MAN..." value="" />
 
-    <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
-    <input class="v-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
+    <label>Vozilo iz Direkcije</label>
+    <select class="v-name">${buildVehicleOptionsHtml(selectedName)}</select>
+    <p class="field-hint">Ako je lista prazna, proveri: Direkcija → Mašine/vozila → Tip mora biti Vozilo i SQL worker_list_assets mora biti ažuriran.</p>
+
+    <label>Ako vozilo nije u listi, upiši ručno</label>
+    <input class="v-custom" placeholder="npr. zamensko vozilo" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
 
     <div class="mini-grid">
       <div>
@@ -2552,6 +2087,9 @@ function addVehicleEntry(values = {}) {
       </div>
     </div>
     <p class="field-hint v-cubic-hint">Ako vozilo ima kapacitet i upišeš broj tura, aplikacija računa m³ automatski.</p>
+
+    <label>Upiši ručno m³ ako nije puna tura</label>
+    <input class="v-cubic-manual" type="number" step="0.01" placeholder="npr. 9 ako je pola ture od 18 m³" value="${escapeHtml(values.cubic_manual || "")}" />
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -2568,22 +2106,7 @@ function addVehicleEntry(values = {}) {
   });
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
   div.querySelector(".v-tours").addEventListener("input", () => updateVehicleCubic(div));
-  const refreshVehiclesBtn = div.querySelector(".refresh-vehicle-assets");
-  if (refreshVehiclesBtn) refreshVehiclesBtn.addEventListener("click", async () => {
-    try {
-      refreshVehiclesBtn.disabled = true;
-      refreshVehiclesBtn.textContent = "Učitavam...";
-      await loadWorkerAssets();
-      refreshOneVehicleSelect(div);
-      updateVehicleCubic(div);
-      toast(workerAssetOptions.length ? "Vozila iz Uprave su osvežena." : "Nema učitanih vozila. Proveri firmu radnika i listu u Upravi.", !workerAssetOptions.length);
-    } finally {
-      refreshVehiclesBtn.disabled = false;
-      refreshVehiclesBtn.textContent = "Osveži vozila iz Uprave";
-    }
-  });
   list.appendChild(div);
-  preventNumberInputScrollChanges(div);
   refreshOneVehicleSelect(div);
   updateVehicleCubic(div);
   refreshFuelMachineOptions();
@@ -2594,15 +2117,13 @@ function getVehicleEntries() {
     const selected = getSelectedVehicleFromEntry(el);
     const tours = el.querySelector(".v-tours")?.value || "";
     const autoCubic = calculateVehicleCubic(selected.capacity, tours);
-    const manualCubic = "";
-    const finalCubic = autoCubic;
+    const manualCubic = el.querySelector(".v-cubic-manual")?.value || "";
+    const finalCubic = manualCubic || autoCubic;
     return {
       no: i + 1,
       asset_id: selected.asset_id,
       name: selected.name,
       vehicle: selected.name,
-      asset_code: selected.asset_code,
-      vehicle_code: selected.asset_code,
       registration: selected.registration,
       capacity: selected.capacity,
       vehicle_custom: el.querySelector(".v-custom")?.value.trim() || "",
@@ -2629,7 +2150,7 @@ async function loadWorkerSites(selectedName = "") {
   }
 
   select.innerHTML = `<option value="">Učitavam gradilišta...</option>`;
-  if (hint) hint.textContent = "Gradilišta se učitavaju iz Uprave.";
+  if (hint) hint.textContent = "Gradilišta se učitavaju iz Direkcije.";
 
   try {
     const { data, error } = await sb.rpc("worker_list_sites", {
@@ -2643,7 +2164,7 @@ async function loadWorkerSites(selectedName = "") {
     workerSiteOptions = sites;
     if (!sites.length) {
       select.innerHTML = `<option value="">Nema aktivnih gradilišta</option>`;
-      if (hint) hint.textContent = "Uprava još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
+      if (hint) hint.textContent = "Direkcija još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
       refreshFieldTankerSelectors();
       return;
     }
@@ -2661,7 +2182,7 @@ async function loadWorkerSites(selectedName = "") {
     }
     refreshFieldTankerSelectors();
 
-    if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Uprava.";
+    if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Direkcija.";
   } catch (e) {
     select.innerHTML = `<option value="">Gradilišta nisu učitana</option>`;
     if (hint) hint.textContent = "Pokreni Supabase SQL za v1.12.1: worker_list_sites. Detalj: " + (e.message || e);
@@ -2698,7 +2219,7 @@ function buildWorkerMaterialOptionsHtml(selectedValue = "") {
   const materials = normalizeWorkerMaterialList(workerMaterialOptions);
 
   if (!materials.length) {
-    return `<option value="">Nema materijala iz Uprave</option>`;
+    return `<option value="">Nema materijala iz Direkcije</option>`;
   }
 
   return `<option value="">Odaberi vrstu materijala</option>` + materials.map(m => {
@@ -2783,7 +2304,7 @@ function buildMaterialUnitOptionsHtml(selectedValue = "") {
     { value: "paleta", label: "paleta" },
     { value: "kamion", label: "kamion" },
     { value: "tura", label: "tura" },
-    { value: "ručno", label: "druga mera" }
+    { value: "ručno", label: "ručno / druga mera" }
   ];
   return units.map(u => `<option value="${escapeHtml(u.value)}" ${selected === u.value ? "selected" : ""}>${escapeHtml(u.label)}</option>`).join("");
 }
@@ -2822,10 +2343,10 @@ function addMaterialEntry(values = {}) {
       <option value="ugradnja" ${action === "ugradnja" ? "selected" : ""}>Ugradnja materijala</option>
     </select>
 
-    <label>Vrsta materijala iz Uprave</label>
+    <label>Vrsta materijala iz Direkcije</label>
     <select class="mat-select"></select>
 
-    <label>Van evidencije ako nije u listi</label>
+    <label>Ručno ako nije u listi</label>
     <input class="mat-manual" placeholder="npr. kamen 0-31, pesak, rizla..." value="${escapeHtml(manualMaterial)}" />
 
     <div class="mini-grid">
@@ -2896,7 +2417,7 @@ function getMaterialEntries() {
 
 function workerSetSections(perms) {
   // v1.16.5 pravilo:
-  // "Gradilište i datum izveštaja" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Uprave.
+  // "Ime gradilišta i datum/godina" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Direkcije.
   // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
   const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
 
@@ -2981,34 +2502,36 @@ function addMachineEntry(values = {}) {
   const idx = list.querySelectorAll(".machine-entry").length + 1;
   const div = document.createElement("div");
   div.className = "entry-card machine-entry";
-  const initialSearch = values.asset_code || values.machine_code || values.code || values.custom || values.machine_custom || values.name || "";
   div.innerHTML = `
     <div class="entry-card-head">
       <strong>Mašina ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Mašina / interni broj</label>
-    <input class="m-search asset-code-search smart-asset-input" placeholder="upiši broj ili naziv mašine, npr. 1 ili CAT 330" value="${escapeHtml(initialSearch)}" />
-    <div class="asset-smart-result m-picked">Upiši broj mašine iz Uprave ili naziv ako nije na listi.</div>
-    <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Uprave</button>
+    <label>Pretraži mašinu iz Direkcije</label>
+    <input class="m-search" placeholder="kucaj naziv ili oznaku: CAT, 330, D6R..." value="" />
 
-    <select class="m-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildMachineOptionsHtml(values.name || "")}</select>
-    <input class="m-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
+    <label>Mašina</label>
+    <select class="m-name">${buildMachineOptionsHtml(values.name || "")}</select>
+    <p class="field-hint">Ovde se moraju videti mašine koje je Direkcija upisala u Mašine / vozila. Ako lista piše „Nema mašina iz Direkcije”, pokreni Supabase SQL v1.17.0 za worker_list_assets.</p>
+    <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Direkcije</button>
+
+    <label>Ako mašina nije u listi, upiši ručno</label>
+    <input class="m-custom" placeholder="npr. zamenska mašina" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
 
     <div class="mini-grid">
       <div>
         <label>Početni sati / MTČ</label>
-        <input class="m-start numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(values.start || "")}" />
+        <input class="m-start" type="number" step="0.1" placeholder="npr. 1250.5" value="${escapeHtml(values.start || "")}" />
       </div>
       <div>
         <label>Završni sati / MTČ</label>
-        <input class="m-end numeric-text" type="text" inputmode="decimal" placeholder="npr. 1258.5" value="${escapeHtml(values.end || "")}" />
+        <input class="m-end" type="number" step="0.1" placeholder="npr. 1258.5" value="${escapeHtml(values.end || "")}" />
       </div>
     </div>
 
     <label>Ukupno sati rada</label>
-    <input class="m-hours numeric-text" type="text" inputmode="decimal" placeholder="automatski ili upiši" value="${escapeHtml(values.hours || "")}" />
+    <input class="m-hours" type="number" step="0.1" placeholder="automatski ili ručno" value="${escapeHtml(values.hours || "")}" />
 
     <label>Opis rada za ovu mašinu</label>
     <input class="m-work" placeholder="iskop, utovar, ravnanje..." value="${escapeHtml(values.work || "")}" />
@@ -3019,8 +2542,8 @@ function addMachineEntry(values = {}) {
   const hoursEl = div.querySelector(".m-hours");
 
   function calcHours() {
-    const s = parseFloat(String(startEl.value || "").replace(",", "."));
-    const e = parseFloat(String(endEl.value || "").replace(",", "."));
+    const s = parseFloat(startEl.value);
+    const e = parseFloat(endEl.value);
     if (!Number.isNaN(s) && !Number.isNaN(e) && e >= s) {
       hoursEl.value = (Math.round((e - s) * 10) / 10).toString();
     }
@@ -3047,10 +2570,10 @@ function addMachineEntry(values = {}) {
       refreshMachinesBtn.textContent = "Učitavam...";
       await loadWorkerAssets();
       refreshOneMachineSelect(div);
-      toast(workerAssetOptions.length ? "Mašine/vozila iz Uprave su osvežene." : "Nema učitanih mašina/vozila. Proveri firmu radnika i listu u Upravi.", !workerAssetOptions.length);
+      toast(workerAssetOptions.length ? "Mašine/vozila iz Direkcije su osvežene." : "Nema učitanih mašina/vozila. Ako ih Direkcija ima, pokreni SQL v1.17.0 worker_list_assets.", !workerAssetOptions.length);
     } finally {
       refreshMachinesBtn.disabled = false;
-      refreshMachinesBtn.textContent = "Osveži mašine iz Uprave";
+      refreshMachinesBtn.textContent = "Osveži mašine iz Direkcije";
     }
   });
   list.appendChild(div);
@@ -3061,15 +2584,10 @@ function addMachineEntry(values = {}) {
 
 function getMachineEntries() {
   return $$("#machineEntries .machine-entry").map((el, i) => {
-    const select = el.querySelector(".m-name");
-    const selected = select?.value.trim() || "";
-    const option = select?.options ? select.options[select.selectedIndex] : null;
+    const selected = el.querySelector(".m-name")?.value.trim() || "";
     const custom = el.querySelector(".m-custom")?.value.trim() || "";
     return {
       no: i + 1,
-      asset_id: custom ? null : (option?.dataset?.assetId || null),
-      asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
-      machine_code: custom ? "" : (option?.dataset?.assetCode || ""),
       name: custom || selected,
       machine_custom: custom,
       start: el.querySelector(".m-start")?.value || "",
@@ -3105,12 +2623,12 @@ function addLowloaderEntry(values = {}) {
     <div class="grid two">
       <div>
         <label>Gradilište sa kog preuzima mašinu</label>
-        <input class="ll-from" list="lowloaderFromSiteList-${uid}" placeholder="izaberi gradilište ili upiši naziv" value="${escapeHtml(fromSite)}" />
+        <input class="ll-from" list="lowloaderFromSiteList-${uid}" placeholder="izaberi gradilište ili upiši ručno" value="${escapeHtml(fromSite)}" />
         <datalist class="ll-site-list" id="lowloaderFromSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
       </div>
       <div>
         <label>Gradilište gde vozi mašinu</label>
-        <input class="ll-to" list="lowloaderToSiteList-${uid}" placeholder="izaberi gradilište ili upiši naziv" value="${escapeHtml(toSite)}" />
+        <input class="ll-to" list="lowloaderToSiteList-${uid}" placeholder="izaberi gradilište ili upiši ručno" value="${escapeHtml(toSite)}" />
         <datalist class="ll-site-list" id="lowloaderToSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
       </div>
     </div>
@@ -3131,10 +2649,10 @@ function addLowloaderEntry(values = {}) {
     </div>
     <p class="field-hint">Ukupno kilometara se računa automatski: završna kilometraža minus početna kilometraža.</p>
 
-    <label>Interni broj ili ime mašine koju seliš</label>
-    <input class="ll-machine asset-code-search" list="lowloaderMachineList-${uid}" placeholder="upisati broj mašine, npr. 101" value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
+    <label>Pronađi broj ili ime mašine koju seliš ili upiši ručno</label>
+    <input class="ll-machine" list="lowloaderMachineList-${uid}" placeholder="npr. CAT 330, BG321CI, valjak..." value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
     <datalist class="ll-machine-list" id="lowloaderMachineList-${uid}">${buildLowloaderMachineDatalistOptionsHtml()}</datalist>
-    <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Uprave. Ako seliš tuđu/zamensku mašinu, samo je upiši naziv.</p>
+    <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Direkcije. Ako seliš tuđu/zamensku mašinu, samo je upiši ručno.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -3189,7 +2707,7 @@ function getLowloaderEntries() {
 
 function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
   const selected = String(selectedValue || "").trim().toLowerCase();
-  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Uprave</option>`;
+  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Direkcije</option>`;
   return `<option value="">Odaberi gradilište</option>` + workerSiteOptions.map(site => {
     const name = site.name || "Gradilište";
     const loc = site.location ? ` · ${site.location}` : "";
@@ -3198,34 +2716,26 @@ function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
   }).join("");
 }
 
-function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "", searchValue = "") {
+function buildFieldTankerAssetOptionsHtml(kind = "machine", selectedValue = "") {
   const selected = String(selectedValue || "").trim();
-  let allAssets = (workerAssetOptions || [])
-    .filter(asset => filterAssetsByFuelKind(asset, kind))
-    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
-  let assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
-  const q = normalizeVehicleSearch(searchValue);
+  const isVehicle = kind === "vehicle";
+  const assets = (workerAssetOptions || [])
+    .filter(asset => isVehicle ? isVehicleAsset(asset) : isMachineAsset(asset))
+    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
 
-  // v1.19.8: ako je upisan tačan broj, automatski prikaži sredstvo iako je stari filter tipa kočio listu.
-  const exact = findAssetByExactCode(searchValue);
-  if (exact) {
-    const exactKind = getCanonicalAssetKind(exact);
-    if (exactKind === kind && !assets.some(a => String(a.id || "") === String(exact.id || ""))) {
-      assets = [exact, ...assets];
-    }
-  }
-  if (q && !assets.length) {
-    assets = findAssetsByUniversalSearch(searchValue);
-  }
-
-  if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Uprave</option>`;
-  }
   if (!assets.length) {
-    return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
+    return `<option value="">${isVehicle ? "Nema vozila iz Direkcije" : "Nema mašina iz Direkcije"}</option>`;
   }
 
-  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => assetOptionHtml(asset, selected, a => formatFuelKindAssetLabel(a, getCanonicalAssetKind(a)))).join("");
+  return `<option value="">${isVehicle ? "Odaberi vozilo" : "Odaberi mašinu"}</option>` + assets.map(asset => {
+    const name = getAssetName(asset) || getAssetRegistration(asset) || "";
+    const reg = getAssetRegistration(asset);
+    const label = isVehicle ? formatAssetLabel(asset) : formatMachineLabel(asset);
+    const value = name || label;
+    const type = asset.asset_type || asset.type || "";
+    const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(reg || "")}" data-capacity="${escapeHtml(asset.capacity || "")}" data-asset-type="${escapeHtml(type)}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
 }
 
 function refreshFieldTankerSelectors() {
@@ -3238,33 +2748,13 @@ function refreshFieldTankerSelectors() {
     }
     const assetSelect = card.querySelector(".ft-asset-select");
     if (assetSelect) {
-      const kindEl = card.querySelector(".ft-asset-kind");
-      let kind = kindEl?.value || "machine";
-      const search = card.querySelector(".ft-asset-search")?.value || "";
-      const custom = card.querySelector(".ft-asset-custom");
-      const asset = findFuelAssetForSmartInput(search, kind);
-      if (asset && kindEl) {
-        const exactKind = getCanonicalAssetKind(asset);
-        if (exactKind && exactKind !== kind) {
-          kindEl.value = exactKind;
-          kind = exactKind;
-        }
-      }
-      const selectedValue = asset ? (getAssetName(asset) || getAssetCode(asset) || getAssetRegistration(asset)) : "";
-      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, selectedValue, search);
-      if (asset) {
-        const name = getAssetName(asset) || getAssetRegistration(asset) || getAssetCode(asset) || "";
-        if (Array.from(assetSelect.options).some(o => o.value === name)) assetSelect.value = name;
-        if (custom) custom.value = "";
-        updateFieldTankerSmartResult(card, asset, "");
-      } else {
-        if (custom) custom.value = String(search || "").trim();
-        updateFieldTankerSmartResult(card, null, search);
-      }
+      const old = assetSelect.value;
+      const kind = card.querySelector(".ft-asset-kind")?.value || "machine";
+      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kind, old);
+      if (old && Array.from(assetSelect.options).some(o => o.value === old)) assetSelect.value = old;
     }
   });
 }
-
 
 function addFieldTankerEntry(values = {}) {
   const list = $("#fieldTankerEntries");
@@ -3272,10 +2762,7 @@ function addFieldTankerEntry(values = {}) {
   const idx = list.querySelectorAll(".field-tanker-entry").length + 1;
   const selectedSite = values.site_name || values.site || "";
   const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
-  const kind = values.asset_kind || values.asset_type || values.kind || (values.other ? "other" : (values.vehicle ? "vehicle" : "machine"));
-  const oldReading = values.reading || values.mtc_km || "";
-  const kmValue = values.km || values.current_km || values.kilometers || values.odometer || (kind === "vehicle" ? oldReading : "");
-  const mtcValue = values.mtc || values.current_mtc || values.machine_mtc || (kind === "machine" ? oldReading : "");
+  const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
   const manualAsset = values.asset_custom || values.manual_asset || values.machine_custom || values.vehicle_custom || "";
   const div = document.createElement("div");
   div.className = "entry-card field-tanker-entry";
@@ -3285,72 +2772,45 @@ function addFieldTankerEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Gradilište iz Uprave</label>
+    <label>Gradilište iz Direkcije</label>
     <select class="ft-site-select">${buildFieldTankerSiteOptionsHtml(selectedSite)}</select>
-    <p class="field-hint">Ako gradilište nije u evidenciji, upiši naziv ispod.</p>
+    <p class="field-hint">Ako gradilište nije u listi, upiši ga ručno ispod.</p>
 
-    <label>Upiši naziv gradilište ako nije u listi</label>
+    <label>Upiši ručno gradilište ako nije u listi</label>
     <input class="ft-site-custom" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_custom || values.manual_site || "")}" />
 
-    <label>Vrsta sredstva</label>
+    <label>Šta je tankovano</label>
     <select class="ft-asset-kind">
-      <option value="machine" ${kind === "machine" ? "selected" : ""}>Mašina</option>
+      <option value="machine" ${kind === "vehicle" ? "" : "selected"}>Mašina</option>
       <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
-      <option value="other" ${kind === "other" ? "selected" : ""}>Oprema / ostalo</option>
     </select>
 
-    <label>Sredstvo / interni broj</label>
-    <input class="ft-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}" />
-    <div class="asset-smart-result ft-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
-    <select class="ft-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}</select>
-    <input class="ft-asset-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualAsset)}" />
+    <label>Izaberi iz Direkcije</label>
+    <select class="ft-asset-select">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset)}</select>
+    <p class="field-hint">Kad izabereš mašinu, vidiš samo mašine. Kad izabereš vozilo, vidiš samo vozila iz Direkcija → Mašine / vozila.</p>
 
-    <label>KM</label>
-    <input class="ft-km numeric-text" type="text" inputmode="decimal" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
+    <label>Ručno ako nije na listi</label>
+    <input class="ft-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice" value="${escapeHtml(manualAsset)}" />
 
-    <label>MTČ</label>
-    <input class="ft-mtc numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(mtcValue)}" />
-    <p class="field-hint">Ako tankuješ vozilo, obavezno upiši KM. Ako tankuješ mašinu, obavezno upiši MTČ. Možeš popuniti oba ako firma tako traži.</p>
+    <label>Trenutni MTČ ili kilometraža</label>
+    <input class="ft-reading numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250 ili 85320" value="${escapeHtml(values.reading || values.mtc_km || "")}" />
 
-    <label>Litara</label>
+    <label>Sipano litara</label>
     <input class="ft-liters numeric-text" type="text" inputmode="decimal" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
 
-    <label>Primio gorivo</label>
+    <label>Gorivo primio</label>
     <input class="ft-receiver" placeholder="ime i prezime vozača / rukovaoca" value="${escapeHtml(values.receiver || values.received_by || "")}" />
   `;
   div.querySelector(".remove-entry").addEventListener("click", () => {
     div.remove();
     renumberFieldTankerEntries();
   });
-  function refreshThisFieldTankerAssetSelect() {
+  div.querySelector(".ft-asset-kind")?.addEventListener("change", () => {
     const assetSelect = div.querySelector(".ft-asset-select");
-    if (!assetSelect) return;
-    const kindEl = div.querySelector(".ft-asset-kind");
-    let kindNow = kindEl?.value || "machine";
-    const searchNow = div.querySelector(".ft-asset-search")?.value || "";
-    const custom = div.querySelector(".ft-asset-custom");
-    const asset = findFuelAssetForSmartInput(searchNow, kindNow);
-    if (asset && kindEl) {
-      const assetKind = getCanonicalAssetKind(asset);
-      if (assetKind && assetKind !== kindNow) {
-        kindEl.value = assetKind;
-        kindNow = assetKind;
-      }
+    if (assetSelect) {
+      assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(div.querySelector(".ft-asset-kind")?.value || "machine", "");
     }
-    const selectedValue = asset ? (getAssetName(asset) || getAssetCode(asset) || getAssetRegistration(asset)) : "";
-    assetSelect.innerHTML = buildFieldTankerAssetOptionsHtml(kindNow, selectedValue, searchNow);
-    if (asset) {
-      const name = getAssetName(asset) || getAssetRegistration(asset) || getAssetCode(asset) || "";
-      if (Array.from(assetSelect.options).some(o => o.value === name)) assetSelect.value = name;
-      if (custom) custom.value = "";
-      updateFieldTankerSmartResult(div, asset, "");
-    } else {
-      if (custom) custom.value = String(searchNow || "").trim();
-      updateFieldTankerSmartResult(div, null, searchNow);
-    }
-  }
-  div.querySelector(".ft-asset-kind")?.addEventListener("change", refreshThisFieldTankerAssetSelect);
-  div.querySelector(".ft-asset-search")?.addEventListener("input", refreshThisFieldTankerAssetSelect);
+  });
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
   refreshFieldTankerSelectors();
@@ -3374,9 +2834,7 @@ function getFieldTankerEntries() {
     const assetOption = assetSelect?.options ? assetSelect.options[assetSelect.selectedIndex] : null;
     const manualAsset = el.querySelector(".ft-asset-custom")?.value.trim() || "";
     const asset = manualAsset || (assetSelect?.value || "").trim();
-    const km = el.querySelector(".ft-km")?.value.trim() || "";
-    const mtc = el.querySelector(".ft-mtc")?.value.trim() || "";
-    const reading = mtc || km; // backward-compatible summary for older report/excel code
+    const reading = el.querySelector(".ft-reading")?.value.trim() || "";
     const liters = el.querySelector(".ft-liters")?.value.trim() || "";
     const receiver = el.querySelector(".ft-receiver")?.value.trim() || "";
     return {
@@ -3387,412 +2845,58 @@ function getFieldTankerEntries() {
       asset_kind: kind,
       asset_type: kind,
       asset_id: manualAsset ? null : (assetOption?.dataset?.assetId || null),
-      asset_code: manualAsset ? "" : (assetOption?.dataset?.assetCode || ""),
       asset_name: asset,
       asset_custom: manualAsset,
-      machine: kind === "machine" ? asset : "",
+      machine: asset,
       vehicle: kind === "vehicle" ? asset : "",
-      other: kind === "other" ? asset : "",
       vehicle_custom: kind === "vehicle" ? manualAsset : "",
       machine_custom: kind === "machine" ? manualAsset : "",
-      other_custom: kind === "other" ? manualAsset : "",
-      km,
-      current_km: km,
-      mtc,
-      current_mtc: mtc,
       reading,
       mtc_km: reading,
       liters,
       receiver,
       received_by: receiver
     };
-  }).filter(x => x.site_name || x.asset_name || x.km || x.mtc || x.reading || x.liters || x.receiver);
+  }).filter(x => x.site_name || x.asset_name || x.reading || x.liters || x.receiver);
 }
 
-
-function getFieldTankerMemoryKey() {
-  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
-  const companyPart = worker?.company_id || worker?.company_code || "no_company";
-  const userPart = worker?.user_id || worker?.id || worker?.access_code || "no_worker";
-  return `swp_field_tanker_memory_${companyPart}_${userPart}`;
-}
-
-function readStoredFieldTankerEntries() {
-  try {
-    const raw = localStorage.getItem(getFieldTankerMemoryKey());
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch(e) {
-    return [];
-  }
-}
-
-function writeStoredFieldTankerEntries(entries = []) {
-  localStorage.setItem(getFieldTankerMemoryKey(), JSON.stringify(entries));
-  renderStoredFieldTankerEntries();
-}
-
-function normalizeStoredFieldTankerEntry(entry = {}, index = 0) {
-  return {
-    ...entry,
-    no: index + 1,
-    local_id: entry.local_id || `${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    saved_at: entry.saved_at || new Date().toISOString(),
-    saved_by: entry.saved_by || currentWorker?.full_name || "",
-    source: "field_tanker_memory"
-  };
-}
-
-function validateFieldTankerEntryForMemory(entry) {
-  if (!entry.site_name) return "Upiši ili izaberi gradilište/lokaciju za svako sipanje.";
-  if (!entry.asset_name) return "Izaberi mašinu/vozilo ili upiši naziv šta je tankovano.";
-  if (!entry.liters) return "Upiši koliko litara je sipano.";
-  if (entry.asset_kind === "vehicle" && !entry.km && !entry.current_km) return "Za vozilo upiši kilometražu / KM.";
-  if (entry.asset_kind === "machine" && !entry.mtc && !entry.current_mtc) return "Za mašinu upiši trenutni MTČ.";
-  if (!entry.receiver) return "Upiši ko je primio gorivo.";
-  return "";
-}
-
-function memorizeCurrentFieldTankerEntries() {
-  try {
-    const currentEntries = getFieldTankerEntries();
-    if (!currentEntries.length) throw new Error("Prvo dodaj bar jedno sipanje goriva cisternom.");
-
-    const firstError = currentEntries.map(validateFieldTankerEntryForMemory).find(Boolean);
-    if (firstError) throw new Error(firstError);
-
-    const existing = readStoredFieldTankerEntries();
-    const savedNow = new Date().toISOString();
-    const prepared = currentEntries.map((entry, index) => normalizeStoredFieldTankerEntry({
-      ...entry,
-      saved_at: savedNow,
-      saved_by: currentWorker?.full_name || ""
-    }, existing.length + index));
-
-    writeStoredFieldTankerEntries([...existing, ...prepared].map(normalizeStoredFieldTankerEntry));
-
-    if ($("#fieldTankerEntries")) {
-      $("#fieldTankerEntries").innerHTML = "";
-      addFieldTankerEntry();
-    }
-
-    toast(`Memorisano ${prepared.length} sipanje/a goriva na ovom telefonu ✅`);
-  } catch(e) {
-    toast(e.message, true);
-  }
-}
-
-function removeStoredFieldTankerEntry(localId) {
-  const remaining = readStoredFieldTankerEntries().filter(entry => entry.local_id !== localId);
-  writeStoredFieldTankerEntries(remaining.map(normalizeStoredFieldTankerEntry));
-  toast("Sipanje je uklonjeno iz lokalne memorije.");
-}
-
-function clearStoredFieldTankerEntries() {
-  const count = readStoredFieldTankerEntries().length;
-  if (!count) {
-    renderStoredFieldTankerEntries();
-    toast("Nema memorisanih sipanja za brisanje.");
-    return;
-  }
-  if (!confirm(`Obrisati ${count} memorisano/a sipanje/a sa ovog telefona? Ovo radi samo lokalno, ne briše ništa iz Supabase-a.`)) return;
-  writeStoredFieldTankerEntries([]);
-  toast("Lokalna memorija sipanja je obrisana.");
-}
-
-function renderStoredFieldTankerEntries() {
-  const box = $("#storedFieldTankerList");
-  if (!box) return;
-  const entries = readStoredFieldTankerEntries().map(normalizeStoredFieldTankerEntry);
-  if (!entries.length) {
-    box.innerHTML = `<p class="hint">Trenutno nema memorisanih sipanja na ovom telefonu.</p>`;
-    return;
-  }
-
-  const totalLiters = entries.reduce((sum, entry) => sum + parseDecimalInput(entry.liters), 0);
-  box.innerHTML = `
-    <div class="stored-fuel-summary">
-      <strong>${entries.length} memorisano/a sipanje/a</strong>
-      <span>${totalLiters ? `${totalLiters.toLocaleString("sr-RS")} L ukupno` : "Litri nisu sabrani"}</span>
-    </div>
-    ${entries.map((entry, index) => `
-      <div class="stored-fuel-item">
-        <div>
-          <strong>${index + 1}. ${escapeHtml(entry.site_name || "Bez lokacije")}</strong>
-          <small>${escapeHtml(assetKindLabel(entry.asset_kind))} · ${escapeHtml(entry.asset_name || "")}</small>
-          <small>${escapeHtml(entry.liters || "0")} L · KM: ${escapeHtml(entry.km || entry.current_km || "-")} · MTČ: ${escapeHtml(entry.mtc || entry.current_mtc || "-")} · Primio: ${escapeHtml(entry.receiver || "-")}</small>
-        </div>
-        <button type="button" class="danger-small stored-fuel-remove" data-local-id="${escapeHtml(entry.local_id)}">Ukloni</button>
-      </div>
-    `).join("")}
-  `;
-
-  box.querySelectorAll(".stored-fuel-remove").forEach(btn => {
-    btn.addEventListener("click", () => removeStoredFieldTankerEntry(btn.dataset.localId));
-  });
-}
-
-function buildFieldTankerMemoryReportData(entries = []) {
-  const first = entries[0] || {};
-  const totalLiters = entries.reduce((sum, entry) => sum + parseDecimalInput(entry.liters), 0);
-  return {
-    report_type: "field_tanker_daily_batch",
-    source: "field_tanker_memory",
-    memory_sent_at: new Date().toISOString(),
-    report_sections_sent: {
-      field_tanker: true,
-      tanker_fuel_memory: true
-    },
-    site_id: first.site_id || null,
-    site_name: first.site_name || "Evidencija goriva – cisterna",
-    field_tanker_entries: entries.map(normalizeStoredFieldTankerEntry),
-    tanker_fuel_entries: entries.map(normalizeStoredFieldTankerEntry),
-    fuel_liters: totalLiters || "",
-    field_tanker_total_liters: totalLiters || "",
-    field_tanker_count: entries.length,
-    created_by_worker: currentWorker?.full_name || "",
-    function_title: currentWorker?.function_title || "",
-    description: "Memorisana sipanja goriva cisternom poslata kao jedan dnevni izveštaj."
-  };
-}
-
-async function sendStoredFieldTankerEntries() {
-  try {
-    if (!navigator.onLine) throw new Error("Nema interneta. Memorisana sipanja ostaju sačuvana na telefonu.");
-    const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
-    if (!worker) throw new Error("Radnik nije prijavljen.");
-
-    const entries = readStoredFieldTankerEntries().map(normalizeStoredFieldTankerEntry);
-    if (!entries.length) throw new Error("Nema memorisanih sipanja za slanje.");
-
-    const firstError = entries.map(validateFieldTankerEntryForMemory).find(Boolean);
-    if (firstError) throw new Error(firstError);
-
-    const data = buildFieldTankerMemoryReportData(entries);
-    const { error } = await sb.rpc("submit_worker_report", {
-      p_company_code: worker.company_code,
-      p_access_code: worker.access_code,
-      p_report_date: $("#wrDate")?.value || today(),
-      p_site_id: data.site_id || null,
-      p_data: data
-    });
-
-    if (error) throw error;
-
-    localStorage.removeItem(getFieldTankerMemoryKey());
-    renderStoredFieldTankerEntries();
-    if ($("#fieldTankerEntries")) {
-      $("#fieldTankerEntries").innerHTML = "";
-      addFieldTankerEntry();
-    }
-    toast(`Sva memorisana sipanja su poslata Upravi ✅ (${entries.length})`);
-  } catch(e) {
-    toast(e.message, true);
-  }
-}
-
-function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "", searchValue = "") {
+function buildFuelAssetOptionsHtml(kind = "machine", selectedValue = "") {
   const selected = String(selectedValue || "").trim();
-  let allAssets = (workerAssetOptions || [])
-    .filter(asset => filterAssetsByFuelKind(asset, kind))
-    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
-  let assets = allAssets.filter(asset => machineMatchesSearch(asset, searchValue));
-  const q = normalizeVehicleSearch(searchValue);
-
-  const exact = findAssetByExactCode(searchValue);
-  if (exact) {
-    const exactKind = getCanonicalAssetKind(exact);
-    if (exactKind === kind && !assets.some(a => String(a.id || "") === String(exact.id || ""))) {
-      assets = [exact, ...assets];
-    }
-  }
-  if (q && !assets.length) {
-    assets = findAssetsByUniversalSearch(searchValue);
-  }
-
-  if (!workerAssetOptions.length) {
-    return `<option value="">Nema sredstava iz Uprave</option>`;
-  }
-  if (!assets.length) {
-    return `<option value="">Nema sredstva za taj broj/pretragu</option>`;
-  }
-
-  return `<option value="">${fuelKindChooseText(kind)}</option>` + assets.map(asset => assetOptionHtml(asset, selected, a => formatFuelKindAssetLabel(a, getCanonicalAssetKind(a)))).join("");
-}
-
-
-function findFuelAssetForSmartInput(searchValue, kind = "machine") {
-  const q = normalizeVehicleSearch(searchValue);
-  if (!q) return null;
-  const exactCode = findAssetByExactCode(searchValue);
-  if (exactCode) return exactCode;
+  const isVehicle = kind === "vehicle";
   const assets = (workerAssetOptions || [])
-    .filter(asset => filterAssetsByFuelKind(asset, kind))
-    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
-  const exact = assets.find(asset => {
-    const code = normalizeVehicleSearch(getAssetCode(asset));
-    const name = normalizeVehicleSearch(getAssetName(asset));
-    const reg = normalizeVehicleSearch(getAssetRegistration(asset));
-    const label = normalizeVehicleSearch(formatFuelKindAssetLabel(asset, kind));
-    return code === q || name === q || reg === q || label === q;
-  });
-  if (exact) return exact;
-  const matches = assets.filter(asset => machineMatchesSearch(asset, searchValue));
-  return matches.length === 1 ? matches[0] : null;
-}
+    .filter(asset => isVehicle ? isVehicleAsset(asset) : isMachineAsset(asset))
+    .filter(asset => getAssetName(asset) || getAssetRegistration(asset));
 
-function updateFuelSmartResult(entryEl, asset, manualValue) {
-  const result = entryEl.querySelector(".f-picked");
-  if (!result) return;
-  if (asset) {
-    result.className = "asset-smart-result f-picked ok";
-    result.textContent = `Pronađeno sredstvo: ${formatFuelKindAssetLabel(asset, getCanonicalAssetKind(asset))}`;
-    return;
+  if (!assets.length) {
+    return `<option value="">${isVehicle ? "Nema vozila iz Direkcije" : "Nema mašina iz Direkcije"}</option>`;
   }
-  const value = String(manualValue || "").trim();
-  if (value) {
-    result.className = "asset-smart-result f-picked warn";
-    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
-    return;
-  }
-  result.className = "asset-smart-result f-picked";
-  result.textContent = "Upiši interni broj, naziv ili tablice sredstva.";
-}
 
-function updateFieldTankerSmartResult(entryEl, asset, manualValue) {
-  const result = entryEl.querySelector(".ft-picked");
-  if (!result) return;
-  if (asset) {
-    result.className = "asset-smart-result ft-picked ok";
-    result.textContent = `Pronađeno sredstvo: ${formatFuelKindAssetLabel(asset, getCanonicalAssetKind(asset))}`;
-    return;
-  }
-  const value = String(manualValue || "").trim();
-  if (value) {
-    result.className = "asset-smart-result ft-picked warn";
-    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
-    return;
-  }
-  result.className = "asset-smart-result ft-picked";
-  result.textContent = "Upiši interni broj, naziv ili tablice sredstva.";
-}
-
-function findDefectAssetForSmartInput(searchValue) {
-  const q = normalizeVehicleSearch(searchValue);
-  if (!q) return null;
-  const exactCode = findAssetByExactCode(searchValue);
-  if (exactCode) return exactCode;
-  const assets = (workerAssetOptions || []).filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
-  const exact = assets.find(asset => {
-    const code = normalizeVehicleSearch(getAssetCode(asset));
-    const name = normalizeVehicleSearch(getAssetName(asset));
-    const reg = normalizeVehicleSearch(getAssetRegistration(asset));
-    const label = normalizeVehicleSearch(formatFuelKindAssetLabel(asset, getCanonicalAssetKind(asset)));
-    return code === q || name === q || reg === q || label === q;
-  });
-  if (exact) return exact;
-  const matches = assets.filter(asset => machineMatchesSearch(asset, searchValue));
-  return matches.length === 1 ? matches[0] : null;
-}
-
-function formatDefectAssetLabel(asset) {
-  if (!asset) return "";
-  const kind = getCanonicalAssetKind(asset);
-  const kindLabel = kind === "vehicle" ? "Vozilo" : kind === "other" ? "Oprema / ostalo" : "Mašina";
-  return `${kindLabel}: ${formatFuelKindAssetLabel(asset, kind)}`;
-}
-
-function updateDefectAssetSmartResult() {
-  const input = $("#wrDefectAssetName");
-  const result = $("#wrDefectAssetPicked");
-  if (!input || !result) return;
-  const value = String(input.value || "").trim();
-  const asset = findDefectAssetForSmartInput(value);
-  if (asset) {
-    result.className = "asset-smart-result defect-picked ok";
-    result.textContent = `Pronađeno sredstvo: ${formatDefectAssetLabel(asset)}`;
-    return;
-  }
-  if (value) {
-    result.className = "asset-smart-result defect-picked warn";
-    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
-    return;
-  }
-  result.className = "asset-smart-result defect-picked";
-  result.textContent = "Upiši interni broj, naziv mašine/vozila/opreme ili registraciju.";
-}
-
-function getDefectAssetPayload() {
-  const raw = String($("#wrDefectAssetName")?.value || "").trim();
-  const asset = findDefectAssetForSmartInput(raw);
-  if (!asset) {
-    return {
-      defect_asset_kind: "",
-      defect_asset_id: "",
-      defect_asset_code: "",
-      defect_asset_name: raw,
-      defect_asset_registration: "",
-      defect_manual_asset_name: raw
-    };
-  }
-  return {
-    defect_asset_kind: getCanonicalAssetKind(asset),
-    defect_asset_id: asset.id || "",
-    defect_asset_code: getAssetCode(asset) || "",
-    defect_asset_name: getAssetName(asset) || raw,
-    defect_asset_registration: getAssetRegistration(asset) || "",
-    defect_manual_asset_name: ""
-  };
-}
-
-function getDefectImpactPayload() {
-  const impact = $("#wrDefectStopsWork")?.value || "";
-  return {
-    defect_work_impact: impact,
-    defect_stops_work: impact === "zaustavlja_rad" ? "da" : impact === "moze_nastaviti" ? "ne" : "",
-    defect_can_continue: impact === "moze_nastaviti" ? "da" : impact === "zaustavlja_rad" ? "ne" : ""
-  };
+  return `<option value="">${isVehicle ? "Odaberi vozilo" : "Odaberi mašinu"}</option>` + assets.map(asset => {
+    const name = getAssetName(asset) || getAssetRegistration(asset) || "";
+    const reg = getAssetRegistration(asset);
+    const label = isVehicle ? formatAssetLabel(asset) : formatMachineLabel(asset);
+    const value = name || label;
+    const isSelected = selected && (selected === value || selected === name || selected === reg || selected === String(asset.id || "")) ? "selected" : "";
+    return `<option value="${escapeHtml(value)}" data-asset-id="${escapeHtml(asset.id || "")}" data-registration="${escapeHtml(reg || "")}" data-asset-type="${escapeHtml(asset.asset_type || asset.type || "")}" ${isSelected}>${escapeHtml(label)}</option>`;
+  }).join("");
 }
 
 function refreshOneFuelAssetSelect(entryEl) {
   const sel = entryEl.querySelector(".f-asset-select");
   if (!sel) return;
-  const kindEl = entryEl.querySelector(".f-asset-kind");
-  let kind = kindEl?.value || "machine";
-  const search = entryEl.querySelector(".f-asset-search")?.value || "";
-  const custom = entryEl.querySelector(".f-asset-custom");
-  const asset = findFuelAssetForSmartInput(search, kind);
-  if (asset && kindEl) {
-    const assetKind = getCanonicalAssetKind(asset);
-    if (assetKind && assetKind !== kind) {
-      kindEl.value = assetKind;
-      kind = assetKind;
-    }
-  }
-  const selectedValue = asset ? (getAssetName(asset) || getAssetCode(asset) || getAssetRegistration(asset)) : "";
-  sel.innerHTML = buildFuelAssetOptionsHtml(kind, selectedValue, search);
-  if (asset) {
-    const name = getAssetName(asset) || getAssetRegistration(asset) || getAssetCode(asset) || "";
-    if (Array.from(sel.options).some(o => o.value === name)) sel.value = name;
-    if (custom) custom.value = "";
-    updateFuelSmartResult(entryEl, asset, "");
-  } else {
-    if (custom) custom.value = String(search || "").trim();
-    updateFuelSmartResult(entryEl, null, search);
-  }
+  const kind = entryEl.querySelector(".f-asset-kind")?.value || "machine";
+  const old = sel.value;
+  sel.innerHTML = buildFuelAssetOptionsHtml(kind, old);
+  if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
 }
-
 
 function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
   if (!list) return;
   const idx = list.querySelectorAll(".fuel-entry").length + 1;
-  const kind = values.asset_kind || values.asset_type || values.kind || (values.other ? "other" : (values.vehicle ? "vehicle" : "machine"));
+  const kind = values.asset_kind || values.asset_type || values.kind || (values.vehicle ? "vehicle" : "machine");
   const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
   const manualAsset = values.asset_custom || values.machine_custom || values.vehicle_custom || "";
-  const oldReading = values.reading || values.mtc_km || "";
-  const kmValue = values.km || values.current_km || values.kilometers || values.odometer || (kind === "vehicle" ? oldReading : "");
-  const mtcValue = values.mtc || values.current_mtc || values.machine_mtc || (kind === "machine" ? oldReading : "");
   const div = document.createElement("div");
   div.className = "entry-card fuel-entry";
   div.innerHTML = `
@@ -3801,18 +2905,18 @@ function addFuelEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Vrsta sredstva</label>
+    <label>Šta je tankovano</label>
     <select class="f-asset-kind">
-      <option value="machine" ${kind === "machine" ? "selected" : ""}>Mašina</option>
+      <option value="machine" ${kind === "vehicle" ? "" : "selected"}>Mašina</option>
       <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
-      <option value="other" ${kind === "other" ? "selected" : ""}>Oprema / ostalo</option>
     </select>
 
-    <label>Sredstvo / interni broj</label>
-    <input class="f-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.fuel_asset_code || manualAsset || selectedAsset || "")}" />
-    <div class="asset-smart-result f-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
-    <select class="f-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1"></select>
-    <input class="f-asset-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualAsset)}" />
+    <label>Izaberi iz Direkcije</label>
+    <select class="f-asset-select"></select>
+
+    <label>Ručno ako nije na listi</label>
+    <input class="f-asset-custom" placeholder="Mašina: broj/naziv · Vozilo: tablice" value="${escapeHtml(manualAsset)}" />
+    <p class="hint">Ako je firmina mašina/vozilo, izaberi iz liste Direkcije. Ako nije na listi, upiši ručno broj mašine ili tablice vozila.</p>
 
     <div class="mini-grid">
       <div>
@@ -3820,24 +2924,19 @@ function addFuelEntry(values = {}) {
         <input class="f-liters" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
       </div>
       <div>
-        <label>KM</label>
-        <input class="f-km numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
-      </div>
-      <div>
-        <label>MTČ</label>
-        <input class="f-mtc numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 1255.0" value="${escapeHtml(mtcValue)}" />
+        <label>MTČ / KM pri sipanju</label>
+        <input class="f-reading" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 1255.0" value="${escapeHtml(values.reading || "")}" />
       </div>
     </div>
 
     <label>Ko je sipao</label>
     <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
 
-    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
+    <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
   div.querySelector(".f-asset-kind")?.addEventListener("change", () => refreshOneFuelAssetSelect(div));
-  div.querySelector(".f-asset-search")?.addEventListener("input", () => refreshOneFuelAssetSelect(div));
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
   refreshOneFuelAssetSelect(div);
@@ -3856,35 +2955,23 @@ function getFuelEntries() {
     const select = el.querySelector(".f-asset-select");
     const option = select?.options ? select.options[select.selectedIndex] : null;
     const assetName = custom || selected;
-    const km = el.querySelector(".f-km")?.value.trim() || "";
-    const mtc = el.querySelector(".f-mtc")?.value.trim() || "";
-    const oldReading = el.querySelector(".f-reading")?.value.trim() || "";
-    const reading = mtc || km || oldReading; // backward-compatible summary for older report/excel code
     return {
       no: i + 1,
       asset_kind: kind,
       asset_type: kind,
       asset_id: custom ? null : (option?.dataset?.assetId || null),
-      asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
       asset_name: assetName,
       asset_custom: custom,
-      machine: kind === "machine" ? assetName : "",
-      machine_custom: kind === "machine" ? custom : "",
+      machine: assetName,
+      machine_custom: custom,
       vehicle: kind === "vehicle" ? assetName : "",
       vehicle_custom: kind === "vehicle" ? custom : "",
-      other: kind === "other" ? assetName : "",
-      other_custom: kind === "other" ? custom : "",
       liters: el.querySelector(".f-liters")?.value || "",
-      km,
-      current_km: km,
-      mtc,
-      current_mtc: mtc,
-      reading,
-      mtc_km: reading,
+      reading: el.querySelector(".f-reading")?.value || "",
       by: el.querySelector(".f-by")?.value.trim() || "",
       receiver: currentWorker?.full_name || ""
     };
-  }).filter(f => f.asset_name || f.liters || f.km || f.mtc || f.reading || f.by);
+  }).filter(f => f.asset_name || f.liters || f.reading || f.by);
 }
 
 function refreshFuelMachineOptions() {
@@ -3897,9 +2984,6 @@ window.addMachineEntry = addMachineEntry;
 window.addFuelEntry = addFuelEntry;
 window.addVehicleEntry = addVehicleEntry;
 window.addFieldTankerEntry = addFieldTankerEntry;
-window.memorizeCurrentFieldTankerEntries = memorizeCurrentFieldTankerEntries;
-window.sendStoredFieldTankerEntries = sendStoredFieldTankerEntries;
-window.clearStoredFieldTankerEntries = clearStoredFieldTankerEntries;
 window.addLowloaderEntry = addLowloaderEntry;
 window.addMaterialEntry = addMaterialEntry;
 window.renumberLowloaderEntries = renumberLowloaderEntries;
@@ -3929,7 +3013,7 @@ async function loadWorkerReturnedReports() {
       const d = r.data || {};
       const title = d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni izveštaj";
       const site = d.site_name || d.defect_site_name || "Bez gradilišta";
-      const reason = r.returned_reason || "Uprava nije upisala razlog.";
+      const reason = r.returned_reason || "Direkcija nije upisala razlog.";
       const opis = d.defect || d.description || d.note || "";
       return `
         <div class="returned-item">
@@ -3999,10 +3083,12 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       wrWarehouseType:"warehouse_type",
       wrWarehouseItem:"warehouse_item",
       wrWarehouseQty:"warehouse_qty",
-      wrDefectAssetName:"defect_asset_code",
+      wrDefectAssetName:"defect_asset_name",
       wrDefectSiteName:"defect_site_name",
+      wrDefectExists:"defect_exists",
       wrDefect:"defect",
-      wrDefectStopsWork:"defect_work_impact",
+      wrDefectStopsWork:"defect_stops_work",
+      wrDefectCanContinue:"defect_can_continue",
       wrDefectUrgency:"defect_urgency",
       wrDefectCalledMechanic:"called_mechanic_by_phone",}).forEach(([id,key]) => {
       const el = $("#" + id);
@@ -4010,7 +3096,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     });
 
     localStorage.setItem("swp_returned_report_id", reportId);
-    toast("Izveštaj je otvoren. Ispravi ga i pošalji ponovo Upravi.");
+    toast("Izveštaj je otvoren. Ispravi ga i pošalji ponovo Direkciji.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch(e) {
     toast(e.message, true);
@@ -4070,20 +3156,6 @@ function collectWorkerData() {
   const materialEntries = canMaterials ? getMaterialEntries() : [];
   const leaveRequest = canLeaveRequest ? getLeaveRequestData() : null;
 
-  const defectAssetPayload = canDefects ? getDefectAssetPayload() : {
-    defect_asset_kind: "",
-    defect_asset_id: "",
-    defect_asset_code: "",
-    defect_asset_name: "",
-    defect_asset_registration: "",
-    defect_manual_asset_name: ""
-  };
-  const defectImpactPayload = canDefects ? getDefectImpactPayload() : {
-    defect_work_impact: "",
-    defect_stops_work: "",
-    defect_can_continue: ""
-  };
-
   // v1.17.4: Labudica ne mora imati glavno gradilište iz osnovne rubrike.
   // Ako radnik popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
   // iz prvog unosa labudice ili generički naziv, a p_site_id ostaje null.
@@ -4091,13 +3163,11 @@ function collectWorkerData() {
     m.from_site || m.to_site || m.from_address || m.to_address || m.machine || m.plates
   ) || null;
   const lowloaderFallbackSiteName = firstLowloaderMove
-    ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Transport mašine labudicom")
+    ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Prevoz mašine labudicom")
     : "";
-  const leaveFallbackSiteName = canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za odsustvo / godišnji odmor" : "";
-  const firstFieldTankerEntry = fieldTankerEntries.find(x => x.site_name || x.site_id) || null;
-  const fieldTankerFallbackSiteName = firstFieldTankerEntry ? (firstFieldTankerEntry.site_name || "Evidencija goriva – cisterna") : "";
-  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || (canFieldTanker && fieldTankerEntries.length ? fieldTankerFallbackSiteName : "") || leaveFallbackSiteName;
-  const reportSiteId = selectedSite.site_id || firstFieldTankerEntry?.site_id || null;
+  const leaveFallbackSiteName = canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za slobodan dan / godišnji odmor" : "";
+  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || leaveFallbackSiteName;
+  const reportSiteId = selectedSite.site_id || null;
 
   const reportSectionsSent = {
     workers: canWorkers && getWorkerEntries().length > 0,
@@ -4116,7 +3186,7 @@ function collectWorkerData() {
     report_sections_sent: reportSectionsSent,
     site_id: reportSiteId,
     site_name: reportSiteName,
-    // v1.16.3: Gradilište i datum izveštaja čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
+    // v1.16.3: Ime gradilišta i datum/godina čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
     // Opis rada i sati rada ne šaljemo pod ovom rubrikom.
     description: "",
     hours: "",
@@ -4137,9 +3207,7 @@ function collectWorkerData() {
     mtc_end: machines.map(m => m.end).filter(Boolean).join(" | "),
     machine_hours: machines.map(m => m.hours).filter(Boolean).join(" | "),
     fuel_liters: fuelEntries.reduce((sum, f) => sum + parseDecimalInput(f.liters), 0) || "",
-    fuel_km: fuelEntries.map(f => f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "")).filter(Boolean).join(" | "),
-    fuel_mtc: fuelEntries.map(f => f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "")).filter(Boolean).join(" | "),
-    fuel_readings: fuelEntries.map(f => f.reading || f.mtc_km).filter(Boolean).join(" | "),
+    fuel_readings: fuelEntries.map(f => f.reading).filter(Boolean).join(" | "),
     fuel_by: fuelEntries.map(f => f.by).filter(Boolean).join(" | "),
     fuel_receiver: currentWorker?.full_name || "",
 
@@ -4164,19 +3232,20 @@ function collectWorkerData() {
     warehouse_type: canWarehouse ? $("#wrWarehouseType").value : "",
     warehouse_item: canWarehouse ? $("#wrWarehouseItem").value.trim() : "",
     warehouse_qty: canWarehouse ? $("#wrWarehouseQty").value.trim() : "",
-    ...defectAssetPayload,
-    defect_machine: canDefects ? (defectAssetPayload.defect_asset_name || "") : "",
+    defect_asset_name: canDefects ? ($("#wrDefectAssetName")?.value.trim() || "") : "",
+    defect_machine: canDefects ? ($("#wrDefectAssetName")?.value.trim() || "") : "",
     defect_site_name: canDefects ? ($("#wrDefectSiteName")?.value.trim() || selectedSite.site_name || "") : "",
-    defect_exists: canDefects ? "da" : "ne",
+    defect_exists: canDefects ? ($("#wrDefectExists")?.value || "ne") : "ne",
     defect: canDefects ? $("#wrDefect").value.trim() : "",
-    ...defectImpactPayload,
+    defect_stops_work: canDefects ? ($("#wrDefectStopsWork")?.value || "") : "",
+    defect_can_continue: canDefects ? ($("#wrDefectCanContinue")?.value || "") : "",
     defect_urgency: canDefects ? $("#wrDefectUrgency").value : "",
     called_mechanic_by_phone: canDefects ? ($("#wrDefectCalledMechanic")?.value || "") : ""
   };
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrLeaveType","wrLeaveDate","wrLeaveFrom","wrLeaveTo","wrLeaveNote","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefect","wrDefectStopsWork","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrLeaveType","wrLeaveDate","wrLeaveFrom","wrLeaveTo","wrLeaveNote","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefectExists","wrDefect","wrDefectStopsWork","wrDefectCanContinue","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
@@ -4189,62 +3258,9 @@ function clearWorkerForm() {
   if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
   if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
   if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
+  if ($("#wrDefectExists")) $("#wrDefectExists").value = "ne";
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
-}
-
-function ensureWorkerDefaultEntries() {
-  const perms = currentWorker?.permissions || {};
-
-  // Ne pozivati ovu funkciju samu iz sebe. To je pravilo ranije pravilo
-  // beskonačnu petlju posle slanja izveštaja i radnik je dobijao grešku
-  // iako je RPC slanje možda već prošlo.
-  if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
-  if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
-  if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
-  if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
-  if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
-  if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
-  if (perms.materials && $("#materialEntries") && !$("#materialEntries").children.length) addMaterialEntry();
-
-  refreshMachineDatalists();
-  refreshVehicleSelects();
-  refreshFuelMachineOptions();
-  refreshFieldTankerSelectors();
-  refreshMaterialEntrySelectors();
-}
-
-async function prepareWorkerFormForNextReport() {
-  clearWorkerForm();
-  if ($("#wrDate")) $("#wrDate").value = today();
-
-  // v1.20.1: Posle uspešnog slanja ne smeju nestati liste mašina/vozila/opreme.
-  // Zato ponovo učitavamo sredstva i odmah vraćamo po jednu praznu karticu za svaku dozvoljenu rubriku.
-  await Promise.allSettled([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
-  ensureWorkerDefaultEntries();
-  renderStoredFieldTankerEntries();
-  updateLeaveRequestVisibility();
-}
-
-async function verifyRecentlySubmittedReport(worker, reportDate) {
-  // Samo dijagnostika. Ako RLS ne dozvoli direktno čitanje, ne smemo blokirati radnika.
-  try {
-    if (!worker?.company_id) return;
-    const { data, error } = await sb
-      .from("reports")
-      .select("id,status,report_date,created_at,submitted_at")
-      .eq("company_id", worker.company_id)
-      .eq("report_date", reportDate)
-      .order("created_at", { ascending: false })
-      .limit(5);
-    if (error) {
-      console.warn("Start Work PRO: izveštaj je poslat preko RPC, ali direktna provera reports nije dozvoljena ili nije uspela:", error.message);
-      return;
-    }
-    console.log("Start Work PRO: poslednji izveštaji za proveru slanja", data || []);
-  } catch (e) {
-    console.warn("Start Work PRO: provera poslatog izveštaja nije uspela", e);
-  }
 }
 
 function saveDraft() {
@@ -4285,7 +3301,7 @@ function loadDraft() {
     (d.material_entries || d.material_movements || []).forEach(m => addMaterialEntry(m));
 
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_code", wrDefectSiteName:"defect_site_name", wrDefect:"defect", wrDefectStopsWork:"defect_work_impact", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_name", wrDefectSiteName:"defect_site_name", wrDefectExists:"defect_exists", wrDefect:"defect", wrDefectStopsWork:"defect_stops_work", wrDefectCanContinue:"defect_can_continue", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
     updateLeaveRequestVisibility();
   } catch {}
@@ -4293,184 +3309,6 @@ function loadDraft() {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
-function formatCapacityM3(value) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-  if (/m\s*(³|3)|kub|kubic/i.test(raw)) return raw;
-  return `${raw} m³`;
-}
-
-
-
-let lastWorkerUiAuditText = "";
-
-const WORKER_UI_PERMISSION_MAP = {
-  daily_work: { label: "Gradilište i datum izveštaja", window: "Osnovno: gradilište i datum", worker: true },
-  workers: { label: "Radnici na gradilištu", window: "Radnici na gradilištu", worker: true },
-  machines: { label: "Rad sa mašinom", window: "Evidencija rada mašine", worker: true },
-  vehicles: { label: "Rad vozila / kamiona", window: "Vozilo / ture / m³", worker: true },
-  lowloader: { label: "Transport mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
-  fuel: { label: "Evidencija goriva – korisnik", window: "Sipanje goriva", worker: true },
-  field_tanker: { label: "Evidencija goriva – cisterna", window: "Evidencija goriva – cisterna", worker: true },
-  materials: { label: "Materijal", window: "Materijal", worker: true },
-  leave_request: { label: "Zahtev za odsustvo / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
-  warehouse: { label: "Magacin", window: "Magacin", worker: true },
-  defects: { label: "Evidencija kvara", window: "Evidencija kvara", worker: true },
-
-  // Upravljačka prava nisu radnički prozori. Ako ih ima običan radnik, audit ih označava kao upozorenje.
-  view_reports: { label: "Pregled izveštaja", window: "Uprava: pregled izveštaja", worker: false },
-  approve_reports: { label: "Odobravanje izveštaja", window: "Uprava: odobravanje", worker: false },
-  excel_export: { label: "Izvoz u Excel", window: "Uprava: Excel", worker: false },
-  manage_people: { label: "Upravljanje korisnicima", window: "Uprava: osobe", worker: false },
-  settings: { label: "Podešavanja firme", window: "Uprava: podešavanja", worker: false }
-};
-
-function permissionIsEnabled(value) {
-  return value === true || value === "true" || value === 1 || value === "1" || value === "yes";
-}
-
-function normalizePermissions(raw) {
-  if (!raw) return {};
-  if (typeof raw === "string") {
-    try { return JSON.parse(raw) || {}; } catch { return {}; }
-  }
-  if (typeof raw === "object") return raw;
-  return {};
-}
-
-function isLikelyWorkerUser(person, perms) {
-  const title = `${person.function_title || ""} ${person.role || ""}`.toLowerCase();
-  const hasWorkerPerm = Object.entries(perms).some(([key, value]) => permissionIsEnabled(value) && WORKER_UI_PERMISSION_MAP[key]?.worker);
-  const hasDirectorPerm = Object.entries(perms).some(([key, value]) => permissionIsEnabled(value) && WORKER_UI_PERMISSION_MAP[key] && !WORKER_UI_PERMISSION_MAP[key].worker);
-  if (title.includes("direkc") || title.includes("admin") || title.includes("direktor")) return false;
-  return hasWorkerPerm || !hasDirectorPerm;
-}
-
-async function runWorkerUiAudit() {
-  const box = $("#workerUiAuditResult");
-  if (!box) return;
-  try {
-    if (!currentCompany?.id) {
-      box.innerHTML = `<p class="muted">Prvo se prijavi kao Uprava i učitaj firmu.</p>`;
-      return;
-    }
-
-    box.innerHTML = `<p class="muted">Proveravam radničke prozore...</p>`;
-
-    const { data, error } = await sb
-      .from("company_users")
-      .select("id, first_name, last_name, function_title, access_code, permissions, active")
-      .eq("company_id", currentCompany.id)
-      .eq("active", true)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    const people = data || [];
-    if (!people.length) {
-      lastWorkerUiAuditText = "Nema aktivnih korisnika za proveru.";
-      box.innerHTML = `<p class="muted">Nema aktivnih korisnika za proveru.</p>`;
-      return;
-    }
-
-    const cards = [];
-    const plain = [];
-    let warningCount = 0;
-    let okCount = 0;
-
-    for (const person of people) {
-      const perms = normalizePermissions(person.permissions);
-      const fullName = `${person.first_name || ""} ${person.last_name || ""}`.trim() || person.access_code || "Korisnik";
-      const enabledKeys = Object.entries(perms)
-        .filter(([key, value]) => permissionIsEnabled(value) && key !== "allowed_material_ids" && key !== "allowed_material_names")
-        .map(([key]) => key);
-
-      const unknownKeys = enabledKeys.filter(key => !WORKER_UI_PERMISSION_MAP[key]);
-      const workerWindows = [];
-      const directorPerms = [];
-      const duplicateWindows = [];
-      const seenWindows = new Map();
-
-      for (const key of enabledKeys) {
-        const meta = WORKER_UI_PERMISSION_MAP[key];
-        if (!meta) continue;
-        if (meta.worker) {
-          workerWindows.push(meta.window);
-          if (seenWindows.has(meta.window)) duplicateWindows.push(meta.window);
-          seenWindows.set(meta.window, true);
-        } else {
-          directorPerms.push(meta.label);
-        }
-      }
-
-      const likelyWorker = isLikelyWorkerUser(person, perms);
-      const issues = [];
-      if (likelyWorker && directorPerms.length) issues.push(`Ima direkcijske dozvole: ${directorPerms.join(", ")}`);
-      if (likelyWorker && !workerWindows.length) issues.push("Nema nijednu radničku rubriku za popunjavanje.");
-      if (duplicateWindows.length) issues.push(`Duplirani prozori: ${[...new Set(duplicateWindows)].join(", ")}`);
-      if (unknownKeys.length) issues.push(`Nepoznate/stare dozvole u profilu: ${unknownKeys.join(", ")}`);
-
-      if (issues.length) warningCount += 1; else okCount += 1;
-
-      const status = issues.length ? "⚠️ Proveriti" : "✅ OK";
-      plain.push(`${fullName} (${person.access_code || "bez šifre"}) - ${status}`);
-      plain.push(`Radnički prozori: ${workerWindows.join(" | ") || "nema"}`);
-      if (issues.length) plain.push(`Upozorenja: ${issues.join("; ")}`);
-      plain.push("---");
-
-      cards.push(`
-        <div class="item audit-person-card ${issues.length ? "audit-warning" : "audit-ok"}">
-          <div class="item-main">
-            <strong>${escapeHtml(fullName)}</strong>
-            <small>${escapeHtml(person.function_title || "")} · šifra: ${escapeHtml(person.access_code || "")}</small><br/>
-            <span class="pill">${status}</span>
-            <span class="pill">${workerWindows.length} radnička prozora</span>
-          </div>
-          <div class="audit-details">
-            <b>Treba da vidi:</b>
-            <div>${workerWindows.length ? workerWindows.map(w => `<span class="pill">${escapeHtml(w)}</span>`).join(" ") : `<span class="muted">Nema radničkih prozora</span>`}</div>
-            ${issues.length ? `<div class="audit-issues"><b>Upozorenja:</b><ul>${issues.map(i => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>` : `<p class="muted">Nema dupliranih/nebitnih prozora po dozvolama.</p>`}
-          </div>
-        </div>
-      `);
-    }
-
-    lastWorkerUiAuditText = `PROVERA RADNIČKIH PROZORA\nFirma: ${currentCompany.name || currentCompany.company_code || ""}\nOK: ${okCount}\nZa proveru: ${warningCount}\n\n${plain.join("\n")}`;
-    box.innerHTML = `
-      <div class="audit-summary">
-        <span class="pill">✅ OK: ${okCount}</span>
-        <span class="pill">⚠️ Za proveru: ${warningCount}</span>
-      </div>
-      <div class="list">${cards.join("")}</div>
-    `;
-  } catch (e) {
-    lastWorkerUiAuditText = `Greška u proveri: ${e.message}`;
-    box.innerHTML = `<p class="error-text">Greška u proveri: ${escapeHtml(e.message)}</p>`;
-    toast(e.message, true);
-  }
-}
-
-async function copyWorkerUiAudit() {
-  try {
-    if (!lastWorkerUiAuditText) await runWorkerUiAudit();
-    const text = lastWorkerUiAuditText || "Nema dijagnostike.";
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      toast("Dijagnostika kopirana.");
-      return;
-    }
-    const area = document.createElement("textarea");
-    area.value = text;
-    document.body.appendChild(area);
-    area.select();
-    document.execCommand("copy");
-    area.remove();
-    toast("Dijagnostika kopirana.");
-  } catch (e) {
-    toast("Ne mogu da kopiram dijagnostiku: " + e.message, true);
-  }
 }
 
 function csvEscape(v) {
@@ -4484,19 +3322,7 @@ function parseDecimalInput(value) {
 }
 
 function preventNumberInputScrollChanges(root = document) {
-  // Radnik na terenu često skroluje preko forme. Native input[type=number]
-  // u Chrome/Edge može sam da promeni vrednost (npr. 4,5 -> 4,51) preko
-  // točkića/trackpad-a ili strelica. Zato sva numerička polja zaključavamo
-  // kao tekstualni unos sa decimalnom tastaturom. Parsiranje već podržava
-  // i zarez i tačku preko parseDecimalInput().
-  root.querySelectorAll('input[type="number"], input.numeric-text').forEach(input => {
-    if (input.type === "number") {
-      input.type = "text";
-      input.inputMode = "decimal";
-      input.classList.add("numeric-text");
-      input.setAttribute("autocomplete", "off");
-      input.setAttribute("data-fixed-number", "1");
-    }
+  root.querySelectorAll('input[type="number"]').forEach(input => {
     if (input.dataset.noWheelBound === "1") return;
     input.dataset.noWheelBound = "1";
     input.addEventListener("wheel", (event) => {
@@ -4504,9 +3330,7 @@ function preventNumberInputScrollChanges(root = document) {
       input.blur();
     }, { passive: false });
     input.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-        event.preventDefault();
-      }
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") event.preventDefault();
     });
   });
 }
@@ -4530,7 +3354,6 @@ function downloadBlob(blob, fileName) {
 
 const EXPORT_SELECTION_KEY = "swp_export_report_ids";
 const EXPORT_COLUMN_KEY = "swp_export_columns";
-const SMART_EXPORT_KEY = "swp_smart_export_settings";
 
 const EXPORT_COLUMNS = [
   { key:"date", label:"Datum" },
@@ -4541,21 +3364,20 @@ const EXPORT_COLUMNS = [
   { key:"description", label:"Šta je rađeno" },
   { key:"crew_worker", label:"Ime radnika na gradilištu" },
   { key:"crew_hours", label:"Sati tog radnika" },
-  { key:"machine_code", label:"Broj mašine" },
   { key:"machine", label:"Mašina" },
   { key:"machine_start", label:"Početno stanje MTČ/KM" },
   { key:"machine_end", label:"Krajnje stanje MTČ/KM" },
   { key:"machine_hours", label:"Ukupno sati mašine" },
   { key:"machine_work", label:"Šta je mašina radila" },
-  { key:"vehicle_code", label:"Broj vozila" },
   { key:"vehicle", label:"Vozilo / kamion" },
   { key:"registration", label:"Registracija" },
-  { key:"capacity", label:"Kapacitet vozila m³" },
+  { key:"capacity", label:"Kapacitet vozila" },
   { key:"km_start", label:"Početna kilometraža" },
   { key:"km_end", label:"Krajnja kilometraža" },
   { key:"route", label:"Relacija vožnje" },
   { key:"tours", label:"Broj tura" },
-  { key:"cubic", label:"Ukupno m³" },
+  { key:"cubic", label:"Ukupno kubika" },
+  { key:"manual_cubic", label:"Ručno upisani kubici" },
   { key:"lowloader_plates", label:"Tablice labudice" },
   { key:"lowloader_from", label:"Gradilište sa kog je mašina preuzeta" },
   { key:"lowloader_to", label:"Gradilište gde je mašina odvezena" },
@@ -4563,48 +3385,31 @@ const EXPORT_COLUMNS = [
   { key:"lowloader_km_end", label:"Završna kilometraža labudice" },
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
-  { key:"fuel_type", label:"Kategorija sredstva" },
-  { key:"fuel_asset_code", label:"Broj sredstva" },
-  { key:"fuel_for", label:"Naziv sredstva" },
-  { key:"fuel_registration", label:"Registracija" },
-  { key:"fuel_liters", label:"Litara" },
-  { key:"fuel_km", label:"KM" },
-  { key:"fuel_mtc", label:"MTČ" },
+  { key:"fuel_type", label:"Tip za sipanje goriva" },
+  { key:"fuel_for", label:"Gorivo sipano u" },
+  { key:"fuel_liters", label:"Količina goriva u litrima" },
+  { key:"fuel_reading", label:"Stanje MTČ/KM kod sipanja" },
   { key:"fuel_by", label:"Gorivo sipao" },
-  { key:"fuel_receiver", label:"Primio gorivo" },
+  { key:"fuel_receiver", label:"Gorivo primio" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
-  { key:"field_tanker_type", label:"Kategorija tankovanog sredstva" },
-  { key:"field_tanker_asset_code", label:"Broj tankovanog sredstva" },
-  { key:"field_tanker_asset", label:"Naziv tankovanog sredstva" },
-  { key:"field_tanker_registration", label:"Registracija" },
-  { key:"field_tanker_km", label:"KM pri tankovanju cisternom" },
-  { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
-  { key:"field_tanker_liters", label:"Litara iz cisterne" },
-  { key:"field_tanker_receiver", label:"Primio gorivo iz cisterne" },
+  { key:"field_tanker_type", label:"Tip tankovanog sredstva" },
+  { key:"field_tanker_asset", label:"Mašina/vozilo koje je tankovano" },
+  { key:"field_tanker_reading", label:"Stanje MTČ/KM pri tankovanju" },
+  { key:"field_tanker_liters", label:"Sipano litara iz cisterne" },
+  { key:"field_tanker_receiver", label:"Gorivo primio iz cisterne" },
   { key:"material_action", label:"Radnja sa materijalom" },
   { key:"material", label:"Materijal" },
   { key:"quantity", label:"Količina" },
   { key:"unit", label:"Jedinica" },
   { key:"material_note", label:"Napomena za materijal" },
-  { key:"warehouse_type", label:"Magacin tip" },
-  { key:"warehouse_item", label:"Magacin stavka" },
-  { key:"warehouse_qty", label:"Magacin količina" },
   { key:"leave_type", label:"Vrsta odsustva" },
   { key:"leave_date", label:"Datum slobodnog dana" },
   { key:"leave_from", label:"Godišnji od" },
   { key:"leave_to", label:"Godišnji do" },
   { key:"leave_note", label:"Napomena za odsustvo" },
-  { key:"defect_type", label:"Kategorija sredstva u kvaru" },
-  { key:"defect_asset_code", label:"Broj sredstva u kvaru" },
-  { key:"defect_asset", label:"Naziv sredstva u kvaru" },
-  { key:"defect_registration", label:"Registracija sredstva" },
-  { key:"defect_site", label:"Lokacija kvara" },
   { key:"defect", label:"Opis kvara" },
-  { key:"defect_work_impact", label:"Uticaj na rad" },
-  { key:"defect_urgency", label:"Hitnost" },
-  { key:"defect_called_mechanic", label:"Pozvan šef mehanizacije" },
-  { key:"defect_status", label:"Status kvara" },
-  { key:"status", label:"Status izveštaja" }
+  { key:"status", label:"Status izveštaja" },
+  { key:"note", label:"Napomena" }
 ];
 
 const SIMPLE_EXPORT_KEYS = [
@@ -4630,31 +3435,31 @@ const EXPORT_GROUPS = [
     id: "machines",
     title: "Mašine",
     hint: "Bager, valjak, buldozer i druga mehanizacija.",
-    keys: ["machine_code", "machine", "machine_start", "machine_end", "machine_hours", "machine_work"]
+    keys: ["machine", "machine_start", "machine_end", "machine_hours", "machine_work"]
   },
   {
     id: "vehicles",
     title: "Vozila / kamioni",
     hint: "Kamioni, kilometraža, relacija, ture i kubici.",
-    keys: ["vehicle_code", "vehicle", "registration", "capacity", "km_start", "km_end", "route", "tours", "cubic"]
+    keys: ["vehicle", "registration", "capacity", "km_start", "km_end", "route", "tours", "cubic", "manual_cubic"]
   },
   {
     id: "fuel",
     title: "Sipanje goriva",
     hint: "Gorivo koje je radnik sipao u svoju mašinu ili vozilo.",
-    keys: ["fuel_type", "fuel_asset_code", "fuel_for", "fuel_registration", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_by", "fuel_receiver"]
+    keys: ["fuel_type", "fuel_for", "fuel_liters", "fuel_reading", "fuel_by", "fuel_receiver"]
   },
   {
     id: "lowloader",
-    title: "Transport mašine labudicom",
+    title: "Prevoz mašine labudicom",
     hint: "Selidba mašine sa jedne lokacije na drugu.",
     keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km_start", "lowloader_km_end", "lowloader_km", "lowloader_machine"]
   },
   {
     id: "fieldTanker",
-    title: "Evidencija goriva – cisterna",
+    title: "Tankanje goriva cisternom",
     hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
-    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset_code", "field_tanker_asset", "field_tanker_registration", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
+    keys: ["field_tanker_site", "field_tanker_type", "field_tanker_asset", "field_tanker_reading", "field_tanker_liters", "field_tanker_receiver"]
   },
   {
     id: "material",
@@ -4663,14 +3468,8 @@ const EXPORT_GROUPS = [
     keys: ["material_action", "material", "quantity", "unit", "material_note"]
   },
   {
-    id: "warehouse",
-    title: "Magacin",
-    hint: "Ulaz/izlaz/stanje u magacinu ako radnik ima tu rubriku.",
-    keys: ["warehouse_type", "warehouse_item", "warehouse_qty"]
-  },
-  {
     id: "leave",
-    title: "Zahtev za odsustvo / godišnji odmor",
+    title: "Zahtev za slobodan dan / godišnji odmor",
     hint: "Zahtevi radnika za slobodan dan ili godišnji odmor.",
     keys: ["leave_type", "leave_date", "leave_from", "leave_to", "leave_note"]
   },
@@ -4678,13 +3477,13 @@ const EXPORT_GROUPS = [
     id: "defects",
     title: "Kvarovi",
     hint: "Kratak prikaz kvara ako se izvozi zajedno sa dnevnim izveštajem.",
-    keys: ["defect_type", "defect_asset_code", "defect_asset", "defect_registration", "defect_site", "defect", "defect_work_impact", "defect_urgency", "defect_called_mechanic", "defect_status"]
+    keys: ["defect"]
   },
   {
     id: "status",
     title: "Status i napomene",
     hint: "Status izveštaja i dodatna napomena.",
-    keys: ["status"]
+    keys: ["status", "note"]
   }
 ];
 
@@ -4830,13 +3629,11 @@ function flattenReportRowsForExport(r) {
       description: d.description || "",
       crew_worker: w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || "",
       crew_hours: w.hours || "",
-      machine_code: m.asset_code || m.machine_code || "",
       machine: m.name || d.machine || "",
       machine_start: m.start || d.mtc_start || "",
       machine_end: m.end || d.mtc_end || "",
       machine_hours: m.hours || d.machine_hours || "",
       machine_work: m.work || "",
-      vehicle_code: v.asset_code || v.vehicle_code || "",
       vehicle: v.name || v.vehicle || d.vehicle || "",
       registration: v.registration || "",
       capacity: v.capacity || "",
@@ -4845,6 +3642,7 @@ function flattenReportRowsForExport(r) {
       route: v.route || d.route || "",
       tours: v.tours || d.tours || "",
       cubic: v.cubic_m3 || v.cubic_auto || "",
+      manual_cubic: v.cubic_manual || "",
       lowloader_plates: ll.plates || ll.registration || "",
       lowloader_from: ll.from_site || ll.from_address || "",
       lowloader_to: ll.to_site || ll.to_address || "",
@@ -4852,22 +3650,16 @@ function flattenReportRowsForExport(r) {
       lowloader_km_end: ll.km_end || "",
       lowloader_km: ll.km_total || "",
       lowloader_machine: ll.machine || "",
-      fuel_type: assetKindLabel(f.asset_kind),
-      fuel_asset_code: f.asset_code || "",
-      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
-      fuel_registration: f.asset_registration || f.registration || "",
+      fuel_type: f.asset_kind === "vehicle" ? "Vozilo" : (f.asset_kind === "machine" ? "Mašina" : ""),
+      fuel_for: f.asset_name || f.machine || f.vehicle || "",
       fuel_liters: f.liters || d.fuel_liters || "",
-      fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
-      fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
+      fuel_reading: f.reading || d.fuel_readings || "",
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || "",
       field_tanker_site: ft.site_name || "",
-      field_tanker_type: assetKindLabel(ft.asset_kind),
-      field_tanker_asset_code: ft.asset_code || "",
-      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
-      field_tanker_registration: ft.asset_registration || ft.registration || "",
-      field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
-      field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
+      field_tanker_type: ft.asset_kind === "vehicle" ? "Vozilo" : (ft.asset_kind === "machine" ? "Mašina" : ""),
+      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || "",
+      field_tanker_reading: ft.reading || ft.mtc_km || "",
       field_tanker_liters: ft.liters || "",
       field_tanker_receiver: ft.receiver || ft.received_by || "",
       material_action: mat.action || mat.material_action || "",
@@ -4875,352 +3667,25 @@ function flattenReportRowsForExport(r) {
       quantity: mat.quantity || mat.qty || d.quantity || "",
       unit: mat.unit || d.unit || "",
       material_note: mat.note || "",
-      warehouse_type: d.warehouse_type || "",
-      warehouse_item: d.warehouse_item || "",
-      warehouse_qty: d.warehouse_qty || "",
       leave_type: d.leave_request_type || leaveRequest.leave_label || leaveRequest.label || "",
       leave_date: d.leave_date || leaveRequest.leave_date || leaveRequest.date || "",
       leave_from: d.leave_from || leaveRequest.date_from || "",
       leave_to: d.leave_to || leaveRequest.date_to || "",
       leave_note: d.leave_note || leaveRequest.leave_note || leaveRequest.note || "",
-      defect_type: assetKindLabel(d.defect_asset_kind),
-      defect_asset_code: d.defect_asset_code || "",
-      defect_asset: d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
-      defect_registration: d.defect_asset_registration || "",
-      defect_site: d.defect_site_name || d.site_name || "",
       defect: d.defect || "",
-      defect_work_impact: defectImpactLabel(d.defect_work_impact),
-      defect_urgency: d.defect_urgency || "",
-      defect_called_mechanic: d.called_mechanic_by_phone || d.defect_called_mechanic || "",
-      defect_status: d.defect_status || "",
-      status: r.status || ""
+      status: r.status || "",
+      note: d.note || ""
     });
   }
 
   return rows;
 }
 
-
-const SMART_EXPORT_PRESETS = {
-  all: {
-    title: "Sve iz izabranih izveštaja",
-    keys: EXPORT_COLUMNS.map(c => c.key)
-  },
-  fuel_all: {
-    title: "Sva sipanja goriva",
-    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_registration","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_registration","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
-  },
-  fuel_own: {
-    title: "Evidencija goriva – korisnik/vozilo/opremu",
-    keys: ["date","worker","site","fuel_type","fuel_asset_code","fuel_for","fuel_registration","fuel_liters","fuel_km","fuel_mtc","fuel_by","fuel_receiver","status"]
-  },
-  fuel_tanker: {
-    title: "Evidencija goriva – cisterna",
-    keys: ["date","worker","site","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_registration","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
-  },
-  hours_workers: {
-    title: "Radni sati radnika",
-    keys: ["date","site","worker","function","hours","description","crew_worker","crew_hours","status"]
-  },
-  machines: {
-    title: "Rad mašina / MTČ",
-    keys: ["date","site","worker","machine_code","machine","machine_start","machine_end","machine_hours","machine_work","status"]
-  },
-  vehicles: {
-    title: "Vozila / ture / m³",
-    keys: ["date","site","worker","vehicle_code","vehicle","registration","capacity","km_start","km_end","route","tours","cubic","status"]
-  },
-  lowloader: {
-    title: "Transport mašine labudicom",
-    keys: ["date","site","worker","lowloader_plates","lowloader_from","lowloader_to","lowloader_km_start","lowloader_km_end","lowloader_km","lowloader_machine","status"]
-  },
-  materials: {
-    title: "Materijal",
-    keys: ["date","site","worker","material_action","material","quantity","unit","material_note","status"]
-  },
-  warehouse: {
-    title: "Magacin",
-    keys: ["date","site","worker","warehouse_type","warehouse_item","warehouse_qty","status"]
-  },
-  leave: {
-    title: "Slobodni dani / godišnji",
-    keys: ["date","site","worker","leave_type","leave_date","leave_from","leave_to","leave_note","status"]
-  },
-  defects: {
-    title: "Kvarovi",
-    keys: ["date","site","worker","defect_type","defect_asset_code","defect_asset","defect_registration","defect_site","defect","defect_work_impact","defect_urgency","defect_called_mechanic","defect_status","status"]
-  }
-};
-
-function getSmartExportSettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(SMART_EXPORT_KEY) || "{}");
-    return {
-      type: saved.type || "all",
-      from: saved.from || "",
-      to: saved.to || "",
-      site: saved.site || "",
-      worker: saved.worker || ""
-    };
-  } catch {
-    return { type:"all", from:"", to:"", site:"", worker:"" };
-  }
-}
-
-function setSmartExportSettings(settings) {
-  const clean = {
-    type: settings.type || "all",
-    from: settings.from || "",
-    to: settings.to || "",
-    site: settings.site || "",
-    worker: settings.worker || ""
-  };
-  localStorage.setItem(SMART_EXPORT_KEY, JSON.stringify(clean));
-  return clean;
-}
-
-function smartExportReportMatches(r, settings) {
-  const d = r.data || {};
-  const date = String(r.report_date || "").slice(0, 10);
-  if (settings.from && date && date < settings.from) return false;
-  if (settings.to && date && date > settings.to) return false;
-  const siteQ = normalizeSearch(settings.site || "");
-  if (siteQ) {
-    const siteText = normalizeSearch([d.site_name, d.site, r.site_name].filter(Boolean).join(" "));
-    if (!siteText.includes(siteQ)) return false;
-  }
-  const workerQ = normalizeSearch(settings.worker || "");
-  if (workerQ) {
-    const workerText = normalizeSearch([
-      reportPersonName(r),
-      r.company_users?.first_name,
-      r.company_users?.last_name,
-      r.company_users?.function_title,
-      d.created_by_worker,
-      d.worker_name,
-      d.access_code,
-      d.worker_code
-    ].filter(Boolean).join(" "));
-    if (!workerText.includes(workerQ)) return false;
-  }
-  return true;
-}
-
-function baseExportRow(r) {
-  const d = r.data || {};
-  return {
-    date: r.report_date || "",
-    worker: reportPersonName(r),
-    function: r.company_users?.function_title || "",
-    site: d.site_name || "",
-    hours: d.hours || "",
-    description: d.description || "",
-    status: r.status || "",
-    note: d.note || ""
-  };
-}
-
-function smartRowsForReport(r, type) {
-  if (!type || type === "all") return flattenReportRowsForExport(r);
-  const d = r.data || {};
-  const base = baseExportRow(r);
-  const rows = [];
-  const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
-  const machines = Array.isArray(d.machines) ? d.machines : [];
-  const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
-  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
-  const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
-  const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
-  const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : []);
-  const leaveRequest = d.leave_request || {};
-
-  if (type === "fuel_all" || type === "fuel_own") {
-    fuels.forEach(f => rows.push({
-      ...base,
-      fuel_type: assetKindLabel(f.asset_kind),
-      fuel_asset_code: f.asset_code || "",
-      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
-      fuel_registration: f.asset_registration || f.registration || "",
-      fuel_liters: f.liters || d.fuel_liters || "",
-      fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
-      fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
-      fuel_by: f.by || "",
-      fuel_receiver: f.receiver || d.fuel_receiver || ""
-    }));
-  }
-
-  if (type === "fuel_all" || type === "fuel_tanker") {
-    fieldTankers.forEach(ft => rows.push({
-      ...base,
-      field_tanker_site: ft.site_name || d.site_name || "",
-      field_tanker_type: assetKindLabel(ft.asset_kind),
-      field_tanker_asset_code: ft.asset_code || "",
-      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
-      field_tanker_registration: ft.asset_registration || ft.registration || "",
-      field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
-      field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
-      field_tanker_liters: ft.liters || "",
-      field_tanker_receiver: ft.receiver || ft.received_by || ""
-    }));
-  }
-
-  if (type === "hours_workers") {
-    if (workers.length) {
-      workers.forEach(w => rows.push({
-        ...base,
-        crew_worker: w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || "",
-        crew_hours: w.hours || ""
-      }));
-    } else if (base.hours || base.description) {
-      rows.push(base);
-    }
-  }
-
-  if (type === "machines") {
-    machines.forEach(m => rows.push({
-      ...base,
-      machine_code: m.asset_code || m.machine_code || "",
-      machine: m.name || d.machine || "",
-      machine_start: m.start || d.mtc_start || "",
-      machine_end: m.end || d.mtc_end || "",
-      machine_hours: m.hours || d.machine_hours || "",
-      machine_work: m.work || ""
-    }));
-  }
-
-  if (type === "vehicles") {
-    vehicles.forEach(v => rows.push({
-      ...base,
-      vehicle_code: v.asset_code || v.vehicle_code || "",
-      vehicle: v.name || v.vehicle || d.vehicle || "",
-      registration: v.registration || "",
-      capacity: v.capacity || "",
-      km_start: v.km_start || d.km_start || "",
-      km_end: v.km_end || d.km_end || "",
-      route: v.route || d.route || "",
-      tours: v.tours || d.tours || "",
-      cubic: v.cubic_m3 || v.cubic_auto || ""
-    }));
-  }
-
-  if (type === "lowloader") {
-    lowloaders.forEach(ll => rows.push({
-      ...base,
-      lowloader_plates: ll.plates || ll.registration || "",
-      lowloader_from: ll.from_site || ll.from_address || "",
-      lowloader_to: ll.to_site || ll.to_address || "",
-      lowloader_km_start: ll.km_start || "",
-      lowloader_km_end: ll.km_end || "",
-      lowloader_km: ll.km_total || "",
-      lowloader_machine: ll.machine || ""
-    }));
-  }
-
-  if (type === "materials") {
-    materials.forEach(mat => rows.push({
-      ...base,
-      material_action: mat.action || mat.material_action || "",
-      material: mat.material || mat.name || d.material || "",
-      quantity: mat.quantity || mat.qty || d.quantity || "",
-      unit: mat.unit || d.unit || "",
-      material_note: mat.note || ""
-    }));
-  }
-
-  if (type === "warehouse") {
-    if (d.warehouse_type || d.warehouse_item || d.warehouse_qty) {
-      rows.push({
-        ...base,
-        warehouse_type: d.warehouse_type || "",
-        warehouse_item: d.warehouse_item || "",
-        warehouse_qty: d.warehouse_qty || ""
-      });
-    }
-  }
-
-  if (type === "leave") {
-    if (d.leave_request_type || d.leave_date || d.leave_from || d.leave_to || leaveRequest.label || leaveRequest.leave_label) {
-      rows.push({
-        ...base,
-        leave_type: d.leave_request_type || leaveRequest.leave_label || leaveRequest.label || "",
-        leave_date: d.leave_date || leaveRequest.leave_date || leaveRequest.date || "",
-        leave_from: d.leave_from || leaveRequest.date_from || "",
-        leave_to: d.leave_to || leaveRequest.date_to || "",
-        leave_note: d.leave_note || leaveRequest.leave_note || leaveRequest.note || ""
-      });
-    }
-  }
-
-  if (type === "defects") {
-    if (d.defect || d.defect_description || d.problem_description || d.defect_asset_name || d.defect_asset_code) {
-      rows.push({
-        ...base,
-        defect_type: assetKindLabel(d.defect_asset_kind),
-        defect_asset_code: d.defect_asset_code || "",
-        defect_asset: d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
-        defect_registration: d.defect_asset_registration || "",
-        defect_site: d.defect_site_name || d.site_name || "",
-        defect: d.defect || d.defect_description || d.problem_description || "",
-        defect_work_impact: defectImpactLabel(d.defect_work_impact),
-        defect_urgency: d.defect_urgency || "",
-        defect_called_mechanic: d.called_mechanic_by_phone || d.defect_called_mechanic || "",
-        defect_status: d.defect_status || ""
-      });
-    }
-  }
-
-  return rows;
-}
-
-window.applySmartExportFilters = () => {
-  const settings = setSmartExportSettings({
-    type: $("#smartExportType")?.value || "all",
-    from: $("#smartExportFrom")?.value || "",
-    to: $("#smartExportTo")?.value || "",
-    site: $("#smartExportSite")?.value || "",
-    worker: $("#smartExportWorker")?.value || ""
-  });
-  const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
-  const reports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r)).filter(r => smartExportReportMatches(r, settings));
-  setExportSelectedIds(reports.map(r => r.id));
-  setExportColumnKeys(preset.keys);
-  renderExportPanel();
-  const info = $("#smartExportInfo");
-  const rowsCount = reports.flatMap(r => smartRowsForReport(r, settings.type)).length;
-  if (info) info.textContent = `${preset.title}: izabrano ${reports.length} izveštaja, ${rowsCount} redova za Excel.`;
-  toast(`Pripremljen export: ${preset.title}. Izveštaja: ${reports.length}.`);
-};
-
-window.clearSmartExportFilters = () => {
-  setSmartExportSettings({ type:"all", from:"", to:"", site:"", worker:"" });
-  ["#smartExportType", "#smartExportFrom", "#smartExportTo", "#smartExportSite", "#smartExportWorker"].forEach(sel => {
-    const el = $(sel);
-    if (!el) return;
-    el.value = sel === "#smartExportType" ? "all" : "";
-  });
-  const info = $("#smartExportInfo");
-  if (info) info.textContent = "Filter je očišćen. Možeš ručno birati izveštaje i kolone.";
-  toast("Filter za poseban Excel je očišćen.");
-};
-
-function restoreSmartExportControls() {
-  const settings = getSmartExportSettings();
-  if ($("#smartExportType")) $("#smartExportType").value = settings.type;
-  if ($("#smartExportFrom")) $("#smartExportFrom").value = settings.from;
-  if ($("#smartExportTo")) $("#smartExportTo").value = settings.to;
-  if ($("#smartExportSite")) $("#smartExportSite").value = settings.site;
-  if ($("#smartExportWorker")) $("#smartExportWorker").value = settings.worker;
-}
-
 function getExportRowsAndColumns() {
   const reports = getSelectedReportsForExport();
-  const settings = getSmartExportSettings();
-  const type = settings.type || "all";
   const keys = getExportColumnKeys();
   const columns = EXPORT_COLUMNS.filter(c => keys.includes(c.key));
-  const rows = reports
-    .filter(r => smartExportReportMatches(r, settings))
-    .flatMap(r => smartRowsForReport(r, type));
+  const rows = reports.flatMap(flattenReportRowsForExport);
   return { reports, columns, rows };
 }
 
@@ -5230,15 +3695,11 @@ function renderExportPanel() {
   const countBox = $("#exportSelectedCount");
   if (!box || !colsBox) return;
 
-  restoreSmartExportControls();
   const selected = getSelectedReportsForExport();
   const selectedIds = new Set(selected.map(r => r.id));
   const keys = getExportColumnKeys();
-  const settings = getSmartExportSettings();
-  const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
-  const exportRowsCount = selected.filter(r => smartExportReportMatches(r, settings)).flatMap(r => smartRowsForReport(r, settings.type)).length;
 
-  if (countBox) countBox.textContent = `${selected.length} izveštaja označeno · ${exportRowsCount} redova · ${preset.title}`;
+  if (countBox) countBox.textContent = `${selected.length} izveštaja označeno za export`;
 
   box.innerHTML = selected.length ? selected.map(r => {
     const d = r.data || {};
@@ -5387,14 +3848,13 @@ async function sendDefectNow() {
     if (!worker) throw new Error("Radnik nije prijavljen.");
 
     const defectText = $("#wrDefect")?.value.trim() || "";
-    const defectAsset = getDefectAssetPayload();
-    const defectAssetName = defectAsset.defect_asset_name || defectAsset.defect_manual_asset_name || "";
-    const defectImpact = getDefectImpactPayload();
+    const defectAssetName = $("#wrDefectAssetName")?.value.trim() || "";
     const selectedDefectSite = getSelectedWorkerSite ? getSelectedWorkerSite() : {};
     const defectSiteName = $("#wrDefectSiteName")?.value.trim() || selectedDefectSite.site_name || "";
+    const exists = $("#wrDefectExists")?.value || "ne";
 
-    if (!defectText && !defectAssetName) {
-      throw new Error("Upiši sredstvo u kvaru ili opis kvara.");
+    if (exists !== "da" && !defectText) {
+      throw new Error("Prvo označi da ima kvar ili upiši opis kvara.");
     }
 
     const machines = getMachineEntries ? getMachineEntries() : [];
@@ -5409,13 +3869,14 @@ async function sendDefectNow() {
       site_name: defectSiteName || getSelectedWorkerSite().site_name,
       defect_site_name: defectSiteName || getSelectedWorkerSite().site_name,
       machine: firstMachine,
-      ...defectAsset,
+      defect_asset_name: defectAssetName,
       defect_machine: defectAssetName,
       defect_site_name: defectSiteName,
       machines,
       defect_exists: "da",
       defect: defectText,
-      ...defectImpact,
+      defect_stops_work: $("#wrDefectStopsWork")?.value || "",
+      defect_can_continue: $("#wrDefectCanContinue")?.value || "",
       defect_urgency: $("#wrDefectUrgency")?.value || "",
       created_by_worker: worker.full_name,
       function_title: worker.function_title,
@@ -5433,7 +3894,7 @@ async function sendDefectNow() {
 
     if (error) throw error;
 
-    toast("Kvar je evidentiran odmah 🚨 Uprava i direktor mogu pratiti vreme rešavanja.");
+    toast("Kvar je evidentiran odmah 🚨 Direkcija i direktor mogu pratiti vreme rešavanja.");
   } catch(e) {
     toast(e.message, true);
   }
@@ -5487,199 +3948,6 @@ async function loginWorkerByCode() {
 }
 
 
-// v1.22.8_DIAGNOSTIC_SAFE
-// Bezbedna sistemska dijagnostika za Upravu.
-// Važno: ne pravi, ne menja i ne briše podatke. Radi samo read-only provere i DOM/proveru podešavanja.
-let lastDiagnosticRows = [];
-
-function diagnosticPush(rows, level, title, detail = "") {
-  rows.push({ level, title, detail: String(detail || "") });
-}
-
-function diagnosticLevelLabel(level) {
-  if (level === "ok") return "OK";
-  if (level === "warn") return "UPOZORENJE";
-  return "GREŠKA";
-}
-
-function renderDiagnosticModal(rows, running = false) {
-  const modal = $("#systemDiagnosticModal");
-  const summary = $("#systemDiagnosticSummary");
-  const list = $("#systemDiagnosticResults");
-  if (!modal || !summary || !list) return;
-
-  lastDiagnosticRows = rows || [];
-  const errors = lastDiagnosticRows.filter(r => r.level === "err").length;
-  const warnings = lastDiagnosticRows.filter(r => r.level === "warn").length;
-  const ok = lastDiagnosticRows.filter(r => r.level === "ok").length;
-
-  if (running) {
-    summary.textContent = "Test je u toku...";
-  } else if (errors) {
-    summary.textContent = `Pronađeno: ${errors} greška, ${warnings} upozorenja, ${ok} OK provera.`;
-  } else if (warnings) {
-    summary.textContent = `Nema kritičnih grešaka. Ima ${warnings} upozorenja i ${ok} OK provera.`;
-  } else {
-    summary.textContent = `Sve osnovne provere su OK (${ok}).`;
-  }
-
-  list.innerHTML = lastDiagnosticRows.map(r => `
-    <div class="diagnostic-row ${escapeHtml(r.level)}">
-      <div class="diagnostic-badge">${escapeHtml(diagnosticLevelLabel(r.level))}</div>
-      <div>
-        <div class="diagnostic-title">${escapeHtml(r.title)}</div>
-        ${r.detail ? `<div class="diagnostic-detail">${escapeHtml(r.detail)}</div>` : ""}
-      </div>
-    </div>
-  `).join("") || `<p class="muted">Nema rezultata.</p>`;
-
-  modal.classList.remove("hidden");
-}
-
-async function safeCountQuery(tableName, queryBuilder) {
-  const q = queryBuilder
-    .select("id", { count: "exact", head: true });
-  const { count, error } = await q;
-  if (error) throw error;
-  return count || 0;
-}
-
-async function runSystemDiagnostics() {
-  const rows = [];
-  renderDiagnosticModal([{ level: "warn", title: "Test je pokrenut", detail: "Sačekaj nekoliko sekundi. Ova provera ne šalje izveštaje i ne briše podatke." }], true);
-
-  try {
-    diagnosticPush(rows, "ok", "Verzija aplikacije", `APP_VERSION: ${APP_VERSION}`);
-
-    if (!window.supabase) diagnosticPush(rows, "err", "Supabase biblioteka", "window.supabase nije učitan. Proveri CDN/script u index.html.");
-    else diagnosticPush(rows, "ok", "Supabase biblioteka", "Biblioteka je učitana.");
-
-    if (!sb) initSupabase();
-    if (!sb) diagnosticPush(rows, "err", "Supabase client", "Supabase client nije inicijalizovan.");
-    else diagnosticPush(rows, "ok", "Supabase client", "Client je inicijalizovan.");
-
-    if (!currentCompany?.id) {
-      diagnosticPush(rows, "err", "Firma/Uprava", "Nema učitane firme. Pokreni test tek kada si prijavljen kao Uprava i vidiš dashboard firme.");
-      renderDiagnosticModal(rows);
-      return;
-    }
-    diagnosticPush(rows, "ok", "Firma/Uprava", `${currentCompany.company_name || currentCompany.name || "Firma"} · ID: ${currentCompany.id}`);
-
-    try {
-      const { data: userData, error } = await sb.auth.getUser();
-      if (error) throw error;
-      if (userData?.user?.email) diagnosticPush(rows, "ok", "Auth sesija Uprave", `Prijavljen email: ${userData.user.email}`);
-      else diagnosticPush(rows, "warn", "Auth sesija Uprave", "Nije pronađen prijavljen Supabase user. Ako si u Upravi i sve radi, ovo može biti posledica isteka sesije.");
-    } catch (e) {
-      diagnosticPush(rows, "err", "Auth sesija Uprave", e.message);
-    }
-
-    const requiredDom = [
-      "logoutBtn", "directorCompanyLabel", "peopleList", "sitesList", "assetsList", "materialsList",
-      "reportsList", "defectsList", "exportPreview", "exportXlsBtn", "copyExcelBtn",
-      "workerLoginBtn", "submitReportBtn", "sendDefectNowBtn"
-    ];
-    const missingDom = requiredDom.filter(id => !document.getElementById(id));
-    if (missingDom.length) diagnosticPush(rows, "warn", "HTML elementi", `Nedostaju elementi: ${missingDom.join(", ")}`);
-    else diagnosticPush(rows, "ok", "HTML elementi", "Osnovni elementi za Upravu, radnika, kvarove i Excel postoje.");
-
-    const duplicateIds = Array.from(document.querySelectorAll("[id]"))
-      .map(el => el.id)
-      .filter((id, i, arr) => id && arr.indexOf(id) !== i);
-    const uniqueDuplicates = [...new Set(duplicateIds)];
-    if (uniqueDuplicates.length) diagnosticPush(rows, "warn", "Duplirani HTML ID", `Pronađeno: ${uniqueDuplicates.join(", ")}. Ovo ne mora odmah rušiti app, ali može izazvati čudne klik greške.`);
-    else diagnosticPush(rows, "ok", "Duplirani HTML ID", "Nema dupliranih ID vrednosti.");
-
-    const tableChecks = [
-      { title: "Radnici / ljudi", table: "company_users", query: () => sb.from("company_users").eq("company_id", currentCompany.id) },
-      { title: "Gradilišta", table: "sites", query: () => sb.from("sites").eq("company_id", currentCompany.id) },
-      { title: "Mašine i vozila", table: "assets", query: () => sb.from("assets").eq("company_id", currentCompany.id) },
-      { title: "Izveštaji", table: "reports", query: () => sb.from("reports").eq("company_id", currentCompany.id) }
-    ];
-
-    for (const check of tableChecks) {
-      try {
-        const count = await safeCountQuery(check.table, check.query());
-        diagnosticPush(rows, "ok", `${check.title} tabela`, `Čitanje radi. Broj redova za firmu: ${count}.`);
-      } catch (e) {
-        diagnosticPush(rows, "err", `${check.title} tabela`, `${check.table}: ${e.message}`);
-      }
-    }
-
-    try {
-      const { data, error } = await sb.rpc("director_list_materials", { p_company_id: currentCompany.id });
-      if (error) throw error;
-      diagnosticPush(rows, "ok", "Materijali RPC", `director_list_materials radi. Broj materijala: ${(data || []).length}.`);
-    } catch (e) {
-      diagnosticPush(rows, "err", "Materijali RPC", `director_list_materials ne radi ili SQL funkcija fali: ${e.message}`);
-    }
-
-    try {
-      const { data, error } = await sb
-        .from("reports")
-        .select("id, user_id, data, status, report_date, created_at")
-        .eq("company_id", currentCompany.id)
-        .limit(5);
-      if (error) throw error;
-      const enriched = await enrichReportsWithUsers(data || []);
-      diagnosticPush(rows, "ok", "Reports → users povezivanje", `Bezbedno učitano ${enriched.length} izveštaja. Ne koristi se problematični company_users(...) embed.`);
-    } catch (e) {
-      diagnosticPush(rows, "err", "Reports → users povezivanje", e.message);
-    }
-
-    try {
-      localStorage.setItem("swp_diag_test", "ok");
-      localStorage.removeItem("swp_diag_test");
-      diagnosticPush(rows, "ok", "localStorage", "Čuvanje nacrta/podešavanja u browseru je dostupno.");
-    } catch (e) {
-      diagnosticPush(rows, "err", "localStorage", "Browser ne dozvoljava localStorage. Nacrti mogu praviti problem.");
-    }
-
-    try {
-      const manifest = await fetch("./manifest.json", { cache: "no-store" });
-      diagnosticPush(rows, manifest.ok ? "ok" : "warn", "PWA manifest", `HTTP status: ${manifest.status}`);
-    } catch (e) {
-      diagnosticPush(rows, "warn", "PWA manifest", e.message);
-    }
-
-    if ("serviceWorker" in navigator) {
-      try {
-        const reg = await navigator.serviceWorker.getRegistration();
-        diagnosticPush(rows, reg ? "ok" : "warn", "Service Worker", reg ? "Service Worker je registrovan." : "Service Worker još nije registrovan u ovom browseru.");
-      } catch (e) {
-        diagnosticPush(rows, "warn", "Service Worker", e.message);
-      }
-    } else {
-      diagnosticPush(rows, "warn", "Service Worker", "Ovaj browser ne podržava Service Worker.");
-    }
-
-    if (navigator.onLine) diagnosticPush(rows, "ok", "Internet veza", "Browser je online.");
-    else diagnosticPush(rows, "warn", "Internet veza", "Browser prijavljuje offline režim.");
-
-    diagnosticPush(rows, "warn", "Važna napomena", "Ovo nije automatsko slanje test izveštaja. Namerno ne pravi test radnika, ne šalje izveštaj i ne briše podatke, da ne poremeti bazu. Za kompletan test i dalje proveri ručno: radnik login → pošalji izveštaj → Uprava vidi → vrati na dopunu → Excel.");
-  } catch (e) {
-    diagnosticPush(rows, "err", "Neočekivana greška testa", e.message || String(e));
-  }
-
-  renderDiagnosticModal(rows);
-}
-
-function closeSystemDiagnostics() {
-  const modal = $("#systemDiagnosticModal");
-  if (modal) modal.classList.add("hidden");
-}
-
-async function copySystemDiagnostics() {
-  const text = (lastDiagnosticRows || []).map(r => `[${diagnosticLevelLabel(r.level)}] ${r.title}\n${r.detail || ""}`).join("\n\n");
-  try {
-    await navigator.clipboard.writeText(text || "Nema rezultata testa.");
-    toast("Rezultat testa je kopiran.");
-  } catch (e) {
-    toast("Ne mogu da kopiram rezultat. Označi tekst ručno iz prozora.", true);
-  }
-}
-
-
 function installNavigationFallback() {
   if (window.__swpNavFallbackInstalled) return;
   window.__swpNavFallbackInstalled = true;
@@ -5701,9 +3969,10 @@ function bindEvents() {
     });
   });
 
+  if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", signOut);
   $$("[data-goto]").forEach(btn => btn.addEventListener("click", () => show(btn.dataset.goto)));
   if ($("#logoutBtn")) $("#logoutBtn").addEventListener("click", signOut);
-  if ($("#internalLogoutBtn")) $("#internalLogoutBtn").addEventListener("click", signOut);
+  if ($("#directorTopLogoutBtn")) $("#directorTopLogoutBtn").addEventListener("click", signOut);
 
   $("#adminSignupBtn").addEventListener("click", async () => {
     try {
@@ -5742,7 +4011,7 @@ function bindEvents() {
   $("#directorSignupBtn").addEventListener("click", async () => {
     try {
       await signUp($("#directorEmail").value.trim(), $("#directorPassword").value);
-      toast("Uprava email registrovan. Ako stigne potvrda, potvrdi email pa se prijavi.");
+      toast("Direkcija email registrovan. Ako stigne potvrda, potvrdi email pa se prijavi.");
     } catch(e) { toast(e.message, true); }
   });
   $("#directorLoginBtn").addEventListener("click", async () => {
@@ -5767,10 +4036,7 @@ function bindEvents() {
       await loadDirectorCompany();
     } catch(e) { toast(e.message, true); }
   });
-  if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
-  if ($("#systemDiagnosticBtn")) $("#systemDiagnosticBtn").addEventListener("click", runSystemDiagnostics);
-  if ($("#closeDiagnosticBtn")) $("#closeDiagnosticBtn").addEventListener("click", closeSystemDiagnostics);
-  if ($("#copyDiagnosticBtn")) $("#copyDiagnosticBtn").addEventListener("click", copySystemDiagnostics);
+  $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
@@ -5825,9 +4091,6 @@ function bindEvents() {
 
   // Add mašina / gorivo koriste onclick direktno u HTML-u zbog pouzdanosti na mobilnom/PWA cache-u.
   if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
-  if ($("#memorizeFieldTankerBtn")) $("#memorizeFieldTankerBtn").addEventListener("click", memorizeCurrentFieldTankerEntries);
-  if ($("#sendStoredFieldTankerBtn")) $("#sendStoredFieldTankerBtn").addEventListener("click", sendStoredFieldTankerEntries);
-  if ($("#clearStoredFieldTankerBtn")) $("#clearStoredFieldTankerBtn").addEventListener("click", clearStoredFieldTankerEntries);
 
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
 
@@ -5841,10 +4104,6 @@ function bindEvents() {
 
   $("#saveDraftBtn").addEventListener("click", saveDraft);
   if ($("#wrLeaveType")) $("#wrLeaveType").addEventListener("change", updateLeaveRequestVisibility);
-  if ($("#wrDefectAssetName")) {
-    $("#wrDefectAssetName").addEventListener("input", updateDefectAssetSmartResult);
-    $("#wrDefectAssetName").addEventListener("change", updateDefectAssetSmartResult);
-  }
 
   $("#submitReportBtn").addEventListener("click", async () => {
     try {
@@ -5855,25 +4114,19 @@ function bindEvents() {
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Radnik nije prijavljen.");
       const data = collectWorkerData();
-      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Uprava.");
+      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Direkcija.");
     if (await submitReturnedCorrectionIfNeeded(data)) return;
-      const reportDate = $("#wrDate").value || today();
       const { error } = await sb.rpc("submit_worker_report", {
         p_company_code: worker.company_code,
         p_access_code: worker.access_code,
-        p_report_date: reportDate,
+        p_report_date: $("#wrDate").value || today(),
         p_site_id: data.site_id || null,
         p_data: data
       });
       if (error) throw error;
-      await verifyRecentlySubmittedReport(worker, reportDate);
-      try {
-        await prepareWorkerFormForNextReport();
-        toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
-      } catch (resetError) {
-        console.warn("Start Work PRO: izveštaj je poslat, ali priprema sledeće forme nije uspela:", resetError);
-        toast("Izveštaj je poslat Upravi ✅ Ako forma ne izgleda prazno, odjavi se i uđi ponovo.");
-      }
+      clearWorkerForm();
+      $("#wrDate").value = today();
+      toast("Izveštaj je poslat Direkciji ✅ Forma je očišćena.");
     } catch(e) { toast(e.message, true); }
   });
 }
@@ -5895,7 +4148,6 @@ async function openWorkerForm() {
   if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
   if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
   if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
-  renderStoredFieldTankerEntries();
   updateLeaveRequestVisibility();
 }
 
@@ -5940,12 +4192,8 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   if (error) throw error;
 
   localStorage.removeItem("swp_returned_report_id");
-  try {
-    await prepareWorkerFormForNextReport();
-  } catch (resetError) {
-    console.warn("Start Work PRO: ispravka je poslata, ali priprema sledeće forme nije uspela:", resetError);
-  }
+  toast("Ispravljen izveštaj je ponovo poslat Direkciji ✅");
+  clearWorkerForm();
   loadWorkerReturnedReports();
-  toast("Ispravljen izveštaj je ponovo poslat Upravi ✅ Forma je spremna za sledeći unos.");
   return true;
 }

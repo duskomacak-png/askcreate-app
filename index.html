@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1227" />
+  <link rel="stylesheet" href="style.css?v=1188" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -17,7 +17,7 @@
       <strong id="internalTitle">Radni prostor</strong>
       <small id="internalSubtitle">Firma</small>
     </div>
-    <button id="internalLogoutBtn" class="ghost hidden" type="button">Odjavi se</button>
+    <button id="internalLogoutBtn" class="ghost" type="button">Odjavi se</button>
   </div>
 
   <header class="topbar app-brand-header">
@@ -33,7 +33,7 @@
     <section id="viewHome" class="view active">
       <div class="hero card home-hero">
         <h2>Terenski ulaz</h2>
-        <p class="home-intro">Radnik brzo ulazi u terenski unos. Uprava i Administrator sistema su sekundarni ulazi za kancelariju.</p>
+        <p class="home-intro">Radnik brzo ulazi u terenski unos. Direkcija i Super Admin su sekundarni ulazi za kancelariju.</p>
         <div class="grid three home-entry-grid">
           <button class="big-btn worker-entry" data-goto="WorkerLogin">
             <span>👷</span>
@@ -42,25 +42,25 @@
           </button>
           <button class="big-btn director-entry secondary-entry" data-goto="DirectorLogin">
             <span>🏢</span>
-            Uprava
+            Direkcija
             <small>firma i kancelarija</small>
           </button>
           <button class="big-btn admin-entry secondary-entry" data-goto="AdminLogin">
             <span>🛡️</span>
-            Administrator sistema
+            Super Admin
             <small>odobravanje firmi</small>
           </button>
         </div>
       </div>
       <div class="notice home-mvp-notice">
-        <strong>Pravilo rada:</strong> radnik ne vidi staru arhivu. Popuni izveštaj, pošalje Upravi, forma se čisti.
+        <strong>MVP pravilo:</strong> radnik ne vidi staru arhivu. Popuni izveštaj, pošalje Direkciji, forma se čisti.
       </div>
     </section>
 
     <section id="viewAdminLogin" class="view">
       <div class="card narrow">
         <button class="back" data-goto="Home">← Nazad</button>
-        <h2>Administrator sistema soba</h2>
+        <h2>Super Admin soba</h2>
         <p class="muted">Ulaz samo za nalog koji postoji u tabeli <code>app_admins</code>.</p>
         <label>Email</label>
         <input id="adminEmail" type="email" value="duskomacak@gmail.com" />
@@ -78,7 +78,7 @@
       <div class="dashboard-head">
         <div>
           <h2>Admin soba</h2>
-          <p>Dodaješ firme koje tek posle toga mogu da aktiviraju Upravu.</p>
+          <p>Dodaješ firme koje tek posle toga mogu da aktiviraju Direkciju.</p>
         </div>
         <button id="refreshAdminBtn" class="secondary">Osveži</button>
       </div>
@@ -88,7 +88,7 @@
           <h3>+ Dodaj odobrenu firmu</h3>
           <label>Naziv firme</label>
           <input id="acCompanyName" placeholder="npr. Maki Gradnja" />
-          <label>Email Uprave</label>
+          <label>Email Direkcije</label>
           <input id="acEmail" type="email" placeholder="office@firma.rs" />
           <label>Šifra firme</label>
           <input id="acCompanyCode" placeholder="npr. MAKI26" />
@@ -116,12 +116,12 @@
     <section id="viewDirectorLogin" class="view">
       <div class="card narrow">
         <button class="back" data-goto="Home">← Nazad</button>
-        <h2>Uprava</h2>
-        <p class="muted">Uprava se može aktivirati samo ako je firma prethodno odobrena u administratorskom panelu.</p>
+        <h2>Direkcija</h2>
+        <p class="muted">Direkcija se može aktivirati samo ako je firma prethodno odobrena u Admin sobi.</p>
         <label>Email</label>
         <input id="directorEmail" type="email" placeholder="office@firma.rs" />
         <label>Lozinka</label>
-        <input id="directorPassword" type="password" placeholder="Lozinka Uprave" />
+        <input id="directorPassword" type="password" placeholder="Lozinka Direkcije" />
         <div class="row">
           <button id="directorLoginBtn" class="primary">Prijavi se</button>
           <button id="directorSignupBtn" class="secondary">Registruj email</button>
@@ -139,12 +139,10 @@
     <section id="viewDirectorDashboard" class="view">
       <div class="dashboard-head">
         <div>
-          <h2>Uprava</h2>
+          <h2>Direkcija</h2>
           <p id="directorCompanyLabel">Firma</p>
         </div>
-        <div class="dashboard-actions">
-          <button id="systemDiagnosticBtn" class="secondary small-action" type="button">🧪 Test sistema</button>
-        </div>
+        <div class="director-actions"><button id="directorTopLogoutBtn" class="secondary small-action" type="button">Odjavi se</button><button id="refreshDirectorBtn" class="secondary small-action" type="button">Osveži</button></div>
       </div>
 
       <div class="tabs">
@@ -187,22 +185,22 @@
             <label>Šifra radnika</label>
             <input id="personCode" placeholder="npr. zor1234" />
             <div class="permission-box">
-              <h4>Dodeljene radne rubrike</h4>
-              <label><input type="checkbox" class="perm" value="daily_work" /> Gradilište i datum izveštaja</label>
+              <h4>Šta ovaj korisnik sme da popunjava?</h4>
+              <label><input type="checkbox" class="perm" value="daily_work" /> Ime gradilišta i datum/godina</label>
               <label><input type="checkbox" class="perm" value="workers" /> Radnici na gradilištu</label>
               <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
-              <label><input type="checkbox" class="perm" value="vehicles" /> Rad vozila / kamiona</label>
-              <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
-              <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
-              <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
+              <label><input type="checkbox" class="perm" value="vehicles" /> Rad sa kamionom / vozilom</label>
+              <label><input type="checkbox" class="perm" value="lowloader" /> Prevoz mašine labudicom</label>
+              <label><input type="checkbox" class="perm" value="fuel" /> Sipanje goriva u svoju mašinu</label>
+              <label><input type="checkbox" class="perm" value="field_tanker" /> Tankanje goriva cisternom</label>
               <label><input type="checkbox" class="perm" value="materials" /> Materijal</label>
-              <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za odsustvo / godišnji odmor</label>
+              <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za slobodan dan / godišnji odmor</label>
               <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
-              <label><input type="checkbox" class="perm" value="defects" /> Evidencija kvara</label>
+              <label><input type="checkbox" class="perm" value="defects" /> Prijava kvara</label>
               <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
-              <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje izveštaja</label>
+              <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje</label>
               <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
-              <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje korisnicima</label>
+              <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje osobama</label>
               <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
               <div class="material-permission-box">
                 <h4>Materijali koje radnik sme da vidi</h4>
@@ -217,7 +215,7 @@
               <div class="worker-preview-head">
                 <div>
                   <p class="preview-eyebrow">Pregled pre čuvanja</p>
-                  <h3>Pregled radničkog unosa</h3>
+                  <h3>Kako će radnik videti unos</h3>
                 </div>
                 <button id="hideWorkerPreviewBtn" class="secondary small-action" type="button">Skloni</button>
               </div>
@@ -251,25 +249,19 @@
       <div id="tabAssets" class="tab-panel">
         <div class="grid two">
           <div class="card">
-            <h3 id="assetFormTitle">+ Dodaj sredstvo</h3>
-            <label>Interni broj sredstva</label>
-            <input id="assetCode" placeholder="npr. 101, B-12, KAM-05" autocomplete="off" />
-            <p class="field-hint">Ovaj broj služi da radnik ukuca/pronađe sredstvo po broju, a aplikacija pokaže pravi naziv.</p>
+            <h3 id="assetFormTitle">+ Dodaj mašinu / vozilo</h3>
             <label>Naziv</label>
             <input id="assetName" placeholder="CAT 330 / MAN kiper" />
-            <label>Kategorija</label>
+            <label>Tip</label>
             <select id="assetType">
               <option value="machine">Mašina</option>
               <option value="vehicle">Vozilo</option>
-              <option value="other">Oprema / ostalo</option>
+              <option value="other">Ostalo</option>
             </select>
             <label>Registracija / oznaka</label>
             <input id="assetReg" placeholder="BG-123-AA / interna oznaka" />
-            <label>Kapacitet vozila (m³)</label>
-            <div class="unit-input">
-              <input id="assetCapacity" inputmode="decimal" placeholder="npr. 18" />
-              <span class="unit-suffix">m³</span>
-            </div>
+            <label>Kapacitet</label>
+            <input id="assetCapacity" placeholder="npr. 12m3" />
             <div class="row asset-form-actions"><button id="addAssetBtn" class="primary">Sačuvaj</button><button id="cancelEditAssetBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
           <div class="card">
@@ -330,54 +322,10 @@
         </div>
       </div>
 
-
-
-
-
       <div id="tabExport" class="tab-panel">
         <div class="card">
           <h3>Izvoz u Excel</h3>
-          <p class="muted">Ovde stoje dnevni izveštaji koje je Uprava označila. Odaberi koje podatke želiš u Excel fajlu.</p>
-
-          <div class="export-box smart-export-box">
-            <h4>Brzi filter za poseban Excel</h4>
-            <p class="muted">Za Upravu: izaberi šta želiš da izvučeš, period, gradilište ili radnika. Aplikacija sama označi izveštaje i kolone.</p>
-            <div class="smart-export-grid">
-              <label>Vrsta exporta
-                <select id="smartExportType">
-                  <option value="all">Sve iz izabranih izveštaja</option>
-                  <option value="fuel_all">Sva sipanja goriva</option>
-                  <option value="fuel_own">Evidencija goriva – korisnik/vozilo/opremu</option>
-                  <option value="fuel_tanker">Evidencija goriva – cisterna</option>
-                  <option value="hours_workers">Radni sati radnika</option>
-                  <option value="machines">Rad mašina / MTČ</option>
-                  <option value="vehicles">Vozila / ture / m³</option>
-                  <option value="lowloader">Transport mašine labudicom</option>
-                  <option value="materials">Materijal</option>
-                  <option value="warehouse">Magacin</option>
-                  <option value="leave">Slobodni dani / godišnji</option>
-                  <option value="defects">Kvarovi</option>
-                </select>
-              </label>
-              <label>Od datuma
-                <input id="smartExportFrom" type="date" />
-              </label>
-              <label>Do datuma
-                <input id="smartExportTo" type="date" />
-              </label>
-              <label>Gradilište
-                <input id="smartExportSite" placeholder="npr. Zmaj" />
-              </label>
-              <label>Radnik / ime / šifra
-                <input id="smartExportWorker" placeholder="npr. Duško, dus1506" />
-              </label>
-            </div>
-            <div class="row compact">
-              <button id="applySmartExportBtn" class="primary" type="button">🔎 Pripremi poseban Excel</button>
-              <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filter</button>
-            </div>
-            <p id="smartExportInfo" class="hint">Primer: izaberi “Sva sipanja goriva”, datume za mesec dana i gradilište Zmaj.</p>
-          </div>
+          <p class="muted">Ovde stoje dnevni izveštaji koje je Direkcija označila. Odaberi koje podatke želiš u Excel fajlu.</p>
 
           <div class="export-box">
             <h4>Izabrani izveštaji</h4>
@@ -419,17 +367,17 @@
     <section id="viewWorkerLogin" class="view">
       <div class="card narrow">
         <button class="back" data-goto="Home">← Nazad</button>
-        <h2>Terenski unos</h2>
+        <h2>Radnik / terenski unos</h2>
         <label>Šifra firme</label>
         <input id="workerCompanyCode" placeholder="npr. test2026" />
-        <p class="code-login-note">Šifra firme koju je Uprava dobila pri aktivaciji.</p>
+        <p class="code-login-note">Šifra firme koju je Direkcija dobila pri aktivaciji.</p>
         <div id="workerLoginHelpBox" class="code-help-box">
               <b>Prijava radnika:</b>
               <span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>
             </div>
             <label>Šifra radnika</label>
         <input id="workerAccessCode" placeholder="npr. zor1234" />
-        <p class="code-login-note">Šifra radnika koju je Uprava upisala u profilu radnika.</p>
+        <p class="code-login-note">Šifra radnika koju je Direkcija upisala u profilu radnika.</p>
         <button id="workerLoginBtn" class="primary">Uđi</button>
         <p class="hint">Browser pamti ulaz na ovom uređaju. Stari izveštaji se ne prikazuju radniku.</p>
       </div>
@@ -447,12 +395,12 @@
       <div class="card">
       <div id="workerReturnedReports" class="returned-panel hidden">
         <h3>⚠️ Izveštaji vraćeni na dopunu</h3>
-        <p class="hint">Uprava je vratila ove izveštaje. Otvori izveštaj, ispravi podatke i pošalji ponovo.</p>
+        <p class="hint">Direkcija je vratila ove izveštaje. Otvori izveštaj, ispravi podatke i pošalji ponovo.</p>
         <div id="workerReturnedList" class="returned-list"></div>
       </div>
 
         <h3>Terenski unos</h3>
-        <p class="hint">Ako ti Uprava uključi rubriku Gradilište i datum izveštaja, popunjavaš samo datum/godinu i biraš gradilište iz liste Uprave. Ostale rubrike vidiš samo ako su posebno uključene.</p>
+        <p class="hint">Ako ti Direkcija uključi rubriku Ime gradilišta i datum/godina, popunjavaš samo datum/godinu i biraš gradilište iz liste Direkcije. Ostale rubrike vidiš samo ako su posebno uključene.</p>
         <label>Datum / godina</label>
         <input id="wrDate" type="date" />
 
@@ -461,12 +409,12 @@
           <select id="wrSiteName">
             <option value="">Učitavam gradilišta...</option>
           </select>
-          <p id="workerSiteHint" class="hint">Gradilišta dodaje Uprava. Radnik bira sa liste aktivnih gradilišta.</p>
+          <p id="workerSiteHint" class="hint">Gradilišta dodaje Direkcija. Radnik bira sa liste aktivnih gradilišta.</p>
         </div>
 
         <div id="secDailyWork" class="dyn-section hidden-by-rule" aria-hidden="true">
-          <!-- v1.16.3: Gradilište i datum izveštaja više ne prikazuje opis rada ni sate.
-               Pravilo: samo Datum / godina + Gradilište iz liste Uprave.
+          <!-- v1.16.3: Ime gradilišta i datum/godina više ne prikazuje opis rada ni sate.
+               Pravilo: samo Datum / godina + Gradilište iz liste Direkcije.
                Ovaj blok ostaje u HTML-u zbog kompatibilnosti, ali se ne aktivira. -->
           <h4>Šta je rađeno danas</h4>
           <label>Opis rada</label>
@@ -477,35 +425,35 @@
 
         <div id="secWorkers" class="dyn-section">
           <h4>Radnici / sati po radniku</h4>
-          <p class="hint">Ovu rubriku Uprava uključuje za šefa ili osobu koja vodi ekipu. Dodaj svakog radnika posebno i upiši koliko je sati radio taj dan.</p>
+          <p class="hint">Ovu rubriku Direkcija uključuje za šefa ili osobu koja vodi ekipu. Dodaj svakog radnika posebno i upiši koliko je sati radio taj dan.</p>
           <div id="workerEntries" class="entry-list"></div>
           <button id="addWorkerEntryBtn" class="secondary" type="button" onclick="addWorkerEntry()">+ Dodaj novog radnika</button>
         </div>
 
         <div id="secMachines" class="dyn-section">
-          <h4>Evidencija rada mašine</h4>
-          <p class="hint">Sredstva dodaje Uprava. Radnik unosi interni broj ili naziv; aplikacija automatski prepoznaje sredstvo ako postoji u evidenciji.</p>
+          <h4>Mašina koju sam koristio</h4>
+          <p class="hint">Mašine dodaje Direkcija. Radnik bira ponuđenu mašinu dok kuca ili upiše ručno ako nije na listi.</p>
           <div id="machineEntries" class="entry-list"></div>
           <button id="addMachineBtn" class="secondary" type="button" onclick="addMachineEntry()">+ Dodaj mašinu</button>
         </div>
 
         <div id="secVehicles" class="dyn-section">
-          <h4>Evidencija rada vozila</h4>
-          <p class="hint">Vozila dodaje Uprava. Radnik unosi interni broj, tablice ili naziv; aplikacija automatski prepoznaje vozilo ako postoji u evidenciji.</p>
+          <h4>Kamion / vozilo koje sam koristio</h4>
+          <p class="hint">Vozila dodaje Direkcija. Radnik bira vozilo iz liste. Ako pređe na drugo vozilo, klikne + Dodaj vozilo.</p>
           <div id="vehicleEntries" class="entry-list"></div>
           <button id="addVehicleBtn" class="secondary" type="button" onclick="addVehicleEntry()">+ Dodaj vozilo</button>
         </div>
 
         <div id="secLowloader" class="dyn-section">
-          <h4>Transport mašine labudicom</h4>
-          <p class="hint">Ova rubrika se koristi za evidentiranje transporta mašina labudicom. Svaki transport se unosi posebno.</p>
+          <h4>Prevoz mašine labudicom</h4>
+          <p class="hint">Ovu rubriku Direkcija uključuje za prevoz mašina labudicom. Dodaj svaku selidbu posebno.</p>
           <div id="lowloaderEntries" class="entry-list"></div>
           <button id="addLowloaderBtn" class="secondary" type="button" onclick="addLowloaderEntry()">+ Dodaj selidbu mašine</button>
         </div>
 
         <div id="secFuel" class="dyn-section">
           <h4>Sipanje goriva</h4>
-          <p class="hint">Možeš evidentirati više sipanja goriva i povezati svako sipanje sa konkretnim sredstvom.</p>
+          <p class="hint">Možeš dodati više sipanja goriva i povezati svako sipanje sa mašinom/vozilom.</p>
           <div id="fuelEntries" class="entry-list"></div>
           <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
           <p class="hint">Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
@@ -514,36 +462,24 @@
 
 
         <div id="secFieldTanker" class="dyn-section">
-          <h4>Evidencija goriva – cisterna</h4>
-          <p class="hint">Ova rubrika se koristi za evidenciju goriva koje cisterna isporučuje na gradilištu. Svako sipanje se unosi posebno.</p>
+          <h4>Tankanje goriva cisternom</h4>
+          <p class="hint">Ovu rubriku Direkcija uključuje za radnika koji razvozi gorivo cisternom na gradilišta. Dodaj svako sipanje posebno.</p>
           <div id="fieldTankerEntries" class="entry-list"></div>
           <button id="addFieldTankerBtn" class="secondary" type="button" onclick="addFieldTankerEntry()">+ Dodaj sipanje</button>
-
-          <div class="fuel-memory-panel">
-            <h5>Memoriši sipanje goriva</h5>
-            <p class="hint">Za operatera goriva: svako sipanje može se sačuvati lokalno na telefonu, a na kraju dana poslati Upravi kao jedan dnevni izveštaj.</p>
-            <div class="row compact-row">
-              <button id="memorizeFieldTankerBtn" class="secondary" type="button">💾 Memoriši trenutna sipanja</button>
-              <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji sva memorišana</button>
-              <button id="clearStoredFieldTankerBtn" class="danger-btn" type="button">Obriši memoriju</button>
-            </div>
-            <div id="storedFieldTankerList" class="stored-fuel-list"></div>
-            <p class="hint">Memorisana sipanja se ne brišu dok Supabase ne potvrdi uspešno slanje.</p>
-          </div>
         </div>
 
         <div id="secMaterials" class="dyn-section">
           <h4>Materijal</h4>
-          <p class="hint">Uprava dodaje listu materijala. Za svaki unos bira se da li je ulaz, izlaz ili ugradnja materijala.</p>
+          <p class="hint">Direkcija dodaje listu materijala. Radnik za svaki unos bira da li je ulaz, izlaz ili ugradnja materijala.</p>
           <div id="materialEntries" class="entry-list"></div>
           <button id="addMaterialBtn" class="secondary" type="button" onclick="addMaterialEntry()">+ Dodaj materijal</button>
-          <p class="field-hint">Ako materijal nije u evidenciji, možeš upisati naziv materijala.</p>
+          <p class="field-hint">Ako materijal nije u listi Direkcije, možeš ga upisati ručno.</p>
         </div>
 
 
         <div id="secLeaveRequest" class="dyn-section">
-          <h4>Zahtev za odsustvo / godišnji odmor</h4>
-          <p class="hint">Ova rubrika služi za slanje zahteva za odsustvo ili godišnji odmor.</p>
+          <h4>Zahtev za slobodan dan / godišnji odmor</h4>
+          <p class="hint">Ovu rubriku Direkcija uključuje radniku kada želi da radnik može poslati zahtev za slobodan dan ili godišnji odmor.</p>
           <label>Vrsta zahteva</label>
           <select id="wrLeaveType">
             <option value="slobodan_dan">Slobodan dan</option>
@@ -584,26 +520,43 @@
         </div>
 
         <div id="secDefects" class="dyn-section">
-          <h4>Evidencija kvara</h4>
+          <h4>Prijava kvara</h4>
           <p class="hint">Ovo je važno da Šef mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
-          <label>Sredstvo u kvaru / interni broj</label>
-          <input id="wrDefectAssetName" class="asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili registraciju, npr. 1, CAT 330, BG3542RI" autocomplete="off" />
-          <div id="wrDefectAssetPicked" class="asset-smart-result defect-picked">Upiši interni broj, naziv mašine/vozila/opreme ili registraciju.</div>
+          <label>Ime mašine / vozila koje je u kvaru</label>
+          <input id="wrDefectAssetName" placeholder="npr. CAT 330, MAN kiper, D6R..." />
 
-          <label>Lokacija sredstva</label>
+          <label>Gradilište / lokacija mašine</label>
           <input id="wrDefectSiteName" placeholder="npr. Zemun Zmaj, Beograd, lokacija gde stoji mašina..." />
-          <p class="hint">Upiši gde se nalazi sredstvo u kvaru. Ako je gore već izabrano gradilište, možeš prepisati isti naziv.</p>
+          <p class="hint">Upiši gde se nalazi mašina u kvaru. Ako je gore već izabrano gradilište, možeš prepisati isti naziv.</p>
+
+          <label>Ima kvar?</label>
+          <select id="wrDefectExists">
+            <option value="ne">Ne</option>
+            <option value="da">Da</option>
+          </select>
 
           <label>Opis kvara</label>
           <textarea id="wrDefect" placeholder="npr. puklo crevo, curi ulje, ne pali..."></textarea>
 
-          <label>Uticaj kvara na rad</label>
-          <select id="wrDefectStopsWork">
-            <option value="">-- izaberi --</option>
-            <option value="zaustavlja_rad">Zaustavlja rad</option>
-            <option value="moze_nastaviti">Može nastaviti rad do popravke</option>
-          </select>
+          <div class="mini-grid">
+            <div>
+              <label>Zaustavlja rad?</label>
+              <select id="wrDefectStopsWork">
+                <option value="">-- izaberi --</option>
+                <option value="da">Da</option>
+                <option value="ne">Ne</option>
+              </select>
+            </div>
+            <div>
+              <label>Može nastaviti rad?</label>
+              <select id="wrDefectCanContinue">
+                <option value="">-- izaberi --</option>
+                <option value="da">Da</option>
+                <option value="ne">Ne</option>
+              </select>
+            </div>
+          </div>
 
           <label>Hitnost</label>
           <select id="wrDefectUrgency">
@@ -621,41 +574,22 @@
           </select>
 
           <button id="sendDefectNowBtn" class="danger-btn" type="button">🚨 Evidentiraj kvar odmah</button>
-          <p class="hint">Ako je kvar hitan, prvo obavesti odgovorno lice. Ova prijava ostaje kao evidencija za Upravu i tehničku službu.</p>
+          <p class="hint">Ako je hitno, prvo pozovi šefa mehanizacije. Ova prijava ostaje kao evidencija za Direkciju i direktora.</p>
         </div>
 
         <div class="row">
           <button id="saveDraftBtn" class="secondary">Sačuvaj nacrt</button>
-          <button id="submitReportBtn" class="primary">Pošalji Upravi</button>
+          <button id="submitReportBtn" class="primary">Pošalji Direkciji</button>
         </div>
       </div>
     </section>
-  
-
-    <div id="systemDiagnosticModal" class="diagnostic-modal hidden" aria-live="polite">
-      <div class="diagnostic-box">
-        <div class="diagnostic-head">
-          <div>
-            <h3>🧪 Test sistema</h3>
-            <p class="muted tiny">Bezbedna provera: čita podatke i proverava veze, ne pravi i ne briše izveštaje.</p>
-          </div>
-          <button id="closeDiagnosticBtn" class="ghost" type="button">Zatvori</button>
-        </div>
-        <div id="systemDiagnosticSummary" class="diagnostic-summary">Spremno za test.</div>
-        <div id="systemDiagnosticResults" class="diagnostic-results"></div>
-        <div class="row">
-          <button id="copyDiagnosticBtn" class="secondary" type="button">📋 Kopiraj rezultat</button>
-        </div>
-      </div>
-    </div>
-
   </main>
 
   <footer class="footer">
     <span>Start Work PRO by AskCreate</span>
-    <span>Start Work PRO</span>
+    <span>MVP v1</span>
   </footer>
 
-  <script src="script.js?v=1227"></script>
+  <script src="script.js?v=1188"></script>
 </body>
 </html>
