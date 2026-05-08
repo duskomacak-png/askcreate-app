@@ -1814,3 +1814,86 @@ body.in-app .shell{
   .preview-kpis { grid-template-columns: 1fr; }
   .preview-topbar { flex-direction: column; }
 }
+
+
+/* v1.23.9 - Boja firme se primenjuje i u pravom prikazu Direkcije/Radnika */
+body.company-brand-green{
+  --company-brand:#0f766e; --company-brand-dark:#075f55; --company-brand-soft:#e8f5ef;
+  --pro-green:#0f766e; --pro-green-dark:#075f55; --pro-soft-green:#e8f5ef;
+  --primary:#0f766e; --primary-dark:#075f55; --accent:#14b8a6;
+  --green:#0f766e; --green-2:#14b8a6; --green-soft:#e8f5ef;
+}
+body.company-brand-darkgreen{
+  --company-brand:#065f46; --company-brand-dark:#064e3b; --company-brand-soft:#e7f7ef;
+  --pro-green:#065f46; --pro-green-dark:#064e3b; --pro-soft-green:#e7f7ef;
+  --primary:#065f46; --primary-dark:#064e3b; --accent:#10b981;
+  --green:#065f46; --green-2:#10b981; --green-soft:#e7f7ef;
+}
+body.company-brand-blue{
+  --company-brand:#2563eb; --company-brand-dark:#1d4ed8; --company-brand-soft:#eff6ff;
+  --pro-green:#2563eb; --pro-green-dark:#1d4ed8; --pro-soft-green:#eff6ff;
+  --primary:#2563eb; --primary-dark:#1d4ed8; --accent:#60a5fa;
+  --green:#2563eb; --green-2:#60a5fa; --green-soft:#eff6ff;
+}
+body.company-brand-orange{
+  --company-brand:#f97316; --company-brand-dark:#c2410c; --company-brand-soft:#fff7ed;
+  --pro-green:#f97316; --pro-green-dark:#c2410c; --pro-soft-green:#fff7ed;
+  --primary:#f97316; --primary-dark:#c2410c; --accent:#fb923c;
+  --green:#f97316; --green-2:#fb923c; --green-soft:#fff7ed;
+}
+body.company-brand-red{
+  --company-brand:#dc2626; --company-brand-dark:#991b1b; --company-brand-soft:#fef2f2;
+  --pro-green:#dc2626; --pro-green-dark:#991b1b; --pro-soft-green:#fef2f2;
+  --primary:#dc2626; --primary-dark:#991b1b; --accent:#f87171;
+  --green:#dc2626; --green-2:#f87171; --green-soft:#fef2f2;
+}
+body.company-brand-purple{
+  --company-brand:#7c3aed; --company-brand-dark:#5b21b6; --company-brand-soft:#f5f3ff;
+  --pro-green:#7c3aed; --pro-green-dark:#5b21b6; --pro-soft-green:#f5f3ff;
+  --primary:#7c3aed; --primary-dark:#5b21b6; --accent:#a78bfa;
+  --green:#7c3aed; --green-2:#a78bfa; --green-soft:#f5f3ff;
+}
+body.company-brand-dark{
+  --company-brand:#111827; --company-brand-dark:#030712; --company-brand-soft:#f1f5f9;
+  --pro-green:#111827; --pro-green-dark:#030712; --pro-soft-green:#f1f5f9;
+  --primary:#111827; --primary-dark:#030712; --accent:#475569;
+  --green:#111827; --green-2:#475569; --green-soft:#f1f5f9;
+}
+
+body[class*="company-brand-"] .director-logo-mark,
+body[class*="company-brand-"] body.in-app .internal-header > div:first-child::before{
+  background:linear-gradient(135deg,var(--company-brand),var(--company-brand-dark))!important;
+  color:#fff!important;
+  box-shadow:0 10px 20px color-mix(in srgb, var(--company-brand) 24%, transparent)!important;
+}
+body[class*="company-brand-"] .director-logo-box span{color:var(--company-brand)!important}
+body[class*="company-brand-"] .quick-action.green{
+  background:linear-gradient(135deg,var(--company-brand),var(--company-brand-dark))!important;
+  box-shadow:0 12px 22px color-mix(in srgb, var(--company-brand) 22%, transparent)!important;
+}
+body[class*="company-brand-"] .quick-action.outline{
+  color:var(--company-brand-dark)!important;
+  border-color:var(--company-brand)!important;
+}
+body[class*="company-brand-"] #viewDirectorDashboard .pill{
+  background:var(--company-brand-soft)!important;
+  color:var(--company-brand-dark)!important;
+  border-color:color-mix(in srgb, var(--company-brand) 28%, white)!important;
+}
+body[class*="company-brand-"] body.in-app .internal-header,
+body[class*="company-brand-"] .internal-header{
+  border-bottom:4px solid var(--company-brand)!important;
+}
+body[class*="company-brand-"] input:focus,
+body[class*="company-brand-"] select:focus,
+body[class*="company-brand-"] textarea:focus{
+  border-color:var(--company-brand)!important;
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--company-brand) 18%, transparent)!important;
+}
+body[class*="company-brand-"] input[type="checkbox"],
+body[class*="company-brand-"] input[type="radio"]{accent-color:var(--company-brand)!important}
+body[class*="company-brand-"] .internal-header > div:first-child::before{
+  background:linear-gradient(135deg,var(--company-brand),var(--company-brand-dark))!important;
+  border-color:color-mix(in srgb, var(--company-brand) 32%, white)!important;
+  color:#fff!important;
+}

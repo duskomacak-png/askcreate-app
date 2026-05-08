@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.23.8";
+const APP_VERSION = "1.23.9";
 
 
 let sb = null;
@@ -179,6 +179,7 @@ function businessUpdateReportsMetrics(list) {
 function show(view) {
   const publicViews = ["Home", "AdminLogin", "DirectorLogin", "WorkerLogin"];
   if (publicViews.includes(view)) {
+    clearCompanyBrandFromBody();
     setInternalHeader("", "", false);
   }
 
@@ -217,6 +218,8 @@ async function signIn(email, password) {
 async function signOut() {
   if (sb) await sb.auth.signOut();
   currentCompany = null;
+  currentWorker = null;
+  clearCompanyBrandFromBody();
   localStorage.removeItem("swp_worker");
   setInternalHeader("", "", false);
   show("Home");
@@ -641,21 +644,66 @@ window.adminUpdateCompanyBrand = async (table, id, color) => {
   try {
     const safeTable = table === "companies" ? "companies" : "approved_companies";
     const safeColor = normalizeCompanyBrandColor(color);
+
+    const source = safeTable === "approved_companies"
+      ? adminApprovedCompaniesCache.find(c => String(c.id) === String(id))
+      : adminRegisteredCompaniesCache.find(c => String(c.id) === String(id));
+
     const { error } = await sb.from(safeTable).update({ brand_color: safeColor }).eq("id", id);
     if (error) throw error;
 
+    // VAŽNO v1.23.9:
+    // Ako admin promeni boju u listi odobrenih firmi, a firma je već aktivirana,
+    // mora se promeniti i red u tabeli companies. Inače Admin vidi novu boju,
+    // ali Uprava firme i radnik ostanu na staroj boji.
+    const companyCode = source?.company_code || "";
+    const approvedEmail = source?.approved_email || source?.owner_email || "";
+
     if (safeTable === "approved_companies") {
-      adminApprovedCompaniesCache = adminApprovedCompaniesCache.map(c => String(c.id) === String(id) ? { ...c, brand_color: safeColor } : c);
-      renderAdminCompanies($("#adminCompanySearch")?.value || "");
-    } else {
-      adminRegisteredCompaniesCache = adminRegisteredCompaniesCache.map(c => String(c.id) === String(id) ? { ...c, brand_color: safeColor } : c);
-      if (currentCompany && String(currentCompany.id) === String(id)) {
-        currentCompany.brand_color = safeColor;
-        applyCompanyBrandToBody(safeColor);
+      if (companyCode) {
+        const { error: syncErr } = await sb.from("companies").update({ brand_color: safeColor }).eq("company_code", companyCode);
+        if (syncErr) console.warn("Start Work PRO: boja nije sinhronizovana u companies po company_code", syncErr.message);
       }
-      loadCompanies();
+      if (approvedEmail) {
+        const { error: syncEmailErr } = await sb.from("companies").update({ brand_color: safeColor }).eq("owner_email", approvedEmail);
+        if (syncEmailErr) console.warn("Start Work PRO: boja nije sinhronizovana u companies po emailu", syncEmailErr.message);
+      }
+    } else {
+      if (companyCode) {
+        const { error: syncErr } = await sb.from("approved_companies").update({ brand_color: safeColor }).eq("company_code", companyCode);
+        if (syncErr) console.warn("Start Work PRO: boja nije sinhronizovana u approved_companies po company_code", syncErr.message);
+      }
+      if (approvedEmail) {
+        const { error: syncEmailErr } = await sb.from("approved_companies").update({ brand_color: safeColor }).eq("approved_email", approvedEmail);
+        if (syncEmailErr) console.warn("Start Work PRO: boja nije sinhronizovana u approved_companies po emailu", syncEmailErr.message);
+      }
     }
-    toast(`Boja firme promenjena: ${companyBrandLabel(safeColor)}.`);
+
+    adminApprovedCompaniesCache = adminApprovedCompaniesCache.map(c => {
+      const sameId = safeTable === "approved_companies" && String(c.id) === String(id);
+      const sameCode = companyCode && String(c.company_code || "") === String(companyCode);
+      const sameEmail = approvedEmail && String(c.approved_email || "") === String(approvedEmail);
+      return (sameId || sameCode || sameEmail) ? { ...c, brand_color: safeColor } : c;
+    });
+    adminRegisteredCompaniesCache = adminRegisteredCompaniesCache.map(c => {
+      const sameId = safeTable === "companies" && String(c.id) === String(id);
+      const sameCode = companyCode && String(c.company_code || "") === String(companyCode);
+      const sameEmail = approvedEmail && String(c.owner_email || "") === String(approvedEmail);
+      return (sameId || sameCode || sameEmail) ? { ...c, brand_color: safeColor } : c;
+    });
+
+    if (currentCompany && (
+      String(currentCompany.id) === String(id) ||
+      (companyCode && String(currentCompany.company_code || "") === String(companyCode)) ||
+      (approvedEmail && String(currentCompany.owner_email || "") === String(approvedEmail))
+    )) {
+      currentCompany.brand_color = safeColor;
+      applyCompanyBrandToBody(safeColor);
+    }
+
+    renderAdminCompanies($("#adminCompanySearch")?.value || "");
+    loadCompanies();
+    toast(`Boja firme promenjena i sinhronizovana: ${companyBrandLabel(safeColor)}.`);
   } catch (e) {
     toast(e.message || "Boja firme nije promenjena.", true);
   }
@@ -687,14 +735,15 @@ async function loadDirectorCompany() {
     toast("Email je prijavljen, ali firma još nije aktivirana. Unesi šifru firme i pozivni kod.");
     return null;
   }
-  currentCompany = data;
-  applyCompanyBrandToBody(currentCompany?.brand_color || "green");
   const approvedSource = await loadApprovedCompanyForDirector(data.company_code);
+  const effectiveBrandColor = data.brand_color || approvedSource?.brand_color || "green";
+  currentCompany = { ...data, brand_color: effectiveBrandColor };
+  applyCompanyBrandToBody(effectiveBrandColor);
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   businessUpdateCompanyName();
-  setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
+  setInternalHeader("Uprava", (currentCompany?.name || "Firma"), true);
   show("DirectorDashboard");
-  showDirectorPackageNotice(approvedSource || data);
+  showDirectorPackageNotice(approvedSource || currentCompany);
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
   return data;
@@ -6267,7 +6316,30 @@ function bindEvents() {
   });
 }
 
+
+async function applyWorkerCompanyBrand() {
+  try {
+    if (!currentWorker?.company_id || !sb) {
+      applyCompanyBrandToBody("green");
+      return;
+    }
+    const { data, error } = await sb
+      .from("companies")
+      .select("brand_color")
+      .eq("id", currentWorker.company_id)
+      .maybeSingle();
+    if (error) throw error;
+    const safeColor = normalizeCompanyBrandColor(data?.brand_color || currentWorker?.brand_color || "green");
+    currentWorker.brand_color = safeColor;
+    applyCompanyBrandToBody(safeColor);
+  } catch (e) {
+    console.warn("Start Work PRO: boja firme za radnika nije učitana", e?.message || e);
+    applyCompanyBrandToBody(currentWorker?.brand_color || "green");
+  }
+}
+
 async function openWorkerForm() {
+  await applyWorkerCompanyBrand();
   $("#wrDate").value = today();
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
