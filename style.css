@@ -2089,7 +2089,6 @@ body.worker-code-only-mode #viewWorkerLogin .back,
 body.worker-code-only-mode #workerCompanyCodeLabel,
 body.worker-code-only-mode #workerCompanyCode,
 body.worker-code-only-mode #workerCompanyCodeNote,
-body.worker-code-only-mode #workerInstallBox,
 body.worker-code-only-mode #workerCompanyQrNotice,
 body.worker-code-only-mode #workerLoginHelpBox,
 body.worker-code-only-mode #workerAccessCodeNote,
@@ -2111,6 +2110,28 @@ body.worker-code-only-mode #viewWorkerLogin .card{
   border-radius:24px!important;
   padding:28px!important;
   color:#dbeafe!important;
+}
+body.worker-code-only-mode #workerInstallBox{
+  display:grid!important;
+  margin:0 0 18px!important;
+  padding:14px!important;
+  border:1px solid rgba(147,197,253,.20)!important;
+  background:rgba(11,27,49,.72)!important;
+  border-radius:18px!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+}
+body.worker-code-only-mode #workerInstallBox.hidden{display:none!important;}
+body.worker-code-only-mode #workerInstallBox strong{color:#eaf2ff!important;text-align:center;}
+body.worker-code-only-mode #workerInstallBox span{color:#9fb8d9!important;text-align:center;font-size:.86rem!important;}
+body.worker-code-only-mode #workerInstallBtn{
+  width:100%;
+  min-height:44px;
+  border-radius:14px!important;
+  background:linear-gradient(135deg, #1d4ed8, #2563eb)!important;
+  color:#eff6ff!important;
+  border:1px solid rgba(147,197,253,.38)!important;
+  box-shadow:0 12px 26px rgba(37,99,235,.18)!important;
 }
 body.worker-code-only-mode #workerLoginTitle{
   text-align:center;
@@ -2238,4 +2259,24 @@ body.worker-field-theme #viewWorkerForm .entry-list{
     padding:14px!important;
     border-radius:16px!important;
   }
+}
+
+
+/* =========================================================
+   v1.24.5 - FIX: posle radničkog login-a sakrij karticu za unos koda
+   ========================================================= */
+body.worker-code-only-mode #viewWorkerLogin:not(.active){
+  display:none!important;
+}
+body.worker-field-theme #viewWorkerLogin{
+  display:none!important;
+}
+body.worker-field-theme #viewWorkerForm{
+  padding-top:12px;
+}
+body.worker-field-theme #viewWorkerForm .dashboard-head{
+  margin-bottom:12px!important;
+}
+body.worker-field-theme #viewWorkerForm > .card{
+  margin-top:0!important;
 }

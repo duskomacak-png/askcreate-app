@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.24.4";
+const APP_VERSION = "1.24.6";
 
 
 let sb = null;
@@ -191,6 +191,14 @@ function businessUpdateReportsMetrics(list) {
 
 function show(view) {
   const publicViews = ["Home", "AdminLogin", "DirectorLogin", "WorkerLogin"];
+  // VAŽNO: QR radnički login ima svoj "samo kod" izgled.
+  // Kada radnik uspešno uđe u profil, taj login izgled mora nestati,
+  // inače forma za prijavu ostaje iznad terenskog obrasca.
+  if (view !== "WorkerLogin") {
+    document.body.classList.remove("worker-code-only-mode", "worker-company-locked");
+    const loginCard = document.querySelector("#viewWorkerLogin .card");
+    if (loginCard) loginCard.classList.remove("worker-company-locked-card");
+  }
   document.body.classList.toggle("worker-field-theme", view === "WorkerForm");
   if (publicViews.includes(view)) {
     clearCompanyBrandFromBody();
@@ -369,11 +377,11 @@ function setWorkerLoginModeLocked(isLocked) {
   const title = document.getElementById("workerLoginTitle");
   const codeLabel = document.getElementById("workerAccessCodeLabel");
   const help = document.getElementById("workerLoginHelpBox");
-  if (title) title.textContent = isLocked ? "Unesite svoj kod" : "Terenski unos";
+  if (title) title.textContent = isLocked ? "Radnički ulaz" : "Terenski unos";
   if (codeLabel) codeLabel.textContent = isLocked ? "Radnički kod" : "Šifra radnika";
   if (help) {
     help.innerHTML = isLocked
-      ? `<b>Unesite kod:</b><span>Upišite samo radnički kod koji vam je dodelila Direkcija.</span>`
+      ? `<b>Radnički kod:</b><span>Upišite samo kod koji vam je dodelila Direkcija.</span>`
       : `<b>Prijava radnika:</b><span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>`;
   }
 }
@@ -381,9 +389,14 @@ function setWorkerLoginModeLocked(isLocked) {
 function updateWorkerInstallBox() {
   const box = document.getElementById("workerInstallBox");
   if (!box) return;
-  // Radnički QR ulaz mora biti maksimalno jednostavan: samo polje za radnički kod.
-  // Instalacija PWA se radi kroz browser meni, a app pamti firmu kroz localStorage.
-  box.classList.add("hidden");
+  const lockedToCompany = !!(getWorkerCompanyCodeFromUrl() || getSavedWorkerCompanyCode() || document.body.classList.contains("worker-company-locked"));
+  // Radnički QR/PWA ulaz treba da ostane čist:
+  // pre unosa koda može da stoji samo dugme za instalaciju app-a i polje za kod.
+  if (lockedToCompany && !isAppInstalledMode()) {
+    box.classList.remove("hidden");
+  } else {
+    box.classList.add("hidden");
+  }
 }
 
 async function installWorkerApp() {
@@ -393,14 +406,14 @@ async function installWorkerApp() {
       const choice = await deferredPwaInstallPrompt.userChoice;
       deferredPwaInstallPrompt = null;
       updateWorkerInstallBox();
-      if (choice?.outcome === "accepted") return toast("App je dodata na telefon.");
+      if (choice?.outcome === "accepted") return toast("Radnička app prečica je dodata na telefon.");
       return toast("Instalacija nije završena. Možeš probati ponovo iz menija browsera.");
     }
     const ua = navigator.userAgent || "";
     if (/iphone|ipad|ipod/i.test(ua)) {
-      return alert("Za iPhone/iPad:\n\n1. Otvori ovaj link u Safari browseru.\n2. Dodirni Share / Podeli.\n3. Izaberi Add to Home Screen / Dodaj na početni ekran.\n\nPosle toga radnik otvara prečicu i upisuje samo svoj kod.");
+      return alert("Za iPhone/iPad:\n\n1. Otvori ovaj link u Safari browseru.\n2. Dodirni Share / Podeli.\n3. Izaberi Add to Home Screen / Dodaj na početni ekran.\n\nPosle toga radnik otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
     }
-    alert("Ako se dugme za instalaciju ne pojavi automatski:\n\n1. Otvori meni browsera ⋮\n2. Izaberi Install app ili Add to Home screen\n3. Potvrdi dodavanje prečice.\n\nPosle toga radnik otvara prečicu i upisuje samo svoj kod.");
+    alert("Ako se instalacija ne otvori automatski:\n\n1. Otvori meni browsera ⋮\n2. Izaberi Install app ili Add to Home screen\n3. Potvrdi dodavanje prečice.\n\nPosle toga radnik otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
   } catch (e) {
     toast("Instalacija nije uspela: " + (e?.message || e), true);
   }
