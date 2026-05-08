@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1250" />
+  <link rel="stylesheet" href="style.css?v=1251" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -522,20 +522,30 @@
           <p class="muted">Ovde stoje dnevni izveštaji koje je Uprava označila. Odaberi koje podatke želiš u Excel fajlu.</p>
 
           <div class="export-box smart-export-box">
-            <h4>Brzi filter za poseban Excel</h4>
-            <p class="muted">Za Upravu: izaberi šta želiš da izvučeš, period, gradilište ili radnika. Aplikacija sama označi izveštaje i kolone.</p>
+            <h4>📊 Excel izvoz po grupama</h4>
+            <p class="muted">Direkcija prvo bira grupu obračuna, pa period, gradilište i po potrebi radnika ili stavku. Gorivo, materijal, mašine i vozila ostaju odvojeni.</p>
+
+            <div class="smart-export-cards">
+              <button type="button" class="smart-export-card" onclick="setSmartExportType('hours_workers')"><b>👷 Radnici / sati</b><span>Gradilište, datum od/do, jedan radnik ili svi.</span></button>
+              <button type="button" class="smart-export-card" onclick="setSmartExportType('machines')"><b>🚜 Mašine / MTČ</b><span>Jedna mašina ili sve mašine za period.</span></button>
+              <button type="button" class="smart-export-card" onclick="setSmartExportType('vehicles')"><b>🚚 Vozila / ture</b><span>Vozila, ture, kilometraža i m³.</span></button>
+              <button type="button" class="smart-export-card" onclick="setSmartExportType('fuel_all')"><b>⛽ Gorivo / sipanja</b><span>Sva sipanja, posebno od ostalih rubrika.</span></button>
+              <button type="button" class="smart-export-card" onclick="setSmartExportType('fuel_tanker')"><b>🛢️ Cisterna</b><span>Sipanja iz cisterne po gradilištu i datumu.</span></button>
+              <button type="button" class="smart-export-card" onclick="setSmartExportType('materials')"><b>🧱 Materijal</b><span>Svaki materijal posebno: ture, količina, jedinica.</span></button>
+            </div>
+
             <div class="smart-export-grid">
-              <label>Vrsta exporta
+              <label>Grupa exporta
                 <select id="smartExportType">
-                  <option value="all">Sve iz izabranih izveštaja</option>
-                  <option value="fuel_all">Sva sipanja goriva</option>
-                  <option value="fuel_own">Evidencija goriva – korisnik/vozilo/opremu</option>
-                  <option value="fuel_tanker">Evidencija goriva – cisterna</option>
-                  <option value="hours_workers">Radni sati radnika</option>
-                  <option value="machines">Rad mašina / MTČ</option>
+                  <option value="all">Kompletno iz izabranih izveštaja</option>
+                  <option value="hours_workers">Radnici / sati</option>
+                  <option value="machines">Mašine / MTČ</option>
                   <option value="vehicles">Vozila / ture / m³</option>
-                  <option value="lowloader">Transport mašine labudicom</option>
                   <option value="materials">Materijal</option>
+                  <option value="fuel_all">Gorivo – sva sipanja</option>
+                  <option value="fuel_own">Gorivo – radnik/mašina/vozilo</option>
+                  <option value="fuel_tanker">Gorivo – cisterna</option>
+                  <option value="lowloader">Transport mašine labudicom</option>
                   <option value="warehouse">Magacin</option>
                   <option value="leave">Slobodni dani / godišnji</option>
                   <option value="defects">Kvarovi</option>
@@ -548,17 +558,20 @@
                 <input id="smartExportTo" type="date" />
               </label>
               <label>Gradilište
-                <input id="smartExportSite" placeholder="npr. Zmaj" />
+                <input id="smartExportSite" placeholder="npr. Zmaj ili sva gradilišta" />
               </label>
               <label>Radnik / ime / šifra
-                <input id="smartExportWorker" placeholder="npr. Duško, dus1506" />
+                <input id="smartExportWorker" placeholder="npr. Marko ili svi radnici" />
+              </label>
+              <label>Stavka / naziv
+                <input id="smartExportItem" placeholder="npr. CAT 330, MAN, kamen 0-31, BG123" />
               </label>
             </div>
             <div class="row compact">
               <button id="applySmartExportBtn" class="primary" type="button">🔎 Pripremi poseban Excel</button>
               <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filter</button>
             </div>
-            <p id="smartExportInfo" class="hint">Primer: izaberi “Sva sipanja goriva”, datume za mesec dana i gradilište Zmaj.</p>
+            <p id="smartExportInfo" class="hint">Primeri: “Radnici / sati” + Zmaj + maj; “Materijal” + kamen 0-31; “Gorivo – cisterna” + datum od/do.</p>
           </div>
 
           <div class="export-box">
@@ -844,6 +857,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1250"></script>
+  <script src="script.js?v=1251"></script>
 </body>
 </html>

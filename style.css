@@ -2501,3 +2501,25 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
     font-size:1.05rem!important;
   }
 }
+
+.smart-export-cards{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin:12px 0 14px;
+}
+.smart-export-card{
+  border:1px solid var(--border);
+  background:#ffffff;
+  color:var(--text);
+  border-radius:14px;
+  padding:11px 12px;
+  text-align:left;
+  box-shadow:0 8px 18px rgba(15,23,42,.06);
+  cursor:pointer;
+}
+.smart-export-card b{display:block;margin-bottom:4px;font-size:14px;color:var(--text)}
+.smart-export-card span{display:block;font-size:12px;line-height:1.35;color:var(--muted)}
+.smart-export-card:hover{border-color:var(--primary);transform:translateY(-1px)}
+@media(max-width:900px){.smart-export-cards{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.smart-export-cards{grid-template-columns:1fr}.smart-export-card{padding:10px}}

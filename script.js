@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.0";
+const APP_VERSION = "1.25.1";
 
 
 let sb = null;
@@ -6064,10 +6064,11 @@ function getSmartExportSettings() {
       from: saved.from || "",
       to: saved.to || "",
       site: saved.site || "",
-      worker: saved.worker || ""
+      worker: saved.worker || "",
+      item: saved.item || ""
     };
   } catch {
-    return { type:"all", from:"", to:"", site:"", worker:"" };
+    return { type:"all", from:"", to:"", site:"", worker:"", item:"" };
   }
 }
 
@@ -6077,7 +6078,8 @@ function setSmartExportSettings(settings) {
     from: settings.from || "",
     to: settings.to || "",
     site: settings.site || "",
-    worker: settings.worker || ""
+    worker: settings.worker || "",
+    item: settings.item || ""
   };
   localStorage.setItem(SMART_EXPORT_KEY, JSON.stringify(clean));
   return clean;
@@ -6279,28 +6281,99 @@ function smartRowsForReport(r, type) {
   return rows;
 }
 
+
+function smartExportRowMatches(row, settings) {
+  const siteQ = normalizeSearch(settings.site || "");
+  if (siteQ) {
+    const siteText = normalizeSearch([
+      row.site,
+      row.field_tanker_site,
+      row.defect_site,
+      row.lowloader_from,
+      row.lowloader_to
+    ].filter(Boolean).join(" "));
+    if (!siteText.includes(siteQ)) return false;
+  }
+
+  const workerQ = normalizeSearch(settings.worker || "");
+  if (workerQ) {
+    const workerText = normalizeSearch([
+      row.worker,
+      row.crew_worker,
+      row.function,
+      row.fuel_by,
+      row.fuel_receiver,
+      row.field_tanker_receiver
+    ].filter(Boolean).join(" "));
+    if (!workerText.includes(workerQ)) return false;
+  }
+
+  const itemQ = normalizeSearch(settings.item || "");
+  if (itemQ) {
+    const itemText = normalizeSearch([
+      row.machine_code,
+      row.machine,
+      row.vehicle_code,
+      row.vehicle,
+      row.registration,
+      row.fuel_asset_code,
+      row.fuel_for,
+      row.fuel_registration,
+      row.field_tanker_asset_code,
+      row.field_tanker_asset,
+      row.field_tanker_registration,
+      row.material,
+      row.material_action,
+      row.defect_asset_code,
+      row.defect_asset,
+      row.defect_registration,
+      row.lowloader_machine,
+      row.lowloader_plates
+    ].filter(Boolean).join(" "));
+    if (!itemText.includes(itemQ)) return false;
+  }
+
+  return true;
+}
+
+function getSmartRowsForReport(r, settings) {
+  return smartRowsForReport(r, settings.type || "all").filter(row => smartExportRowMatches(row, settings));
+}
+
+window.setSmartExportType = (type) => {
+  const el = $("#smartExportType");
+  if (el) el.value = type;
+  const preset = SMART_EXPORT_PRESETS[type] || SMART_EXPORT_PRESETS.all;
+  const info = $("#smartExportInfo");
+  if (info) info.textContent = `Izabrana grupa: ${preset.title}. Upiši datum, gradilište, radnika ili naziv stavke pa klikni “Pripremi poseban Excel”.`;
+};
+
 window.applySmartExportFilters = () => {
   const settings = setSmartExportSettings({
     type: $("#smartExportType")?.value || "all",
     from: $("#smartExportFrom")?.value || "",
     to: $("#smartExportTo")?.value || "",
     site: $("#smartExportSite")?.value || "",
-    worker: $("#smartExportWorker")?.value || ""
+    worker: $("#smartExportWorker")?.value || "",
+    item: $("#smartExportItem")?.value || ""
   });
   const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
-  const reports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r)).filter(r => smartExportReportMatches(r, settings));
+  const reports = directorReportsCache
+    .filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r))
+    .filter(r => smartExportReportMatches(r, settings))
+    .filter(r => getSmartRowsForReport(r, settings).length > 0);
   setExportSelectedIds(reports.map(r => r.id));
   setExportColumnKeys(preset.keys);
   renderExportPanel();
   const info = $("#smartExportInfo");
-  const rowsCount = reports.flatMap(r => smartRowsForReport(r, settings.type)).length;
+  const rowsCount = reports.flatMap(r => getSmartRowsForReport(r, settings)).length;
   if (info) info.textContent = `${preset.title}: izabrano ${reports.length} izveštaja, ${rowsCount} redova za Excel.`;
   toast(`Pripremljen export: ${preset.title}. Izveštaja: ${reports.length}.`);
 };
 
 window.clearSmartExportFilters = () => {
-  setSmartExportSettings({ type:"all", from:"", to:"", site:"", worker:"" });
-  ["#smartExportType", "#smartExportFrom", "#smartExportTo", "#smartExportSite", "#smartExportWorker"].forEach(sel => {
+  setSmartExportSettings({ type:"all", from:"", to:"", site:"", worker:"", item:"" });
+  ["#smartExportType", "#smartExportFrom", "#smartExportTo", "#smartExportSite", "#smartExportWorker", "#smartExportItem"].forEach(sel => {
     const el = $(sel);
     if (!el) return;
     el.value = sel === "#smartExportType" ? "all" : "";
@@ -6317,6 +6390,7 @@ function restoreSmartExportControls() {
   if ($("#smartExportTo")) $("#smartExportTo").value = settings.to;
   if ($("#smartExportSite")) $("#smartExportSite").value = settings.site;
   if ($("#smartExportWorker")) $("#smartExportWorker").value = settings.worker;
+  if ($("#smartExportItem")) $("#smartExportItem").value = settings.item;
 }
 
 function getExportRowsAndColumns() {
@@ -6327,7 +6401,7 @@ function getExportRowsAndColumns() {
   const columns = EXPORT_COLUMNS.filter(c => keys.includes(c.key));
   const rows = reports
     .filter(r => smartExportReportMatches(r, settings))
-    .flatMap(r => smartRowsForReport(r, type));
+    .flatMap(r => getSmartRowsForReport(r, { ...settings, type }));
   return { reports, columns, rows };
 }
 
@@ -6343,7 +6417,7 @@ function renderExportPanel() {
   const keys = getExportColumnKeys();
   const settings = getSmartExportSettings();
   const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
-  const exportRowsCount = selected.filter(r => smartExportReportMatches(r, settings)).flatMap(r => smartRowsForReport(r, settings.type)).length;
+  const exportRowsCount = selected.filter(r => smartExportReportMatches(r, settings)).flatMap(r => getSmartRowsForReport(r, settings)).length;
 
   if (countBox) countBox.textContent = `${selected.length} izveštaja označeno · ${exportRowsCount} redova · ${preset.title}`;
 
@@ -6756,6 +6830,12 @@ function bindEvents() {
   if ($("#exportCsvBtn")) $("#exportCsvBtn").addEventListener("click", exportCsv);
   if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);
+  if ($("#applySmartExportBtn")) $("#applySmartExportBtn").addEventListener("click", applySmartExportFilters);
+  if ($("#clearSmartExportBtn")) $("#clearSmartExportBtn").addEventListener("click", clearSmartExportFilters);
+  ["#smartExportFrom", "#smartExportTo", "#smartExportSite", "#smartExportWorker", "#smartExportItem"].forEach(sel => {
+    const el = $(sel);
+    if (el) el.addEventListener("keydown", (e) => { if (e.key === "Enter") applySmartExportFilters(); });
+  });
   if ($("#simpleExportBtn")) $("#simpleExportBtn").addEventListener("click", applySimpleExportColumns);
   if ($("#detailedExportBtn")) $("#detailedExportBtn").addEventListener("click", applyDetailedExportColumns);
   if ($("#selectAllColumnsBtn")) $("#selectAllColumnsBtn").addEventListener("click", selectAllExportColumns);
