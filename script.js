@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.23.5";
+const APP_VERSION = "1.23.6";
 
 
 let sb = null;
@@ -199,37 +199,256 @@ async function loadAdmin() {
   await Promise.all([loadApprovedCompanies(), loadCompanies()]);
 }
 
+let adminApprovedCompaniesCache = [];
+let adminRegisteredCompaniesCache = [];
+
+function todayDateOnly() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function parseDateOnly(value) {
+  if (!value) return null;
+  const d = new Date(`${value}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatDateSchool(value) {
+  if (!value) return "nije upisano";
+  const d = parseDateOnly(value);
+  if (!d) return String(value);
+  return d.toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function daysUntilDate(value) {
+  const d = parseDateOnly(value);
+  if (!d) return null;
+  return Math.ceil((d.getTime() - todayDateOnly().getTime()) / 86400000);
+}
+
+function getCompanyPaidUntil(c) {
+  return c?.paid_until || c?.trial_until || null;
+}
+
+function getCompanyPaidFrom(c) {
+  return c?.paid_from || c?.created_at?.slice?.(0, 10) || null;
+}
+
+function getCompanyStatusInfo(c) {
+  const rawStatus = String(c?.status || "trial").toLowerCase();
+  if (rawStatus === "blocked") return { label: "Blokirano", cls: "bad", days: daysUntilDate(getCompanyPaidUntil(c)) };
+  if (rawStatus === "deleted") return { label: "Obrisano", cls: "bad", days: daysUntilDate(getCompanyPaidUntil(c)) };
+  const days = daysUntilDate(getCompanyPaidUntil(c));
+  if (days === null) return { label: "Bez datuma", cls: "neutral", days };
+  if (days < 0) return { label: `Isteklo pre ${Math.abs(days)} dana`, cls: "bad", days };
+  if (days <= 10) return { label: `Ističe za ${days} dana`, cls: "warn", days };
+  return { label: `Aktivno još ${days} dana`, cls: "good", days };
+}
+
+function isCompanyExpiringSoon(c) {
+  const info = getCompanyStatusInfo(c);
+  return info.days !== null && info.days >= 0 && info.days <= 10 && String(c?.status || "").toLowerCase() !== "blocked";
+}
+
+function adminCompanySearchText(c) {
+  return [
+    c.company_name, c.name, c.approved_email, c.owner_email, c.company_code,
+    c.invite_code, c.contact_name, c.contact_phone, c.phone, c.status, c.plan, c.note
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function normalizeWhatsappPhone(phone) {
+  let p = String(phone || "").trim();
+  if (!p) return "";
+  p = p.replace(/[^\d+]/g, "");
+  if (p.startsWith("00")) p = "+" + p.slice(2);
+  if (p.startsWith("0")) p = "+381" + p.slice(1);
+  if (p.startsWith("+")) p = p.slice(1);
+  return p;
+}
+
+function adminMessage(c, type = "renewed") {
+  const company = c.company_name || c.name || "vaša firma";
+  const validUntil = formatDateSchool(getCompanyPaidUntil(c));
+  const email = c.approved_email || c.owner_email || "email Uprave";
+  const code = c.company_code || "šifra firme";
+  const invite = c.invite_code || "aktivacioni kod";
+  if (type === "expiring") {
+    return `Poštovani,\n\nObaveštavamo vas da vaš Start Work PRO paket ističe za 10 dana.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nDa biste nastavili korišćenje bez prekida, potrebno je produžiti paket pre navedenog datuma.\n\nZa sva pitanja možete odgovoriti na ovu poruku.\n\nStart Work PRO`;
+  }
+  if (type === "expired") {
+    return `Poštovani,\n\nVaš Start Work PRO paket je istekao.\n\nFirma: ${company}\nPaket je važio do: ${validUntil}.\n\nMolimo vas da nas kontaktirate radi produženja paketa.\n\nStart Work PRO`;
+  }
+  if (type === "activation") {
+    return `Poštovani,\n\nVaša firma je dodata u Start Work PRO aplikaciju.\n\nPodaci za prvu aktivaciju:\n\nLink aplikacije: https://askcreate.app\nEmail Uprave: ${email}\nŠifra firme: ${code}\nAktivacioni kod: ${invite}\n\nPrvi korak:\n1. Otvorite aplikaciju.\n2. Kliknite na “Uprava”.\n3. Registrujte email i lozinku.\n4. Unesite šifru firme i aktivacioni kod.\n5. Kliknite “Aktiviraj firmu”.\n\nNakon aktivacije, Uprava se ubuduće prijavljuje samo preko emaila i lozinke.\n\nStart Work PRO`;
+  }
+  return `Poštovani,\n\nVaš Start Work PRO paket je produžen.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nMožete nastaviti normalno korišćenje aplikacije.\n\nHvala na poverenju.\nStart Work PRO`;
+}
+
+function companyBrandClass(c) {
+  const color = String(c?.brand_color || "green").toLowerCase();
+  return ["green", "blue", "orange", "red", "dark"].includes(color) ? color : "green";
+}
+
+function renderAdminCompanyCard(c, compact = false) {
+  const status = getCompanyStatusInfo(c);
+  const phone = c.contact_phone || c.phone || "";
+  const email = c.approved_email || c.owner_email || "";
+  const name = c.company_name || c.name || "Firma";
+  const messageType = status.days !== null && status.days < 0 ? "expired" : (status.days !== null && status.days <= 10 ? "expiring" : "renewed");
+  return `
+    <div class="item admin-company-card brand-${companyBrandClass(c)}" data-company-id="${escapeHtml(c.id || "")}">
+      <div class="admin-company-main">
+        <div>
+          <strong>${escapeHtml(name)}</strong>
+          <small>${escapeHtml(email || "bez emaila")} · ${escapeHtml(phone || "bez telefona")}</small><br/>
+          <small>Kontakt: ${escapeHtml(c.contact_name || "nije upisano")} · šifra: ${escapeHtml(c.company_code || "—")} · aktivacioni kod: ${escapeHtml(c.invite_code || "—")}</small>
+        </div>
+        <div class="admin-company-status">
+          <span class="pill ${status.cls}">${escapeHtml(status.label)}</span>
+          <span class="pill">${c.registered ? "registrovana" : "čeka aktivaciju"}</span>
+        </div>
+      </div>
+      <div class="admin-company-dates">
+        <span>Važi od: <b>${escapeHtml(formatDateSchool(getCompanyPaidFrom(c)))}</b></span>
+        <span>Važi do: <b>${escapeHtml(formatDateSchool(getCompanyPaidUntil(c)))}</b></span>
+        <span>Paket: <b>${escapeHtml(c.plan || "trial")}</b></span>
+      </div>
+      ${c.note ? `<p class="muted admin-note">Napomena: ${escapeHtml(c.note)}</p>` : ""}
+      <div class="actions admin-crm-actions">
+        <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','activation')">📋 Prva aktivacija</button>
+        <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','${messageType}')">📋 Poruka</button>
+        <button class="secondary" onclick="adminOpenWhatsApp('${c.id}','${messageType}')">💬 WhatsApp</button>
+        <button class="secondary" onclick="adminOpenEmail('${c.id}','${messageType}')">📧 Email</button>
+        ${compact ? "" : `<button class="secondary" onclick="adminSetApprovedStatus('${c.id}','active')">Aktiviraj</button><button class="secondary" onclick="adminSetApprovedStatus('${c.id}','blocked')">Blokiraj</button>`}
+      </div>
+    </div>`;
+}
+
+function updateAdminMetrics(list) {
+  const total = list.length;
+  const active = list.filter(c => String(c.status || "").toLowerCase() !== "blocked").length;
+  const expiring = list.filter(isCompanyExpiringSoon).length;
+  const blocked = list.filter(c => String(c.status || "").toLowerCase() === "blocked").length;
+  if ($("#adminMetricTotalCompanies")) $("#adminMetricTotalCompanies").textContent = total;
+  if ($("#adminMetricActiveCompanies")) $("#adminMetricActiveCompanies").textContent = active;
+  if ($("#adminMetricExpiringCompanies")) $("#adminMetricExpiringCompanies").textContent = expiring;
+  if ($("#adminMetricBlockedCompanies")) $("#adminMetricBlockedCompanies").textContent = blocked;
+}
+
+function renderAdminCompanies(filter = "") {
+  const q = String(filter || "").trim().toLowerCase();
+  const list = q ? adminApprovedCompaniesCache.filter(c => adminCompanySearchText(c).includes(q)) : adminApprovedCompaniesCache;
+  updateAdminMetrics(adminApprovedCompaniesCache);
+  const expiring = adminApprovedCompaniesCache.filter(isCompanyExpiringSoon);
+  if ($("#expiringCompaniesList")) {
+    $("#expiringCompaniesList").innerHTML = expiring.map(c => renderAdminCompanyCard(c, true)).join("") || `<p class="muted">Nema firmi kojima paket ističe u narednih 10 dana.</p>`;
+  }
+  if ($("#approvedCompaniesList")) {
+    $("#approvedCompaniesList").innerHTML = list.map(c => renderAdminCompanyCard(c)).join("") || `<p class="muted">Nema pronađenih firmi.</p>`;
+  }
+}
+
+function findAdminCompanyById(id) {
+  return adminApprovedCompaniesCache.find(c => String(c.id) === String(id)) || adminRegisteredCompaniesCache.find(c => String(c.id) === String(id));
+}
+
+window.adminCopyCompanyMessage = async (id, type = "renewed") => {
+  const c = findAdminCompanyById(id);
+  if (!c) return toast("Firma nije pronađena.", true);
+  const msg = adminMessage(c, type);
+  try {
+    await navigator.clipboard.writeText(msg);
+    toast("Poruka je kopirana. Možeš je nalepiti u WhatsApp ili email.");
+  } catch(e) {
+    window.prompt("Kopiraj poruku:", msg);
+  }
+};
+
+window.adminOpenWhatsApp = (id, type = "renewed") => {
+  const c = findAdminCompanyById(id);
+  if (!c) return toast("Firma nije pronađena.", true);
+  const phone = normalizeWhatsappPhone(c.contact_phone || c.phone);
+  if (!phone) return toast("Nema upisan mobilni/WhatsApp broj za ovu firmu.", true);
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(adminMessage(c, type))}`;
+  window.open(url, "_blank", "noopener");
+};
+
+window.adminOpenEmail = (id, type = "renewed") => {
+  const c = findAdminCompanyById(id);
+  if (!c) return toast("Firma nije pronađena.", true);
+  const email = c.approved_email || c.owner_email;
+  if (!email) return toast("Nema upisan email za ovu firmu.", true);
+  const subject = type === "activation" ? "Start Work PRO - podaci za aktivaciju" : type === "expiring" ? "Start Work PRO - paket ističe uskoro" : type === "expired" ? "Start Work PRO - paket je istekao" : "Start Work PRO - paket je produžen";
+  const url = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(adminMessage(c, type))}`;
+  window.location.href = url;
+};
+
+async function loadApprovedCompanyForDirector(companyCode) {
+  if (!companyCode) return null;
+  try {
+    const { data, error } = await sb.from("approved_companies").select("*").eq("company_code", companyCode).maybeSingle();
+    if (error) return null;
+    return data || null;
+  } catch(e) {
+    return null;
+  }
+}
+
+function showDirectorPackageNotice(source) {
+  const box = $("#directorPackageNotice");
+  if (!box) return;
+  const paidUntil = getCompanyPaidUntil(source);
+  const status = getCompanyStatusInfo(source || {});
+  if (!paidUntil || status.days === null || status.days > 10) {
+    box.className = "package-notice hidden";
+    box.innerHTML = "";
+    return;
+  }
+  const expired = status.days < 0;
+  box.className = `package-notice ${expired ? "danger" : "warn"}`;
+  box.innerHTML = `
+    <strong>${expired ? "⚠️ Vaš paket je istekao." : `⚠️ Vaš paket ističe za ${status.days} dana.`}</strong>
+    <p>Paket važi do: <b>${escapeHtml(formatDateSchool(paidUntil))}</b>.</p>
+    <p>Za produženje paketa kontaktirajte podršku: <b>duskomacak@gmail.com</b></p>`;
+}
+
 async function loadApprovedCompanies() {
   const { data, error } = await sb.from("approved_companies").select("*").order("created_at", { ascending:false });
   if (error) return toast(error.message, true);
-  $("#approvedCompaniesList").innerHTML = (data || []).map(c => `
-    <div class="item">
-      <strong>${escapeHtml(c.company_name)}</strong>
-      <small>${escapeHtml(c.approved_email)} · šifra: ${escapeHtml(c.company_code)} · pozivni: ${escapeHtml(c.invite_code)}</small><br/>
-      <span class="pill">${escapeHtml(c.status)}</span>
-      <span class="pill">registrovana: ${c.registered ? "DA" : "NE"}</span>
-      <div class="actions">
-        <button class="secondary" onclick="adminSetApprovedStatus('${c.id}','active')">Aktiviraj</button>
-        <button class="secondary" onclick="adminSetApprovedStatus('${c.id}','blocked')">Blokiraj</button>
-      </div>
-    </div>`).join("") || `<p class="muted">Nema odobrenih firmi.</p>`;
+  adminApprovedCompaniesCache = data || [];
+  renderAdminCompanies($("#adminCompanySearch")?.value || "");
 }
 
 async function loadCompanies() {
   const { data, error } = await sb.from("companies").select("*").order("created_at", { ascending:false });
   if (error) return toast(error.message, true);
-  $("#companiesList").innerHTML = (data || []).map(c => `
-    <div class="item">
-      <strong>${escapeHtml(c.name)}</strong>
-      <small>${escapeHtml(c.owner_email)} · šifra: ${escapeHtml(c.company_code)}</small><br/>
-      <span class="pill">${escapeHtml(c.status)}</span>
-      <span class="pill">${escapeHtml(c.plan)}</span>
-      <div class="actions">
-        <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','active')">Active</button>
-        <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','expired')">Expired</button>
-        <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','blocked')">Blocked</button>
-      </div>
-    </div>`).join("") || `<p class="muted">Još nema registrovanih firmi.</p>`;
+  adminRegisteredCompaniesCache = data || [];
+  if ($("#companiesList")) {
+    $("#companiesList").innerHTML = (data || []).map(c => {
+      const status = getCompanyStatusInfo(c);
+      return `
+        <div class="item admin-company-card brand-${companyBrandClass(c)}">
+          <div class="admin-company-main">
+            <div>
+              <strong>${escapeHtml(c.name)}</strong>
+              <small>${escapeHtml(c.owner_email)} · šifra: ${escapeHtml(c.company_code)}</small><br/>
+              <small>Važi do: ${escapeHtml(formatDateSchool(getCompanyPaidUntil(c)))} · paket: ${escapeHtml(c.plan || "—")}</small>
+            </div>
+            <div class="admin-company-status">
+              <span class="pill ${status.cls}">${escapeHtml(status.label)}</span>
+              <span class="pill">${escapeHtml(c.status || "active")}</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','active')">Aktiviraj</button>
+            <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','expired')">Označi isteklo</button>
+            <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','blocked')">Blokiraj</button>
+          </div>
+        </div>`;
+    }).join("") || `<p class="muted">Još nema registrovanih firmi.</p>`;
+  }
 }
 
 window.adminSetApprovedStatus = async (id, status) => {
@@ -259,10 +478,12 @@ async function loadDirectorCompany() {
     return null;
   }
   currentCompany = data;
+  const approvedSource = await loadApprovedCompanyForDirector(data.company_code);
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   businessUpdateCompanyName();
   setInternalHeader("Uprava", (currentCompany?.name || activeCompany?.name || "Firma"), true);
   show("DirectorDashboard");
+  showDirectorPackageNotice(approvedSource || data);
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
   return data;
@@ -5649,23 +5870,42 @@ function bindEvents() {
     } catch(e) { toast(e.message, true); }
   });
   $("#refreshAdminBtn").addEventListener("click", loadAdmin);
+  if ($("#adminCompanySearch")) {
+    $("#adminCompanySearch").addEventListener("input", e => renderAdminCompanies(e.target.value));
+    $("#adminCompanySearch").addEventListener("keydown", e => { if (e.key === "Enter") renderAdminCompanies(e.target.value); });
+  }
+  if ($("#adminCompanySearchBtn")) $("#adminCompanySearchBtn").addEventListener("click", () => renderAdminCompanies($("#adminCompanySearch")?.value || ""));
+  if ($("#adminCompanyClearSearchBtn")) $("#adminCompanyClearSearchBtn").addEventListener("click", () => { if ($("#adminCompanySearch")) $("#adminCompanySearch").value = ""; renderAdminCompanies(""); });
   $("#addApprovedCompanyBtn").addEventListener("click", async () => {
     try {
+      const paidUntil = $("#acPaidUntil")?.value || null;
       const payload = {
         company_name: $("#acCompanyName").value.trim(),
         approved_email: $("#acEmail").value.trim(),
         company_code: $("#acCompanyCode").value.trim(),
         invite_code: $("#acInviteCode").value.trim(),
+        contact_name: $("#acContactName")?.value.trim() || null,
+        contact_phone: $("#acContactPhone")?.value.trim() || null,
         status: "trial",
-        plan: "trial",
-        trial_until: $("#acTrialUntil").value || null,
+        plan: $("#acPlan")?.value || "trial",
+        paid_from: $("#acPaidFrom")?.value || null,
+        paid_until: paidUntil,
+        trial_until: paidUntil,
+        brand_color: $("#acBrandColor")?.value || "green",
         note: $("#acNote").value.trim()
       };
-      if (!payload.company_name || !payload.approved_email || !payload.company_code || !payload.invite_code) throw new Error("Popuni naziv, email, šifru firme i pozivni kod.");
+      if (!payload.company_name || !payload.approved_email || !payload.company_code || !payload.invite_code) throw new Error("Popuni naziv, email, šifru firme i aktivacioni kod.");
       const { error } = await sb.from("approved_companies").insert(payload);
-      if (error) throw error;
-      ["acCompanyName","acEmail","acCompanyCode","acInviteCode","acTrialUntil","acNote"].forEach(id => $("#"+id).value = "");
-      toast("Firma je odobrena.");
+      if (error) {
+        if (String(error.message || "").toLowerCase().includes("column")) {
+          throw new Error("Bazi fale nove kolone za Admin CRM. Prvo pokreni SQL koji sam ti dao u poruci, pa ponovo sačuvaj firmu.");
+        }
+        throw error;
+      }
+      ["acCompanyName","acEmail","acContactName","acContactPhone","acCompanyCode","acInviteCode","acPaidFrom","acPaidUntil","acNote"].forEach(id => { const el = $("#"+id); if (el) el.value = ""; });
+      if ($("#acPlan")) $("#acPlan").value = "trial";
+      if ($("#acBrandColor")) $("#acBrandColor").value = "green";
+      toast("Firma je sačuvana u Admin CRM.");
       loadApprovedCompanies();
     } catch(e) { toast(e.message, true); }
   });

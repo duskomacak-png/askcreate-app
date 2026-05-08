@@ -1411,3 +1411,165 @@ body.in-app .shell{
   .diagnostics-card .diagnostics-head{display:block}
   .diagnostics-card .diagnostics-head .row{margin-top:12px;display:grid;grid-template-columns:1fr;gap:8px}
 }
+
+/* v1.23.6 — Admin CRM kao CityStyle: firme, paket, kontakti, poruke */
+.admin-crm-view .card,
+.admin-crm-view .item {
+  border-radius: 18px;
+}
+
+.admin-crm-hero {
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.14), rgba(15, 23, 42, 0.04));
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.admin-crm-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.compact-grid {
+  gap: 10px;
+}
+
+.card-title-row,
+.admin-company-main,
+.admin-company-dates {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.admin-company-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.admin-company-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: #0f766e;
+}
+
+.admin-company-card.brand-blue::before { background: #2563eb; }
+.admin-company-card.brand-orange::before { background: #f97316; }
+.admin-company-card.brand-red::before { background: #dc2626; }
+.admin-company-card.brand-dark::before { background: #111827; }
+
+.admin-company-card strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.admin-company-status {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-company-dates {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.admin-crm-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-crm-actions button {
+  padding: 8px 10px;
+  min-height: 34px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+}
+
+.admin-note {
+  margin-top: 8px;
+}
+
+.pill.good,
+.pill.ok {
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.pill.warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+  border-color: rgba(245, 158, 11, 0.24);
+}
+
+.pill.bad {
+  background: rgba(220, 38, 38, 0.12);
+  color: #991b1b;
+  border-color: rgba(220, 38, 38, 0.22);
+}
+
+.pill.neutral {
+  background: rgba(100, 116, 139, 0.12);
+  color: #334155;
+  border-color: rgba(100, 116, 139, 0.22);
+}
+
+.package-notice {
+  margin: 12px 0 14px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.12);
+  color: #78350f;
+}
+
+.package-notice.danger {
+  border-color: rgba(220, 38, 38, 0.28);
+  background: rgba(220, 38, 38, 0.10);
+  color: #7f1d1d;
+}
+
+.package-notice p {
+  margin: 5px 0 0;
+}
+
+@media (max-width: 900px) {
+  .admin-crm-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-company-main,
+  .admin-company-dates,
+  .card-title-row {
+    flex-direction: column;
+  }
+  .admin-company-status {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-crm-kpis {
+    grid-template-columns: 1fr;
+  }
+  .admin-crm-actions button {
+    width: 100%;
+  }
+}

@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1235" />
+  <link rel="stylesheet" href="style.css?v=1236" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -74,41 +74,130 @@
       </div>
     </section>
 
-    <section id="viewAdminDashboard" class="view">
-      <div class="dashboard-head">
+    <section id="viewAdminDashboard" class="view admin-crm-view">
+      <div class="dashboard-head admin-crm-hero">
         <div>
-          <h2>Admin soba</h2>
-          <p>Dodaješ firme koje tek posle toga mogu da aktiviraju Upravu.</p>
+          <p class="business-eyebrow">Start Work PRO platforma</p>
+          <h2>Admin firmi</h2>
+          <p>Dodaješ firme, pratiš paket, kontaktiraš ih preko emaila ili WhatsApp-a i vidiš kome ističe pristup.</p>
         </div>
         <button id="refreshAdminBtn" class="secondary">Osveži</button>
       </div>
 
-      <div class="grid two">
-        <div class="card">
-          <h3>+ Dodaj odobrenu firmu</h3>
+      <div class="admin-crm-kpis">
+        <div class="business-kpi-card"><div class="kpi-icon green">🏢</div><div><strong id="adminMetricTotalCompanies">—</strong><span>Ukupno firmi</span></div></div>
+        <div class="business-kpi-card"><div class="kpi-icon green">✅</div><div><strong id="adminMetricActiveCompanies">—</strong><span>Aktivne firme</span></div></div>
+        <div class="business-kpi-card kpi-warning"><div class="kpi-icon orange">⏳</div><div><strong id="adminMetricExpiringCompanies">—</strong><span>Ističe za 10 dana</span></div></div>
+        <div class="business-kpi-card"><div class="kpi-icon red">🚫</div><div><strong id="adminMetricBlockedCompanies">—</strong><span>Blokirane firme</span></div></div>
+      </div>
+
+      <div class="grid two admin-crm-grid">
+        <div class="card admin-company-form-card">
+          <h3>+ Nova firma</h3>
+          <p class="muted">Ovo su podaci koje kasnije šalješ firmi za prvu aktivaciju.</p>
+
           <label>Naziv firme</label>
           <input id="acCompanyName" placeholder="npr. Maki Gradnja" />
-          <label>Email Uprave</label>
-          <input id="acEmail" type="email" placeholder="office@firma.rs" />
-          <label>Šifra firme</label>
-          <input id="acCompanyCode" placeholder="npr. MAKI26" />
-          <label>Pozivni kod</label>
-          <input id="acInviteCode" placeholder="npr. AC-8F42K" />
-          <label>Trial do</label>
-          <input id="acTrialUntil" type="date" />
-<label>Napomena</label>
-          <textarea id="acNote" placeholder="Interna napomena"></textarea>
+
+          <div class="grid two compact-grid">
+            <div>
+              <label>Email Uprave</label>
+              <input id="acEmail" type="email" placeholder="office@firma.rs" />
+            </div>
+            <div>
+              <label>Mobilni / WhatsApp</label>
+              <input id="acContactPhone" type="tel" placeholder="+381641234567" />
+            </div>
+          </div>
+
+          <label>Kontakt osoba</label>
+          <input id="acContactName" placeholder="npr. Marko iz kancelarije" />
+
+          <div class="grid two compact-grid">
+            <div>
+              <label>Šifra firme</label>
+              <input id="acCompanyCode" placeholder="npr. MAKI26" />
+            </div>
+            <div>
+              <label>Jednokratni aktivacioni kod</label>
+              <input id="acInviteCode" placeholder="npr. AC-8F42K" />
+            </div>
+          </div>
+
+          <div class="grid two compact-grid">
+            <div>
+              <label>Važi od</label>
+              <input id="acPaidFrom" type="date" />
+            </div>
+            <div>
+              <label>Važi do</label>
+              <input id="acPaidUntil" type="date" />
+            </div>
+          </div>
+
+          <div class="grid two compact-grid">
+            <div>
+              <label>Paket</label>
+              <select id="acPlan">
+                <option value="trial">Trial</option>
+                <option value="pro">Pro</option>
+                <option value="dogovor">Dogovor</option>
+              </select>
+            </div>
+            <div>
+              <label>Boja firme</label>
+              <select id="acBrandColor">
+                <option value="green">Zelena</option>
+                <option value="blue">Plava</option>
+                <option value="orange">Narandžasta</option>
+                <option value="red">Crvena</option>
+                <option value="dark">Tamna</option>
+              </select>
+            </div>
+          </div>
+
+          <label>Napomena</label>
+          <textarea id="acNote" placeholder="Interna napomena: dogovor, uplata, ko je kontakt osoba..."></textarea>
           <button id="addApprovedCompanyBtn" class="primary">Sačuvaj firmu</button>
         </div>
 
-        <div class="card">
-          <h3>Odobrene firme</h3>
-          <div id="approvedCompaniesList" class="list"></div>
+        <div class="card admin-expiring-card">
+          <div class="card-title-row">
+            <div>
+              <h3>Ističe za 10 dana</h3>
+              <p class="muted">Ovde odmah vidiš koga treba obavestiti pre isteka paketa.</p>
+            </div>
+            <span class="pill warn">10 dana</span>
+          </div>
+          <div id="expiringCompaniesList" class="list"></div>
+        </div>
+      </div>
+
+      <div class="card admin-search-card">
+        <div class="card-title-row">
+          <div>
+            <h3>🔎 Pronađi firmu</h3>
+            <p class="muted">Traži po emailu, nazivu firme, šifri firme, kontakt osobi ili telefonu.</p>
+          </div>
+        </div>
+        <div class="director-searchbar business-searchbar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔎</span>
+            <input id="adminCompanySearch" type="search" placeholder="npr. office@firma.rs, MAKI26, Maki Gradnja..." />
+          </div>
+          <button id="adminCompanySearchBtn" class="secondary small-action" type="button">Traži</button>
+          <button id="adminCompanyClearSearchBtn" class="secondary small-action" type="button">Prikaži sve</button>
         </div>
       </div>
 
       <div class="card">
-        <h3>Registrovane firme</h3>
+        <h3>Sve firme u admin evidenciji</h3>
+        <div id="approvedCompaniesList" class="list admin-company-list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Registrovane firme u aplikaciji</h3>
+        <p class="muted">Ovo je tehnička lista firmi koje su završile prvu aktivaciju i ušle u sistem.</p>
         <div id="companiesList" class="list"></div>
       </div>
     </section>
@@ -172,6 +261,8 @@
           </div>
           <div class="hero-date-pill">📅 Danas</div>
         </div>
+
+        <div id="directorPackageNotice" class="package-notice hidden"></div>
 
         <div class="business-kpi-grid" aria-label="Kratak pregled firme">
           <div class="business-kpi-card">
@@ -721,6 +812,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1235"></script>
+  <script src="script.js?v=1236"></script>
 </body>
 </html>
