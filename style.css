@@ -1897,3 +1897,175 @@ body[class*="company-brand-"] .internal-header > div:first-child::before{
   border-color:color-mix(in srgb, var(--company-brand) 32%, white)!important;
   color:#fff!important;
 }
+
+/* v1.24.0 — tanja dugmad + blage funkcionalne boje + klik svetlo */
+:root{
+  --btn-soft-green:#eaf7ef;
+  --btn-soft-green-border:#b9dcc6;
+  --btn-soft-green-text:#14532d;
+  --btn-soft-blue:#eef6ff;
+  --btn-soft-blue-border:#bfd8f4;
+  --btn-soft-blue-text:#1e3a8a;
+  --btn-soft-orange:#fff7ed;
+  --btn-soft-orange-border:#fed7aa;
+  --btn-soft-orange-text:#9a3412;
+  --btn-soft-red:#fff1f2;
+  --btn-soft-red-border:#fecdd3;
+  --btn-soft-red-text:#991b1b;
+  --btn-soft-dark:#f8fafc;
+  --btn-soft-dark-border:#d9e2ec;
+  --btn-glow:rgba(34,197,94,.34);
+}
+
+button,
+.primary,
+.secondary,
+.ghost,
+.back,
+.big-btn,
+.small-btn,
+.edit-btn,
+.delete-btn,
+.danger-btn,
+.danger-small,
+.archive-btn,
+.archive-report-btn,
+.hard-delete-report-btn,
+.btn-warning,
+.remove-entry,
+.quick-action,
+.tab{
+  min-height:34px!important;
+  padding:8px 12px!important;
+  border-radius:11px!important;
+  font-size:.9rem!important;
+  line-height:1.15!important;
+  letter-spacing:.01em;
+  position:relative;
+  overflow:hidden;
+  transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease,filter .18s ease!important;
+}
+
+.primary,
+button.primary,
+.btn-primary,
+button.btn-primary,
+.quick-action.green{
+  background:linear-gradient(135deg,#e9f7ef,#d4f1dd)!important;
+  color:var(--btn-soft-green-text)!important;
+  border:1px solid var(--btn-soft-green-border)!important;
+  box-shadow:0 5px 14px rgba(20,83,45,.08)!important;
+}
+
+.secondary,
+button.secondary,
+.btn-secondary,
+button.btn-secondary,
+.back,
+.ghost,
+.small-btn,
+.edit-btn,
+.archive-btn,
+.archive-report-btn,
+.quick-action.light{
+  background:linear-gradient(135deg,#f8fafc,#eef6ff)!important;
+  color:var(--btn-soft-blue-text)!important;
+  border:1px solid var(--btn-soft-blue-border)!important;
+  box-shadow:0 5px 14px rgba(30,58,138,.07)!important;
+}
+
+.btn-warning,
+.warning,
+.quick-action.outline{
+  background:linear-gradient(135deg,#fffaf0,#fff7ed)!important;
+  color:var(--btn-soft-orange-text)!important;
+  border:1px solid var(--btn-soft-orange-border)!important;
+  box-shadow:0 5px 14px rgba(154,52,18,.07)!important;
+}
+
+.danger-btn,
+.danger-small,
+.delete-btn,
+.hard-delete-report-btn,
+.remove-entry{
+  background:linear-gradient(135deg,#fff7f7,#fff1f2)!important;
+  color:var(--btn-soft-red-text)!important;
+  border:1px solid var(--btn-soft-red-border)!important;
+  box-shadow:0 5px 14px rgba(153,27,27,.07)!important;
+}
+
+.primary:hover,
+.secondary:hover,
+.btn-primary:hover,
+.btn-secondary:hover,
+button:hover,
+.quick-action:hover,
+.tab:hover{
+  transform:translateY(-1px);
+  filter:saturate(1.03);
+}
+
+.tab{
+  background:#f8fafc!important;
+  color:#334155!important;
+  border:1px solid #d9e2ec!important;
+}
+.tab.active{
+  background:linear-gradient(135deg,var(--brand-color,#0f766e),var(--brand-color-dark,#0d5f5a))!important;
+  color:#fff!important;
+  border-color:transparent!important;
+  box-shadow:0 10px 24px rgba(15,118,110,.18)!important;
+}
+
+.quick-action{
+  padding:11px 13px!important;
+  margin-bottom:9px!important;
+  border-radius:13px!important;
+}
+.quick-action span{font-size:18px!important;}
+
+.big-btn{
+  min-height:118px!important;
+  padding:18px!important;
+}
+.big-btn span{font-size:28px!important;}
+
+.admin-crm-actions button,
+.row.compact button,
+.management-actions button,
+.person-actions-v1116 button,
+.asset-actions-v1117 button,
+.material-actions-v1119 button,
+.returned-actions button,
+.director-actions button{
+  min-height:32px!important;
+  padding:7px 10px!important;
+  font-size:.84rem!important;
+}
+
+.btn-click-glow{
+  transform:translateY(-1px)!important;
+  box-shadow:0 0 0 4px rgba(255,255,255,.96),0 0 0 8px var(--btn-glow),0 12px 28px rgba(15,23,42,.16)!important;
+  z-index:2;
+}
+.btn-click-glow::after{
+  content:"";
+  position:absolute;
+  inset:-30%;
+  background:radial-gradient(circle,rgba(255,255,255,.74) 0%,rgba(255,255,255,.34) 28%,rgba(255,255,255,0) 58%);
+  pointer-events:none;
+  animation:btnSoftPulse 1.2s ease-out infinite;
+}
+@keyframes btnSoftPulse{
+  0%{opacity:.55;transform:scale(.95)}
+  70%{opacity:.18;transform:scale(1.08)}
+  100%{opacity:.38;transform:scale(1)}
+}
+
+@media (max-width:720px){
+  button,.primary,.secondary,.ghost,.back,.small-btn,.edit-btn,.delete-btn,.danger-btn,.danger-small,.archive-btn,.archive-report-btn,.hard-delete-report-btn,.btn-warning,.remove-entry,.quick-action,.tab{
+    min-height:36px!important;
+    padding:8px 10px!important;
+    font-size:.86rem!important;
+  }
+}

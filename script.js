@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.23.9";
+const APP_VERSION = "1.24.0";
 
 
 let sb = null;
@@ -6361,8 +6361,20 @@ async function openWorkerForm() {
 }
 
 
+
+function setupButtonClickGlow() {
+  document.addEventListener("click", (event) => {
+    const clicked = event.target.closest("button, .tab, .quick-action, .big-btn, .small-btn, .edit-btn, .delete-btn, .danger-btn, .danger-small, .archive-btn, .archive-report-btn, .hard-delete-report-btn, .btn-warning, .remove-entry");
+    if (!clicked || clicked.disabled) return;
+
+    document.querySelectorAll(".btn-click-glow").forEach((el) => el.classList.remove("btn-click-glow"));
+    clicked.classList.add("btn-click-glow");
+  });
+}
+
 async function boot() {
   installNavigationFallback();
+  setupButtonClickGlow();
   bindEvents();
   initSupabase();
   $("#wrDate").value = today();

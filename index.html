@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1239" />
+  <link rel="stylesheet" href="style.css?v=1240" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -259,7 +259,6 @@
           <button class="tab" data-tab="materials">📦 Materijali</button>
           <button class="tab" data-tab="reports">📄 Dnevni izveštaji</button>
           <button class="tab" data-tab="defects">🛠️ Kvarovi</button>
-          <button class="tab" data-tab="diagnostics">🧪 Provera sistema</button>
           <button class="tab" data-tab="export">📊 Izvoz u Excel</button>
         </div>
         <div class="director-help-link">❔ Pomoć i podrška <span>›</span></div>
@@ -482,39 +481,6 @@
 
 
 
-      <div id="tabDiagnostics" class="tab-panel">
-        <div class="card diagnostics-card">
-          <div class="row space-between diagnostics-head">
-            <div>
-              <h3>Provera sistema</h3>
-              <p class="muted">Privremeni panel za testiranje najčešćih grešaka pre nego što verziju proglasiš stabilnom.</p>
-            </div>
-            <div class="row compact">
-              <button id="runLocalAppCheckBtn" class="primary" type="button">🧪 Pokreni brzu proveru</button>
-              <button id="runWorkerUiAuditBtn" class="secondary" type="button">👷 Proveri radničke prozore</button>
-              <button id="copyWorkerUiAuditBtn" class="secondary" type="button">📋 Kopiraj proveru</button>
-            </div>
-          </div>
-          <div id="localAppCheckResult" class="audit-result-box">
-            <div class="audit-card warn">
-              <h4>Još nije pokrenuto</h4>
-              <p class="audit-small">Klikni “Pokreni brzu proveru”. Ova provera ne menja bazu i ne šalje izveštaje.</p>
-            </div>
-          </div>
-          <hr/>
-          <h4>Radnički prozori po dozvolama</h4>
-          <p class="muted">Ovo čita aktivne korisnike firme i upozorava ako radnik ima uključene upravljačke prozore.</p>
-          <div id="workerUiAuditResult" class="audit-result-box">
-            <div class="audit-card warn">
-              <h4>Nije provereno</h4>
-              <p class="audit-small">Prvo se prijavi kao Uprava, zatim klikni “Proveri radničke prozore”.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-
       <div id="tabExport" class="tab-panel">
         <div class="card">
           <h3>Izvoz u Excel</h3>
@@ -601,7 +567,6 @@
             <button type="button" class="quick-action green" data-business-tab="people">➕ Novi radnik <span>›</span></button>
             <button type="button" class="quick-action green" data-business-tab="sites">➕ Novo gradilište <span>›</span></button>
             <button type="button" class="quick-action light" data-business-tab="reports">📄 Pregledaj izveštaje <span>›</span></button>
-            <button type="button" class="quick-action light" data-business-tab="diagnostics">🧪 Provera sistema <span>›</span></button>
             <button type="button" class="quick-action outline" data-business-tab="export">📊 Izvoz u Excel <span>›</span></button>
           </aside>
         </div>
@@ -830,6 +795,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1239"></script>
+  <script src="script.js?v=1240"></script>
 </body>
 </html>
