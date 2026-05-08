@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.24.7";
+const APP_VERSION = "1.25.0";
 
 
 let sb = null;
@@ -153,27 +153,22 @@ function businessUpdateSitesCount(list) {
 }
 
 function businessCollectFuelLiters(data) {
-  let total = 0;
-  const seen = new Set();
-  const walk = (value) => {
-    if (!value || typeof value !== "object") return;
-    if (seen.has(value)) return;
-    seen.add(value);
-    if (Array.isArray(value)) {
-      value.forEach(walk);
-      return;
-    }
-    const possibleKeys = ["liters", "litres", "litra", "litara", "fuel_liters", "fuelLiters", "tanker_liters", "field_tanker_liters"];
-    for (const key of possibleKeys) {
-      if (value[key] !== undefined && value[key] !== null && value[key] !== "") {
-        const n = parseFloat(String(value[key]).replace(",", "."));
-        if (Number.isFinite(n)) total += n;
-      }
-    }
-    Object.values(value).forEach(walk);
-  };
-  walk(data);
-  return total;
+  const d = data || {};
+  const fuelEntries = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+  const fieldTankerEntries = Array.isArray(d.field_tanker_entries)
+    ? d.field_tanker_entries
+    : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+
+  const fuelTotal = fuelEntries.reduce((sum, entry) => sum + parseDecimalInput(entry?.liters), 0);
+  const tankerTotal = fieldTankerEntries.reduce((sum, entry) => sum + parseDecimalInput(entry?.liters), 0);
+
+  // Važno: ne sabiramo rekurzivno sva polja iz report.data.
+  // Stari kod je mogao duplo brojati d.fuel_liters + fuel_entries[].liters
+  // i praviti pogrešan zbir goriva u Direkcija dashboardu.
+  if (fuelEntries.length || fieldTankerEntries.length) return fuelTotal + tankerTotal;
+
+  // Fallback samo za stare izveštaje koji nemaju niz fuel_entries.
+  return parseDecimalInput(d.fuel_liters) + parseDecimalInput(d.field_tanker_liters) + parseDecimalInput(d.tanker_liters);
 }
 
 function businessUpdateReportsMetrics(list) {
@@ -2121,10 +2116,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(ft.liters)}</td>
         <td>${val(ft.receiver || ft.received_by)}</td>
         <td>${val(mat.action || mat.material_action)}</td>
-        <td>${val(mat.material || mat.name || d.material)}</td>
-        <td>${val(mat.quantity || mat.qty || d.quantity)}</td>
-        <td>${val(mat.unit || d.unit)}</td>
-        <td>${val(mat.note || d.material_note)}</td>
+        <td>${val(mat.material || mat.name)}</td>
+        <td>${val(materialQuantityValue(mat))}</td>
+        <td>${val(materialUnitValue(mat))}</td>
+        <td>${val(mat.note)}</td>
         <td>${val(d.leave_request_type || leaveRequest.leave_label || leaveRequest.label)}</td>
         <td>${val(d.leave_date || leaveRequest.leave_date || leaveRequest.date)}</td>
         <td>${val(d.leave_from || leaveRequest.date_from)}</td>
@@ -2215,8 +2210,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
     const row = `Materijal ${i + 1}`;
     addPreview("Materijal", row, "Radnja", m.action || m.material_action);
     addPreview("Materijal", row, "Materijal", m.material || m.name);
-    addPreview("Materijal", row, "Količina", m.quantity || m.qty);
-    addPreview("Materijal", row, "Jedinica", m.unit);
+    addPreview("Materijal", row, "Broj tura", m.tours || m.material_tours);
+    addPreview("Materijal", row, "Količina po turi", m.per_tour || m.quantity_per_tour || m.material_per_tour);
+    addPreview("Materijal", row, "Ukupna količina", materialQuantityValue(m));
+    addPreview("Materijal", row, "Jedinica", materialUnitValue(m));
+    addPreview("Materijal", row, "Obračun", m.calc_text || materialCalcText(m));
     addPreview("Materijal", row, "Napomena", m.note);
   });
 
@@ -2428,8 +2426,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>#</th>
           <th>Radnja</th>
           <th>Materijal</th>
-          <th>Količina</th>
+          <th>Ture</th>
+          <th>Po turi</th>
+          <th>Ukupno</th>
           <th>Jedinica</th>
+          <th>Obračun</th>
           <th>Napomena</th>
         </tr>
       </thead>
@@ -2439,8 +2440,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${i + 1}</td>
             <td>${val(m.action || m.material_action)}</td>
             <td>${val(m.material || m.name)}</td>
-            <td>${val(m.quantity || m.qty)}</td>
-            <td>${val(m.unit)}</td>
+            <td>${val(m.tours || m.material_tours)}</td>
+            <td>${val(m.per_tour || m.quantity_per_tour || m.material_per_tour)}</td>
+            <td>${val(materialQuantityValue(m))}</td>
+            <td>${val(materialUnitValue(m))}</td>
+            <td>${val(m.calc_text || materialCalcText(m))}</td>
             <td>${val(m.note)}</td>
           </tr>
         `).join("")}
@@ -3678,6 +3682,64 @@ function refreshMaterialEntrySelectors() {
 }
 
 
+
+function formatMaterialCalcNumber(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  const rounded = Math.round(n * 1000) / 1000;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
+}
+
+function calculateMaterialTotal(tours, perTour) {
+  const t = parseDecimalInput(tours);
+  const p = parseDecimalInput(perTour);
+  if (!t || !p) return "";
+  return formatMaterialCalcNumber(t * p);
+}
+
+function materialQuantityValue(m = {}) {
+  return m.total_quantity || m.calculated_quantity || m.quantity || m.qty || "";
+}
+
+function materialUnitValue(m = {}) {
+  return m.unit || m.measure_unit || "";
+}
+
+function materialCalcText(m = {}) {
+  const tours = m.tours || m.material_tours || "";
+  const perTour = m.per_tour || m.quantity_per_tour || m.material_per_tour || "";
+  const unit = materialUnitValue(m);
+  const total = materialQuantityValue(m);
+  if (!tours && !perTour) return "";
+  return `${tours || "0"} tura × ${perTour || "0"}${unit ? " " + unit : ""} = ${total || "0"}${unit ? " " + unit : ""}`;
+}
+
+function updateMaterialCalculation(entryEl) {
+  if (!entryEl) return;
+  const toursEl = entryEl.querySelector(".mat-tours");
+  const perTourEl = entryEl.querySelector(".mat-per-tour");
+  const qtyEl = entryEl.querySelector(".mat-qty");
+  const hint = entryEl.querySelector(".mat-calc-hint");
+  const total = calculateMaterialTotal(toursEl?.value || "", perTourEl?.value || "");
+  if (total && qtyEl && (!qtyEl.value || qtyEl.dataset.autoMaterialQty === "1")) {
+    qtyEl.value = total;
+    qtyEl.dataset.autoMaterialQty = "1";
+  }
+  if (qtyEl && !total && qtyEl.dataset.autoMaterialQty === "1") {
+    qtyEl.value = "";
+    qtyEl.dataset.autoMaterialQty = "0";
+  }
+  const unitSelect = entryEl.querySelector(".mat-unit")?.value || "";
+  const unitManual = entryEl.querySelector(".mat-unit-manual")?.value.trim() || "";
+  const selectedDefaultUnit = entryEl.querySelector(".mat-select")?.selectedOptions?.[0]?.dataset?.unit || "";
+  const unit = unitSelect === "ručno" ? unitManual : (unitSelect || selectedDefaultUnit || "");
+  if (hint) {
+    hint.textContent = total
+      ? `Obračun materijala: ${toursEl?.value || 0} tura × ${perTourEl?.value || 0}${unit ? " " + unit : ""} = ${total}${unit ? " " + unit : ""}.`
+      : "Za materijal: upiši broj tura i količinu po turi. Gorivo se ovde ne računa i ne sabira.";
+  }
+}
+
 function buildMaterialUnitOptionsHtml(selectedValue = "") {
   const selected = String(selectedValue || "").trim();
   const units = [
@@ -3738,8 +3800,16 @@ function addMaterialEntry(values = {}) {
 
     <div class="mini-grid">
       <div>
-        <label>Količina <span class="muted">(ako treba)</span></label>
-        <input class="mat-qty numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 24" value="${escapeHtml(values.quantity || values.qty || "")}" />
+        <label>Broj tura <span class="muted">(materijal)</span></label>
+        <input class="mat-tours numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 6" value="${escapeHtml(values.tours || values.material_tours || "")}" />
+      </div>
+      <div>
+        <label>Količina po turi</label>
+        <input class="mat-per-tour numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 8" value="${escapeHtml(values.per_tour || values.quantity_per_tour || values.material_per_tour || "")}" />
+      </div>
+      <div>
+        <label>Ukupna količina</label>
+        <input class="mat-qty numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 48" value="${escapeHtml(values.total_quantity || values.calculated_quantity || values.quantity || values.qty || "")}" />
       </div>
       <div>
         <label>Jedinica mere</label>
@@ -3754,9 +3824,15 @@ function addMaterialEntry(values = {}) {
         <input class="mat-note" placeholder="npr. dovezao Marko / vraćeno u bazu" value="${escapeHtml(values.note || "")}" />
       </div>
     </div>
+    <p class="field-hint mat-calc-hint">Za materijal: upiši broj tura i količinu po turi. Gorivo se ovde ne računa i ne sabira.</p>
   `;
   div.querySelector(".remove-entry").addEventListener("click", () => { div.remove(); renumberMaterialEntries(); });
-  div.querySelector(".mat-unit")?.addEventListener("change", () => updateMaterialUnitManualVisibility(div));
+  div.querySelector(".mat-unit")?.addEventListener("change", () => { updateMaterialUnitManualVisibility(div); updateMaterialCalculation(div); });
+  div.querySelector(".mat-unit-manual")?.addEventListener("input", () => updateMaterialCalculation(div));
+  div.querySelector(".mat-select")?.addEventListener("change", () => updateMaterialCalculation(div));
+  div.querySelector(".mat-tours")?.addEventListener("input", () => updateMaterialCalculation(div));
+  div.querySelector(".mat-per-tour")?.addEventListener("input", () => updateMaterialCalculation(div));
+  div.querySelector(".mat-qty")?.addEventListener("input", (ev) => { ev.currentTarget.dataset.autoMaterialQty = "0"; updateMaterialCalculation(div); });
   updateMaterialUnitManualVisibility(div);
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
@@ -3765,6 +3841,7 @@ function addMaterialEntry(values = {}) {
     const sel = div.querySelector(".mat-select");
     if (Array.from(sel.options).some(o => o.value === selectedMaterial)) sel.value = selectedMaterial;
   }
+  updateMaterialCalculation(div);
 }
 
 function renumberMaterialEntries() {
@@ -3786,6 +3863,10 @@ function getMaterialEntries() {
     const unitManual = el.querySelector(".mat-unit-manual")?.value.trim() || "";
     const selectedMaterialDefaultUnit = option?.dataset?.unit || "";
     const finalUnit = unitSelect === "ručno" ? unitManual : (unitSelect || selectedMaterialDefaultUnit || "");
+    const tours = el.querySelector(".mat-tours")?.value.trim() || "";
+    const perTour = el.querySelector(".mat-per-tour")?.value.trim() || "";
+    const calculatedQuantity = calculateMaterialTotal(tours, perTour);
+    const quantity = el.querySelector(".mat-qty")?.value.trim() || calculatedQuantity || "";
     return {
       no: i + 1,
       action,
@@ -3794,12 +3875,19 @@ function getMaterialEntries() {
       name: materialName,
       material_id: manual ? null : (option?.dataset?.materialId || null),
       material_custom: manual,
-      quantity: el.querySelector(".mat-qty")?.value.trim() || "",
+      tours,
+      material_tours: tours,
+      per_tour: perTour,
+      quantity_per_tour: perTour,
+      calculated_quantity: calculatedQuantity,
+      total_quantity: quantity,
+      quantity,
       unit: finalUnit,
       measure_unit: finalUnit,
+      calc_text: materialCalcText({ tours, per_tour: perTour, quantity, unit: finalUnit }),
       note: el.querySelector(".mat-note")?.value.trim() || ""
     };
-  }).filter(m => m.action || m.material || m.quantity || m.note);
+  }).filter(m => m.action || m.material || m.quantity || m.tours || m.per_tour || m.note);
 }
 
 function workerSetSections(perms) {
@@ -5060,8 +5148,11 @@ function collectWorkerData() {
     material_entries: materialEntries,
     material_movements: materialEntries,
     material: canMaterials ? materialEntries.map(m => `${m.action || ""}: ${m.material || ""}`.trim()).filter(Boolean).join(" | ") : "",
-    quantity: canMaterials ? materialEntries.map(m => m.quantity).filter(Boolean).join(" | ") : "",
-    unit: canMaterials ? materialEntries.map(m => m.unit).filter(Boolean).join(" | ") : "",
+    material_tours: canMaterials ? materialEntries.map(m => m.tours || m.material_tours).filter(Boolean).join(" | ") : "",
+    material_per_tour: canMaterials ? materialEntries.map(m => m.per_tour || m.quantity_per_tour).filter(Boolean).join(" | ") : "",
+    quantity: canMaterials ? materialEntries.map(m => materialQuantityValue(m)).filter(Boolean).join(" | ") : "",
+    unit: canMaterials ? materialEntries.map(m => materialUnitValue(m)).filter(Boolean).join(" | ") : "",
+    material_calc: canMaterials ? materialEntries.map(m => m.calc_text || materialCalcText(m)).filter(Boolean).join(" | ") : "",
     leave_request: canLeaveRequest ? leaveRequest : null,
     leave_request_type: canLeaveRequest && hasLeaveRequestData(leaveRequest) ? leaveRequest.label : "",
     leave_type: canLeaveRequest ? (leaveRequest?.type || "") : "",
@@ -5556,8 +5647,11 @@ const EXPORT_COLUMNS = [
   { key:"field_tanker_receiver", label:"Primio gorivo iz cisterne" },
   { key:"material_action", label:"Radnja sa materijalom" },
   { key:"material", label:"Materijal" },
-  { key:"quantity", label:"Količina" },
+  { key:"material_tours", label:"Ture materijala" },
+  { key:"material_per_tour", label:"Količina po turi" },
+  { key:"quantity", label:"Ukupna količina materijala" },
   { key:"unit", label:"Jedinica" },
+  { key:"material_calc", label:"Obračun materijala" },
   { key:"material_note", label:"Napomena za materijal" },
   { key:"warehouse_type", label:"Magacin tip" },
   { key:"warehouse_item", label:"Magacin stavka" },
@@ -5633,7 +5727,7 @@ const EXPORT_GROUPS = [
     id: "material",
     title: "Materijal",
     hint: "Materijal, količina i jedinica mere.",
-    keys: ["material_action", "material", "quantity", "unit", "material_note"]
+    keys: ["material_action", "material", "material_tours", "material_per_tour", "quantity", "unit", "material_calc", "material_note"]
   },
   {
     id: "warehouse",
@@ -5781,95 +5875,132 @@ function flattenReportRowsForExport(r) {
   const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
-  const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : []);
+  const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
   const leaveRequest = d.leave_request || {};
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length, materials.length);
   const rows = [];
 
-  for (let i = 0; i < maxRows; i++) {
-    const w = workers[i] || {};
-    const m = machines[i] || {};
-    const v = vehicles[i] || {};
-    const ll = lowloaders[i] || {};
-    const f = fuels[i] || {};
-    const ft = fieldTankers[i] || {};
-    const mat = materials[i] || {};
-    rows.push({
-      date: r.report_date || "",
-      worker: reportPersonName(r),
-      function: r.company_users?.function_title || "",
-      site: d.site_name || "",
-      hours: d.hours || "",
-      description: d.description || "",
-      crew_worker: w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || "",
-      crew_hours: w.hours || "",
-      machine_code: m.asset_code || m.machine_code || "",
-      machine: m.name || d.machine || "",
-      machine_start: m.start || d.mtc_start || "",
-      machine_end: m.end || d.mtc_end || "",
-      machine_hours: m.hours || d.machine_hours || "",
-      machine_work: m.work || "",
-      vehicle_code: v.asset_code || v.vehicle_code || "",
-      vehicle: v.name || v.vehicle || d.vehicle || "",
-      registration: v.registration || "",
-      capacity: v.capacity || "",
-      km_start: v.km_start || d.km_start || "",
-      km_end: v.km_end || d.km_end || "",
-      route: v.route || d.route || "",
-      tours: v.tours || d.tours || "",
-      cubic: v.cubic_m3 || v.cubic_auto || "",
-      lowloader_plates: ll.plates || ll.registration || "",
-      lowloader_from: ll.from_site || ll.from_address || "",
-      lowloader_to: ll.to_site || ll.to_address || "",
-      lowloader_km_start: ll.km_start || "",
-      lowloader_km_end: ll.km_end || "",
-      lowloader_km: ll.km_total || "",
-      lowloader_machine: ll.machine || "",
-      fuel_type: assetKindLabel(f.asset_kind),
-      fuel_asset_code: f.asset_code || "",
-      fuel_for: f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
-      fuel_registration: f.asset_registration || f.registration || "",
-      fuel_liters: f.liters || d.fuel_liters || "",
-      fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
-      fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
-      fuel_by: f.by || "",
-      fuel_receiver: f.receiver || d.fuel_receiver || "",
-      field_tanker_site: ft.site_name || "",
-      field_tanker_type: assetKindLabel(ft.asset_kind),
-      field_tanker_asset_code: ft.asset_code || "",
-      field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
-      field_tanker_registration: ft.asset_registration || ft.registration || "",
-      field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
-      field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
-      field_tanker_liters: ft.liters || "",
-      field_tanker_receiver: ft.receiver || ft.received_by || "",
-      material_action: mat.action || mat.material_action || "",
-      material: mat.material || mat.name || d.material || "",
-      quantity: mat.quantity || mat.qty || d.quantity || "",
-      unit: mat.unit || d.unit || "",
-      material_note: mat.note || "",
+  const base = {
+    date: r.report_date || "",
+    worker: reportPersonName(r),
+    function: r.company_users?.function_title || "",
+    site: d.site_name || "",
+    hours: d.hours || "",
+    description: d.description || "",
+    status: r.status || "",
+    note: d.note || ""
+  };
+  const pushRow = (extra = {}) => rows.push({ ...base, ...extra });
+
+  // v1.25.0 važno pravilo:
+  // Ne spajati različite evidencije po istom indeksu niza.
+  // Svaka mašina, svako vozilo, svako sipanje goriva i svaki materijal mora biti svoj zaseban Excel red.
+  // Tako litri goriva nikad ne mogu da završe u redu materijala/mašine, niti ture materijala u redu goriva.
+
+  workers.forEach(w => pushRow({
+    crew_worker: w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || "",
+    crew_hours: w.hours || ""
+  }));
+
+  machines.forEach(m => pushRow({
+    machine_code: m.asset_code || m.machine_code || "",
+    machine: m.name || "",
+    machine_start: m.start || "",
+    machine_end: m.end || "",
+    machine_hours: m.hours || "",
+    machine_work: m.work || ""
+  }));
+
+  vehicles.forEach(v => pushRow({
+    vehicle_code: v.asset_code || v.vehicle_code || "",
+    vehicle: v.name || v.vehicle || "",
+    registration: v.registration || "",
+    capacity: v.capacity || "",
+    km_start: v.km_start || "",
+    km_end: v.km_end || "",
+    route: v.route || "",
+    tours: v.tours || "",
+    cubic: v.cubic_m3 || v.cubic_auto || ""
+  }));
+
+  lowloaders.forEach(ll => pushRow({
+    lowloader_plates: ll.plates || ll.registration || "",
+    lowloader_from: ll.from_site || ll.from_address || "",
+    lowloader_to: ll.to_site || ll.to_address || "",
+    lowloader_km_start: ll.km_start || "",
+    lowloader_km_end: ll.km_end || "",
+    lowloader_km: ll.km_total || "",
+    lowloader_machine: ll.machine || ""
+  }));
+
+  fuels.forEach(f => pushRow({
+    fuel_type: assetKindLabel(f.asset_kind),
+    fuel_asset_code: f.asset_code || "",
+    fuel_for: f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
+    fuel_registration: f.asset_registration || f.registration || "",
+    fuel_liters: f.liters || "",
+    fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || "",
+    fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || "",
+    fuel_by: f.by || "",
+    fuel_receiver: f.receiver || d.fuel_receiver || ""
+  }));
+
+  fieldTankers.forEach(ft => pushRow({
+    field_tanker_site: ft.site_name || "",
+    field_tanker_type: assetKindLabel(ft.asset_kind),
+    field_tanker_asset_code: ft.asset_code || "",
+    field_tanker_asset: ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
+    field_tanker_registration: ft.asset_registration || ft.registration || "",
+    field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
+    field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
+    field_tanker_liters: ft.liters || "",
+    field_tanker_receiver: ft.receiver || ft.received_by || ""
+  }));
+
+  materials.forEach(mat => pushRow({
+    material_action: mat.action || mat.material_action || "",
+    material: mat.material || mat.name || "",
+    material_tours: mat.tours || mat.material_tours || "",
+    material_per_tour: mat.per_tour || mat.quantity_per_tour || mat.material_per_tour || "",
+    quantity: materialQuantityValue(mat),
+    unit: materialUnitValue(mat),
+    material_calc: mat.calc_text || materialCalcText(mat),
+    material_note: mat.note || ""
+  }));
+
+  if (d.warehouse_type || d.warehouse_item || d.warehouse_qty) {
+    pushRow({
       warehouse_type: d.warehouse_type || "",
       warehouse_item: d.warehouse_item || "",
-      warehouse_qty: d.warehouse_qty || "",
+      warehouse_qty: d.warehouse_qty || ""
+    });
+  }
+
+  if (d.leave_request_type || d.leave_date || d.leave_from || d.leave_to || leaveRequest.label || leaveRequest.leave_label) {
+    pushRow({
       leave_type: d.leave_request_type || leaveRequest.leave_label || leaveRequest.label || "",
       leave_date: d.leave_date || leaveRequest.leave_date || leaveRequest.date || "",
       leave_from: d.leave_from || leaveRequest.date_from || "",
       leave_to: d.leave_to || leaveRequest.date_to || "",
-      leave_note: d.leave_note || leaveRequest.leave_note || leaveRequest.note || "",
+      leave_note: d.leave_note || leaveRequest.leave_note || leaveRequest.note || ""
+    });
+  }
+
+  if (d.defect || d.defect_description || d.problem_description || d.defect_asset_name || d.defect_asset_code) {
+    pushRow({
       defect_type: assetKindLabel(d.defect_asset_kind),
       defect_asset_code: d.defect_asset_code || "",
       defect_asset: d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
       defect_registration: d.defect_asset_registration || "",
       defect_site: d.defect_site_name || d.site_name || "",
-      defect: d.defect || "",
+      defect: d.defect || d.defect_description || d.problem_description || "",
       defect_work_impact: defectImpactLabel(d.defect_work_impact),
       defect_urgency: d.defect_urgency || "",
       defect_called_mechanic: d.called_mechanic_by_phone || d.defect_called_mechanic || "",
-      defect_status: d.defect_status || "",
-      status: r.status || ""
+      defect_status: d.defect_status || ""
     });
   }
 
+  if (!rows.length) pushRow({});
   return rows;
 }
 
@@ -5909,7 +6040,7 @@ const SMART_EXPORT_PRESETS = {
   },
   materials: {
     title: "Materijal",
-    keys: ["date","site","worker","material_action","material","quantity","unit","material_note","status"]
+    keys: ["date","site","worker","material_action","material","material_tours","material_per_tour","quantity","unit","material_calc","material_note","status"]
   },
   warehouse: {
     title: "Magacin",
@@ -6014,9 +6145,9 @@ function smartRowsForReport(r, type) {
       fuel_asset_code: f.asset_code || "",
       fuel_for: f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
       fuel_registration: f.asset_registration || f.registration || "",
-      fuel_liters: f.liters || d.fuel_liters || "",
-      fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || d.fuel_km || "",
-      fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || d.fuel_mtc || "",
+      fuel_liters: f.liters || "",
+      fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || "",
+      fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || "",
       fuel_by: f.by || "",
       fuel_receiver: f.receiver || d.fuel_receiver || ""
     }));
@@ -6093,9 +6224,12 @@ function smartRowsForReport(r, type) {
     materials.forEach(mat => rows.push({
       ...base,
       material_action: mat.action || mat.material_action || "",
-      material: mat.material || mat.name || d.material || "",
-      quantity: mat.quantity || mat.qty || d.quantity || "",
-      unit: mat.unit || d.unit || "",
+      material: mat.material || mat.name || "",
+      material_tours: mat.tours || mat.material_tours || "",
+      material_per_tour: mat.per_tour || mat.quantity_per_tour || mat.material_per_tour || "",
+      quantity: materialQuantityValue(mat),
+      unit: materialUnitValue(mat),
+      material_calc: mat.calc_text || materialCalcText(mat),
       material_note: mat.note || ""
     }));
   }
