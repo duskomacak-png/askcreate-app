@@ -2077,3 +2077,165 @@ body.worker-company-locked #workerLoginBtn{
   .worker-install-box{grid-template-columns:1fr;}
   .worker-install-box .primary{width:100%;}
 }
+
+/* =========================================================
+   v1.24.4 - RADNIK QR/PWA: samo unos koda + tamno plava terenska tema
+   ========================================================= */
+body.worker-code-only-mode{
+  background: radial-gradient(circle at top, rgba(59,130,246,.20), transparent 34%), #07111f !important;
+}
+body.worker-code-only-mode .topbar,
+body.worker-code-only-mode #viewWorkerLogin .back,
+body.worker-code-only-mode #workerCompanyCodeLabel,
+body.worker-code-only-mode #workerCompanyCode,
+body.worker-code-only-mode #workerCompanyCodeNote,
+body.worker-code-only-mode #workerInstallBox,
+body.worker-code-only-mode #workerCompanyQrNotice,
+body.worker-code-only-mode #workerLoginHelpBox,
+body.worker-code-only-mode #workerAccessCodeNote,
+body.worker-code-only-mode #viewWorkerLogin .hint{
+  display:none!important;
+}
+body.worker-code-only-mode #viewWorkerLogin{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+body.worker-code-only-mode #viewWorkerLogin .card{
+  width:min(430px, 100%);
+  background:linear-gradient(180deg, rgba(15,30,53,.96), rgba(8,18,33,.98))!important;
+  border:1px solid rgba(248,113,113,.38)!important;
+  box-shadow:0 22px 70px rgba(0,0,0,.42), 0 0 0 1px rgba(147,197,253,.12) inset!important;
+  border-radius:24px!important;
+  padding:28px!important;
+  color:#dbeafe!important;
+}
+body.worker-code-only-mode #workerLoginTitle{
+  text-align:center;
+  color:#eaf2ff!important;
+  font-size:1.55rem!important;
+  margin-bottom:18px!important;
+}
+body.worker-code-only-mode #workerAccessCodeLabel{
+  display:block!important;
+  color:#bfdbfe!important;
+  font-weight:900!important;
+  text-align:left;
+}
+body.worker-code-only-mode #workerAccessCode{
+  background:#0b1b31!important;
+  border:1px solid rgba(248,113,113,.52)!important;
+  color:#eff6ff!important;
+  min-height:54px!important;
+  font-size:20px!important;
+  text-align:center;
+  letter-spacing:.08em;
+  border-radius:16px!important;
+  box-shadow: inset 0 0 0 1px rgba(147,197,253,.08)!important;
+}
+body.worker-code-only-mode #workerAccessCode:focus{
+  outline:3px solid rgba(248,113,113,.22)!important;
+  border-color:#f87171!important;
+}
+body.worker-code-only-mode #workerLoginBtn{
+  width:100%;
+  margin-top:14px;
+  min-height:52px;
+  border-radius:16px!important;
+  background:linear-gradient(135deg, #b91c1c, #ef4444)!important;
+  color:#fff!important;
+  border:1px solid rgba(252,165,165,.62)!important;
+  box-shadow:0 16px 34px rgba(185,28,28,.24)!important;
+}
+
+body.worker-field-theme{
+  background:linear-gradient(180deg, #07111f 0%, #0b1b31 42%, #08111f 100%)!important;
+  color:#dbeafe!important;
+}
+body.worker-field-theme .internal-header{
+  background:rgba(8,18,33,.98)!important;
+  color:#eaf2ff!important;
+  border-bottom:3px solid rgba(248,113,113,.55)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.32)!important;
+}
+body.worker-field-theme .internal-header strong,
+body.worker-field-theme .internal-header small{color:#eaf2ff!important;}
+body.worker-field-theme .dashboard-head{
+  background:linear-gradient(135deg, rgba(15,30,53,.96), rgba(10,26,48,.96))!important;
+  border:1px solid rgba(248,113,113,.35)!important;
+  border-radius:22px!important;
+  padding:18px 20px!important;
+  box-shadow:0 18px 45px rgba(0,0,0,.28)!important;
+}
+body.worker-field-theme #workerHello,
+body.worker-field-theme #workerCompanyLabel,
+body.worker-field-theme h2,
+body.worker-field-theme h3,
+body.worker-field-theme h4,
+body.worker-field-theme h5{color:#eaf2ff!important;}
+body.worker-field-theme #viewWorkerForm > .card,
+body.worker-field-theme #viewWorkerForm .dyn-section,
+body.worker-field-theme #viewWorkerForm .entry-card,
+body.worker-field-theme #viewWorkerForm .returned-panel,
+body.worker-field-theme #viewWorkerForm .fuel-memory-panel{
+  background:linear-gradient(180deg, rgba(15,30,53,.94), rgba(8,18,33,.97))!important;
+  border:1px solid rgba(248,113,113,.38)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.24)!important;
+  color:#dbeafe!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section{
+  border-left:4px solid rgba(248,113,113,.72)!important;
+  border-radius:18px!important;
+  margin-top:16px!important;
+}
+body.worker-field-theme #viewWorkerForm .hint,
+body.worker-field-theme #viewWorkerForm .field-hint,
+body.worker-field-theme #viewWorkerForm .muted{color:#9fb8d9!important;}
+body.worker-field-theme #viewWorkerForm label{color:#bfdbfe!important;font-weight:800!important;}
+body.worker-field-theme #viewWorkerForm input,
+body.worker-field-theme #viewWorkerForm select,
+body.worker-field-theme #viewWorkerForm textarea{
+  background:#0b1b31!important;
+  border:1px solid rgba(147,197,253,.28)!important;
+  color:#eff6ff!important;
+  border-radius:13px!important;
+}
+body.worker-field-theme #viewWorkerForm input:focus,
+body.worker-field-theme #viewWorkerForm select:focus,
+body.worker-field-theme #viewWorkerForm textarea:focus{
+  outline:3px solid rgba(248,113,113,.20)!important;
+  border-color:#f87171!important;
+}
+body.worker-field-theme #viewWorkerForm button.primary,
+body.worker-field-theme #viewWorkerForm .primary,
+body.worker-field-theme #viewWorkerForm button.secondary,
+body.worker-field-theme #viewWorkerForm .secondary{
+  background:linear-gradient(135deg, rgba(185,28,28,.92), rgba(239,68,68,.88))!important;
+  border:1px solid rgba(252,165,165,.60)!important;
+  color:#fff!important;
+  border-radius:13px!important;
+  box-shadow:0 10px 22px rgba(185,28,28,.18)!important;
+}
+body.worker-field-theme #viewWorkerForm .danger-btn{
+  background:linear-gradient(135deg, #7f1d1d, #dc2626)!important;
+  border:1px solid rgba(252,165,165,.62)!important;
+  color:#fff!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-list{
+  display:grid;
+  gap:12px;
+}
+@media (max-width:768px){
+  body.worker-field-theme #viewWorkerForm{
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+  body.worker-field-theme #viewWorkerForm .card,
+  body.worker-field-theme #viewWorkerForm .dyn-section,
+  body.worker-field-theme #viewWorkerForm .entry-card{
+    padding:14px!important;
+    border-radius:16px!important;
+  }
+}

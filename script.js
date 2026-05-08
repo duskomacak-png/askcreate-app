@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.24.3";
+const APP_VERSION = "1.24.4";
 
 
 let sb = null;
@@ -191,6 +191,7 @@ function businessUpdateReportsMetrics(list) {
 
 function show(view) {
   const publicViews = ["Home", "AdminLogin", "DirectorLogin", "WorkerLogin"];
+  document.body.classList.toggle("worker-field-theme", view === "WorkerForm");
   if (publicViews.includes(view)) {
     clearCompanyBrandFromBody();
     setInternalHeader("", "", false);
@@ -362,34 +363,27 @@ function getSavedWorkerCompanyCode() {
 
 function setWorkerLoginModeLocked(isLocked) {
   document.body.classList.toggle("worker-company-locked", !!isLocked);
+  document.body.classList.toggle("worker-code-only-mode", !!isLocked);
   const card = document.querySelector("#viewWorkerLogin .card");
   if (card) card.classList.toggle("worker-company-locked-card", !!isLocked);
   const title = document.getElementById("workerLoginTitle");
   const codeLabel = document.getElementById("workerAccessCodeLabel");
   const help = document.getElementById("workerLoginHelpBox");
-  if (title) title.textContent = isLocked ? "Radnički ulaz" : "Terenski unos";
-  if (codeLabel) codeLabel.textContent = isLocked ? "Unesite svoj radnički kod" : "Šifra radnika";
+  if (title) title.textContent = isLocked ? "Unesite svoj kod" : "Terenski unos";
+  if (codeLabel) codeLabel.textContent = isLocked ? "Radnički kod" : "Šifra radnika";
   if (help) {
     help.innerHTML = isLocked
-      ? `<b>Školski jednostavno:</b><span>Firma je već izabrana preko QR koda. Upiši samo svoj kod koji ti je Direkcija dodelila.</span>`
+      ? `<b>Unesite kod:</b><span>Upišite samo radnički kod koji vam je dodelila Direkcija.</span>`
       : `<b>Prijava radnika:</b><span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>`;
   }
 }
 
 function updateWorkerInstallBox() {
   const box = document.getElementById("workerInstallBox");
-  const btn = document.getElementById("workerInstallBtn");
-  const hint = document.getElementById("workerInstallHint");
   if (!box) return;
-  const locked = !!getSavedWorkerCompanyCode() || !!getWorkerCompanyCodeFromUrl();
-  box.classList.toggle("hidden", !locked);
-  if (!locked) return;
-  if (btn) btn.textContent = isAppInstalledMode() ? "✅ App je otvorena kao prečica" : "⬇️ Preuzmi app na telefon";
-  if (hint) {
-    hint.textContent = isAppInstalledMode()
-      ? "Ovaj telefon pamti firmu. Kada sledeći put otvoriš prečicu, ulaziš u isti radnički ulaz."
-      : "Preuzmi aplikaciju kao prečicu. Posle toga na ovom telefonu ostaje vezana za ovu firmu.";
-  }
+  // Radnički QR ulaz mora biti maksimalno jednostavan: samo polje za radnički kod.
+  // Instalacija PWA se radi kroz browser meni, a app pamti firmu kroz localStorage.
+  box.classList.add("hidden");
 }
 
 async function installWorkerApp() {
@@ -473,6 +467,7 @@ window.clearWorkerCompanyQrContext = () => {
     input.focus();
   }
   setWorkerLoginModeLocked(false);
+  document.body.classList.remove("worker-code-only-mode");
   updateWorkerInstallBox();
   const notice = $("#workerCompanyQrNotice");
   if (notice) notice.classList.add("hidden");
@@ -6725,36 +6720,26 @@ async function boot() {
   initSupabase();
   $("#wrDate").value = today();
   const qrCompanyCode = getWorkerCompanyCodeFromUrl();
+  const storedCompanyCode = getSavedWorkerCompanyCode();
   const stored = localStorage.getItem("swp_worker");
-  if (qrCompanyCode) {
-    localStorage.setItem("swp_worker_company_code", qrCompanyCode);
-    if (stored) {
-      try {
-        const savedWorker = JSON.parse(stored);
-        if (normalizeLoginCode(savedWorker?.company_code) === normalizeLoginCode(qrCompanyCode)) {
-          currentWorker = savedWorker;
-          if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
-          openWorkerForm();
-          return;
-        }
-      } catch {}
-    }
+
+  // QR/PWA radnički režim: telefon pamti firmu, ali ne otvara Direkciju i ne prikazuje javni meni.
+  // Radnik uvek vidi samo unos svog radničkog koda, pa tek onda ulazi u svoje štiklirane rubrike.
+  if (qrCompanyCode || storedCompanyCode) {
+    if (qrCompanyCode) localStorage.setItem("swp_worker_company_code", qrCompanyCode);
     localStorage.removeItem("swp_worker");
     show("WorkerLogin");
     applyWorkerCompanyContextFromUrlOrStorage();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
     return;
   }
+
   if (stored) {
     try {
       currentWorker = JSON.parse(stored);
       openWorkerForm();
       return;
     } catch {}
-  }
-  if (getSavedWorkerCompanyCode()) {
-    show("WorkerLogin");
-    applyWorkerCompanyContextFromUrlOrStorage();
   }
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
