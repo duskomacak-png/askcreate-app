@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.23.6";
+const APP_VERSION = "1.23.8";
 
 
 let sb = null;
@@ -64,6 +64,42 @@ function normalizeLoginCode(code) {
   // Login kodovi ne smeju da padnu zbog velikih/malih slova ili slučajnog razmaka.
   // Primer: " FIRMA01 " i "firma01" tretiramo isto.
   return String(code || "").trim().toLowerCase().replace(/\s+/g, "");
+}
+
+const COMPANY_BRAND_OPTIONS = [
+  { value: "green", label: "Poslovna zelena" },
+  { value: "darkgreen", label: "Tamno zelena" },
+  { value: "blue", label: "Poslovna plava" },
+  { value: "orange", label: "Narandžasta" },
+  { value: "red", label: "Crvena" },
+  { value: "purple", label: "Ljubičasta" },
+  { value: "dark", label: "Tamna / grafit" }
+];
+
+function normalizeCompanyBrandColor(value) {
+  const color = String(value || "green").toLowerCase().trim();
+  return COMPANY_BRAND_OPTIONS.some(o => o.value === color) ? color : "green";
+}
+
+function companyBrandLabel(value) {
+  const color = normalizeCompanyBrandColor(value);
+  return (COMPANY_BRAND_OPTIONS.find(o => o.value === color) || COMPANY_BRAND_OPTIONS[0]).label;
+}
+
+function companyBrandSelectHtml(table, id, color) {
+  const selected = normalizeCompanyBrandColor(color);
+  const options = COMPANY_BRAND_OPTIONS.map(o => `<option value="${escapeHtml(o.value)}" ${o.value === selected ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("");
+  return `<label class="admin-brand-picker">Boja firme <select data-brand-table="${escapeHtml(table)}" data-brand-id="${escapeHtml(id)}" onchange="adminUpdateCompanyBrand('${escapeHtml(table)}','${escapeHtml(id)}',this.value)">${options}</select></label><button class="secondary small-action" type="button" onclick="adminSaveCompanyBrandFromButton(this)">Sačuvaj boju</button>`;
+}
+
+function applyCompanyBrandToBody(color) {
+  const brand = normalizeCompanyBrandColor(color);
+  document.body.classList.remove("company-brand-green", "company-brand-darkgreen", "company-brand-blue", "company-brand-orange", "company-brand-red", "company-brand-purple", "company-brand-dark");
+  document.body.classList.add(`company-brand-${brand}`);
+}
+
+function clearCompanyBrandFromBody() {
+  document.body.classList.remove("company-brand-green", "company-brand-darkgreen", "company-brand-blue", "company-brand-orange", "company-brand-red", "company-brand-purple", "company-brand-dark");
 }
 
 function readRpcSingleRow(data) {
@@ -287,8 +323,7 @@ function adminMessage(c, type = "renewed") {
 }
 
 function companyBrandClass(c) {
-  const color = String(c?.brand_color || "green").toLowerCase();
-  return ["green", "blue", "orange", "red", "dark"].includes(color) ? color : "green";
+  return normalizeCompanyBrandColor(c?.brand_color || "green");
 }
 
 function renderAdminCompanyCard(c, compact = false) {
@@ -314,9 +349,15 @@ function renderAdminCompanyCard(c, compact = false) {
         <span>Važi od: <b>${escapeHtml(formatDateSchool(getCompanyPaidFrom(c)))}</b></span>
         <span>Važi do: <b>${escapeHtml(formatDateSchool(getCompanyPaidUntil(c)))}</b></span>
         <span>Paket: <b>${escapeHtml(c.plan || "trial")}</b></span>
+        <span>Boja: <b>${escapeHtml(companyBrandLabel(c.brand_color))}</b></span>
+      </div>
+      <div class="admin-company-brand-row">
+        ${companyBrandSelectHtml("approved_companies", c.id, c.brand_color)}
       </div>
       ${c.note ? `<p class="muted admin-note">Napomena: ${escapeHtml(c.note)}</p>` : ""}
       <div class="actions admin-crm-actions">
+        <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
+        <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj radnika</button>
         <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','activation')">📋 Prva aktivacija</button>
         <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','${messageType}')">📋 Poruka</button>
         <button class="secondary" onclick="adminOpenWhatsApp('${c.id}','${messageType}')">💬 WhatsApp</button>
@@ -434,14 +475,19 @@ async function loadCompanies() {
             <div>
               <strong>${escapeHtml(c.name)}</strong>
               <small>${escapeHtml(c.owner_email)} · šifra: ${escapeHtml(c.company_code)}</small><br/>
-              <small>Važi do: ${escapeHtml(formatDateSchool(getCompanyPaidUntil(c)))} · paket: ${escapeHtml(c.plan || "—")}</small>
+              <small>Važi do: ${escapeHtml(formatDateSchool(getCompanyPaidUntil(c)))} · paket: ${escapeHtml(c.plan || "—")} · boja: ${escapeHtml(companyBrandLabel(c.brand_color))}</small>
             </div>
             <div class="admin-company-status">
               <span class="pill ${status.cls}">${escapeHtml(status.label)}</span>
               <span class="pill">${escapeHtml(c.status || "active")}</span>
             </div>
           </div>
-          <div class="actions">
+          <div class="admin-company-brand-row">
+            ${companyBrandSelectHtml("companies", c.id, c.brand_color)}
+          </div>
+          <div class="actions admin-crm-actions">
+            <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
+            <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj radnika</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','active')">Aktiviraj</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','expired')">Označi isteklo</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','blocked')">Blokiraj</button>
@@ -450,6 +496,170 @@ async function loadCompanies() {
     }).join("") || `<p class="muted">Još nema registrovanih firmi.</p>`;
   }
 }
+
+
+window.adminSaveCompanyBrandFromButton = (btn) => {
+  const row = btn?.closest?.(".admin-company-brand-row");
+  const select = row?.querySelector?.("select[data-brand-table][data-brand-id]");
+  if (!select) return toast("Ne mogu da pronađem izbor boje za ovu firmu.", true);
+  return adminUpdateCompanyBrand(select.dataset.brandTable, select.dataset.brandId, select.value);
+};
+
+function adminBrandHex(color) {
+  const brand = normalizeCompanyBrandColor(color);
+  return {
+    green: "#0f766e",
+    darkgreen: "#065f46",
+    blue: "#2563eb",
+    orange: "#f97316",
+    red: "#dc2626",
+    purple: "#7c3aed",
+    dark: "#111827"
+  }[brand] || "#0f766e";
+}
+
+function adminCompanyDisplayName(c) {
+  return c?.company_name || c?.name || "Firma";
+}
+
+function adminPreviewStatusHtml(c) {
+  const status = getCompanyStatusInfo(c || {});
+  return `<span class="pill ${escapeHtml(status.cls)}">${escapeHtml(status.label)}</span><span class="pill neutral">${escapeHtml(companyBrandLabel(c?.brand_color))}</span>`;
+}
+
+function renderAdminDirectorPreview(c) {
+  const brand = normalizeCompanyBrandColor(c?.brand_color || "green");
+  const color = adminBrandHex(brand);
+  const name = adminCompanyDisplayName(c);
+  const code = c?.company_code || "ŠIFRA";
+  const paidUntil = formatDateSchool(getCompanyPaidUntil(c));
+  return `
+    <div class="preview-shell preview-director brand-${brand}" style="--preview-brand:${color}">
+      <aside class="preview-sidebar">
+        <div class="preview-logo"><span>S</span><div><b>Start Work</b><small>PRO</small></div></div>
+        <button>🏠 Početna / Ljudi</button>
+        <button>🏗️ Gradilišta</button>
+        <button>🚚 Sredstva rada</button>
+        <button>📄 Dnevni izveštaji</button>
+        <button>📊 Izvoz u Excel</button>
+      </aside>
+      <main class="preview-main">
+        <div class="preview-topbar">
+          <div>
+            <small>Uprava firme</small>
+            <h3>${escapeHtml(name)}</h3>
+            <p>Šifra firme: <b>${escapeHtml(code)}</b> · Paket važi do: <b>${escapeHtml(paidUntil)}</b></p>
+          </div>
+          <div class="preview-status">${adminPreviewStatusHtml(c)}</div>
+        </div>
+        <div class="preview-kpis">
+          <div><b>Radnici</b><strong>12</strong><small>primer prikaza</small></div>
+          <div><b>Gradilišta</b><strong>4</strong><small>aktivna</small></div>
+          <div><b>Izveštaji</b><strong>8</strong><small>za danas</small></div>
+          <div><b>Gorivo</b><strong>340 L</strong><small>primer</small></div>
+        </div>
+        <div class="preview-grid">
+          <section>
+            <h4>Dnevni izveštaji</h4>
+            <p>Uprava vidi izveštaje radnika, vraća na dopunu, odobrava i izvozi Excel.</p>
+            <div class="preview-table-row"><span>Bagerista</span><b>Novo</b></div>
+            <div class="preview-table-row"><span>Vozač kipera</span><b>Odobreno</b></div>
+            <div class="preview-table-row"><span>Kvar mašine</span><b>Za proveru</b></div>
+          </section>
+          <section>
+            <h4>Brze akcije</h4>
+            <button>➕ Novi radnik</button>
+            <button>🏗️ Novo gradilište</button>
+            <button>📥 Preuzmi Excel</button>
+          </section>
+        </div>
+        <p class="preview-note">Ovo je prozor za admin pregled. Ne ulaziš u tuđ nalog i ne menjaš izveštaje.</p>
+      </main>
+    </div>`;
+}
+
+function renderAdminWorkerPreview(c) {
+  const brand = normalizeCompanyBrandColor(c?.brand_color || "green");
+  const color = adminBrandHex(brand);
+  const name = adminCompanyDisplayName(c);
+  const code = c?.company_code || "ŠIFRA";
+  return `
+    <div class="preview-shell preview-worker brand-${brand}" style="--preview-brand:${color}">
+      <div class="preview-phone">
+        <div class="preview-phone-head">
+          <span>Terenski unos</span>
+          <b>${escapeHtml(name)}</b>
+          <small>Šifra firme: ${escapeHtml(code)}</small>
+        </div>
+        <div class="preview-worker-card">
+          <label>Datum / godina</label>
+          <div class="fake-input">${escapeHtml(today())}</div>
+          <label>Ime gradilišta</label>
+          <div class="fake-input">Gradilište iz liste Uprave</div>
+        </div>
+        <div class="preview-worker-section"><b>👷 Radnici na gradilištu</b><small>radnik vidi samo ono što mu Uprava uključi</small></div>
+        <div class="preview-worker-section"><b>⛽ Sipanje goriva</b><small>mašina/vozilo, litri, MTČ/km, primalac</small></div>
+        <div class="preview-worker-section"><b>📦 Materijal</b><small>materijal, ture, količina, relacija</small></div>
+        <div class="preview-worker-section"><b>🛠️ Kvar</b><small>brzo slanje kvara šefu mehanizacije</small></div>
+        <button class="preview-send">Pošalji Direkciji</button>
+      </div>
+      <div class="preview-worker-info">
+        <h4>Kako radnik vidi firmu</h4>
+        <p>Radnik vidi naziv firme, šifru firme i poslovnu boju firme. Ne vidi admin panel, plaćanje, druge firme ni tuđe izveštaje.</p>
+        ${adminPreviewStatusHtml(c)}
+      </div>
+    </div>`;
+}
+
+window.adminPreviewCompany = (id, mode = "director") => {
+  const c = findAdminCompanyById(id);
+  if (!c) return toast("Firma nije pronađena za pregled.", true);
+  const modal = $("#adminPreviewModal");
+  const body = $("#adminPreviewBody");
+  const title = $("#adminPreviewTitle");
+  const subtitle = $("#adminPreviewSubtitle");
+  const kicker = $("#adminPreviewKicker");
+  if (!modal || !body) return toast("Prozor za pregled nije pronađen.", true);
+  const isWorker = mode === "worker";
+  const name = adminCompanyDisplayName(c);
+  if (kicker) kicker.textContent = isWorker ? "Pregled radnika" : "Pregled Direkcije";
+  if (title) title.textContent = isWorker ? `Kako radnik vidi: ${name}` : `Kako Direkcija vidi: ${name}`;
+  if (subtitle) subtitle.textContent = "Pregled je informativan. Ne menja podatke i ne šalje izveštaje.";
+  body.innerHTML = isWorker ? renderAdminWorkerPreview(c) : renderAdminDirectorPreview(c);
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+};
+
+window.closeAdminCompanyPreview = () => {
+  const modal = $("#adminPreviewModal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+};
+
+window.adminUpdateCompanyBrand = async (table, id, color) => {
+  try {
+    const safeTable = table === "companies" ? "companies" : "approved_companies";
+    const safeColor = normalizeCompanyBrandColor(color);
+    const { error } = await sb.from(safeTable).update({ brand_color: safeColor }).eq("id", id);
+    if (error) throw error;
+
+    if (safeTable === "approved_companies") {
+      adminApprovedCompaniesCache = adminApprovedCompaniesCache.map(c => String(c.id) === String(id) ? { ...c, brand_color: safeColor } : c);
+      renderAdminCompanies($("#adminCompanySearch")?.value || "");
+    } else {
+      adminRegisteredCompaniesCache = adminRegisteredCompaniesCache.map(c => String(c.id) === String(id) ? { ...c, brand_color: safeColor } : c);
+      if (currentCompany && String(currentCompany.id) === String(id)) {
+        currentCompany.brand_color = safeColor;
+        applyCompanyBrandToBody(safeColor);
+      }
+      loadCompanies();
+    }
+    toast(`Boja firme promenjena: ${companyBrandLabel(safeColor)}.`);
+  } catch (e) {
+    toast(e.message || "Boja firme nije promenjena.", true);
+  }
+};
 
 window.adminSetApprovedStatus = async (id, status) => {
   const { error } = await sb.from("approved_companies").update({ status }).eq("id", id);
@@ -478,6 +688,7 @@ async function loadDirectorCompany() {
     return null;
   }
   currentCompany = data;
+  applyCompanyBrandToBody(currentCompany?.brand_color || "green");
   const approvedSource = await loadApprovedCompanyForDirector(data.company_code);
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   businessUpdateCompanyName();
@@ -6012,6 +6223,7 @@ function bindEvents() {
     localStorage.removeItem("swp_worker");
     localStorage.removeItem("swp_draft");
     currentWorker = null;
+    clearCompanyBrandFromBody();
     setInternalHeader("", "", false);
     show("WorkerLogin");
   });

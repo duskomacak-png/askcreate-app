@@ -1573,3 +1573,244 @@ body.in-app .shell{
     width: 100%;
   }
 }
+
+/* v1.23.7 - Admin može menjati poslovnu boju svake firme */
+.admin-company-card.brand-green::before { background: #0f766e; }
+.admin-company-card.brand-darkgreen::before { background: #065f46; }
+.admin-company-card.brand-blue::before { background: #2563eb; }
+.admin-company-card.brand-orange::before { background: #f97316; }
+.admin-company-card.brand-red::before { background: #dc2626; }
+.admin-company-card.brand-purple::before { background: #7c3aed; }
+.admin-company-card.brand-dark::before { background: #111827; }
+
+.admin-company-card.brand-green { box-shadow: inset 5px 0 0 #0f766e, 0 12px 28px rgba(15,118,110,.08); }
+.admin-company-card.brand-darkgreen { box-shadow: inset 5px 0 0 #065f46, 0 12px 28px rgba(6,95,70,.08); }
+.admin-company-card.brand-blue { box-shadow: inset 5px 0 0 #2563eb, 0 12px 28px rgba(37,99,235,.08); }
+.admin-company-card.brand-orange { box-shadow: inset 5px 0 0 #f97316, 0 12px 28px rgba(249,115,22,.10); }
+.admin-company-card.brand-red { box-shadow: inset 5px 0 0 #dc2626, 0 12px 28px rgba(220,38,38,.10); }
+.admin-company-card.brand-purple { box-shadow: inset 5px 0 0 #7c3aed, 0 12px 28px rgba(124,58,237,.10); }
+.admin-company-card.brand-dark { box-shadow: inset 5px 0 0 #111827, 0 12px 28px rgba(17,24,39,.10); }
+
+.admin-company-brand-row {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-brand-picker {
+  min-width: min(100%, 280px);
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, .10);
+  background: rgba(248, 250, 252, .92);
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.admin-brand-picker select {
+  margin-left: 8px;
+  min-width: 155px;
+  border-radius: 10px;
+  padding: 7px 9px;
+  border: 1px solid rgba(15, 23, 42, .14);
+  background: #fff;
+  font-weight: 800;
+}
+
+.company-brand-green #internalHeader { border-bottom-color: rgba(15, 118, 110, .45); }
+.company-brand-darkgreen #internalHeader { border-bottom-color: rgba(6, 95, 70, .50); }
+.company-brand-blue #internalHeader { border-bottom-color: rgba(37, 99, 235, .45); }
+.company-brand-orange #internalHeader { border-bottom-color: rgba(249, 115, 22, .48); }
+.company-brand-red #internalHeader { border-bottom-color: rgba(220, 38, 38, .48); }
+.company-brand-purple #internalHeader { border-bottom-color: rgba(124, 58, 237, .48); }
+.company-brand-dark #internalHeader { border-bottom-color: rgba(17, 24, 39, .55); }
+
+/* v1.23.8 - Admin pregled Direkcije/Radnika u prozoru */
+.admin-preview-modal.hidden { display: none !important; }
+.admin-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+.admin-preview-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, .68);
+  backdrop-filter: blur(8px);
+}
+.admin-preview-dialog {
+  position: relative;
+  width: min(1180px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  border-radius: 26px;
+  background: rgba(248, 250, 252, .98);
+  border: 1px solid rgba(255, 255, 255, .42);
+  box-shadow: 0 28px 90px rgba(2, 6, 23, .38);
+}
+.admin-preview-top {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, .88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(15, 23, 42, .08);
+}
+.admin-preview-top h3 { margin: 3px 0 4px; }
+.admin-preview-body { padding: 18px; }
+.preview-shell { --preview-brand: #0f766e; }
+.preview-director {
+  display: grid;
+  grid-template-columns: 245px 1fr;
+  min-height: 560px;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid rgba(15,23,42,.08);
+}
+.preview-sidebar {
+  background: linear-gradient(180deg, #0f172a, #111827);
+  color: white;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.preview-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.preview-logo span {
+  width: 40px; height: 40px; border-radius: 14px;
+  display: grid; place-items: center;
+  background: var(--preview-brand);
+  color: white; font-weight: 900;
+}
+.preview-logo small { display:block; opacity:.75; font-weight:800; letter-spacing:.14em; }
+.preview-sidebar button {
+  text-align: left;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.08);
+  color: white;
+  border-radius: 14px;
+  padding: 11px 12px;
+  font-weight: 800;
+}
+.preview-main { padding: 18px; }
+.preview-topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--preview-brand) 14%, white), #fff);
+  border: 1px solid color-mix(in srgb, var(--preview-brand) 24%, transparent);
+}
+.preview-topbar h3 { margin: 3px 0 4px; font-size: 1.55rem; }
+.preview-topbar p { margin: 0; color: #475569; }
+.preview-status { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.preview-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.preview-kpis div,
+.preview-grid section,
+.preview-worker-card,
+.preview-worker-section,
+.preview-worker-info {
+  background: white;
+  border: 1px solid rgba(15,23,42,.08);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 12px 30px rgba(15,23,42,.06);
+}
+.preview-kpis b { color: #64748b; display: block; font-size: .84rem; }
+.preview-kpis strong { display: block; margin: 4px 0; font-size: 1.45rem; color: var(--preview-brand); }
+.preview-kpis small { color: #64748b; }
+.preview-grid { display: grid; grid-template-columns: 1.4fr .8fr; gap: 12px; }
+.preview-grid h4 { margin-top: 0; }
+.preview-grid button,
+.preview-send {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 14px;
+  padding: 11px 12px;
+  background: var(--preview-brand);
+  color: white;
+  font-weight: 900;
+}
+.preview-table-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(15,23,42,.08);
+  padding: 10px 0;
+}
+.preview-note { color: #64748b; font-size: .92rem; }
+.preview-worker {
+  display: grid;
+  grid-template-columns: minmax(280px, 390px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.preview-phone {
+  border-radius: 34px;
+  background: #0f172a;
+  padding: 13px;
+  box-shadow: 0 22px 60px rgba(2,6,23,.28);
+}
+.preview-phone-head {
+  border-radius: 24px 24px 16px 16px;
+  background: linear-gradient(135deg, var(--preview-brand), #0f172a);
+  color: white;
+  padding: 18px;
+}
+.preview-phone-head span,
+.preview-phone-head small { display:block; opacity:.86; }
+.preview-phone-head b { display:block; font-size:1.15rem; margin:4px 0; }
+.preview-worker-card { margin-top: 10px; }
+.preview-worker-card label { display:block; font-weight:900; margin:8px 0 5px; color:#334155; }
+.fake-input {
+  background: #f8fafc;
+  border: 1px solid rgba(15,23,42,.10);
+  border-radius: 13px;
+  padding: 10px 12px;
+  color:#0f172a;
+}
+.preview-worker-section {
+  margin-top: 10px;
+  border-left: 5px solid var(--preview-brand);
+}
+.preview-worker-section b,
+.preview-worker-section small { display:block; }
+.preview-worker-section small { color:#64748b; margin-top:3px; }
+.preview-send { margin-top: 12px; }
+.preview-worker-info h4 { margin-top:0; }
+@media (max-width: 860px) {
+  .admin-preview-dialog { width: 98vw; max-height: 94vh; }
+  .admin-preview-top { flex-direction: column; }
+  .preview-director,
+  .preview-worker { grid-template-columns: 1fr; }
+  .preview-sidebar { display: none; }
+  .preview-kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .preview-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .admin-preview-modal { padding: 8px; }
+  .admin-preview-body { padding: 10px; }
+  .preview-kpis { grid-template-columns: 1fr; }
+  .preview-topbar { flex-direction: column; }
+}
