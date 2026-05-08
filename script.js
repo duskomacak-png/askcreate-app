@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.24.0";
+const APP_VERSION = "1.24.1";
 
 
 let sb = null;
@@ -90,6 +90,18 @@ function companyBrandSelectHtml(table, id, color) {
   const selected = normalizeCompanyBrandColor(color);
   const options = COMPANY_BRAND_OPTIONS.map(o => `<option value="${escapeHtml(o.value)}" ${o.value === selected ? "selected" : ""}>${escapeHtml(o.label)}</option>`).join("");
   return `<label class="admin-brand-picker">Boja firme <select data-brand-table="${escapeHtml(table)}" data-brand-id="${escapeHtml(id)}" onchange="adminUpdateCompanyBrand('${escapeHtml(table)}','${escapeHtml(id)}',this.value)">${options}</select></label><button class="secondary small-action" type="button" onclick="adminSaveCompanyBrandFromButton(this)">Sačuvaj boju</button>`;
+}
+
+function adminRenewPackageHtml(table, id, paidUntil) {
+  const safeValue = String(paidUntil || "").slice(0, 10);
+  return `
+    <div class="admin-renew-row">
+      <label>Produži paket do
+        <input type="date" data-renew-table="${escapeHtml(table)}" data-renew-id="${escapeHtml(id)}" value="${escapeHtml(safeValue)}" />
+      </label>
+      <button class="secondary small-action" type="button" onclick="adminSavePackageUntilFromButton(this)">Sačuvaj datum</button>
+      <button class="secondary small-action" type="button" onclick="adminAddMonthPackageUntil('${escapeHtml(table)}','${escapeHtml(id)}')">+ 1 mesec</button>
+    </div>`;
 }
 
 function applyCompanyBrandToBody(color) {
@@ -357,6 +369,7 @@ function renderAdminCompanyCard(c, compact = false) {
       <div class="admin-company-brand-row">
         ${companyBrandSelectHtml("approved_companies", c.id, c.brand_color)}
       </div>
+      ${adminRenewPackageHtml("approved_companies", c.id, getCompanyPaidUntil(c))}
       ${c.note ? `<p class="muted admin-note">Napomena: ${escapeHtml(c.note)}</p>` : ""}
       <div class="actions admin-crm-actions">
         <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
@@ -488,6 +501,7 @@ async function loadCompanies() {
           <div class="admin-company-brand-row">
             ${companyBrandSelectHtml("companies", c.id, c.brand_color)}
           </div>
+          ${adminRenewPackageHtml("companies", c.id, getCompanyPaidUntil(c))}
           <div class="actions admin-crm-actions">
             <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
             <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj radnika</button>
@@ -706,6 +720,113 @@ window.adminUpdateCompanyBrand = async (table, id, color) => {
     toast(`Boja firme promenjena i sinhronizovana: ${companyBrandLabel(safeColor)}.`);
   } catch (e) {
     toast(e.message || "Boja firme nije promenjena.", true);
+  }
+};
+
+window.adminSavePackageUntilFromButton = (btn) => {
+  const row = btn?.closest?.(".admin-renew-row");
+  const input = row?.querySelector?.("input[type='date'][data-renew-id]");
+  if (!input) return toast("Datum za produženje nije pronađen.", true);
+  return adminUpdateCompanyPaidUntil(input.dataset.renewTable, input.dataset.renewId, input.value);
+};
+
+window.adminAddMonthPackageUntil = (table, id) => {
+  const safeTable = table === "companies" ? "companies" : "approved_companies";
+  const source = safeTable === "approved_companies"
+    ? adminApprovedCompaniesCache.find(c => String(c.id) === String(id))
+    : adminRegisteredCompaniesCache.find(c => String(c.id) === String(id));
+  const baseValue = getCompanyPaidUntil(source);
+  let base = parseDateOnly(baseValue);
+  const today = todayDateOnly();
+  if (!base || base < today) base = today;
+  base.setMonth(base.getMonth() + 1);
+  const yyyy = base.getFullYear();
+  const mm = String(base.getMonth() + 1).padStart(2, "0");
+  const dd = String(base.getDate()).padStart(2, "0");
+  return adminUpdateCompanyPaidUntil(safeTable, id, `${yyyy}-${mm}-${dd}`);
+};
+
+window.adminUpdateCompanyPaidUntil = async (table, id, paidUntil) => {
+  try {
+    const safeTable = table === "companies" ? "companies" : "approved_companies";
+    const newDate = String(paidUntil || "").slice(0, 10);
+    if (!newDate) throw new Error("Izaberi datum do kada je paket plaćen.");
+
+    const source = safeTable === "approved_companies"
+      ? adminApprovedCompaniesCache.find(c => String(c.id) === String(id))
+      : adminRegisteredCompaniesCache.find(c => String(c.id) === String(id));
+
+    const payload = safeTable === "approved_companies"
+      ? { paid_until: newDate, trial_until: newDate }
+      : { paid_until: newDate };
+
+    if (source && String(source.status || "").toLowerCase() !== "blocked") payload.status = "active";
+
+    const { error } = await sb.from(safeTable).update(payload).eq("id", id);
+    if (error) throw error;
+
+    const companyCode = source?.company_code || "";
+    const email = source?.approved_email || source?.owner_email || "";
+    const syncPayloadApproved = { paid_until: newDate, trial_until: newDate };
+    const syncPayloadCompany = { paid_until: newDate };
+    if (source && String(source.status || "").toLowerCase() !== "blocked") {
+      syncPayloadApproved.status = "active";
+      syncPayloadCompany.status = "active";
+    }
+
+    if (safeTable === "approved_companies") {
+      if (companyCode) {
+        const { error: syncErr } = await sb.from("companies").update(syncPayloadCompany).eq("company_code", companyCode);
+        if (syncErr) console.warn("Start Work PRO: datum nije sinhronizovan u companies po company_code", syncErr.message);
+      }
+      if (email) {
+        const { error: syncEmailErr } = await sb.from("companies").update(syncPayloadCompany).eq("owner_email", email);
+        if (syncEmailErr) console.warn("Start Work PRO: datum nije sinhronizovan u companies po emailu", syncEmailErr.message);
+      }
+    } else {
+      if (companyCode) {
+        const { error: syncErr } = await sb.from("approved_companies").update(syncPayloadApproved).eq("company_code", companyCode);
+        if (syncErr) console.warn("Start Work PRO: datum nije sinhronizovan u approved_companies po company_code", syncErr.message);
+      }
+      if (email) {
+        const { error: syncEmailErr } = await sb.from("approved_companies").update(syncPayloadApproved).eq("approved_email", email);
+        if (syncEmailErr) console.warn("Start Work PRO: datum nije sinhronizovan u approved_companies po emailu", syncEmailErr.message);
+      }
+    }
+
+    const updateCache = c => {
+      const sameCode = companyCode && String(c.company_code || "") === String(companyCode);
+      const sameApprovedEmail = email && String(c.approved_email || "") === String(email);
+      const sameOwnerEmail = email && String(c.owner_email || "") === String(email);
+      const sameApprovedId = safeTable === "approved_companies" && String(c.id) === String(id);
+      const sameCompanyId = safeTable === "companies" && String(c.id) === String(id);
+      if (sameCode || sameApprovedEmail || sameOwnerEmail || sameApprovedId || sameCompanyId) {
+        const next = { ...c, paid_until: newDate };
+        if ("trial_until" in next) next.trial_until = newDate;
+        if (String(next.status || "").toLowerCase() !== "blocked") next.status = "active";
+        return next;
+      }
+      return c;
+    };
+
+    adminApprovedCompaniesCache = adminApprovedCompaniesCache.map(updateCache);
+    adminRegisteredCompaniesCache = adminRegisteredCompaniesCache.map(updateCache);
+
+    if (currentCompany && (
+      String(currentCompany.id) === String(id) ||
+      (companyCode && String(currentCompany.company_code || "") === String(companyCode)) ||
+      (email && String(currentCompany.owner_email || "") === String(email))
+    )) {
+      currentCompany.paid_until = newDate;
+      if (String(currentCompany.status || "").toLowerCase() !== "blocked") currentCompany.status = "active";
+      showCompanyExpiryNotice();
+    }
+
+    renderAdminCompanies($("#adminCompanySearch")?.value || "");
+    loadCompanies();
+    toast(`Paket je produžen do ${formatDateSchool(newDate)}.`);
+  } catch (e) {
+    toast(e.message || "Datum paketa nije sačuvan.", true);
   }
 };
 
@@ -6361,20 +6482,8 @@ async function openWorkerForm() {
 }
 
 
-
-function setupButtonClickGlow() {
-  document.addEventListener("click", (event) => {
-    const clicked = event.target.closest("button, .tab, .quick-action, .big-btn, .small-btn, .edit-btn, .delete-btn, .danger-btn, .danger-small, .archive-btn, .archive-report-btn, .hard-delete-report-btn, .btn-warning, .remove-entry");
-    if (!clicked || clicked.disabled) return;
-
-    document.querySelectorAll(".btn-click-glow").forEach((el) => el.classList.remove("btn-click-glow"));
-    clicked.classList.add("btn-click-glow");
-  });
-}
-
 async function boot() {
   installNavigationFallback();
-  setupButtonClickGlow();
   bindEvents();
   initSupabase();
   $("#wrDate").value = today();
