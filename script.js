@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.24.2";
+const APP_VERSION = "1.24.3";
 
 
 let sb = null;
@@ -20,6 +20,7 @@ let currentWorker = null;
 let workerAssetOptions = [];
 let workerSiteOptions = [];
 let workerMaterialOptions = [];
+let deferredPwaInstallPrompt = null;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -346,6 +347,85 @@ function getWorkerCompanyCodeFromUrl() {
   return String(params.get("firma") || params.get("sw_company") || params.get("company") || params.get("company_code") || "").trim();
 }
 
+function isWorkerQrEntrance() {
+  const params = new URLSearchParams(window.location.search || "");
+  return String(params.get("ulaz") || params.get("entry") || "").toLowerCase() === "radnik" || !!getWorkerCompanyCodeFromUrl();
+}
+
+function isAppInstalledMode() {
+  return window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+}
+
+function getSavedWorkerCompanyCode() {
+  return String(localStorage.getItem("swp_worker_company_code") || "").trim();
+}
+
+function setWorkerLoginModeLocked(isLocked) {
+  document.body.classList.toggle("worker-company-locked", !!isLocked);
+  const card = document.querySelector("#viewWorkerLogin .card");
+  if (card) card.classList.toggle("worker-company-locked-card", !!isLocked);
+  const title = document.getElementById("workerLoginTitle");
+  const codeLabel = document.getElementById("workerAccessCodeLabel");
+  const help = document.getElementById("workerLoginHelpBox");
+  if (title) title.textContent = isLocked ? "Radnički ulaz" : "Terenski unos";
+  if (codeLabel) codeLabel.textContent = isLocked ? "Unesite svoj radnički kod" : "Šifra radnika";
+  if (help) {
+    help.innerHTML = isLocked
+      ? `<b>Školski jednostavno:</b><span>Firma je već izabrana preko QR koda. Upiši samo svoj kod koji ti je Direkcija dodelila.</span>`
+      : `<b>Prijava radnika:</b><span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>`;
+  }
+}
+
+function updateWorkerInstallBox() {
+  const box = document.getElementById("workerInstallBox");
+  const btn = document.getElementById("workerInstallBtn");
+  const hint = document.getElementById("workerInstallHint");
+  if (!box) return;
+  const locked = !!getSavedWorkerCompanyCode() || !!getWorkerCompanyCodeFromUrl();
+  box.classList.toggle("hidden", !locked);
+  if (!locked) return;
+  if (btn) btn.textContent = isAppInstalledMode() ? "✅ App je otvorena kao prečica" : "⬇️ Preuzmi app na telefon";
+  if (hint) {
+    hint.textContent = isAppInstalledMode()
+      ? "Ovaj telefon pamti firmu. Kada sledeći put otvoriš prečicu, ulaziš u isti radnički ulaz."
+      : "Preuzmi aplikaciju kao prečicu. Posle toga na ovom telefonu ostaje vezana za ovu firmu.";
+  }
+}
+
+async function installWorkerApp() {
+  try {
+    if (deferredPwaInstallPrompt) {
+      deferredPwaInstallPrompt.prompt();
+      const choice = await deferredPwaInstallPrompt.userChoice;
+      deferredPwaInstallPrompt = null;
+      updateWorkerInstallBox();
+      if (choice?.outcome === "accepted") return toast("App je dodata na telefon.");
+      return toast("Instalacija nije završena. Možeš probati ponovo iz menija browsera.");
+    }
+    const ua = navigator.userAgent || "";
+    if (/iphone|ipad|ipod/i.test(ua)) {
+      return alert("Za iPhone/iPad:\n\n1. Otvori ovaj link u Safari browseru.\n2. Dodirni Share / Podeli.\n3. Izaberi Add to Home Screen / Dodaj na početni ekran.\n\nPosle toga radnik otvara prečicu i upisuje samo svoj kod.");
+    }
+    alert("Ako se dugme za instalaciju ne pojavi automatski:\n\n1. Otvori meni browsera ⋮\n2. Izaberi Install app ili Add to Home screen\n3. Potvrdi dodavanje prečice.\n\nPosle toga radnik otvara prečicu i upisuje samo svoj kod.");
+  } catch (e) {
+    toast("Instalacija nije uspela: " + (e?.message || e), true);
+  }
+}
+
+window.installWorkerApp = installWorkerApp;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredPwaInstallPrompt = event;
+  updateWorkerInstallBox();
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredPwaInstallPrompt = null;
+  updateWorkerInstallBox();
+  toast("Start Work PRO je dodat kao app prečica.");
+});
+
 function setWorkerCompanyQrContext(companyCode, source = "saved") {
   const code = String(companyCode || "").trim();
   const input = $("#workerCompanyCode");
@@ -354,6 +434,8 @@ function setWorkerCompanyQrContext(companyCode, source = "saved") {
   if (!code) {
     input.readOnly = false;
     input.classList.remove("locked-company-code");
+    setWorkerLoginModeLocked(false);
+    updateWorkerInstallBox();
     if (notice) notice.classList.add("hidden");
     return false;
   }
@@ -361,6 +443,8 @@ function setWorkerCompanyQrContext(companyCode, source = "saved") {
   input.readOnly = true;
   input.classList.add("locked-company-code");
   localStorage.setItem("swp_worker_company_code", code);
+  setWorkerLoginModeLocked(true);
+  updateWorkerInstallBox();
   if (notice) {
     notice.classList.remove("hidden");
     const strong = notice.querySelector("strong");
@@ -388,6 +472,8 @@ window.clearWorkerCompanyQrContext = () => {
     input.value = "";
     input.focus();
   }
+  setWorkerLoginModeLocked(false);
+  updateWorkerInstallBox();
   const notice = $("#workerCompanyQrNotice");
   if (notice) notice.classList.add("hidden");
   toast("Firma je sklonjena. Sada možeš ručno upisati drugu šifru firme.");
@@ -409,7 +495,7 @@ function openCompanyQrModal(companyName, companyCode, source = "admin") {
   const linkInput = $("#companyQrLink");
   if (kicker) kicker.textContent = source === "director" ? "QR kod za radnike ove firme" : "Admin QR kod za radnike";
   if (title) title.textContent = `Radnički ulaz · ${name}`;
-  if (subtitle) subtitle.textContent = "Radnik skenira QR kod, aplikacija sama učita firmu, a radnik upisuje samo svoju šifru radnika.";
+  if (subtitle) subtitle.textContent = "Radnik skenira QR kod, preuzme app kao prečicu, a zatim upisuje samo svoj radnički kod.";
   if (img) img.src = buildCompanyQrImageUrl(link, 420);
   if (nameEl) nameEl.textContent = name;
   if (codeEl) codeEl.textContent = code;
@@ -6353,6 +6439,7 @@ async function loginWorkerByCode() {
     };
 
     localStorage.setItem("swp_worker", JSON.stringify(currentWorker));
+    localStorage.setItem("swp_worker_company_code", currentWorker.company_code || companyCode);
     openWorkerForm();
     toast("Radnik je prijavljen.");
   } catch(e) {
@@ -6537,6 +6624,7 @@ function bindEvents() {
   if ($("#clearStoredFieldTankerBtn")) $("#clearStoredFieldTankerBtn").addEventListener("click", clearStoredFieldTankerEntries);
 
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
+  if ($("#workerInstallBtn")) $("#workerInstallBtn").addEventListener("click", installWorkerApp);
 
   $("#workerLogoutBtn").addEventListener("click", () => {
     localStorage.removeItem("swp_worker");
@@ -6637,21 +6725,36 @@ async function boot() {
   initSupabase();
   $("#wrDate").value = today();
   const qrCompanyCode = getWorkerCompanyCodeFromUrl();
+  const stored = localStorage.getItem("swp_worker");
   if (qrCompanyCode) {
-    localStorage.removeItem("swp_worker");
     localStorage.setItem("swp_worker_company_code", qrCompanyCode);
+    if (stored) {
+      try {
+        const savedWorker = JSON.parse(stored);
+        if (normalizeLoginCode(savedWorker?.company_code) === normalizeLoginCode(qrCompanyCode)) {
+          currentWorker = savedWorker;
+          if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+          openWorkerForm();
+          return;
+        }
+      } catch {}
+    }
+    localStorage.removeItem("swp_worker");
     show("WorkerLogin");
     applyWorkerCompanyContextFromUrlOrStorage();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
     return;
   }
-  const stored = localStorage.getItem("swp_worker");
   if (stored) {
     try {
       currentWorker = JSON.parse(stored);
       openWorkerForm();
       return;
     } catch {}
+  }
+  if (getSavedWorkerCompanyCode()) {
+    show("WorkerLogin");
+    applyWorkerCompanyContextFromUrlOrStorage();
   }
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});

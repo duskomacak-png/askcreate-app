@@ -2036,3 +2036,44 @@ body[class*="company-brand-"] .internal-header > div:first-child::before{
   .company-qr-dialog{padding:14px;border-radius:20px;}
   .company-qr-top{flex-direction:column;}
 }
+
+/* v1.24.3 - radnički QR/PWA ulaz vezan za firmu */
+.worker-install-box{
+  margin:10px 0 12px;
+  padding:12px;
+  border:1px solid rgba(47,125,70,.22);
+  background:linear-gradient(135deg, rgba(47,125,70,.10), rgba(245,185,66,.08));
+  border-radius:16px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+}
+.worker-install-box.hidden{display:none;}
+.worker-install-box strong{display:block;color:#173d28;margin-bottom:3px;}
+.worker-install-box span{display:block;color:#4b5f52;font-size:.86rem;line-height:1.35;}
+.worker-install-box .primary{white-space:nowrap;}
+body.worker-company-locked #workerCompanyCodeLabel,
+body.worker-company-locked #workerCompanyCode,
+body.worker-company-locked #workerCompanyCodeNote{
+  display:none!important;
+}
+body.worker-company-locked #viewWorkerLogin .card.narrow{
+  border-top:5px solid var(--primary, #2f7d46);
+  box-shadow:0 18px 45px rgba(47,125,70,.12);
+}
+body.worker-company-locked #workerAccessCode{
+  min-height:48px;
+  font-size:1.08rem;
+  font-weight:800;
+  letter-spacing:.02em;
+  text-align:center;
+}
+body.worker-company-locked #workerLoginBtn{
+  width:100%;
+  min-height:46px;
+}
+@media(max-width:640px){
+  .worker-install-box{grid-template-columns:1fr;}
+  .worker-install-box .primary{width:100%;}
+}

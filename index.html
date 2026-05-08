@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1242" />
+  <link rel="stylesheet" href="style.css?v=1243" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -227,7 +227,7 @@
           <div>
             <p id="companyQrKicker" class="business-eyebrow">QR kod za radnike</p>
             <h3 id="companyQrTitle">Prijava radnika</h3>
-            <p id="companyQrSubtitle" class="muted">Radnik skenira QR kod, aplikacija sama učita firmu, a radnik upisuje samo svoju šifru.</p>
+            <p id="companyQrSubtitle" class="muted">Radnik skenira QR kod, preuzme app kao prečicu i ubuduće upisuje samo svoj radnički kod.</p>
           </div>
           <button class="secondary" type="button" onclick="closeCompanyQrModal()">Zatvori</button>
         </div>
@@ -238,7 +238,7 @@
           <div class="company-qr-info">
             <h4 id="companyQrCompanyName">Firma</h4>
             <p><b>Šifra firme:</b> <span id="companyQrCompanyCode">—</span></p>
-            <p class="school-info">Ovaj QR kod pokazujete radnicima. Kada ga radnik skenira, otvara se Start Work PRO ulaz za tu firmu. Radnik ne bira firmu, nego samo upisuje svoju šifru radnika.</p>
+            <p class="school-info">Ovaj QR kod pokazujete radnicima. Kada ga radnik skenira, otvara se Start Work PRO ulaz za ovu firmu. Radnik može dodati app na telefon, a zatim upisuje samo svoj radnički kod. Ne ulazi u Direkciju.</p>
             <label>Link za radnike</label>
             <input id="companyQrLink" readonly />
             <div class="row company-qr-actions">
@@ -612,24 +612,33 @@
     <section id="viewWorkerLogin" class="view">
       <div class="card narrow">
         <button class="back" data-goto="Home">← Nazad</button>
-        <h2>Terenski unos</h2>
-        <label>Šifra firme</label>
+        <h2 id="workerLoginTitle">Terenski unos</h2>
+        <label id="workerCompanyCodeLabel">Šifra firme</label>
         <input id="workerCompanyCode" placeholder="npr. test2026" />
-        <p class="code-login-note">Šifra firme koju je Uprava dobila pri aktivaciji.</p>
+        <p id="workerCompanyCodeNote" class="code-login-note">Šifra firme koju je Uprava dobila pri aktivaciji.</p>
+
+        <div id="workerInstallBox" class="worker-install-box hidden">
+          <div>
+            <strong>📲 Preuzmi app za ovu firmu</strong>
+            <span id="workerInstallHint">Kada je dodaš na telefon, radnik kasnije ulazi direktno u ovaj radnički ulaz.</span>
+          </div>
+          <button id="workerInstallBtn" type="button" class="primary">⬇️ Preuzmi app na telefon</button>
+        </div>
+
         <div id="workerCompanyQrNotice" class="worker-company-qr-notice hidden">
           <strong>Firma je učitana preko QR koda.</strong>
-          <span>Radnik sada upisuje samo svoju šifru radnika koju mu je dodelila Direkcija.</span>
+          <span>Radnik sada upisuje samo svoj radnički kod koji mu je dodelila Direkcija.</span>
           <button type="button" class="secondary small-action" onclick="clearWorkerCompanyQrContext()">Promeni firmu</button>
         </div>
         <div id="workerLoginHelpBox" class="code-help-box">
               <b>Prijava radnika:</b>
               <span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>
             </div>
-            <label>Šifra radnika</label>
-        <input id="workerAccessCode" placeholder="npr. zor1234" />
-        <p class="code-login-note">Šifra radnika koju je Uprava upisala u profilu radnika.</p>
-        <button id="workerLoginBtn" class="primary">Uđi</button>
-        <p class="hint">Browser pamti ulaz na ovom uređaju. Stari izveštaji se ne prikazuju radniku.</p>
+            <label id="workerAccessCodeLabel">Šifra radnika</label>
+        <input id="workerAccessCode" placeholder="unesite svoj kod" autocomplete="one-time-code" />
+        <p class="code-login-note">Kod radnika koji je Direkcija upisala u profilu radnika.</p>
+        <button id="workerLoginBtn" class="primary">Uđi u svoj profil</button>
+        <p class="hint">Telefon pamti firmu. Ako je radnik već prijavljen na ovom uređaju, sledeće otvaranje ga vodi direktno u njegov terenski profil.</p>
       </div>
     </section>
 
@@ -835,6 +844,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1242"></script>
+  <script src="script.js?v=1243"></script>
 </body>
 </html>
