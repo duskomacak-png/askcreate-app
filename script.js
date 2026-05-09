@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.26.6";
+const APP_VERSION = "1.26.7";
 
 
 let sb = null;
@@ -5070,7 +5070,7 @@ async function loadWorkerReturnedReports() {
 
     list.innerHTML = data.map(r => {
       const d = r.data || {};
-      const title = d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni izveštaj";
+      const title = d.report_type === "site_daily_log" ? "Dnevnik gradilišta" : (d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni izveštaj");
       const site = d.site_name || d.defect_site_name || "Bez gradilišta";
       const reason = r.returned_reason || "Uprava nije upisala razlog.";
       const opis = d.defect || d.description || d.note || "";
@@ -5108,6 +5108,14 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     if (!r) throw new Error("Izveštaj nije pronađen ili više nije vraćen na dopunu.");
 
     const d = r.data || {};
+    if (d.report_type === "site_daily_log") {
+      loadSiteLogDataIntoForm(d, r);
+      localStorage.setItem("swp_returned_report_id", reportId);
+      toast("Dnevnik gradilišta je otvoren za ispravku. Ispravi ga i pošalji ponovo Direkciji.");
+      const panel = $("#siteLogPanel");
+      if (panel) panel.scrollIntoView({ behavior:"smooth", block:"start" });
+      return;
+    }
     $("#wrDate").value = r.report_date || today();
 
     if ($("#wrLeaveType")) $("#wrLeaveType").value = "slobodan_dan";
@@ -5630,6 +5638,60 @@ function saveSiteLogDraft() {
   localStorage.setItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`, JSON.stringify(data));
   toast("Nacrt dnevnika gradilišta je sačuvan na ovom uređaju.");
 }
+function drawSiteLogSignatureFromDataUrl(dataUrl) {
+  const canvas = getSiteLogCanvas();
+  if (!canvas || !dataUrl) return;
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+  img.onload = () => {
+    prepareSignatureCanvasBackground(canvas);
+    const ratio = Math.min(canvas.width / img.width, canvas.height / img.height, 1);
+    const w = img.width * ratio;
+    const h = img.height * ratio;
+    const x = (canvas.width - w) / 2;
+    const y = (canvas.height - h) / 2;
+    ctx.drawImage(img, x, y, w, h);
+    siteLogSignatureState.hasInk = true;
+  };
+  img.src = dataUrl;
+}
+
+function clearSiteLogFormLists() {
+  ["#siteLogWorkers", "#siteLogMaterialIn", "#siteLogMaterialOut", "#siteLogMaterialsInstalled", "#siteLogMaterialsStock", "#siteLogTrucks"].forEach(sel => {
+    const el = $(sel);
+    if (el) el.innerHTML = "";
+  });
+}
+
+function loadSiteLogDataIntoForm(d = {}, r = {}) {
+  if (!(currentWorker?.permissions || {}).site_daily_log) {
+    throw new Error("Ovaj profil nema uključenu rubriku Dnevnik gradilišta.");
+  }
+  if (typeof initSiteLogPanel === "function") initSiteLogPanel();
+  if ($("#siteLogDate")) $("#siteLogDate").value = r.report_date || d.report_date_manual || today();
+  if ($("#siteLogDescription")) $("#siteLogDescription").value = d.today_work_description || d.description || "";
+  if ($("#siteLogTomorrowPlan")) $("#siteLogTomorrowPlan").value = d.tomorrow_work_plan || "";
+  if ($("#siteLogSignatureName")) $("#siteLogSignatureName").value = d.site_log_signature_name || d.created_by_worker || currentWorker?.full_name || "";
+  clearSiteLogFormLists();
+  (d.workers || d.worker_entries || []).forEach(addSiteLogWorkerEntry);
+  (d.material_in || []).forEach(x => addSiteLogMaterialEntry("material_in", x));
+  (d.material_out || []).forEach(x => addSiteLogMaterialEntry("material_out", x));
+  (d.materials_installed || []).forEach(x => addSiteLogMaterialEntry("materials_installed", x));
+  (d.materials_stock_on_site || []).forEach(x => addSiteLogMaterialEntry("materials_stock_on_site", x));
+  (d.truck_tours || []).forEach(addSiteLogTruckEntry);
+  siteLogSignedFileData = d.signed_file || null;
+  updateSiteLogSignedFileInfo();
+  refreshSiteLogSelectors();
+  if (d.site_name && $("#siteLogSite")) $("#siteLogSite").value = d.site_name;
+  clearSiteLogSignature(false);
+  if (d.site_log_signature_data_url) drawSiteLogSignatureFromDataUrl(d.site_log_signature_data_url);
+  if (!$("#siteLogWorkers")?.children.length) addSiteLogWorkerEntry();
+  if (!$("#siteLogMaterialIn")?.children.length) addSiteLogMaterialEntry("material_in");
+  if (!$("#siteLogMaterialsStock")?.children.length) addSiteLogMaterialEntry("materials_stock_on_site", { unit:"m3" });
+  $("#siteLogPreviewBox")?.classList.add("hidden");
+  if ($("#siteLogStatusBadge")) $("#siteLogStatusBadge").textContent = "Vraćeno na dopunu";
+}
+
 function loadSiteLogDraft() {
   try {
     const raw = localStorage.getItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`); if (!raw) return false;
@@ -5683,6 +5745,24 @@ async function submitSiteLogToDirector() {
     if (!hasSiteLogAnyContent(data)) throw new Error("Popuni bar jedan deo dnevnika pre slanja.");
     if (!data.site_log_signature_data_url && !data.signed_file) throw new Error("Dodaj potpis u aplikaciji ili učitaj potpisan dokument pre slanja Direkciji.");
     const reportDate = data.report_date_manual || today();
+    const returnedId = localStorage.getItem("swp_returned_report_id");
+    if (returnedId) {
+      const { error } = await sb.rpc("worker_resubmit_returned_report", {
+        p_company_code: worker.company_code,
+        p_access_code: worker.access_code,
+        p_report_id: returnedId,
+        p_report_date: reportDate,
+        p_site_id: data.site_id || null,
+        p_data: data
+      });
+      if (error) throw error;
+      localStorage.removeItem("swp_returned_report_id");
+      localStorage.removeItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`);
+      $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Ponovo poslato Direkciji");
+      loadWorkerReturnedReports();
+      toast("Ispravljen Dnevnik gradilišta je ponovo poslat Direkciji ✅");
+      return;
+    }
     const { error } = await sb.rpc("submit_worker_report", { p_company_code: worker.company_code, p_access_code: worker.access_code, p_report_date: reportDate, p_site_id: data.site_id || null, p_data: data });
     if (error) throw error;
     localStorage.removeItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`);
@@ -7885,6 +7965,13 @@ async function openWorkerForm() {
   if (siteLogPanel) {
     siteLogPanel.classList.toggle("hidden", !siteLogEnabled);
     siteLogPanel.setAttribute("aria-hidden", siteLogEnabled ? "false" : "true");
+  }
+  const returnedPanel = $("#workerReturnedReports");
+  if (siteLogEnabled && returnedPanel && siteLogPanel && returnedPanel.parentElement !== $("#viewWorkerForm")) {
+    siteLogPanel.insertAdjacentElement("afterend", returnedPanel);
+  }
+  if (!siteLogEnabled && returnedPanel && normalWorkerFormCard && returnedPanel.parentElement !== normalWorkerFormCard) {
+    normalWorkerFormCard.insertBefore(returnedPanel, normalWorkerFormCard.firstChild);
   }
   if (normalWorkerFormCard) normalWorkerFormCard.classList.toggle("hidden", siteLogEnabled);
   document.body.classList.toggle("site-log-mode", siteLogEnabled);
