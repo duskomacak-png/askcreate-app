@@ -3075,7 +3075,7 @@ body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4
 }
 
 
-/* v1.26.5 — Dnevnik gradilišta: Dodaj/Ukloni dugmad u svakoj ponavljajućoj rubrici */
+/* v1.26.6 — Dnevnik gradilišta: ture imaju samo uvoz/izvoz + prevoznik naši/dobavljač */
 body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-entry-actions,
 #siteLogPanel .site-log-entry-actions{
   display:flex!important;

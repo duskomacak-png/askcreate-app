@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.26.5";
+const APP_VERSION = "1.26.6";
 
 
 let sb = null;
@@ -2112,7 +2112,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <div class="report-section"><h4>Izlaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], siteLogData.material_out, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
       <div class="report-section"><h4>Ugrađeni materijali</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Pozicija/rad"], siteLogData.materials_installed, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.work_position || m.note])}</div>
       <div class="report-section"><h4>Lager materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], siteLogData.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
-      <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Partner","Tablice","Vozač","Materijal","Ture","m³","Napomena"], siteLogData.truck_tours, (t,i)=>[String(i+1), t.tour_type, t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
+      <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Prevoznik","Dobavljač","Tablice","Vozač","Materijal","Ture","m³","Napomena"], siteLogData.truck_tours, (t,i)=>[String(i+1), siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
       <div class="report-section report-signature-section"><h4>Potpis / overa</h4>${signed}${uploaded}</div>
     </div>`;
   }
@@ -5383,16 +5383,31 @@ window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
   list.appendChild(div);
   renumberSiteLogEntries(`#${siteLogMaterialListId(kind)}`, ".site-log-material-entry", siteLogMaterialLabel(kind));
 };
+function siteLogTruckTypeText(type) {
+  return type === "izvoz" ? "Izvoz sa gradilišta" : "Uvoz na gradilište";
+}
+function siteLogTransportText(source, supplier) {
+  if (source === "dobavljac") return supplier ? `Dobavljač: ${supplier}` : "Dobavljač";
+  return "Naši kamioni";
+}
+function updateSiteLogSupplierField(card) {
+  const source = card?.querySelector(".sl-transport-source")?.value || "nasi_kamioni";
+  const supplierWrap = card?.querySelector(".sl-supplier-wrap");
+  if (supplierWrap) supplierWrap.style.display = source === "dobavljac" ? "block" : "none";
+}
 window.addSiteLogTruckEntry = function(values = {}) {
   const list = $("#siteLogTrucks"); if (!list) return;
   const idx = list.querySelectorAll(".site-log-truck-entry").length + 1;
   const div = document.createElement("div");
   div.className = "entry-card site-log-truck-entry";
+  const typeVal = values.tour_type === "izvoz" ? "izvoz" : "uvoz";
+  const sourceVal = values.transport_source || values.truck_source || values.carrier_type || (values.partner_company ? "dobavljac" : "nasi_kamioni");
   div.innerHTML = `
     <h5>Tura ${idx}</h5>
     <div class="grid four">
-      <div><label>Tip ture</label><select class="sl-truck-type"><option value="uvoz" ${values.tour_type === "uvoz" ? "selected" : ""}>Uvoz na gradilište</option><option value="izvoz" ${values.tour_type === "izvoz" ? "selected" : ""}>Izvoz sa gradilišta</option><option value="partnerska_firma" ${values.tour_type === "partnerska_firma" ? "selected" : ""}>Partnerska firma</option></select></div>
-      <div><label>Partnerska firma</label><input class="sl-partner-company" placeholder="naziv firme" value="${escapeHtml(values.partner_company || "")}" /></div>
+      <div><label>Tip ture</label><select class="sl-truck-type"><option value="uvoz" ${typeVal === "uvoz" ? "selected" : ""}>Uvoz na gradilište</option><option value="izvoz" ${typeVal === "izvoz" ? "selected" : ""}>Izvoz sa gradilišta</option></select></div>
+      <div><label>Prevoznik</label><select class="sl-transport-source"><option value="nasi_kamioni" ${sourceVal !== "dobavljac" ? "selected" : ""}>Naši kamioni</option><option value="dobavljac" ${sourceVal === "dobavljac" ? "selected" : ""}>Dobavljač</option></select></div>
+      <div class="sl-supplier-wrap"><label>Naziv dobavljača</label><input class="sl-partner-company" placeholder="naziv firme" value="${escapeHtml(values.partner_company || values.supplier_name || "")}" /></div>
       <div><label>Tablice kamiona</label><input class="sl-truck-plate" placeholder="BG-123-AA" value="${escapeHtml(values.truck_plate || "")}" /></div>
       <div><label>Vozač</label><input class="sl-driver-name" placeholder="ime i prezime" value="${escapeHtml(values.driver_name || "")}" /></div>
       <div><label>Materijal</label><select class="site-log-material-select sl-truck-material">${buildWorkerMaterialOptionsHtml(values.material_name || "")}</select></div>
@@ -5405,6 +5420,8 @@ window.addSiteLogTruckEntry = function(values = {}) {
       <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-truck-entry').remove(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">Ukloni turu</button>
     </div>`;
   list.appendChild(div);
+  div.querySelector(".sl-transport-source")?.addEventListener("change", () => updateSiteLogSupplierField(div));
+  updateSiteLogSupplierField(div);
 };
 function renumberSiteLogEntries(listSel, itemSel, label) {
   $$(listSel + " " + itemSel).forEach((card, i) => { const h = card.querySelector("h5"); if (h) h.textContent = `${label} ${i + 1}`; });
@@ -5428,7 +5445,9 @@ function collectSiteLogMaterials(kind) {
 function collectSiteLogTrucks() {
   return $$("#siteLogTrucks .site-log-truck-entry").map(el => {
     const mat = el.querySelector(".sl-truck-material"); const opt = mat?.options ? mat.options[mat.selectedIndex] : null;
-    return { tour_type: el.querySelector(".sl-truck-type")?.value || "uvoz", partner_company: el.querySelector(".sl-partner-company")?.value.trim() || "", truck_plate: el.querySelector(".sl-truck-plate")?.value.trim() || "", driver_name: el.querySelector(".sl-driver-name")?.value.trim() || "", material_id: opt?.dataset?.materialId || "", material_name: mat?.value.trim() || "", tours: el.querySelector(".sl-truck-tours")?.value.trim() || "", m3: el.querySelector(".sl-truck-m3")?.value.trim() || "", note: el.querySelector(".sl-truck-note")?.value.trim() || "" };
+    const transport_source = el.querySelector(".sl-transport-source")?.value || "nasi_kamioni";
+    const partner_company = transport_source === "dobavljac" ? (el.querySelector(".sl-partner-company")?.value.trim() || "") : "";
+    return { tour_type: el.querySelector(".sl-truck-type")?.value || "uvoz", transport_source, partner_company, supplier_name: partner_company, truck_plate: el.querySelector(".sl-truck-plate")?.value.trim() || "", driver_name: el.querySelector(".sl-driver-name")?.value.trim() || "", material_id: opt?.dataset?.materialId || "", material_name: mat?.value.trim() || "", tours: el.querySelector(".sl-truck-tours")?.value.trim() || "", m3: el.querySelector(".sl-truck-m3")?.value.trim() || "", note: el.querySelector(".sl-truck-note")?.value.trim() || "" };
   }).filter(x => x.partner_company || x.truck_plate || x.driver_name || x.material_name || x.tours || x.m3 || x.note);
 }
 function collectSiteLogData() {
@@ -5478,7 +5497,7 @@ function renderSiteLogA4(data = collectSiteLogData()) {
     <div class="report-section"><h4>Izlaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], data.material_out, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
     <div class="report-section"><h4>Ugrađeni materijali</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Pozicija/rad"], data.materials_installed, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.work_position || m.note])}</div>
     <div class="report-section"><h4>Lager materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
-    <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Partner","Tablice","Vozač","Materijal","Ture","m³","Napomena"], data.truck_tours, (t,i)=>[String(i+1), t.tour_type, t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
+    <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Prevoznik","Dobavljač","Tablice","Vozač","Materijal","Ture","m³","Napomena"], data.truck_tours, (t,i)=>[String(i+1), siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
     <div class="report-section report-signature-section"><h4>Potpis / overa</h4>${signed}${uploaded}</div>
     <div class="paper-footer-note">Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme, uploadovani dokument je dokaz.</div>
   </section>`;
@@ -5530,7 +5549,7 @@ function buildSiteLogStandaloneHtml(data = collectSiteLogData()) {
       ${section("5. Izlaz materijala", table(["#", "Materijal", "Količina", "Jed.", "Napomena"], data.material_out, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.note]))}
       ${section("6. Ugrađeni materijali", table(["#", "Materijal", "Količina", "Jed.", "Pozicija/rad"], data.materials_installed, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.work_position || m.note]))}
       ${section("7. Lager materijala na gradilištu", table(["#", "Materijal", "Količina", "Jed.", "Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.location_note || m.note]))}
-      ${section("8. Ture kamiona", table(["#", "Tip", "Partner", "Tablice", "Vozač", "Materijal", "Ture", "m³", "Napomena"], data.truck_tours, (t,i)=>[i+1, t.tour_type, t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note]))}
+      ${section("8. Ture kamiona", table(["#", "Tip", "Prevoznik", "Dobavljač", "Tablice", "Vozač", "Materijal", "Ture", "m³", "Napomena"], data.truck_tours, (t,i)=>[i+1, siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note]))}
       ${section("9. Potpis / overa", signatureBlock + uploaded)}
 
       <footer>Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme.</footer>
