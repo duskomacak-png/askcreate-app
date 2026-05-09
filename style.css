@@ -3533,7 +3533,7 @@ body.report-doc-open{overflow:hidden;}
 }
 
 
-/* v1.27.7 — Direkcija / Uprava Excel-style layout SAFE
+/* v1.27.8 — Direkcija / Uprava Excel-style layout SAFE
    Samo vizuelno zatezanje kancelarijskog pregleda. Ne menja workflow. */
 .director-business-page{
   --office-green:#0f766e;
@@ -3620,4 +3620,90 @@ body.report-doc-open{overflow:hidden;}
 }
 @media (min-width: 981px){
   .director-business-page .tab-panel .card > .list:not(:has(.director-table-row)):not(#reportsList){max-height:620px;overflow:auto;}
+}
+
+
+/* v1.27.8 - Pomoć i podrška + automatsko osvežavanje izveštaja */
+.director-live-refresh-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:8px 0 12px;
+  padding:8px 10px;
+  border:1px solid #cfe4d7;
+  background:#f4fbf6;
+  border-radius:12px;
+  color:#27523b;
+  font-size:13px;
+}
+.live-dot{
+  width:9px;
+  height:9px;
+  border-radius:999px;
+  background:#159447;
+  display:inline-block;
+  box-shadow:0 0 0 4px rgba(21,148,71,.12);
+  flex:0 0 auto;
+}
+.support-panel-card{
+  border:1px solid #d7e5dc;
+  background:linear-gradient(180deg,#ffffff 0%,#f7fbf8 100%);
+}
+.support-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  border-bottom:1px solid #dfeae4;
+  padding-bottom:14px;
+  margin-bottom:14px;
+}
+.support-status-box{
+  min-width:260px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#eef8f1;
+  border:1px solid #cfe4d7;
+  color:#214b35;
+  font-size:13px;
+}
+.support-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.support-contact-card{
+  border:1px solid #dce7e0;
+  background:#fff;
+  border-radius:16px;
+  padding:14px;
+  box-shadow:0 8px 20px rgba(15,82,49,.05);
+}
+.support-contact-card h4{
+  margin:0 0 8px;
+  color:#173b2a;
+}
+.support-main-contact{
+  font-weight:800;
+  color:#0f6b3c;
+  font-size:18px;
+  word-break:break-word;
+}
+.support-link-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  min-height:34px;
+  padding:8px 12px;
+  border-radius:10px;
+}
+@media(max-width:900px){
+  .support-head{display:block;}
+  .support-status-box{min-width:0;margin-top:10px;}
+  .support-grid{grid-template-columns:1fr;}
 }

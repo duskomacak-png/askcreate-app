@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1277" />
+  <link rel="stylesheet" href="style.css?v=1278" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -292,8 +292,8 @@
           <button class="tab" data-tab="reports">📄 Dnevni radni izveštaji</button>
           <button class="tab" data-tab="defects">🛠️ Kvarovi</button>
           <button class="tab" data-tab="export">📊 Izvoz u Excel</button>
+          <button class="tab" data-tab="support">❔ Pomoć i podrška</button>
         </div>
-        <div class="director-help-link">❔ Pomoć i podrška <span>›</span></div>
       </aside>
 
       <div class="director-workspace">
@@ -497,6 +497,11 @@
         <div class="card">
           <h3>Inbox izveštaja</h3>
           <p class="muted">Štikliraj dnevne izveštaje koje želiš da prebaciš u izvoz za Excel.</p>
+          <div class="director-live-refresh-line">
+            <span class="live-dot"></span>
+            <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</span>
+            <button id="directorManualRefreshBtn" class="secondary small-action" type="button">Osveži odmah</button>
+          </div>
           <div class="row report-export-toolbar">
             <button id="selectAllReportsBtn" class="secondary" type="button">✅ Označi sve</button>
             <button id="clearReportsBtn" class="secondary" type="button">❌ Poništi sve</button>
@@ -654,6 +659,43 @@
               <button id="exportXlsBtn" class="primary" type="button">📥 Preuzmi Excel tabelu</button>
               <button id="exportCsvBtn" class="secondary" type="button">📥 Preuzmi CSV za Excel</button>
               <button id="copyExcelBtn" class="secondary" type="button">📋 Kopiraj tabelu za Excel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tabSupport" class="tab-panel">
+        <div class="card support-panel-card">
+          <div class="support-head">
+            <div>
+              <p class="business-eyebrow">Pomoć i podrška</p>
+              <h3>Kontakt administratora platforme</h3>
+              <p class="muted">Za tehničku pomoć, aktivaciju naloga, produženje paketa ili pitanje oko korišćenja aplikacije, kontaktirajte administratora platforme.</p>
+            </div>
+            <div class="support-status-box">
+              <span class="live-dot"></span>
+              <b data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</b>
+            </div>
+          </div>
+
+          <div class="support-grid">
+            <div class="support-contact-card">
+              <h4>Email podrške</h4>
+              <p class="support-main-contact">duskomacak@gmail.com</p>
+              <div class="row compact">
+                <a class="primary support-link-btn" href="mailto:duskomacak@gmail.com?subject=Start%20Work%20PRO%20-%20podr%C5%A1ka">Pošalji email</a>
+                <button class="secondary small-action" type="button" onclick="copySupportEmail()">Kopiraj email</button>
+              </div>
+            </div>
+            <div class="support-contact-card">
+              <h4>Produženje korišćenja</h4>
+              <p>Za produženje paketa ili promenu uslova korišćenja pošaljite poruku administratoru. Period korišćenja se produžava ručno nakon dogovora i potvrde.</p>
+              <p class="muted tiny">Bankovni QR kod nije uključen u ovu verziju. Uplate se trenutno dogovaraju direktno sa administratorom.</p>
+            </div>
+            <div class="support-contact-card">
+              <h4>Rad aplikacije</h4>
+              <p>Uprava firme može držati panel otvoren. Inbox izveštaja se osvežava u pozadini na svakih 30 sekundi, kako bi se novi izveštaji sa gradilišta prikazali bez ručnog osvežavanja stranice.</p>
+              <button class="secondary small-action" type="button" onclick="manualDirectorRefresh()">Osveži izveštaje sada</button>
             </div>
           </div>
         </div>
@@ -997,6 +1039,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1277"></script>
+  <script src="script.js?v=1278"></script>
 </body>
 </html>

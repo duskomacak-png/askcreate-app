@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.7";
+const APP_VERSION = "1.27.8";
 
 
 let sb = null;
@@ -22,6 +22,9 @@ let workerAssetOptions = [];
 let workerSiteOptions = [];
 let workerMaterialOptions = [];
 let deferredPwaInstallPrompt = null;
+let directorAutoRefreshTimer = null;
+let directorAutoRefreshBusy = false;
+let directorKnownReportIds = new Set();
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -241,6 +244,7 @@ async function signIn(email, password) {
 }
 
 async function signOut() {
+  stopDirectorAutoRefresh();
   if (sb) await sb.auth.signOut();
   currentCompany = null;
   currentWorker = null;
@@ -1111,6 +1115,7 @@ async function loadDirectorCompany() {
   showDirectorPackageNotice(approvedSource || currentCompany);
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
+  startDirectorAutoRefresh();
   return data;
 }
 
@@ -2031,7 +2036,68 @@ async function enrichReportsWithUsers(reports = []) {
   }
 }
 
-async function loadReports() {
+
+function formatRefreshTime(date = new Date()) {
+  return date.toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function updateDirectorRefreshStatus(text) {
+  document.querySelectorAll("[data-auto-refresh-status]").forEach(el => {
+    el.textContent = text;
+  });
+}
+
+function updateDirectorKnownReports(reports = [], silent = false) {
+  const ids = new Set((Array.isArray(reports) ? reports : []).map(r => String(r.id || "")).filter(Boolean));
+  if (silent && directorKnownReportIds.size) {
+    const fresh = Array.from(ids).filter(id => !directorKnownReportIds.has(id));
+    if (fresh.length) toast(`Stiglo novih izveštaja: ${fresh.length}.`);
+  }
+  directorKnownReportIds = ids;
+}
+
+async function directorAutoRefreshTick() {
+  if (!currentCompany || directorAutoRefreshBusy) return;
+  const dashboard = document.getElementById("viewDirectorDashboard");
+  if (!dashboard || !dashboard.classList.contains("active")) return;
+  directorAutoRefreshBusy = true;
+  try {
+    await loadReports({ silent: true, auto: true });
+  } finally {
+    directorAutoRefreshBusy = false;
+  }
+}
+
+function startDirectorAutoRefresh() {
+  stopDirectorAutoRefresh();
+  updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
+  directorAutoRefreshTimer = setInterval(directorAutoRefreshTick, 30000);
+}
+
+function stopDirectorAutoRefresh() {
+  if (directorAutoRefreshTimer) clearInterval(directorAutoRefreshTimer);
+  directorAutoRefreshTimer = null;
+  directorAutoRefreshBusy = false;
+}
+
+window.manualDirectorRefresh = async function() {
+  if (!currentCompany) return toast("Nema aktivne firme.", true);
+  await loadReports({ silent: false, manual: true });
+  toast("Izveštaji su osveženi.");
+};
+
+window.copySupportEmail = async function() {
+  const email = "duskomacak@gmail.com";
+  try {
+    await navigator.clipboard.writeText(email);
+    toast("Email podrške je kopiran.");
+  } catch (e) {
+    toast(email);
+  }
+};
+
+async function loadReports(options = {}) {
+  const silent = !!options.silent;
   if (!currentCompany) return;
 
   // v1.18.8: ne koristimo Supabase embed reports -> company_users.
@@ -2043,9 +2109,16 @@ async function loadReports() {
     .neq("status", "archived")
     .order("created_at", { ascending:false });
 
-  if (error) return toast(error.message, true);
+  if (error) {
+    if (silent) console.warn("Automatsko osvežavanje izveštaja nije uspelo:", error.message);
+    else toast(error.message, true);
+    updateDirectorRefreshStatus(`Greška pri osvežavanju · ${formatRefreshTime()}`);
+    return;
+  }
 
   directorReportsCache = await enrichReportsWithUsers(data || []);
+  updateDirectorKnownReports(directorReportsCache, silent);
+  updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
   businessUpdateReportsMetrics(directorReportsCache);
   const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je zaposleni poslao kvar, pogledaj tab Kvarovi.</p>`;
@@ -8053,6 +8126,7 @@ function bindEvents() {
     } catch(e) { toast(e.message, true); }
   });
   if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
+  if ($("#directorManualRefreshBtn")) $("#directorManualRefreshBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
