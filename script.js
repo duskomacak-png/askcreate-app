@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.8";
+const APP_VERSION = "1.27.9";
 
 
 let sb = null;
@@ -3013,8 +3013,7 @@ window.openReportDocumentCenter = function(id) {
       <div class="report-doc-actions no-print">
         <button class="primary" type="button" onclick="saveReportDocumentAsPdf('${r.id}')">Sačuvaj kao PDF</button>
         <button class="secondary" type="button" onclick="printReportDocument('${r.id}')">Štampaj dokument</button>
-        <button class="secondary" type="button" onclick="exportSingleReportToExcel('${r.id}')">Izvezi ovaj izveštaj u Excel</button>
-        <button class="secondary" type="button" onclick="addReportToExcelSelection('${r.id}')">Dodaj u Excel izbor</button>
+        <button class="secondary" type="button" onclick="exportSingleReportToExcel('${r.id}')">Izvezi dokument u Excel</button>
         <button class="secondary" type="button" onclick="setReportStatus('${r.id}','approved')">Odobri izveštaj</button>
         <button class="secondary danger-soft" type="button" onclick="returnReport('${r.id}')">Vrati na ispravku</button>
         <button class="secondary" type="button" onclick="archiveReport('${r.id}')">Arhiviraj</button>
@@ -3117,10 +3116,8 @@ function reportHtml(r) {
         <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusLabel)}</span></div>
       </div>
       ${r.returned_reason ? `<div class="report-card-warning">Vraćeno na ispravku: ${escapeHtml(r.returned_reason)}</div>` : ""}
-      <div class="report-card-actions no-print">
-        <button class="primary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
-        <button class="secondary" type="button" onclick="addReportToExcelSelection('${r.id}')">Dodaj u Excel izbor</button>
-        <button class="secondary" type="button" onclick="exportSingleReportToExcel('${r.id}')">Excel</button>
+      <div class="report-card-actions no-print report-row-single-action">
+        <button class="primary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori</button>
       </div>
     </article>`;
 }

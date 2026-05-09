@@ -3533,7 +3533,7 @@ body.report-doc-open{overflow:hidden;}
 }
 
 
-/* v1.27.8 — Direkcija / Uprava Excel-style layout SAFE
+/* v1.27.9 — Direkcija / Uprava Excel-style layout SAFE
    Samo vizuelno zatezanje kancelarijskog pregleda. Ne menja workflow. */
 .director-business-page{
   --office-green:#0f766e;
@@ -3623,7 +3623,7 @@ body.report-doc-open{overflow:hidden;}
 }
 
 
-/* v1.27.8 - Pomoć i podrška + automatsko osvežavanje izveštaja */
+/* v1.27.9 - Pomoć i podrška + automatsko osvežavanje izveštaja */
 .director-live-refresh-line{
   display:flex;
   align-items:center;
@@ -3707,3 +3707,9 @@ body.report-doc-open{overflow:hidden;}
   .support-status-box{min-width:0;margin-top:10px;}
   .support-grid{grid-template-columns:1fr;}
 }
+
+/* v1.27.9 - pojednostavljene akcije izveštaja */
+.report-row-single-action{justify-content:flex-end;gap:6px;}
+.report-row-single-action .compact-doc-btn{min-width:72px;padding:6px 12px;font-size:12px;}
+.report-export-toolbar #goExportBtn{white-space:nowrap;}
+.business-quick-actions .quick-action.light{background:#ffffff!important;color:var(--pro-green-dark)!important;border:1px solid var(--office-line)!important;}
