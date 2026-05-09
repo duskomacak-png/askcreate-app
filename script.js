@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.6";
+const APP_VERSION = "1.27.7";
 
 
 let sb = null;
@@ -1447,17 +1447,15 @@ async function saveAssetForm() {
 
 function renderPersonItem(p) {
   const permissionCount = Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length;
+  const fullName = `${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}`;
   return `
-    <div class="item person-card-v1116" data-person-id="${escapeHtml(p.id)}">
-      <div class="item-main">
-        <strong>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</strong>
-        <small>${escapeHtml(p.function_title)} · šifra zaposlenog: ${escapeHtml(p.access_code)}</small><br/>
-        <span class="pill">Aktivan</span>
-        <span class="pill">${permissionCount} rubrika</span>
-      </div>
-      <div class="person-actions-v1116">
+    <div class="director-table-row person-card-v1116" data-person-id="${escapeHtml(p.id)}">
+      <div class="dt-cell dt-name"><strong>${fullName}</strong><small>Pristupni kod: ${escapeHtml(p.access_code || "—")}</small></div>
+      <div class="dt-cell"><span>${escapeHtml(p.function_title || "—")}</span><small>Radno mesto</small></div>
+      <div class="dt-cell"><span class="dt-status dt-ok">Aktivan</span><small>${permissionCount} rubrika</small></div>
+      <div class="dt-actions person-actions-v1116">
         <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Izmeni</button>
-        <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">❌ Obriši sa spiska</button>
+        <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">Deaktiviraj</button>
       </div>
     </div>
   `;
@@ -1494,15 +1492,13 @@ async function loadSites() {
 
   businessUpdateSitesCount(data || []);
   $("#sitesList").innerHTML = (data || []).map(s => `
-    <div class="item management-item">
-      <div class="item-main">
-        <strong>${escapeHtml(s.name)}</strong>
-        <small>${escapeHtml(s.location || "")}</small><br/>
-        <span class="pill">Aktivno gradilište</span>
-      </div>
-      <div class="management-actions">
+    <div class="director-table-row management-item">
+      <div class="dt-cell dt-name"><strong>${escapeHtml(s.name)}</strong><small>Naziv gradilišta</small></div>
+      <div class="dt-cell"><span>${escapeHtml(s.location || "—")}</span><small>Lokacija / opis</small></div>
+      <div class="dt-cell"><span class="dt-status dt-ok">Aktivno</span><small>Status</small></div>
+      <div class="dt-actions management-actions">
         <button class="edit-btn" type="button" onclick="editSite('${s.id}')">✏️ Izmeni</button>
-        <button class="archive-btn" type="button" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Obriši sa spiska</button>
+        <button class="archive-btn" type="button" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">Zatvori</button>
       </div>
     </div>
   `).join("") || `<p class="muted">Nema aktivnih gradilišta.</p>`;
@@ -1594,14 +1590,14 @@ async function loadAssets() {
 
   const activeAssets = (data || []).filter(a => a.active !== false);
   $("#assetsList").innerHTML = activeAssets.map(a => `
-    <div class="item management-item">
-      <div class="item-main">
-        <strong>${escapeHtml(formatAssetTitleWithCode(a))}</strong>
-        <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(formatCapacityM3(a.capacity))}</small>
-      </div>
-      <div class="management-actions asset-actions-v1117">
+    <div class="director-table-row management-item">
+      <div class="dt-cell dt-name"><strong>${escapeHtml(formatAssetTitleWithCode(a))}</strong><small>Interni broj / naziv</small></div>
+      <div class="dt-cell"><span>${escapeHtml(a.asset_type || "—")}</span><small>Tip sredstva</small></div>
+      <div class="dt-cell"><span>${escapeHtml(a.registration || "—")}</span><small>Reg. oznaka</small></div>
+      <div class="dt-cell"><span>${escapeHtml(formatCapacityM3(a.capacity))}</span><small>Kapacitet</small></div>
+      <div class="dt-actions management-actions asset-actions-v1117">
         <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Izmeni</button>
-        <button class="delete-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">❌ Obriši sa spiska</button>
+        <button class="delete-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">Skloni</button>
       </div>
     </div>
   `).join("") || `<p class="muted">Nema mašina/vozila.</p>`;
@@ -1628,14 +1624,13 @@ async function loadMaterials() {
 
   if (list) {
     list.innerHTML = activeMaterials.map(m => `
-      <div class="item management-item material-card-v1119">
-        <div class="item-main">
-          <strong>${escapeHtml(m.name)}</strong>
-          <small>${escapeHtml(m.unit || "")} ${m.category ? "· " + escapeHtml(m.category) : ""}</small>
-        </div>
-        <div class="management-actions material-actions-v1119">
+      <div class="director-table-row management-item material-card-v1119">
+        <div class="dt-cell dt-name"><strong>${escapeHtml(m.name)}</strong><small>Naziv materijala</small></div>
+        <div class="dt-cell"><span>${escapeHtml(m.unit || "—")}</span><small>Jedinica mere</small></div>
+        <div class="dt-cell"><span>${m.category ? escapeHtml(m.category) : "—"}</span><small>Kategorija</small></div>
+        <div class="dt-actions management-actions material-actions-v1119">
           <button class="edit-btn" type="button" onclick="editMaterial('${m.id}')">✏️ Izmeni</button>
-          <button class="delete-btn" type="button" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">❌ Obriši sa spiska</button>
+          <button class="delete-btn" type="button" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">Skloni</button>
         </div>
       </div>
     `).join("") || `<p class="muted">Nema dodatih materijala.</p>`;
@@ -3050,7 +3045,7 @@ function reportHtml(r) {
       </div>
       ${r.returned_reason ? `<div class="report-card-warning">Vraćeno na ispravku: ${escapeHtml(r.returned_reason)}</div>` : ""}
       <div class="report-card-actions no-print">
-        <button class="primary" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
+        <button class="primary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
         <button class="secondary" type="button" onclick="addReportToExcelSelection('${r.id}')">Dodaj u Excel izbor</button>
         <button class="secondary" type="button" onclick="exportSingleReportToExcel('${r.id}')">Excel</button>
       </div>

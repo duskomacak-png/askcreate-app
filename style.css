@@ -3531,3 +3531,93 @@ body.report-doc-open{overflow:hidden;}
   .report-doc-paper-wrap{padding:0!important;display:block!important;}
   .report-document-center .report-paper-view{width:100%!important;min-height:auto!important;max-width:none!important;box-shadow:none!important;border:0!important;padding:0!important;}
 }
+
+
+/* v1.27.7 — Direkcija / Uprava Excel-style layout SAFE
+   Samo vizuelno zatezanje kancelarijskog pregleda. Ne menja workflow. */
+.director-business-page{
+  --office-green:#0f766e;
+  --office-green-2:#0d9488;
+  --office-line:#d7e3dc;
+  --office-soft:#f7faf8;
+  --office-head:#eef6f0;
+  --office-text:#10231c;
+  background:#eef4f0;
+}
+.director-business-page .director-workspace{padding:14px 18px 22px;gap:10px;}
+.director-business-topline{height:auto;min-height:40px;border:1px solid var(--office-line);background:#fff;border-radius:12px;padding:8px 12px;box-shadow:none;}
+.director-business-hero{padding:12px 14px;border:1px solid var(--office-line);border-radius:14px;background:linear-gradient(180deg,#fff,#f8fbf9);box-shadow:none;margin:8px 0 10px;}
+.director-business-hero h2{font-size:24px;line-height:1.1;margin:2px 0 4px;color:var(--office-text);}
+.director-business-hero p{margin:0;}
+.director-layout-note{font-size:12px;color:#64756d;margin-top:4px!important;}
+.business-eyebrow{letter-spacing:.09em;text-transform:uppercase;font-size:11px;font-weight:800;color:var(--office-green);}
+.director-hero-actions{gap:8px;align-items:center;}
+.director-hero-actions .secondary,.hero-date-pill{min-height:34px;padding:7px 10px;border-radius:10px;font-size:13px;border:1px solid var(--office-line);background:#fff;}
+.business-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:8px;margin:8px 0 10px;}
+.business-kpi-card{min-height:74px;padding:10px 12px;border:1px solid var(--office-line);border-radius:12px;background:#fff;box-shadow:none;display:grid;grid-template-columns:34px 1fr auto;gap:9px;align-items:center;}
+.business-kpi-card .kpi-icon{width:34px;height:34px;border-radius:10px;font-size:17px;}
+.business-kpi-card strong{font-size:25px;line-height:1;color:#10231c;}
+.business-kpi-card span{font-size:12px;color:#52635c;display:block;margin-top:3px;}
+.business-kpi-card button{font-size:12px;padding:0;border:0;background:transparent;color:var(--office-green);font-weight:800;white-space:nowrap;}
+.director-searchbar{border:1px solid var(--office-line);background:#fff;border-radius:12px;padding:8px;box-shadow:none;margin:0 0 10px;}
+.director-searchbar input{height:36px;border:0;background:#f8fbf9;font-size:13px;}
+.director-searchbar .small-action{height:34px;min-height:34px;padding:6px 10px;font-size:12px;border-radius:9px;}
+.director-content-grid{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:10px;align-items:start;}
+.director-content-main .card,.business-quick-actions{border:1px solid var(--office-line);border-radius:14px;background:#fff;box-shadow:none;}
+.director-content-main .card{padding:14px;}
+.director-content-main h3,.business-quick-actions h3{font-size:18px;margin:0 0 10px;color:#10231c;}
+.business-quick-actions{position:sticky;top:12px;padding:12px;}
+.business-quick-actions .quick-action{min-height:38px;padding:9px 10px;border-radius:10px;font-size:13px;margin:0 0 8px;box-shadow:none;}
+.business-quick-actions .quick-action span{font-size:13px;}
+.director-content-main .grid.two{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:10px;align-items:start;}
+.director-content-main label{font-size:12px;font-weight:800;color:#31433b;margin-bottom:4px;}
+.director-content-main input,.director-content-main select,.director-content-main textarea{min-height:36px;border-radius:9px;border:1px solid var(--office-line);background:#fff;font-size:13px;padding:8px 10px;}
+.permission-box{max-height:340px;overflow:auto;border:1px solid var(--office-line);background:#fbfdfb;border-radius:10px;padding:10px;}
+.permission-box label{display:flex;gap:7px;align-items:center;font-size:12px;line-height:1.25;margin:5px 0;}
+.permission-box h4{font-size:13px;margin:8px 0 6px;}
+.list:has(.director-table-row){display:block;border:1px solid var(--office-line);border-radius:12px;overflow:hidden;background:#fff;}
+.director-table-row{display:grid;grid-template-columns:minmax(170px,1.35fr) minmax(120px,1fr) minmax(95px,.7fr) auto;gap:0;align-items:center;min-height:48px;border:0;border-bottom:1px solid var(--office-line);background:#fff;padding:0!important;margin:0!important;box-shadow:none!important;border-radius:0!important;}
+.director-table-row:nth-child(even){background:#fbfdfb;}
+.director-table-row:last-child{border-bottom:0;}
+.director-table-row .dt-cell{padding:8px 10px;border-right:1px solid #edf2ef;min-width:0;}
+.director-table-row .dt-name{background:rgba(15,118,110,.035);}
+.director-table-row strong{font-size:14px;color:#10231c;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.director-table-row span{font-size:13px;color:#182720;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+.director-table-row small{font-size:10.5px;color:#6d7d75;display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dt-status{display:inline-block!important;width:auto!important;padding:3px 7px;border-radius:999px;font-size:11px!important;font-weight:800;border:1px solid #b9d8c3;background:#eef9f0;color:#14532d!important;}
+.dt-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 10px;white-space:nowrap;}
+.director-table-row .edit-btn,.director-table-row .delete-btn,.director-table-row .archive-btn,
+.person-actions-v1116 button,.management-actions button,.material-actions-v1119 button,.asset-actions-v1117 button{
+  min-height:26px!important;height:26px!important;padding:3px 8px!important;font-size:11.5px!important;line-height:1!important;border-radius:7px!important;width:auto!important;box-shadow:none!important;font-weight:800!important;
+}
+.director-table-row .edit-btn{border-color:#c9d8d1!important;background:#fff!important;color:#173b2f!important;}
+.director-table-row .delete-btn,.director-table-row .archive-btn{border-color:#edc6c6!important;background:#fff7f7!important;color:#a33a3a!important;}
+#reportsList{border:1px solid var(--office-line);border-radius:12px;overflow:hidden;background:#fff;}
+.report-row-item{margin:0!important;border:0!important;border-bottom:1px solid var(--office-line)!important;border-radius:0!important;box-shadow:none!important;background:#fff!important;padding:9px 10px!important;}
+.report-row-item:nth-child(even){background:#fbfdfb!important;}
+.report-row-item:last-child{border-bottom:0!important;}
+.report-list-grid{display:grid;grid-template-columns:34px 120px 1.35fr 1fr 1.2fr 105px;gap:8px;align-items:center;}
+.report-card-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:8px;}
+.report-card-actions button{min-height:27px!important;height:27px!important;padding:4px 8px!important;font-size:11.5px!important;border-radius:7px!important;}
+.status-chip{font-size:11px;padding:4px 7px;border-radius:999px;}
+.report-section-pill{font-size:10.5px;padding:3px 6px;}
+.report-export-toolbar,.export-main-actions,.export-master-actions{gap:6px;}
+.report-export-toolbar button,.export-main-actions button,.export-master-actions button{min-height:30px;padding:5px 9px;font-size:12px;border-radius:8px;}
+.director-sidebar{box-shadow:none;border-right:1px solid var(--office-line);background:#ffffff;}
+.director-nav-tabs .tab{border-radius:9px;font-size:13px;padding:9px 10px;margin-bottom:4px;}
+.director-nav-tabs .tab.active{background:#e8f4ee;color:#0f5132;border:1px solid #b7d7c2;}
+@media (max-width: 980px){
+  .business-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .director-content-grid{grid-template-columns:1fr;}
+  .business-quick-actions{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .business-quick-actions h3{grid-column:1/-1;}
+  .director-content-main .grid.two{grid-template-columns:1fr;}
+  .director-table-row{grid-template-columns:1fr;gap:0;padding:8px!important;}
+  .director-table-row .dt-cell{border-right:0;padding:5px 2px;}
+  .dt-actions{justify-content:flex-start;padding:6px 0 0;}
+  .report-list-grid{grid-template-columns:28px 1fr;}
+  .report-list-sections,.report-list-status{grid-column:2;}
+}
+@media (min-width: 981px){
+  .director-business-page .tab-panel .card > .list:not(:has(.director-table-row)):not(#reportsList){max-height:620px;overflow:auto;}
+}

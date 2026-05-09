@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1276" />
+  <link rel="stylesheet" href="style.css?v=1277" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -305,8 +305,8 @@
         <div class="dashboard-head director-business-hero">
           <div>
             <p class="business-eyebrow">Kontrolni panel</p>
-            <h2>Dobrodošli nazad</h2>
-            <p id="directorCompanyLabel">Firma</p>
+            <h2>Kontrolni pregled firme</h2>
+            <p id="directorCompanyLabel">Firma</p><p class="director-layout-note">Kancelarijski pregled: evidencije, izveštaji, odobravanje i Excel na jednom mestu.</p>
           </div>
           <div class="director-hero-actions">
             <button id="directorShowWorkerQrBtn" class="secondary" type="button">📲 Prikaži QR kod za zaposlene</button>
@@ -412,7 +412,7 @@
               <div id="workerPreviewBody" class="worker-preview-body"></div>
             </div>
             <div class="card">
-              <h3>Ljudi u firmi</h3>
+              <h3>Evidencija zaposlenih</h3>
               <div id="peopleList" class="list"></div>
             </div>
           </div>
@@ -430,7 +430,7 @@
             <div class="form-actions-inline"><button id="addSiteBtn" class="primary" type="button">Sačuvaj gradilište</button><button id="cancelEditSiteBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
           <div class="card">
-            <h3>Gradilišta</h3>
+            <h3>Evidencija gradilišta</h3>
             <div id="sitesList" class="list"></div>
           </div>
         </div>
@@ -461,7 +461,7 @@
             <div class="row asset-form-actions"><button id="addAssetBtn" class="primary">Sačuvaj</button><button id="cancelEditAssetBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
           <div class="card">
-            <h3>Mašine i vozila</h3>
+            <h3>Evidencija sredstava rada</h3>
             <div id="assetsList" class="list"></div>
           </div>
         </div>
@@ -997,6 +997,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1276"></script>
+  <script src="script.js?v=1277"></script>
 </body>
 </html>
