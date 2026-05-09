@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.26.9";
+const APP_VERSION = "1.27.0";
 
 
 let sb = null;
@@ -16,6 +16,7 @@ let currentCompany = null;
 let editingPersonId = null;
 let editingAssetId = null;
 let editingMaterialId = null;
+let editingSiteId = null;
 let currentWorker = null;
 let workerAssetOptions = [];
 let workerSiteOptions = [];
@@ -1501,10 +1502,85 @@ async function loadSites() {
         <span class="pill">Aktivno gradilište</span>
       </div>
       <div class="management-actions">
+        <button class="edit-btn" type="button" onclick="editSite('${s.id}')">✏️ Izmeni gradilište</button>
         <button class="archive-btn" type="button" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Završi / skloni gradilište</button>
       </div>
     </div>
   `).join("") || `<p class="muted">Nema aktivnih gradilišta.</p>`;
+}
+
+function setSiteFormMode(mode = "add") {
+  const editing = mode === "edit";
+  const title = $("#siteFormTitle");
+  const btn = $("#addSiteBtn");
+  const cancel = $("#cancelEditSiteBtn");
+  if (title) title.textContent = editing ? "✏️ Izmeni gradilište" : "+ Dodaj gradilište";
+  if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj gradilište";
+  if (cancel) cancel.classList.toggle("hidden", !editing);
+}
+
+function clearSiteForm() {
+  const name = $("#siteName");
+  const location = $("#siteLocation");
+  if (name) name.value = "";
+  if (location) location.value = "";
+  editingSiteId = null;
+  setSiteFormMode("add");
+}
+
+window.editSite = async (id) => {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const { data: site, error } = await sb
+      .from("sites")
+      .select("*")
+      .eq("id", id)
+      .eq("company_id", currentCompany.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!site) throw new Error("Gradilište nije pronađeno.");
+
+    editingSiteId = site.id;
+    $("#siteName").value = site.name || "";
+    $("#siteLocation").value = site.location || "";
+    setSiteFormMode("edit");
+    toast("Gradilište je otvoreno za izmenu.");
+    const title = $("#siteFormTitle");
+    if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch(e) {
+    toast(e.message || e, true);
+  }
+};
+
+async function saveSiteForm() {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const name = $("#siteName").value.trim();
+    const location = $("#siteLocation").value.trim();
+    if (!name) throw new Error("Upiši naziv gradilišta.");
+
+    const payload = { company_id: currentCompany.id, name, location, active: true };
+
+    if (editingSiteId) {
+      const { error } = await sb
+        .from("sites")
+        .update({ name, location })
+        .eq("id", editingSiteId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
+      toast("Gradilište je izmenjeno.");
+    } else {
+      const { error } = await sb.from("sites").insert(payload);
+      if (error) throw error;
+      toast("Gradilište dodato.");
+    }
+
+    clearSiteForm();
+    await loadSites();
+    if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
+  } catch(e) {
+    toast(e.message || e, true);
+  }
 }
 
 async function loadAssets() {
@@ -7815,15 +7891,8 @@ function bindEvents() {
   if ($("#cancelEditPersonBtn")) $("#cancelEditPersonBtn").addEventListener("click", clearPersonForm);
   bindPersonPreviewEvents();
 
-  $("#addSiteBtn").addEventListener("click", async () => {
-    try {
-      const { error } = await sb.from("sites").insert({ company_id: currentCompany.id, name: $("#siteName").value.trim(), location: $("#siteLocation").value.trim(), active: true });
-      if (error) throw error;
-      $("#siteName").value = ""; $("#siteLocation").value = "";
-      toast("Gradilište dodato.");
-      loadSites();
-    } catch(e) { toast(e.message, true); }
-  });
+  $("#addSiteBtn").addEventListener("click", saveSiteForm);
+  if ($("#cancelEditSiteBtn")) $("#cancelEditSiteBtn").addEventListener("click", clearSiteForm);
 
   $("#addAssetBtn").addEventListener("click", saveAssetForm);
   if ($("#cancelEditAssetBtn")) $("#cancelEditAssetBtn").addEventListener("click", clearAssetForm);
