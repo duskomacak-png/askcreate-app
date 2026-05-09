@@ -3803,3 +3803,85 @@ body.report-doc-open{overflow:hidden;}
 .report-row-single-action .compact-doc-btn{min-width:72px;padding:6px 12px;font-size:12px;}
 .report-export-toolbar #goExportBtn{white-space:nowrap;}
 .business-quick-actions .quick-action.light{background:#ffffff!important;color:var(--pro-green-dark)!important;border:1px solid var(--office-line)!important;}
+
+
+/* v1.28.1 - tanja AskCreate memorijska traka */
+body.in-app .internal-header.internal-collapsible{
+  min-height:46px!important;
+  height:auto!important;
+  padding:7px 18px!important;
+  border-bottom:1px solid color-mix(in srgb, var(--company-brand, #0f766e) 55%, white)!important;
+  box-shadow:0 3px 10px rgba(15,23,42,.045)!important;
+  background:rgba(255,255,255,.96)!important;
+}
+body[class*="company-brand-"] .internal-header.internal-collapsible{
+  border-bottom:1px solid color-mix(in srgb, var(--company-brand) 52%, white)!important;
+}
+body.in-app .internal-header.internal-collapsible:not(.is-expanded):not(:hover):not(:focus-within){
+  min-height:5px!important;
+  height:5px!important;
+  padding-top:0!important;
+  padding-bottom:0!important;
+  border-bottom:0!important;
+  box-shadow:none!important;
+}
+body.in-app .internal-header.internal-collapsible::after{
+  height:5px!important;
+  background:linear-gradient(90deg,var(--company-brand, #0f766e), color-mix(in srgb, var(--company-brand, #0f766e) 72%, #0f172a))!important;
+  opacity:.92!important;
+}
+body.in-app .internal-header.internal-collapsible.is-expanded::after,
+body.in-app .internal-header.internal-collapsible:hover::after,
+body.in-app .internal-header.internal-collapsible:focus-within::after{
+  opacity:.20!important;
+}
+body.in-app .internal-header-left{
+  min-width:150px;
+}
+body.in-app .internal-header > div:first-child::before{
+  width:32px!important;
+  height:32px!important;
+  border-radius:9px!important;
+  font-size:17px!important;
+}
+body.in-app #internalTitle{
+  font-size:14px!important;
+  line-height:1.05!important;
+}
+body.in-app #internalSubtitle{
+  font-size:10px!important;
+  line-height:1.05!important;
+}
+.internal-brand-callout{
+  flex-direction:column!important;
+  gap:1px!important;
+  line-height:1.05!important;
+}
+.internal-brand-callout span{
+  display:block!important;
+  font-size:10px!important;
+  letter-spacing:.08em!important;
+  text-transform:none!important;
+  color:#64748b!important;
+  font-weight:800!important;
+}
+.internal-brand-callout strong{
+  display:block!important;
+  font-size:clamp(17px,1.65vw,23px)!important;
+  color:#0f172a!important;
+  letter-spacing:-.03em!important;
+  font-weight:950!important;
+}
+body.in-app #internalLogoutBtn{
+  padding:7px 12px!important;
+  min-height:0!important;
+  font-size:12px!important;
+  border-radius:10px!important;
+  background:#fff!important;
+}
+@media (max-width:760px){
+  body.in-app .internal-header.internal-collapsible{padding:7px 12px!important;}
+  .internal-brand-callout{align-items:flex-start!important;}
+  .internal-brand-callout strong{font-size:17px!important;}
+  .internal-brand-callout span{font-size:9px!important;}
+}
