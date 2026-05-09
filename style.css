@@ -70,6 +70,96 @@ hr{border:0;border-top:1px solid var(--border);margin:22px 0}
 
 body.in-app .topbar{display:none}
 
+/* AskCreate collapsible internal header v1.28.0
+   Cilj: korisnik u Upravi pamti AskCreate.app, ali radni prostor ostaje čist. */
+.internal-header{
+  min-height:64px;
+}
+.internal-header-left{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:180px;
+}
+.internal-brand-callout{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  text-align:center;
+  color:#fff;
+  line-height:1.1;
+  pointer-events:none;
+}
+.internal-brand-callout span{
+  font-size:12px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  font-weight:800;
+  color:rgba(255,255,255,.78);
+}
+.internal-brand-callout strong{
+  font-size:clamp(18px,2.2vw,28px);
+  font-weight:950;
+  color:#fff;
+}
+body.in-app .internal-header.internal-collapsible{
+  overflow:hidden;
+  transition:min-height .22s ease, padding .22s ease, background .22s ease, box-shadow .22s ease;
+}
+body.in-app .internal-header.internal-collapsible:not(.is-expanded):not(:hover):not(:focus-within){
+  min-height:12px;
+  height:12px;
+  padding-top:0;
+  padding-bottom:0;
+  box-shadow:0 4px 14px rgba(36,93,54,.16);
+}
+body.in-app .internal-header.internal-collapsible:not(.is-expanded):not(:hover):not(:focus-within) > *{
+  opacity:0;
+  transform:translateY(-14px);
+  pointer-events:none;
+}
+body.in-app .internal-header.internal-collapsible::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:10px;
+  background:linear-gradient(90deg,rgba(47,125,70,.95),rgba(15,118,110,.95));
+  box-shadow:0 1px 0 rgba(255,255,255,.22) inset;
+}
+body.in-app .internal-header.internal-collapsible.is-expanded::after,
+body.in-app .internal-header.internal-collapsible:hover::after,
+body.in-app .internal-header.internal-collapsible:focus-within::after{
+  opacity:.18;
+}
+body.in-app .internal-header.internal-collapsible > *{
+  transition:opacity .18s ease, transform .18s ease;
+}
+body.in-app .internal-header.internal-collapsible.is-expanded,
+body.in-app .internal-header.internal-collapsible:hover,
+body.in-app .internal-header.internal-collapsible:focus-within{
+  min-height:64px;
+  height:auto;
+}
+@media (max-width:760px){
+  .internal-header{
+    grid-template-columns:1fr auto;
+    align-items:center;
+  }
+  .internal-brand-callout{
+    order:3;
+    width:100%;
+    flex-basis:100%;
+    justify-content:flex-start;
+    font-size:13px;
+  }
+  .internal-brand-callout strong{font-size:19px}
+  .internal-brand-callout span{font-size:10px}
+}
+
 .shell{width:min(1180px,100%);margin:0 auto;padding:24px}
 .view{display:none}
 .view.active{display:block}

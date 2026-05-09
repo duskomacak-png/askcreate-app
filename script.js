@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.9";
+const APP_VERSION = "1.28.0";
 
 
 let sb = null;
@@ -125,6 +125,33 @@ function readRpcSingleRow(data) {
   return null;
 }
 
+let internalHeaderCollapseTimer = null;
+
+function expandInternalHeaderForMoment(durationMs = 10000) {
+  const header = $("#internalHeader");
+  if (!header) return;
+  header.classList.add("is-expanded");
+  clearTimeout(internalHeaderCollapseTimer);
+  internalHeaderCollapseTimer = setTimeout(() => {
+    if (!header.matches(":hover") && !header.matches(":focus-within")) {
+      header.classList.remove("is-expanded");
+    }
+  }, durationMs);
+}
+
+function setupInternalHeaderHover() {
+  const header = $("#internalHeader");
+  if (!header || header.dataset.askcreateHeaderReady === "1") return;
+  header.dataset.askcreateHeaderReady = "1";
+  ["mouseenter", "focusin", "click", "touchstart"].forEach((eventName) => {
+    header.addEventListener(eventName, () => expandInternalHeaderForMoment(10000), { passive: true });
+  });
+  header.addEventListener("mouseleave", () => {
+    clearTimeout(internalHeaderCollapseTimer);
+    internalHeaderCollapseTimer = setTimeout(() => header.classList.remove("is-expanded"), 10000);
+  });
+}
+
 function setInternalHeader(title = "", subtitle = "", showHeader = true) {
   const header = $("#internalHeader");
   if (!header) return;
@@ -136,6 +163,8 @@ function setInternalHeader(title = "", subtitle = "", showHeader = true) {
   header.classList.toggle("hidden", !showHeader);
   if (logoutBtn) logoutBtn.classList.toggle("hidden", !showHeader);
   document.body.classList.toggle("in-app", !!showHeader);
+  setupInternalHeaderHover();
+  if (showHeader) expandInternalHeaderForMoment(10000);
 }
 
 function businessSetText(id, value) {

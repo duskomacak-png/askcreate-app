@@ -3,19 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Start Work PRO by AskCreate</title>
+  <title>AskCreate.app — Start Work PRO</title>
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1279" />
+  <link rel="stylesheet" href="style.css?v=1280" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div id="toast" class="toast hidden"></div>
-  <div id="internalHeader" class="internal-header hidden">
-    <div>
+  <div id="internalHeader" class="internal-header internal-collapsible hidden" title="Pređite mišem ili dodirnite traku za prikaz">
+    <div class="internal-header-left">
       <strong id="internalTitle">Radni prostor</strong>
       <small id="internalSubtitle">Firma</small>
+    </div>
+    <div class="internal-brand-callout" aria-label="AskCreate.app brend">
+      <span>Alat koji pomaže</span>
+      <strong>AskCreate.app</strong>
     </div>
     <button id="internalLogoutBtn" class="ghost hidden" type="button">Odjavi se</button>
   </div>
@@ -1039,6 +1043,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1279"></script>
+  <script src="script.js?v=1280"></script>
 </body>
 </html>
