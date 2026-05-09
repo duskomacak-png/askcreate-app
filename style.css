@@ -3075,7 +3075,7 @@ body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4
 }
 
 
-/* v1.26.7 — Dnevnik gradilišta: ture imaju samo uvoz/izvoz + prevoznik naši/dobavljač */
+/* v1.26.8 — Vraćeni izveštaji na vrhu radničkog/šefovskog prikaza */
 body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-entry-actions,
 #siteLogPanel .site-log-entry-actions{
   display:flex!important;
@@ -3103,4 +3103,32 @@ body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-su
   #siteLogPanel .site-log-entry-actions button{
     flex:1 1 150px!important;
   }
+}
+
+
+/* v1.26.8 — vraćeni izveštaji gore, iznad dnevnika/formi */
+#viewWorkerForm > #workerReturnedReports.returned-panel-top{
+  margin:0 0 18px!important;
+  border:2px solid #f59e0b!important;
+  background:#fff7ed!important;
+  color:#3b2606!important;
+  box-shadow:0 12px 28px rgba(245,158,11,.16)!important;
+}
+#viewWorkerForm > #workerReturnedReports.returned-panel-top h3{
+  color:#7c2d12!important;
+  margin-top:0!important;
+}
+#viewWorkerForm > #workerReturnedReports.returned-panel-top .hint,
+#viewWorkerForm > #workerReturnedReports.returned-panel-top small{
+  color:#7c4a03!important;
+}
+#viewWorkerForm > #workerReturnedReports.returned-panel-top .returned-item{
+  background:#ffffff!important;
+  color:#1f2937!important;
+  border:1px solid #fed7aa!important;
+  border-left:5px solid #f97316!important;
+}
+#viewWorkerForm > #workerReturnedReports.returned-panel-top .returned-reason{
+  background:#fffaf0!important;
+  color:#5a3b14!important;
 }
