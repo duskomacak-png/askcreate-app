@@ -2525,7 +2525,7 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 @media(max-width:620px){.smart-export-cards{grid-template-columns:1fr}.smart-export-card{padding:10px}}
 
 
-/* v1.25.3 — Excel kalupi: pregled pre štampe */
+/* v1.25.4 — Excel kalupi: pregled pre štampe */
 .hidden{display:none!important}
 .export-preview-stage{margin-top:14px;overflow:auto;background:#e5e7eb;border:1px solid var(--border);border-radius:16px;padding:16px}
 .export-preview-paper{background:#fff;color:#111827;width:1120px;max-width:100%;min-height:520px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;box-shadow:0 14px 34px rgba(15,23,42,.16);font-family:Arial, Helvetica, sans-serif}
@@ -2562,7 +2562,7 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 }
 
 
-/* v1.25.3 — jednostavniji pano za Excel/štampu */
+/* v1.25.4 — jednostavniji pano za Excel/štampu */
 .export-board-steps{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
@@ -2601,4 +2601,22 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 @media(max-width:760px){
   .export-board-steps{grid-template-columns:1fr}
   #previewExportBtn{width:100%;min-width:0}
+}
+
+/* v1.25.4 — Excel pano: pregled odmah ispod komandi i stabilno štikliranje */
+.export-preview-box-inline{
+  margin-top:14px;
+  border:1px solid rgba(15,122,59,.18);
+  border-radius:16px;
+  background:#fbfffd;
+  padding:12px;
+}
+.export-preview-box-inline .export-preview-stage{
+  margin-top:10px;
+}
+.export-master-actions button{
+  min-width:170px;
+}
+.export-column-check{
+  cursor:pointer;
 }

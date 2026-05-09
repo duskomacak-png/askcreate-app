@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.3";
+const APP_VERSION = "1.25.4";
 
 
 let sb = null;
@@ -5814,6 +5814,7 @@ window.toggleExportColumn = (key, checked) => {
   const keys = getExportColumnKeys();
   const next = checked ? [...keys, key] : keys.filter(k => k !== key);
   setExportColumnKeys(Array.from(new Set(next)));
+  renderExportPanel();
 };
 
 window.selectAllExportColumns = () => {
@@ -6356,20 +6357,28 @@ function getSmartRowsForReport(r, settings) {
   return smartRowsForReport(r, settings.type || "all").filter(row => smartExportRowMatches(row, settings));
 }
 
+function highlightSmartExportCards(type) {
+  const cleanType = SMART_EXPORT_PRESETS[type] ? type : "all";
+  $$(".smart-export-card").forEach(btn => {
+    const clickCode = btn.getAttribute("onclick") || "";
+    btn.classList.toggle("active", clickCode.includes(`'${cleanType}'`) || clickCode.includes(`"${cleanType}"`));
+  });
+}
+
 window.setSmartExportType = (type) => {
   const cleanType = SMART_EXPORT_PRESETS[type] ? type : "all";
   const el = $("#smartExportType");
   if (el) el.value = cleanType;
   const preset = SMART_EXPORT_PRESETS[cleanType] || SMART_EXPORT_PRESETS.all;
-  $$(".smart-export-card").forEach(btn => {
-    const clickCode = btn.getAttribute("onclick") || "";
-    btn.classList.toggle("active", clickCode.includes(`'${cleanType}'`) || clickCode.includes(`"${cleanType}"`));
-  });
+  highlightSmartExportCards(cleanType);
   const current = getSmartExportSettings();
   setSmartExportSettings({ ...current, type: cleanType });
+  // Namerno biramo rubrike samo kada korisnik menja grupu.
+  // Render panela više ne sme sam da vraća štiklirano, jer tada “Poništi sve rubrike” izgleda kao da ne radi.
   setExportColumnKeys(preset.keys);
   const info = $("#smartExportInfo");
-  if (info) info.textContent = `Izabrana grupa: ${preset.title}. Upiši datum, gradilište, radnika ili naziv stavke pa klikni “Prikaži pregled za štampu”.`;
+  if (info) info.textContent = `Izabrana grupa: ${preset.title}. Po potrebi upiši datum/gradilište/radnika. Zatim klikni “Odaberi sve i prikaži tabelu”.`;
+  renderExportPanel();
 };
 
 window.applySmartExportFilters = () => {
@@ -6420,7 +6429,7 @@ function restoreSmartExportControls() {
   if ($("#smartExportWorker")) $("#smartExportWorker").value = settings.worker;
   if ($("#smartExportItem")) $("#smartExportItem").value = settings.item;
   if ($("#exportTemplateType")) $("#exportTemplateType").value = getExportTemplateType();
-  setSmartExportType(settings.type || "all");
+  highlightSmartExportCards(settings.type || "all");
 }
 
 function getExportRowsAndColumns() {
@@ -6603,14 +6612,20 @@ window.renderExportPreview = () => {
     setExportTemplateType($("#exportTemplateType")?.value || "classic");
     const box = $("#exportPreviewBox");
     if (!box) return;
+    renderExportPanel();
     box.innerHTML = buildExportPreviewHtml();
     box.classList.remove("hidden");
     const actions = $("#exportPreviewActions");
     if (actions) actions.classList.remove("hidden");
-    toast("Pregled kalupa je pripremljen.");
+    box.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast("Tabela je prikazana. Sada možeš skinuti štikle koje ne želiš, štampati ili preuzeti Excel.");
   } catch(e) {
     toast(e.message, true);
   }
+};
+window.applySmartExportAndPreview = () => {
+  applySmartExportFilters();
+  setTimeout(() => renderExportPreview(), 0);
 };
 
 window.printExportPreview = () => {
@@ -6989,7 +7004,7 @@ function bindEvents() {
   if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);
   if ($("#applySmartExportBtn")) $("#applySmartExportBtn").addEventListener("click", applySmartExportFilters);
-  if ($("#previewExportBtn")) $("#previewExportBtn").addEventListener("click", renderExportPreview);
+  if ($("#previewExportBtn")) $("#previewExportBtn").addEventListener("click", applySmartExportAndPreview);
   if ($("#printExportBtn")) $("#printExportBtn").addEventListener("click", printExportPreview);
   if ($("#clearSmartExportBtn")) $("#clearSmartExportBtn").addEventListener("click", clearSmartExportFilters);
   if ($("#smartExportType")) $("#smartExportType").addEventListener("change", (e) => setSmartExportType(e.target.value));
