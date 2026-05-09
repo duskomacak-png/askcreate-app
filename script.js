@@ -1,5 +1,5 @@
 // v1.22.0_UI_CLEANUP - jedno dugme odjave i uklonjena kontrola sistema
-/* START WORK PRO by AskCreate - Start Work PRO
+/* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
    2) SUPABASE_KEY zameni tvojim Publishable key iz supabase-podaci.txt.
@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.28.1";
+const APP_VERSION = "1.28.4";
 
 
 let sb = null;
@@ -465,7 +465,7 @@ window.addEventListener("beforeinstallprompt", (event) => {
 window.addEventListener("appinstalled", () => {
   deferredPwaInstallPrompt = null;
   updateWorkerInstallBox();
-  toast("Start Work PRO je dodat kao app prečica.");
+  toast("AskCreate.app je dodat kao app prečica.");
 });
 
 function setWorkerCompanyQrContext(companyCode, source = "saved") {
@@ -577,7 +577,7 @@ window.downloadCompanyQrImageFromModal = () => {
   if (!img?.src) return toast("QR slika nije pronađena.", true);
   const a = document.createElement("a");
   a.href = img.src;
-  a.download = "startwork-radnicki-qr.png";
+  a.download = "askcreate-radnicki-qr.png";
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -601,15 +601,15 @@ function adminMessage(c, type = "renewed") {
   const code = c.company_code || "šifra firme";
   const invite = c.invite_code || "aktivacioni kod";
   if (type === "expiring") {
-    return `Poštovani,\n\nObaveštavamo vas da vaš Start Work PRO paket ističe za 10 dana.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nDa biste nastavili korišćenje bez prekida, potrebno je produžiti paket pre navedenog datuma.\n\nZa sva pitanja možete odgovoriti na ovu poruku.\n\nStart Work PRO`;
+    return `Poštovani,\n\nObaveštavamo vas da vaš AskCreate.app paket ističe za 10 dana.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nDa biste nastavili korišćenje bez prekida, potrebno je produžiti paket pre navedenog datuma.\n\nZa sva pitanja možete odgovoriti na ovu poruku.\n\nAskCreate.app`;
   }
   if (type === "expired") {
-    return `Poštovani,\n\nVaš Start Work PRO paket je istekao.\n\nFirma: ${company}\nPaket je važio do: ${validUntil}.\n\nMolimo vas da nas kontaktirate radi produženja paketa.\n\nStart Work PRO`;
+    return `Poštovani,\n\nVaš AskCreate.app paket je istekao.\n\nFirma: ${company}\nPaket je važio do: ${validUntil}.\n\nMolimo vas da nas kontaktirate radi produženja paketa.\n\nAskCreate.app`;
   }
   if (type === "activation") {
-    return `Poštovani,\n\nVaša firma je dodata u Start Work PRO aplikaciju.\n\nPodaci za prvu aktivaciju:\n\nLink aplikacije: https://askcreate.app\nLink za zaposlene: ${buildWorkerCompanyLink(code)}\nEmail Uprave: ${email}\nŠifra firme: ${code}\nAktivacioni kod: ${invite}\n\nPrvi korak:\n1. Otvorite aplikaciju.\n2. Kliknite na “Uprava”.\n3. Registrujte email i lozinku.\n4. Unesite šifru firme i aktivacioni kod.\n5. Kliknite “Aktiviraj firmu”.\n\nNakon aktivacije, Uprava se ubuduće prijavljuje samo preko emaila i lozinke.\n\nStart Work PRO`;
+    return `Poštovani,\n\nVaša firma je dodata u AskCreate.app aplikaciju.\n\nPodaci za prvu aktivaciju:\n\nLink aplikacije: https://askcreate.app\nLink za zaposlene: ${buildWorkerCompanyLink(code)}\nEmail Uprave: ${email}\nŠifra firme: ${code}\nAktivacioni kod: ${invite}\n\nPrvi korak:\n1. Otvorite aplikaciju.\n2. Kliknite na “Uprava”.\n3. Registrujte email i lozinku.\n4. Unesite šifru firme i aktivacioni kod.\n5. Kliknite “Aktiviraj firmu”.\n\nNakon aktivacije, Uprava se ubuduće prijavljuje samo preko emaila i lozinke.\n\nAskCreate.app`;
   }
-  return `Poštovani,\n\nVaš Start Work PRO paket je produžen.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nMožete nastaviti normalno korišćenje aplikacije.\n\nHvala na poverenju.\nStart Work PRO`;
+  return `Poštovani,\n\nVaš AskCreate.app paket je produžen.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nMožete nastaviti normalno korišćenje aplikacije.\n\nHvala na poverenju.\nAskCreate.app`;
 }
 
 function companyBrandClass(c) {
@@ -713,7 +713,7 @@ window.adminOpenEmail = (id, type = "renewed") => {
   if (!c) return toast("Firma nije pronađena.", true);
   const email = c.approved_email || c.owner_email;
   if (!email) return toast("Nema upisan email za ovu firmu.", true);
-  const subject = type === "activation" ? "Start Work PRO - podaci za aktivaciju" : type === "expiring" ? "Start Work PRO - paket ističe uskoro" : type === "expired" ? "Start Work PRO - paket je istekao" : "Start Work PRO - paket je produžen";
+  const subject = type === "activation" ? "AskCreate.app - podaci za aktivaciju" : type === "expiring" ? "AskCreate.app - paket ističe uskoro" : type === "expired" ? "AskCreate.app - paket je istekao" : "AskCreate.app - paket je produžen";
   const url = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(adminMessage(c, type))}`;
   window.location.href = url;
 };
@@ -830,7 +830,7 @@ function renderAdminDirectorPreview(c) {
   return `
     <div class="preview-shell preview-director brand-${brand}" style="--preview-brand:${color}">
       <aside class="preview-sidebar">
-        <div class="preview-logo"><span>S</span><div><b>Start Work</b><small>PRO</small></div></div>
+        <div class="preview-logo"><span>A</span><div><b>AskCreate.app</b><small>platforma</small></div></div>
         <button>🏠 Početna / Ljudi</button>
         <button>🏗️ Gradilišta</button>
         <button>🚚 Sredstva rada</button>
@@ -953,20 +953,20 @@ window.adminUpdateCompanyBrand = async (table, id, color) => {
     if (safeTable === "approved_companies") {
       if (companyCode) {
         const { error: syncErr } = await sb.from("companies").update({ brand_color: safeColor }).eq("company_code", companyCode);
-        if (syncErr) console.warn("Start Work PRO: boja nije sinhronizovana u companies po company_code", syncErr.message);
+        if (syncErr) console.warn("AskCreate.app: boja nije sinhronizovana u companies po company_code", syncErr.message);
       }
       if (approvedEmail) {
         const { error: syncEmailErr } = await sb.from("companies").update({ brand_color: safeColor }).eq("owner_email", approvedEmail);
-        if (syncEmailErr) console.warn("Start Work PRO: boja nije sinhronizovana u companies po emailu", syncEmailErr.message);
+        if (syncEmailErr) console.warn("AskCreate.app: boja nije sinhronizovana u companies po emailu", syncEmailErr.message);
       }
     } else {
       if (companyCode) {
         const { error: syncErr } = await sb.from("approved_companies").update({ brand_color: safeColor }).eq("company_code", companyCode);
-        if (syncErr) console.warn("Start Work PRO: boja nije sinhronizovana u approved_companies po company_code", syncErr.message);
+        if (syncErr) console.warn("AskCreate.app: boja nije sinhronizovana u approved_companies po company_code", syncErr.message);
       }
       if (approvedEmail) {
         const { error: syncEmailErr } = await sb.from("approved_companies").update({ brand_color: safeColor }).eq("approved_email", approvedEmail);
-        if (syncEmailErr) console.warn("Start Work PRO: boja nije sinhronizovana u approved_companies po emailu", syncEmailErr.message);
+        if (syncEmailErr) console.warn("AskCreate.app: boja nije sinhronizovana u approved_companies po emailu", syncEmailErr.message);
       }
     }
 
@@ -1054,20 +1054,20 @@ window.adminUpdateCompanyPaidUntil = async (table, id, paidUntil) => {
     if (safeTable === "approved_companies") {
       if (companyCode) {
         const { error: syncErr } = await sb.from("companies").update(syncPayloadCompany).eq("company_code", companyCode);
-        if (syncErr) console.warn("Start Work PRO: datum nije sinhronizovan u companies po company_code", syncErr.message);
+        if (syncErr) console.warn("AskCreate.app: datum nije sinhronizovan u companies po company_code", syncErr.message);
       }
       if (email) {
         const { error: syncEmailErr } = await sb.from("companies").update(syncPayloadCompany).eq("owner_email", email);
-        if (syncEmailErr) console.warn("Start Work PRO: datum nije sinhronizovan u companies po emailu", syncEmailErr.message);
+        if (syncEmailErr) console.warn("AskCreate.app: datum nije sinhronizovan u companies po emailu", syncEmailErr.message);
       }
     } else {
       if (companyCode) {
         const { error: syncErr } = await sb.from("approved_companies").update(syncPayloadApproved).eq("company_code", companyCode);
-        if (syncErr) console.warn("Start Work PRO: datum nije sinhronizovan u approved_companies po company_code", syncErr.message);
+        if (syncErr) console.warn("AskCreate.app: datum nije sinhronizovan u approved_companies po company_code", syncErr.message);
       }
       if (email) {
         const { error: syncEmailErr } = await sb.from("approved_companies").update(syncPayloadApproved).eq("approved_email", email);
-        if (syncEmailErr) console.warn("Start Work PRO: datum nije sinhronizovan u approved_companies po emailu", syncEmailErr.message);
+        if (syncEmailErr) console.warn("AskCreate.app: datum nije sinhronizovan u approved_companies po emailu", syncEmailErr.message);
       }
     }
 
@@ -1139,7 +1139,7 @@ async function loadDirectorCompany() {
   applyCompanyBrandToBody(effectiveBrandColor);
   $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   businessUpdateCompanyName();
-  setInternalHeader("Uprava", (currentCompany?.name || "Firma"), true);
+  setInternalHeader("Uprava", "", true);
   show("DirectorDashboard");
   showDirectorPackageNotice(approvedSource || currentCompany);
   showCurrentCompanyLoginInfo();
@@ -2971,7 +2971,7 @@ function buildReportPaperHtml(r, paperIdPrefix = "paper") {
       ${renderReportReadableDetails(d)}
 
       <div class="paper-footer-note">
-        Pregled pripremljen u Start Work PRO · ${escapeHtml(formatDateTimeLocal(new Date().toISOString()))}
+        Pregled pripremljen u AskCreate.app · ${escapeHtml(formatDateTimeLocal(new Date().toISOString()))}
       </div>
     </section>`;
 }
@@ -3724,7 +3724,7 @@ async function loadWorkerAssets() {
   } else if (!machineCount && (vehicleCount || otherCount)) {
     toast(`Sredstva su učitana, ali nema tipa Mašina. U Upravi proveri Kategorija: Mašina. Učitano: vozila ${vehicleCount}, ostalo ${otherCount}.`, true);
   } else if (machineCount && !vehicleCount && !otherCount) {
-    console.warn("Start Work PRO: učitane su samo mašine. Ako u Upravi postoje vozila/ostalo, proveri Supabase RPC worker_list_assets da vraća sve asset_type vrednosti.", { workerAssetOptions, rpcError, directError });
+    console.warn("AskCreate.app: učitane su samo mašine. Ako u Upravi postoje vozila/ostalo, proveri Supabase RPC worker_list_assets da vraća sve asset_type vrednosti.", { workerAssetOptions, rpcError, directError });
   }
 }
 
@@ -5834,7 +5834,7 @@ function renderSiteLogA4(data = collectSiteLogData()) {
     <div class="report-section"><h4>Stanje materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
     <div class="report-section"><h4>Evidencija kamionskih tura</h4>${siteLogTable(["#","Vrsta transporta","Izvor prevoza","Spoljni dobavljač","Reg. oznake","Ime i prezime vozača","Materijal","Broj tura","m³","Napomena"], data.truck_tours, (t,i)=>[String(i+1), siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
     <div class="report-section report-signature-section"><h4>Potpis / overa dokumenta</h4>${signed}${uploaded}</div>
-    <div class="paper-footer-note">Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme, uploadovani dokument je dokaz.</div>
+    <div class="paper-footer-note">Dnevnik pripremljen u AskCreate.app · podaci za Excel dolaze iz forme, uploadovani dokument je dokaz.</div>
   </section>`;
 }
 function previewSiteLog() {
@@ -5887,7 +5887,7 @@ function buildSiteLogStandaloneHtml(data = collectSiteLogData()) {
       ${section("8. Evidencija kamionskih tura", table(["#", "Vrsta transporta", "Izvor prevoza", "Spoljni dobavljač", "Reg. oznake", "Ime i prezime vozača", "Materijal", "Broj tura", "m³", "Napomena"], data.truck_tours, (t,i)=>[i+1, siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note]))}
       ${section("9. Potpis / overa dokumenta", signatureBlock + uploaded)}
 
-      <footer>Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme.</footer>
+      <footer>Dnevnik pripremljen u AskCreate.app · podaci za Excel dolaze iz forme.</footer>
     </main>`;
 
   return `<!doctype html>
@@ -6322,12 +6322,12 @@ async function verifyRecentlySubmittedReport(worker, reportDate) {
       .order("created_at", { ascending: false })
       .limit(5);
     if (error) {
-      console.warn("Start Work PRO: izveštaj je poslat preko RPC, ali direktna provera reports nije dozvoljena ili nije uspela:", error.message);
+      console.warn("AskCreate.app: izveštaj je poslat preko RPC, ali direktna provera reports nije dozvoljena ili nije uspela:", error.message);
       return;
     }
-    console.log("Start Work PRO: poslednji izveštaji za proveru slanja", data || []);
+    console.log("AskCreate.app: poslednji izveštaji za proveru slanja", data || []);
   } catch (e) {
-    console.warn("Start Work PRO: provera poslatog izveštaja nije uspela", e);
+    console.warn("AskCreate.app: provera poslatog izveštaja nije uspela", e);
   }
 }
 
@@ -7766,7 +7766,7 @@ function buildExportPreviewHtml() {
   return `<div class="${className}">
     <div class="export-preview-head">
       <div>
-        <small>START WORK PRO</small>
+        <small>ASKCREATE.APP</small>
         <h2>${escapeHtml(preset.title)}</h2>
         <p>Firma: ${escapeHtml(currentCompanyExportName())}</p>
       </div>
@@ -8275,7 +8275,7 @@ function bindEvents() {
         await prepareWorkerFormForNextReport();
         toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
       } catch (resetError) {
-        console.warn("Start Work PRO: izveštaj je poslat, ali priprema sledeće forme nije uspela:", resetError);
+        console.warn("AskCreate.app: izveštaj je poslat, ali priprema sledeće forme nije uspela:", resetError);
         toast("Izveštaj je poslat Upravi ✅ Ako forma ne izgleda prazno, odjavi se i uđi ponovo.");
       }
     } catch(e) { toast(e.message, true); }
@@ -8299,7 +8299,7 @@ async function applyWorkerCompanyBrand() {
     currentWorker.brand_color = safeColor;
     applyCompanyBrandToBody(safeColor);
   } catch (e) {
-    console.warn("Start Work PRO: boja firme za zaposlenog nije učitana", e?.message || e);
+    console.warn("AskCreate.app: boja firme za zaposlenog nije učitana", e?.message || e);
     applyCompanyBrandToBody(currentWorker?.brand_color || "green");
   }
 }
@@ -8430,7 +8430,7 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   try {
     await prepareWorkerFormForNextReport();
   } catch (resetError) {
-    console.warn("Start Work PRO: ispravka je poslata, ali priprema sledeće forme nije uspela:", resetError);
+    console.warn("AskCreate.app: ispravka je poslata, ali priprema sledeće forme nije uspela:", resetError);
   }
   loadWorkerReturnedReports();
   toast("Ispravljen izveštaj je ponovo poslat Upravi ✅ Forma je spremna za sledeći unos.");

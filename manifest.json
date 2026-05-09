@@ -1,6 +1,6 @@
 {
-  "name": "Start Work PRO by AskCreate",
-  "short_name": "Start Work",
+  "name": "AskCreate.app",
+  "short_name": "AskCreate",
   "description": "Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel.",
   "start_url": "./",
   "scope": "./",

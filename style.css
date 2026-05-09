@@ -3885,3 +3885,49 @@ body.in-app #internalLogoutBtn{
   .internal-brand-callout strong{font-size:17px!important;}
   .internal-brand-callout span{font-size:9px!important;}
 }
+
+
+/* v1.28.2 - čistija interna traka: bez naziva firme u levom delu, jasniji AskCreate slogan */
+body.in-app .internal-header.internal-collapsible{
+  min-height:40px!important;
+  padding:5px 16px!important;
+}
+body.in-app .internal-header.internal-collapsible:not(.is-expanded):not(:hover):not(:focus-within){
+  min-height:4px!important;
+  height:4px!important;
+}
+body.in-app .internal-header.internal-collapsible::after{
+  height:4px!important;
+}
+body.in-app .internal-header-left{
+  min-width:118px!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+}
+body.in-app #internalTitle{
+  font-size:15px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  color:#0f172a!important;
+}
+body.in-app #internalSubtitle{
+  display:none!important;
+}
+body.in-app .internal-brand-callout{
+  transform:translateX(-28px);
+}
+body.in-app .internal-brand-callout span{
+  font-size:11px!important;
+  letter-spacing:.02em!important;
+  color:#475569!important;
+  font-weight:850!important;
+}
+body.in-app .internal-brand-callout strong{
+  font-size:clamp(19px,1.8vw,25px)!important;
+  color:#0f172a!important;
+}
+@media (max-width:760px){
+  body.in-app .internal-brand-callout{transform:none;align-items:center!important;}
+  body.in-app .internal-header-left{min-width:82px!important;}
+  body.in-app #internalTitle{font-size:13px!important;}
+}
