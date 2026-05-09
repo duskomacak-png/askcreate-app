@@ -3220,3 +3220,83 @@ body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-su
     font-size: 13px !important;
   }
 }
+
+
+/* v1.27.2 — Uprava/Direkcija: manja akcijska dugmad u jednom redu za rad mišem */
+#viewDirectorDashboard .person-actions-v1116,
+#viewDirectorDashboard .asset-actions-v1117,
+#viewDirectorDashboard .material-actions-v1119,
+#viewDirectorDashboard .management-actions,
+#viewDirectorDashboard .director-search-results .result-actions,
+#viewDirectorDashboard .search-result .actions,
+#viewDirectorDashboard .search-result .row,
+#viewDirectorDashboard .list .item .actions,
+#viewDirectorDashboard .list .item .row {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 5px !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  padding-bottom: 2px !important;
+}
+
+#viewDirectorDashboard .person-actions-v1116 button,
+#viewDirectorDashboard .asset-actions-v1117 button,
+#viewDirectorDashboard .material-actions-v1119 button,
+#viewDirectorDashboard .management-actions button,
+#viewDirectorDashboard .director-search-results button,
+#viewDirectorDashboard .search-result button,
+#viewDirectorDashboard .list .item button.edit-btn,
+#viewDirectorDashboard .list .item button.delete-btn,
+#viewDirectorDashboard .list .item button.danger-btn,
+#viewDirectorDashboard .list .item button.archive-btn,
+#viewDirectorDashboard .list .item button.archive-report-btn,
+#viewDirectorDashboard .list .item button.hard-delete-report-btn {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 3px 7px !important;
+  border-radius: 7px !important;
+  font-size: 10.5px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+#viewDirectorDashboard .person-actions-v1116 button + button,
+#viewDirectorDashboard .asset-actions-v1117 button + button,
+#viewDirectorDashboard .material-actions-v1119 button + button,
+#viewDirectorDashboard .management-actions button + button,
+#viewDirectorDashboard .list .item button + button {
+  margin-left: 0 !important;
+}
+
+#viewDirectorDashboard .person-card-v1116,
+#viewDirectorDashboard .management-item,
+#viewDirectorDashboard .material-card-v1119,
+#viewDirectorDashboard .list .item {
+  padding: 14px 16px !important;
+}
+
+#viewDirectorDashboard .person-card-v1116 .item-main,
+#viewDirectorDashboard .management-item .item-main,
+#viewDirectorDashboard .material-card-v1119 .item-main {
+  margin-bottom: 7px !important;
+}
+
+@media (max-width: 640px) {
+  #viewDirectorDashboard .person-actions-v1116,
+  #viewDirectorDashboard .asset-actions-v1117,
+  #viewDirectorDashboard .material-actions-v1119,
+  #viewDirectorDashboard .management-actions {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+}

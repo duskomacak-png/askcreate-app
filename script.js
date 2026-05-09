@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.1";
+const APP_VERSION = "1.27.3";
 
 
 let sb = null;
@@ -1129,7 +1129,7 @@ function setPersonFormMode(mode = "add") {
   const title = $("#personFormTitle");
   const btn = $("#addPersonBtn");
   const cancel = $("#cancelEditPersonBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi unos profil zaposlenog" : "+ Dodaj osobu";
+  if (title) title.textContent = editing ? "✏️ Izmeni profil zaposlenog" : "+ Dodaj osobu";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj osobu";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
@@ -1360,7 +1360,7 @@ function setAssetFormMode(mode = "add") {
   const title = document.querySelector("#assetFormTitle");
   const btn = document.querySelector("#addAssetBtn");
   const cancel = document.querySelector("#cancelEditAssetBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi unos sredstvo" : "+ Dodaj sredstvo";
+  if (title) title.textContent = editing ? "✏️ Izmeni sredstvo" : "+ Dodaj sredstvo";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
@@ -1456,9 +1456,8 @@ function renderPersonItem(p) {
         <span class="pill">${permissionCount} rubrika</span>
       </div>
       <div class="person-actions-v1116">
-        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Uredi unos profil</button>
-        <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button>
-        <button class="danger-btn" type="button" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>
+        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Izmeni</button>
+        <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">❌ Obriši sa spiska</button>
       </div>
     </div>
   `;
@@ -1502,8 +1501,8 @@ async function loadSites() {
         <span class="pill">Aktivno gradilište</span>
       </div>
       <div class="management-actions">
-        <button class="edit-btn" type="button" onclick="editSite('${s.id}')">✏️ Izmeni gradilište</button>
-        <button class="archive-btn" type="button" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Završi / skloni gradilište</button>
+        <button class="edit-btn" type="button" onclick="editSite('${s.id}')">✏️ Izmeni</button>
+        <button class="archive-btn" type="button" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Obriši sa spiska</button>
       </div>
     </div>
   `).join("") || `<p class="muted">Nema aktivnih gradilišta.</p>`;
@@ -1593,15 +1592,16 @@ async function loadAssets() {
 
   if (error) return toast(error.message, true);
 
-  $("#assetsList").innerHTML = (data || []).map(a => `
+  const activeAssets = (data || []).filter(a => a.active !== false);
+  $("#assetsList").innerHTML = activeAssets.map(a => `
     <div class="item management-item">
       <div class="item-main">
         <strong>${escapeHtml(formatAssetTitleWithCode(a))}</strong>
         <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(formatCapacityM3(a.capacity))}</small>
       </div>
       <div class="management-actions asset-actions-v1117">
-        <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Uredi unos</button>
-        <button class="danger-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>
+        <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Izmeni</button>
+        <button class="delete-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">❌ Obriši sa spiska</button>
       </div>
     </div>
   `).join("") || `<p class="muted">Nema mašina/vozila.</p>`;
@@ -1624,26 +1624,28 @@ async function loadMaterials() {
     return;
   }
 
+  const activeMaterials = (data || []).filter(m => m.active !== false);
+
   if (list) {
-    list.innerHTML = (data || []).map(m => `
+    list.innerHTML = activeMaterials.map(m => `
       <div class="item management-item material-card-v1119">
         <div class="item-main">
           <strong>${escapeHtml(m.name)}</strong>
           <small>${escapeHtml(m.unit || "")} ${m.category ? "· " + escapeHtml(m.category) : ""}</small>
         </div>
         <div class="management-actions material-actions-v1119">
-          <button class="edit-btn" type="button" onclick="editMaterial('${m.id}')">✏️ Uredi unos</button>
-          <button class="danger-btn" type="button" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">🔥 Trajno obriši iz baze</button>
+          <button class="edit-btn" type="button" onclick="editMaterial('${m.id}')">✏️ Izmeni</button>
+          <button class="delete-btn" type="button" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">❌ Obriši sa spiska</button>
         </div>
       </div>
     `).join("") || `<p class="muted">Nema dodatih materijala.</p>`;
   }
 
   if (datalist) {
-    datalist.innerHTML = (data || []).map(m => `<option value="${escapeHtml(m.name)}"></option>`).join("");
+    datalist.innerHTML = activeMaterials.map(m => `<option value="${escapeHtml(m.name)}"></option>`).join("");
   }
 
-  renderPersonMaterialPermissions(data || []);
+  renderPersonMaterialPermissions(activeMaterials);
 }
 
 function setMaterialFormMode(mode = "add") {
@@ -1651,7 +1653,7 @@ function setMaterialFormMode(mode = "add") {
   const title = $("#materialFormTitle");
   const btn = $("#addMaterialBtn");
   const cancel = $("#cancelEditMaterialBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi unos materijal" : "+ Dodaj materijal";
+  if (title) title.textContent = editing ? "✏️ Izmeni materijal" : "+ Dodaj materijal";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj materijal";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
@@ -1719,7 +1721,7 @@ async function saveMaterialForm() {
 
 window.archiveSite = async (id, name = "") => {
   const label = name ? ` (${name})` : "";
-  if (!confirm("Skloniti gradilište iz aktivnog spiska" + label + "?\\n\\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
+  if (!confirm("Obrisati gradilište iz aktivnog spiska" + label + "?\\n\\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
 
   const { error } = await sb
     .from("sites")
@@ -1748,7 +1750,7 @@ window.deletePerson = async (id, name = "") => {
     }
 
     const label = name ? ` (${name})` : "";
-    if (!confirm("Obrisati osobu/zaposlenog iz aktivnog spiska" + label + "?\n\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
+    if (!confirm("Obrisati zaposlenog iz aktivnog spiska" + label + "?\n\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
 
     const { error } = await sb
       .from("company_users")
@@ -1757,7 +1759,7 @@ window.deletePerson = async (id, name = "") => {
       .eq("company_id", currentCompany.id);
 
     if (error) throw error;
-    toast("Osoba je obrisana iz aktivnog spiska.");
+    toast("Zaposleni je sklonjen iz aktivnog spiska.");
     clearPersonForm();
     loadPeople();
   } catch (e) {
@@ -1766,96 +1768,52 @@ window.deletePerson = async (id, name = "") => {
 };
 
 window.deletePersonPermanently = async (id, name = "") => {
+  toast("Trajno brisanje zaposlenih je isključeno za Upravu firme. Koristi 'Obriši sa spiska' da istorija ostane sačuvana.", true);
+};
+
+window.deleteAsset = async (id, name = "") => {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
-
-    if (!name) {
-      const { data: person, error: readError } = await sb
-        .from("company_users")
-        .select("first_name,last_name")
-        .eq("id", id)
-        .eq("company_id", currentCompany.id)
-        .maybeSingle();
-      if (readError) throw readError;
-      if (person) name = `${person.first_name || ""} ${person.last_name || ""}`.trim();
-    }
-
     const label = name ? ` (${name})` : "";
-    if (!confirm("TRAJNO obrisati zaposlenog iz baze" + label + "?\n\nOvo se ne može vratiti. Ako Supabase odbije brisanje zbog povezanih izveštaja, prvo koristi ❌ Obriši iz spiska.")) return;
-    if (!confirm("Još jednom potvrdi: zaposleni će biti trajno obrisan iz company_users tabele.")) return;
+    if (!confirm("Obrisati ovu mašinu/vozilo iz aktivnog spiska" + label + "?\n\nStari izveštaji, gorivo, MTČ i evidencija ostaju sačuvani zbog dokumentacije.")) return;
 
     const { error } = await sb
-      .from("company_users")
-      .delete()
+      .from("assets")
+      .update({ active: false })
       .eq("id", id)
       .eq("company_id", currentCompany.id);
 
     if (error) throw error;
-    toast("Zaposleni je trajno obrisan iz baze.");
-    if (editingPersonId === id) clearPersonForm();
-    loadPeople();
+    toast("Sredstvo je sklonjeno iz aktivnog spiska. Stari izveštaji ostaju sačuvani.");
+    if (editingAssetId === id) clearAssetForm();
+    loadAssets();
     if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
   } catch (e) {
-    toast(e.message, true);
+    toast((e && e.message ? e.message : e) + " Ako tabela assets nema kolonu active, treba prvo dodati soft-delete kolonu u Supabase.", true);
   }
-};
-
-window.deleteAsset = async (id, name = "") => {
-  const label = name ? ` (${name})` : "";
-  if (!confirm("TRAJNO obrisati ovu mašinu/vozilo iz baze" + label + "?\n\nOvo se ne može vratiti.")) return;
-
-  const { error } = await sb
-    .from("assets")
-    .delete()
-    .eq("id", id)
-    .eq("company_id", currentCompany.id);
-
-  if (error) return toast(error.message, true);
-  toast("Sredstvo je trajno obrisano iz baze.");
-  if (editingAssetId === id) clearAssetForm();
-  loadAssets();
-  if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
 };
 
 window.deleteMaterial = async (id, name = "") => {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
     const label = name ? ` (${name})` : "";
-    if (!confirm("TRAJNO obrisati ovaj materijal iz baze" + label + "?\n\nOvo se ne može vratiti.")) return;
+    if (!confirm("Obrisati ovaj materijal iz aktivnog spiska" + label + "?\n\nStari izveštaji i dokumentacija ostaju sačuvani.")) return;
 
-    const { error } = await sb.rpc("director_delete_material", {
-      p_company_id: currentCompany.id,
-      p_material_id: id
-    });
+    const { error } = await sb
+      .from("materials")
+      .update({ active: false })
+      .eq("id", id)
+      .eq("company_id", currentCompany.id);
 
     if (error) throw error;
-    toast("Materijal je trajno obrisan iz baze.");
+    toast("Materijal je sklonjen iz aktivnog spiska. Stari izveštaji ostaju sačuvani.");
     if (editingMaterialId === id) clearMaterialForm();
     await loadMaterials();
     if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
   } catch(e) {
-    toast(e.message, true);
+    toast((e && e.message ? e.message : e) + " Ako tabela materials nema kolonu active, treba prvo dodati soft-delete kolonu u Supabase.", true);
   }
 };
-
-
-window.archiveReport = async (id) => {
-  if (!confirm("Arhivirati/skloniti ovaj izveštaj iz glavnog inbox-a?\\n\\nIzveštaj ostaje u bazi kao evidencija.")) return;
-  const { error } = await sb
-    .from("reports")
-    .update({ status: "archived" })
-    .eq("id", id)
-    .eq("company_id", currentCompany.id);
-
-  if (error) return toast(error.message, true);
-  toast("Izveštaj je arhiviran i sklonjen iz inbox-a.");
-  loadReports();
-  runDirectorGlobalSearch(false);
-};
-
-function searchMatch(text, q) {
-  return String(text || "").toLowerCase().includes(String(q || "").toLowerCase());
-}
 
 async function runDirectorGlobalSearch(showEmptyMessage = true) {
   const input = $("#directorGlobalSearch");
@@ -1891,7 +1849,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Zaposleni / osoba",
         title:`${p.first_name} ${p.last_name}`,
         subtitle:`${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
-        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Uredi unos profil</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button><button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>` : `<button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>`}`
+        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Izmeni</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši sa spiska</button>` : `<span class="pill">sklonjeno iz aktivnog spiska</span>`}`
       });
     });
 
@@ -1901,7 +1859,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Mašina / vozilo",
         title:formatAssetTitleWithCode(a),
         subtitle:`broj: ${getAssetCode(a) || "—"} · ${a.asset_type} · ${a.registration || ""} · ${formatCapacityM3(a.capacity)}`,
-        actions:`<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Uredi unos</button><button class="danger-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>`
+        actions:`${a.active === false ? `<span class="pill">sklonjeno iz aktivnog spiska</span>` : `<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Izmeni</button><button class="delete-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">❌ Obriši sa spiska</button>`}`
       });
     });
 
@@ -1911,7 +1869,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Gradilište",
         title:s.name,
         subtitle:`${s.location || ""} · ${s.active ? "aktivno" : "završeno/sklonjeno"}`,
-        actions:`${s.active ? `<button class="archive-btn" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Završi / skloni gradilište</button>` : `<span class="pill">već sklonjeno</span>`}`
+        actions:`${s.active ? `<button class="edit-btn" onclick="editSite('${s.id}')">✏️ Izmeni</button><button class="archive-btn" onclick="archiveSite('${s.id}', '${escapeHtml(s.name || '')}')">✅ Obriši sa spiska</button>` : `<span class="pill">sklonjeno iz aktivnog spiska</span>`}`
       });
     });
 
@@ -1921,7 +1879,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Materijal",
         title:m.name,
         subtitle:`${m.unit || ""} ${m.category ? "· " + m.category : ""}`,
-        actions:`<button class="delete-btn" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">❌ Obriši materijal</button>`
+        actions:`${m.active === false ? `<span class="pill">sklonjeno iz aktivnog spiska</span>` : `<button class="edit-btn" onclick="editMaterial('${m.id}')">✏️ Izmeni</button><button class="delete-btn" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">❌ Obriši sa spiska</button>`}`
       });
     });
 
@@ -2126,7 +2084,6 @@ function defectHtml(r) {
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
         <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj kvar</button>
-        <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
       </div>
     </div>`;
 }
@@ -2911,7 +2868,6 @@ function reportHtml(r) {
           <button class="secondary" onclick="returnReport('${r.id}')">Vrati na ispravku</button>
           <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
           <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
-          <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
         </div>
       </details>
     </article>`;
@@ -2999,7 +2955,7 @@ async function refreshPersonMaterialPermissions(selectedIds = null) {
   if (!currentCompany) return;
   const { data, error } = await sb
     .from("materials")
-    .select("id,name,unit,category")
+    .select("id,name,unit,category,active")
     .eq("company_id", currentCompany.id)
     .order("created_at", { ascending:false });
 
@@ -3457,7 +3413,7 @@ async function loadWorkerAssets() {
     }
   }
 
-  workerAssetOptions = mergeAssetRows(directRows, rpcRows);
+  workerAssetOptions = mergeAssetRows(directRows, rpcRows).filter(a => a.active !== false);
 
   refreshVehicleSelects();
   refreshMachineDatalists();
@@ -3870,16 +3826,16 @@ async function loadWorkerMaterials(selectedValue = "") {
       const { data, error } = await sb.rpc("director_list_materials", {
         p_company_id: worker.company_id
       });
-      if (!error) materials = normalizeWorkerMaterialList(data || []);
+      if (!error) materials = normalizeWorkerMaterialList((data || []).filter(m => m.active !== false));
     }
 
     if (!materials.length && worker?.company_id && sb) {
       const { data, error } = await sb
         .from("materials")
-        .select("id,name,unit,category")
+        .select("id,name,unit,category,active")
         .eq("company_id", worker.company_id)
         .order("name", { ascending: true });
-      if (!error) materials = normalizeWorkerMaterialList(data || []);
+      if (!error) materials = normalizeWorkerMaterialList((data || []).filter(m => m.active !== false));
     }
 
     workerMaterialOptions = materials;
