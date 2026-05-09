@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.3";
+const APP_VERSION = "1.27.4";
 
 
 let sb = null;
@@ -2083,6 +2083,7 @@ function defectHtml(r) {
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
+        <button class="secondary" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
         <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj kvar</button>
       </div>
     </div>`;
@@ -2790,10 +2791,191 @@ window.downloadReportA4 = function(id) {
   toast("A4 pregled je preuzet na kompjuter. Može da se otvori i štampa.");
 };
 
+
+function reportDocumentTitle(r) {
+  const d = r?.data || {};
+  return d.report_type === "site_daily_log" ? "DNEVNIK GRADILIŠTA" : (isDefectOnlyReport(r) ? "PRIJAVA KVARA" : "DNEVNI RADNI IZVEŠTAJ SA TERENA");
+}
+
+function reportDocumentPerson(r) {
+  const d = r?.data || {};
+  return r?.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
+}
+
+function buildReportPaperHtml(r, paperIdPrefix = "paper") {
+  const d = r.data || {};
+  const title = reportDocumentTitle(r);
+  const person = reportDocumentPerson(r);
+  const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
+  const statusText = r.status || "novo";
+  const statusLabel = reportStatusLabel(statusText);
+  return `
+    <section class="report-paper-view document-center-paper" id="${paperIdPrefix}-${r.id}" style="--report-zoom:1">
+      <div class="paper-title-block">
+        <h3>${escapeHtml(title)}</h3>
+        <p>Papirni pregled dnevnog izveštaja za kontrolu, potpis, štampu i arhivu</p>
+      </div>
+
+      <table class="paper-meta-table">
+        <tbody>
+          <tr><th>Datum izveštaja</th><td>${escapeHtml(r.report_date || d.report_date_manual || d.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
+          <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
+          <tr><th>Zaposleni / odgovorno lice</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
+          <tr><th>Firma</th><td>${escapeHtml(currentCompany?.company_name || currentCompany?.name || "—")}</td><th>Broj izveštaja</th><td>${escapeHtml(String(r.id || "").slice(0, 8))}</td></tr>
+        </tbody>
+      </table>
+
+      ${r.returned_reason ? `<div class="paper-returned-reason"><b>Razlog vraćanja na ispravku:</b> ${escapeHtml(r.returned_reason)}</div>` : ""}
+
+      ${renderReportReadableDetails(d)}
+
+      <div class="paper-footer-note">
+        Pregled pripremljen u Start Work PRO · ${escapeHtml(formatDateTimeLocal(new Date().toISOString()))}
+      </div>
+    </section>`;
+}
+
+function buildStandaloneReportPrintHtml(r) {
+  const title = reportDocumentTitle(r);
+  const paper = buildReportPaperHtml(r, "print-paper");
+  return `<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(title)}</title>
+<style>
+  @page{size:A4;margin:12mm;}
+  *{box-sizing:border-box;}
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#fff;color:#111827;font-size:12px;}
+  .report-paper-view{width:100%;max-width:190mm;margin:0 auto;background:#fff;color:#111827;}
+  .paper-title-block{border-bottom:2px solid #111827;margin-bottom:12px;padding-bottom:8px;text-align:center;}
+  .paper-title-block h3{margin:0 0 4px;font-size:18px;text-transform:uppercase;color:#111827;letter-spacing:.03em;}
+  .paper-title-block p{margin:0;color:#374151;font-size:11px;}
+  table{width:100%;border-collapse:collapse;page-break-inside:auto;color:#111827;}
+  th,td{border:1px solid #9ca3af;padding:5px 7px;vertical-align:top;color:#111827;}
+  th{background:#edf1ee;text-align:left;font-weight:700;}
+  tr{page-break-inside:avoid;page-break-after:auto;}
+  h4{font-size:13px;text-transform:uppercase;border-bottom:2px solid #9ca3af;margin:14px 0 7px;padding-bottom:5px;color:#111827;}
+  p{color:#111827;}
+  .report-section{page-break-inside:avoid;margin:12px 0;color:#111827;}
+  .report-kv{display:grid;grid-template-columns:45mm 1fr;border:1px solid #9ca3af;}
+  .report-kv b,.report-kv span{border-bottom:1px solid #d1d5db;padding:5px 7px;color:#111827;}
+  .report-kv b{background:#f3f4f6;font-weight:700;}
+  .paper-footer-note{border-top:1px solid #9ca3af;margin-top:14px;padding-top:7px;text-align:right;color:#4b5563;font-size:10px;}
+  .report-excel-details{display:none!important;}
+  .report-empty{color:#6b7280;}
+  .paper-signature-box img{max-height:80px;max-width:220px;border:1px solid #d1d5db;background:#fff;}
+  .paper-signature-line{margin-top:40px;border-top:1px solid #111827;width:70mm;padding-top:5px;color:#111827;}
+  .signed-file-note{border:1px solid #9ca3af;padding:7px;background:#f9fafb;}
+</style>
+</head>
+<body>${paper}</body>
+</html>`;
+}
+
+window.openReportDocumentCenter = function(id) {
+  const r = directorReportsCache.find(x => String(x.id) === String(id));
+  if (!r) return toast("Izveštaj nije pronađen. Osveži listu izveštaja.", true);
+  const d = r.data || {};
+  const title = reportDocumentTitle(r);
+  const person = reportDocumentPerson(r);
+  const statusLabel = reportStatusLabel(r.status || "novo");
+  let modal = document.getElementById("reportDocumentCenter");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "reportDocumentCenter";
+    modal.className = "report-document-center hidden";
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div class="report-doc-shell">
+      <header class="report-doc-top no-print">
+        <div>
+          <small>Centar dokumenata izveštaja</small>
+          <h2>${escapeHtml(title)}</h2>
+          <p>${escapeHtml(person)} · ${escapeHtml(d.site_name || "Bez gradilišta")} · ${escapeHtml(r.report_date || "")}</p>
+        </div>
+        <button class="secondary report-doc-close" type="button" onclick="closeReportDocumentCenter()">Nazad</button>
+      </header>
+
+      <div class="report-doc-actions no-print">
+        <button class="primary" type="button" onclick="saveReportDocumentAsPdf('${r.id}')">Sačuvaj kao PDF</button>
+        <button class="secondary" type="button" onclick="printReportDocument('${r.id}')">Štampaj dokument</button>
+        <button class="secondary" type="button" onclick="exportSingleReportToExcel('${r.id}')">Izvezi ovaj izveštaj u Excel</button>
+        <button class="secondary" type="button" onclick="addReportToExcelSelection('${r.id}')">Dodaj u Excel izbor</button>
+        <button class="secondary" type="button" onclick="setReportStatus('${r.id}','approved')">Odobri izveštaj</button>
+        <button class="secondary danger-soft" type="button" onclick="returnReport('${r.id}')">Vrati na ispravku</button>
+        <button class="secondary" type="button" onclick="archiveReport('${r.id}')">Arhiviraj</button>
+      </div>
+
+      <div class="report-doc-status no-print">
+        <span>Status: <b>${escapeHtml(statusLabel)}</b></span>
+        <span>Firma: <b>${escapeHtml(currentCompany?.company_name || currentCompany?.name || "—")}</b></span>
+        <span>Dokument ostaje u bazi; PDF/štampa/Excel su izlazni fajlovi za kancelariju.</span>
+      </div>
+
+      <main class="report-doc-paper-wrap">
+        ${buildReportPaperHtml(r, "doc-paper")}
+      </main>
+    </div>`;
+  modal.classList.remove("hidden");
+  document.body.classList.add("report-doc-open");
+};
+
+window.closeReportDocumentCenter = function() {
+  const modal = document.getElementById("reportDocumentCenter");
+  if (modal) modal.classList.add("hidden");
+  document.body.classList.remove("report-doc-open", "printing-report-document-center");
+};
+
+window.printReportDocument = function(id) {
+  const r = directorReportsCache.find(x => String(x.id) === String(id));
+  if (!r) return toast("Izveštaj nije pronađen.", true);
+  const html = buildStandaloneReportPrintHtml(r);
+  const w = window.open("", "_blank");
+  if (!w) return toast("Browser je blokirao novi prozor. Dozvoli pop-up za askcreate.app.", true);
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 350);
+};
+
+window.saveReportDocumentAsPdf = function(id) {
+  // Najstabilnije u browseru/PWA: isti čist A4 prozor, korisnik bira Save as PDF.
+  printReportDocument(id);
+  toast("U prozoru za štampu izaberi: Destination/Odredište → Save as PDF.");
+};
+
+window.addReportToExcelSelection = function(id) {
+  toggleReportExportSelection(id, true);
+  const cb = Array.from(document.querySelectorAll(".report-export-check")).find(x => String(x.dataset.reportId || "") === String(id));
+  if (cb) cb.checked = true;
+  renderExportPanel();
+  toast("Izveštaj je dodat u Excel izbor.");
+};
+
+window.exportSingleReportToExcel = function(id) {
+  const r = directorReportsCache.find(x => String(x.id) === String(id));
+  if (!r) return toast("Izveštaj nije pronađen.", true);
+  const settings = { type: "all", from: "", to: "", site: "", worker: "", item: "" };
+  const rows = getSmartRowsForReport(r, settings);
+  if (!rows.length) return toast("Ovaj izveštaj nema redove za Excel export.", true);
+  const columns = EXPORT_COLUMNS.filter(c => rows.some(row => String(row[c.key] ?? "").trim() !== "") || ["date","worker","function","site","status"].includes(c.key));
+  const head = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
+  const body = rows.map((row, index) => `<tr class="${index % 2 ? "even" : "odd"}">${columns.map(c => `<td>${escapeHtml(excelCellText(row[c.key]))}</td>`).join("")}</tr>`).join("");
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8" />
+  <style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;}table{border-collapse:collapse;width:100%;font-size:12px;}th{background:#0f7a3b;color:#fff;font-weight:700;border:1px solid #0b5f2e;padding:8px 10px;text-align:left;white-space:nowrap;}td{border:1px solid #cfd8dc;padding:7px 9px;vertical-align:top;mso-number-format:"\\@";}tr.even td{background:#f6fbf7;}</style>
+  </head><body><h3>${escapeHtml(reportDocumentTitle(r))}</h3><p>Firma: ${escapeHtml(currentCompanyExportName())}</p><table>${head}${body}</table></body></html>`;
+  const blob = new Blob(["﻿" + html], {type:"application/vnd.ms-excel;charset=utf-8"});
+  const name = safeFilePart(`${reportDocumentTitle(r)}_${r.report_date || today()}_${(r.data || {}).site_name || "izvestaj"}`) + ".xls";
+  downloadBlob(blob, name);
+  toast("Excel fajl za ovaj izveštaj je preuzet.");
+};
+
 function reportHtml(r) {
   const d = r.data || {};
-  const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
-  const title = d.report_type === "site_daily_log" ? "DNEVNIK GRADILIŠTA" : (isDefectOnlyReport(r) ? "PRIJAVA KVARA" : "DNEVNI RADNI IZVEŠTAJ SA TERENA");
+  const person = reportDocumentPerson(r);
+  const title = reportDocumentTitle(r);
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
   const sections = getReportFilledSections(d);
   const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
@@ -2802,10 +2984,10 @@ function reportHtml(r) {
   const statusLabel = reportStatusLabel(statusText);
 
   return `
-    <article class="report-row-item">
+    <article class="report-row-item report-document-card">
       <div class="report-list-grid">
         <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export">
-          <input type="checkbox" class="report-export-check" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
+          <input type="checkbox" class="report-export-check" data-report-id="${escapeHtml(r.id)}" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
         </label>
         <div class="report-list-date">
           <strong>${escapeHtml(r.report_date || "")}</strong>
@@ -2822,54 +3004,12 @@ function reportHtml(r) {
         <div class="report-list-sections">${sectionsHtml}</div>
         <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusLabel)}</span></div>
       </div>
-
-      <details class="report-paper-details">
-        <summary><span class="open-report-btn">Otvori papirni pregled</span></summary>
-
-        <div class="report-toolbar no-print">
-          <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', -0.1)">A−</button>
-          <button class="secondary" type="button" onclick="setReportPaperZoom('${r.id}', 1)"><span id="paperZoom-${r.id}">100%</span></button>
-          <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', 0.1)">A+</button>
-          <button class="secondary" type="button" onclick="downloadReportA4('${r.id}')">Sačuvaj A4</button>
-          <button class="secondary" type="button" onclick="printReportA4('${r.id}')">Štampaj dokument A4</button>
-        </div>
-
-        <section class="report-paper-view" id="paper-${r.id}" style="--report-zoom:1">
-          <div class="paper-title-block">
-            <h3>${escapeHtml(title)}</h3>
-            <p>Papirni pregled dnevnog izveštaja za kontrolu, potpis i štampu</p>
-          </div>
-
-          <table class="paper-meta-table">
-            <tbody>
-              <tr><th>Datum</th><td>${escapeHtml(r.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
-              <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
-              <tr><th>Zaposleni</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
-            </tbody>
-          </table>
-
-          ${r.returned_reason ? `<div class="paper-returned-reason"><b>Razlog vraćanja:</b> ${escapeHtml(r.returned_reason)}</div>` : ""}
-
-          ${renderReportReadableDetails(d)}
-
-          <div class="paper-footer-note">
-            Pregled pripremljen za štampu · ${escapeHtml(submitted || "")}
-          </div>
-        </section>
-
-        <div class="actions report-action-bar no-print">
-          ${isDefectOnlyReport(r) ? `
-            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
-            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
-            <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
-          ` : ""}
-
-          <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
-          <button class="secondary" onclick="returnReport('${r.id}')">Vrati na ispravku</button>
-          <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
-          <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
-        </div>
-      </details>
+      ${r.returned_reason ? `<div class="report-card-warning">Vraćeno na ispravku: ${escapeHtml(r.returned_reason)}</div>` : ""}
+      <div class="report-card-actions no-print">
+        <button class="primary" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
+        <button class="secondary" type="button" onclick="addReportToExcelSelection('${r.id}')">Dodaj u Excel izbor</button>
+        <button class="secondary" type="button" onclick="exportSingleReportToExcel('${r.id}')">Excel</button>
+      </div>
     </article>`;
 }
 
@@ -2880,6 +3020,22 @@ window.setReportStatus = async (id, status) => {
   const { error } = await sb.from("reports").update(patch).eq("id", id);
   if (error) return toast(error.message, true);
   toast("Status izveštaja promenjen.");
+  await loadReports();
+  if (typeof openReportDocumentCenter === "function" && document.getElementById("reportDocumentCenter") && !document.getElementById("reportDocumentCenter").classList.contains("hidden")) {
+    openReportDocumentCenter(id);
+  }
+};
+
+window.archiveReport = async (id) => {
+  if (!confirm("Arhivirati izveštaj?\n\nIzveštaj ostaje u bazi, ali se sklanja iz aktivne liste.")) return;
+  const { error } = await sb
+    .from("reports")
+    .update({ status: "archived", archived: true })
+    .eq("id", id)
+    .eq("company_id", currentCompany.id);
+  if (error) return toast(error.message, true);
+  toast("Izveštaj je arhiviran. Podaci ostaju sačuvani u bazi.");
+  closeReportDocumentCenter?.();
   loadReports();
 };
 
@@ -2896,7 +3052,8 @@ window.returnReport = async (id) => {
     .eq("company_id", currentCompany.id);
   if (error) return toast(error.message, true);
   toast("Izveštaj je vraćen zaposlenom na ispravku.");
-  loadReports();
+  await loadReports();
+  if (typeof openReportDocumentCenter === "function") openReportDocumentCenter(id);
 };
 
 window.setDefectRecordStatus = async (id, newStatus) => {
