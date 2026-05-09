@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.4";
+const APP_VERSION = "1.27.5";
 
 
 let sb = null;
@@ -5925,6 +5925,19 @@ function initSiteLogPanel() {
 function hasSiteLogAnyContent(d) {
   return !!(d.site_name || d.today_work_description || d.tomorrow_work_plan || d.workers.length || d.material_in.length || d.material_out.length || d.materials_installed.length || d.materials_stock_on_site.length || d.truck_tours.length);
 }
+
+function isStaleReturnedReportError(err) {
+  const msg = String(err?.message || err || "").toLowerCase();
+  return msg.includes("nije prona") || msg.includes("not found") || msg.includes("statusu returned") || msg.includes("status returned") || msg.includes("returned report") || msg.includes("više nije");
+}
+
+function clearReturnedReportContext() {
+  try {
+    localStorage.removeItem("swp_returned_report_id");
+    localStorage.removeItem("swp_returned_report_type");
+  } catch {}
+}
+
 async function submitSiteLogToDirector() {
   try {
     if (!navigator.onLine) { saveSiteLogDraft(); throw new Error("Nema interneta. Nacrt dnevnika je sačuvan na ovom uređaju."); }
@@ -5936,21 +5949,38 @@ async function submitSiteLogToDirector() {
     const reportDate = data.report_date_manual || today();
     const returnedId = localStorage.getItem("swp_returned_report_id");
     if (returnedId) {
-      const { error } = await sb.rpc("worker_resubmit_returned_report", {
-        p_company_code: worker.company_code,
-        p_access_code: worker.access_code,
-        p_report_id: returnedId,
-        p_report_date: reportDate,
-        p_site_id: data.site_id || null,
-        p_data: data
-      });
-      if (error) throw error;
-      localStorage.removeItem("swp_returned_report_id");
-      localStorage.removeItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`);
-      $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Ponovo poslato Upravi firme");
-      loadWorkerReturnedReports();
-      toast("Ispravljen Dnevnik gradilišta je ponovo poslat Upravi firme ✅");
-      return;
+      let returnedStillExists = null;
+      try { returnedStillExists = await getReturnedReportForWorker(returnedId); } catch { returnedStillExists = null; }
+      if (!returnedStillExists) {
+        clearReturnedReportContext();
+        $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Novi dnevnik");
+        toast("Stari vraćeni izveštaj više nije aktivan. Ovaj unos šaljem kao novi Dnevnik gradilišta.");
+      } else {
+        const { error } = await sb.rpc("worker_resubmit_returned_report", {
+          p_company_code: worker.company_code,
+          p_access_code: worker.access_code,
+          p_report_id: returnedId,
+          p_report_date: reportDate,
+          p_site_id: data.site_id || null,
+          p_data: data
+        });
+        if (error) {
+          if (isStaleReturnedReportError(error)) {
+            clearReturnedReportContext();
+            $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Novi dnevnik");
+            toast("Vraćeni izveštaj više nije dostupan. Ovaj unos šaljem kao novi Dnevnik gradilišta.");
+          } else {
+            throw error;
+          }
+        } else {
+          clearReturnedReportContext();
+          localStorage.removeItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`);
+          $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Ponovo poslato Upravi firme");
+          loadWorkerReturnedReports();
+          toast("Ispravljen Dnevnik gradilišta je ponovo poslat Upravi firme ✅");
+          return;
+        }
+      }
     }
     const { error } = await sb.rpc("submit_worker_report", { p_company_code: worker.company_code, p_access_code: worker.access_code, p_report_date: reportDate, p_site_id: data.site_id || null, p_data: data });
     if (error) throw error;
@@ -8231,6 +8261,14 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   const returnedId = localStorage.getItem("swp_returned_report_id");
   if (!returnedId || !currentWorker) return false;
 
+  let returnedStillExists = null;
+  try { returnedStillExists = await getReturnedReportForWorker(returnedId); } catch { returnedStillExists = null; }
+  if (!returnedStillExists) {
+    clearReturnedReportContext();
+    toast("Stari vraćeni izveštaj više nije aktivan. Ovaj unos šaljem kao novi izveštaj.");
+    return false;
+  }
+
   const { error } = await sb.rpc("worker_resubmit_returned_report", {
     p_company_code: currentWorker.company_code,
     p_access_code: currentWorker.access_code,
@@ -8240,9 +8278,16 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
     p_data: reportData
   });
 
-  if (error) throw error;
+  if (error) {
+    if (isStaleReturnedReportError(error)) {
+      clearReturnedReportContext();
+      toast("Vraćeni izveštaj više nije dostupan. Ovaj unos šaljem kao novi izveštaj.");
+      return false;
+    }
+    throw error;
+  }
 
-  localStorage.removeItem("swp_returned_report_id");
+  clearReturnedReportContext();
   try {
     await prepareWorkerFormForNextReport();
   } catch (resetError) {
