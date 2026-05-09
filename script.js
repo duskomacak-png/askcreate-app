@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.9";
+const APP_VERSION = "1.26.0";
 
 
 let sb = null;
@@ -5487,12 +5487,41 @@ function printSiteLog() {
   setTimeout(() => window.print(), 50);
   setTimeout(() => { document.body.classList.remove("printing-report-paper"); paper.classList.remove("print-target-report"); }, 800);
 }
-function downloadSiteLogA4() {
+async function downloadSiteLogA4() {
   const data = collectSiteLogData();
-  const html = `<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>Dnevnik gradilišta</title><style>@page{size:A4;margin:12mm}body{font-family:Arial,Helvetica,sans-serif;color:#17231b}.report-paper-view{max-width:190mm;margin:0 auto}.paper-title-block{text-align:center;border-bottom:2px solid #1f3326;margin-bottom:12px;padding-bottom:8px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #c8d2cc;padding:5px 7px;text-align:left;vertical-align:top}th{background:#edf1ee}h4{font-size:13px;text-transform:uppercase;border-bottom:2px solid #c8d2cc;margin:14px 0 7px;padding-bottom:5px}.report-section{page-break-inside:avoid}.paper-signature-box{border:1px solid #d1d5db;border-radius:8px;padding:10px;display:flex;gap:16px;align-items:center}.paper-signature-box img{max-width:260px;max-height:80px}.paper-signature-line{margin-top:40px;border-top:1px solid #111827;width:260px;padding-top:6px;text-align:center;font-size:11px}.paper-footer-note{border-top:1px solid #c8d2cc;margin-top:14px;padding-top:7px;text-align:right;color:#66716a;font-size:10px}</style></head><body>${renderSiteLogA4(data)}</body></html>`;
-  const blob = new Blob([html], { type:"text/html;charset=utf-8" });
-  const file = safeFilePart(`dnevnik-gradilista_${data.report_date_manual || today()}_${data.site_name || "gradiliste"}`) + ".html";
-  downloadBlob(blob, file); toast("A4 dnevnik je preuzet. Može da se otvori u browseru i štampa kao PDF.");
+  let paper = document.getElementById("site-log-paper");
+  if (!paper) { previewSiteLog(); paper = document.getElementById("site-log-paper"); }
+  if (!paper) return toast("Prvo prikaži dnevnik.", true);
+  const file = safeFilePart(`dnevnik-gradilista_${data.report_date_manual || today()}_${data.site_name || "gradiliste"}`) + ".pdf";
+  if (window.html2pdf) {
+    try {
+      toast("Pripremam PDF dnevnik...");
+      const clone = paper.cloneNode(true);
+      clone.style.width = "190mm";
+      clone.style.maxWidth = "190mm";
+      clone.style.boxShadow = "none";
+      clone.style.border = "0";
+      clone.style.margin = "0";
+      clone.style.background = "#ffffff";
+      const opt = {
+        margin: [8, 8, 8, 8],
+        filename: file,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"], avoid: [".report-section", ".paper-title-block"] }
+      };
+      await window.html2pdf().set(opt).from(clone).save();
+      toast("PDF dnevnik je preuzet.");
+    } catch (err) {
+      console.error(err);
+      toast("PDF nije mogao automatski da se napravi. Otvaram štampu — izaberi Save as PDF.", true);
+      printSiteLog();
+    }
+  } else {
+    toast("PDF alat nije učitan. Otvaram štampu — izaberi Save as PDF.", true);
+    printSiteLog();
+  }
 }
 function saveSiteLogDraft() {
   const data = collectSiteLogData();

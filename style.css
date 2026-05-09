@@ -2790,7 +2790,7 @@ body.worker-field-theme.worker-desktop-panel #workerHello::after{
 }
 
 
-/* v1.25.9 — Dnevnik gradilišta / šef gradilišta */
+/* v1.26.0 — Dnevnik gradilišta / šef gradilišta */
 .site-log-mode{background:#eef6f0;}
 .site-log-panel{border:1px solid #b7d7c2;background:linear-gradient(180deg,#f8fff9,#eef8f1);box-shadow:0 18px 40px rgba(25,90,52,.12)}
 .site-log-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid #cfe3d5;padding-bottom:14px;margin-bottom:16px}
@@ -2816,3 +2816,90 @@ body.worker-field-theme.worker-desktop-panel #workerHello::after{
 .signed-file-note{border:1px solid #cfe3d5;background:#f6fbf7;border-radius:9px;padding:8px 10px;color:#173b24}
 @media(max-width:850px){.site-log-form-grid,.grid.three,.grid.four{grid-template-columns:1fr}.site-log-head{flex-direction:column}.site-log-actions{position:static}.site-log-a4{width:100%;min-height:auto;padding:14px}}
 @media print{.site-log-actions,.site-log-panel .no-print{display:none!important}.site-log-a4{box-shadow:none;border:0;width:100%;min-height:auto;padding:0}}
+
+
+/* v1.26.0 FIX — Dnevnik gradilišta mora biti svetao i čitljiv čak i kada je radnički dark theme aktivan */
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-panel,
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-section,
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-subsection,
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-entry-list .entry-card{
+  background:#ffffff!important;
+  color:#173b24!important;
+  border:1px solid #b7d7c2!important;
+  box-shadow:0 10px 24px rgba(15,80,45,.08)!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-panel{
+  background:linear-gradient(180deg,#f8fff9,#edf8f1)!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-section{
+  background:#fbfffc!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-subsection{
+  background:#ffffff!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-head h3,
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-section h4,
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-subtitle b,
+body.worker-field-theme.site-log-mode #viewWorkerForm .entry-card-head strong{
+  color:#143d27!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm label{
+  color:#17462b!important;
+  font-weight:900!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm .hint,
+body.worker-field-theme.site-log-mode #viewWorkerForm .muted,
+body.worker-field-theme.site-log-mode #viewWorkerForm small{
+  color:#4b6254!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm input,
+body.worker-field-theme.site-log-mode #viewWorkerForm select,
+body.worker-field-theme.site-log-mode #viewWorkerForm textarea{
+  background:#ffffff!important;
+  color:#17231b!important;
+  border:1px solid #8fbea0!important;
+  border-radius:12px!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm input::placeholder,
+body.worker-field-theme.site-log-mode #viewWorkerForm textarea::placeholder{
+  color:#6b7c70!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm select option{
+  background:#ffffff!important;
+  color:#17231b!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm input:focus,
+body.worker-field-theme.site-log-mode #viewWorkerForm select:focus,
+body.worker-field-theme.site-log-mode #viewWorkerForm textarea:focus{
+  border-color:#217346!important;
+  outline:3px solid rgba(33,115,70,.18)!important;
+  box-shadow:none!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-actions{
+  background:#f3fbf5!important;
+  border:1px solid #b7d7c2!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm .site-log-a4{
+  background:#ffffff!important;
+  color:#17231b!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm button.primary,
+body.worker-field-theme.site-log-mode #viewWorkerForm .primary{
+  background:#217346!important;
+  border-color:#1a5d38!important;
+  color:#ffffff!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm button.secondary,
+body.worker-field-theme.site-log-mode #viewWorkerForm .secondary{
+  background:#ffffff!important;
+  border-color:#9cc9aa!important;
+  color:#17462b!important;
+  box-shadow:0 8px 18px rgba(15,80,45,.08)!important;
+}
+@media print{
+  body.printing-report-paper *{visibility:hidden!important}
+  body.printing-report-paper .print-target-report,
+  body.printing-report-paper .print-target-report *{visibility:visible!important}
+  body.printing-report-paper .print-target-report{position:absolute!important;left:0!important;top:0!important;width:100%!important}
+}
