@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1254" />
+  <link rel="stylesheet" href="style.css?v=1255" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -521,83 +521,102 @@
           <h3>Izvoz u Excel</h3>
           <p class="muted">Ovde stoje dnevni izveštaji koje je Uprava označila. Odaberi koje podatke želiš u Excel fajlu.</p>
 
-          <div class="export-box smart-export-box">
-            <h4>📊 Pano za Excel / štampu</h4>
-            <p class="muted">Jednostavno: izaberi grupu, po potrebi upiši filtere, pa klikni <b>Odaberi sve i prikaži tabelu</b>. Posle možeš skinuti štikle koje ne želiš.</p>
-            <div class="export-board-steps">
-              <span><b>1</b> Grupa obračuna</span>
-              <span><b>2</b> Period i gradilište</span>
-              <span><b>3</b> Tabela odmah ispod</span>
+          <div class="export-box smart-export-box export-panel-simple">
+            <h4>📊 Izvoz i štampa izveštaja</h4>
+            <p class="muted">Pano je sada podešen za Direkciju: prvo izaberi šta želiš, zatim period/gradilište, pa prikaži tabelu pre štampe ili Excel-a.</p>
+
+            <div class="export-board-steps simple-steps">
+              <span><b>1</b> Izaberi izveštaj</span>
+              <span><b>2</b> Upiši filtere</span>
+              <span><b>3</b> Pregled / Excel / štampa</span>
             </div>
 
-            <div class="smart-export-cards">
-              <button type="button" class="smart-export-card" onclick="setSmartExportType('hours_workers')"><b>👷 Radnici / sati</b><span>Gradilište, datum od/do, jedan radnik ili svi.</span></button>
-              <button type="button" class="smart-export-card" onclick="setSmartExportType('machines')"><b>🚜 Mašine / MTČ</b><span>Jedna mašina ili sve mašine za period.</span></button>
-              <button type="button" class="smart-export-card" onclick="setSmartExportType('vehicles')"><b>🚚 Vozila / ture</b><span>Vozila, ture, kilometraža i m³.</span></button>
-              <button type="button" class="smart-export-card" onclick="setSmartExportType('fuel_all')"><b>⛽ Gorivo / sipanja</b><span>Sva sipanja, posebno od ostalih rubrika.</span></button>
-              <button type="button" class="smart-export-card" onclick="setSmartExportType('fuel_tanker')"><b>🛢️ Cisterna</b><span>Sipanja iz cisterne po gradilištu i datumu.</span></button>
-              <button type="button" class="smart-export-card" onclick="setSmartExportType('materials')"><b>🧱 Materijal</b><span>Svaki materijal posebno: ture, količina, jedinica.</span></button>
+            <div class="export-step-card">
+              <div class="export-step-title">
+                <strong>1. Šta želiš da vidiš?</strong>
+                <small>Izaberi jednu karticu. Nema dodatnog padajućeg menija za istu stvar.</small>
+              </div>
+              <div class="smart-export-cards simple-export-cards">
+                <button type="button" class="smart-export-card" onclick="setSmartExportType('hours_workers')"><b>👷 Radni sati</b><span>Radnik, gradilište, period.</span></button>
+                <button type="button" class="smart-export-card" onclick="setSmartExportType('machines')"><b>🚜 Mašine / MTČ</b><span>Mašina, operator, MTČ.</span></button>
+                <button type="button" class="smart-export-card" onclick="setSmartExportType('vehicles')"><b>🚚 Vozila</b><span>Vozilo, ture, km, m³.</span></button>
+                <button type="button" class="smart-export-card" onclick="setSmartExportType('fuel_all')"><b>⛽ Gorivo</b><span>Sipanja, litri, KM/MTČ.</span></button>
+                <button type="button" class="smart-export-card" onclick="setSmartExportType('fuel_tanker')"><b>🛢️ Cisterna</b><span>Sipanja iz cisterne.</span></button>
+                <button type="button" class="smart-export-card" onclick="setSmartExportType('materials')"><b>🧱 Materijal</b><span>Materijal, ture, količina.</span></button>
+              </div>
             </div>
 
-            <div class="smart-export-grid">
-              <label>Grupa exporta
-                <select id="smartExportType">
-                  <option value="all">Kompletno iz izabranih izveštaja</option>
-                  <option value="hours_workers">Radnici / sati</option>
-                  <option value="machines">Mašine / MTČ</option>
-                  <option value="vehicles">Vozila / ture / m³</option>
-                  <option value="materials">Materijal</option>
-                  <option value="fuel_all">Gorivo – sva sipanja</option>
-                  <option value="fuel_own">Gorivo – radnik/mašina/vozilo</option>
-                  <option value="fuel_tanker">Gorivo – cisterna</option>
-                  <option value="lowloader">Transport mašine labudicom</option>
-                  <option value="warehouse">Magacin</option>
-                  <option value="leave">Slobodni dani / godišnji</option>
-                  <option value="defects">Kvarovi</option>
-                </select>
-              </label>
-              <label>Od datuma
-                <input id="smartExportFrom" type="date" />
-              </label>
-              <label>Do datuma
-                <input id="smartExportTo" type="date" />
-              </label>
-              <label>Gradilište
-                <input id="smartExportSite" placeholder="npr. Zmaj ili sva gradilišta" />
-              </label>
-              <label>Radnik / ime / šifra
-                <input id="smartExportWorker" placeholder="npr. Marko ili svi radnici" />
-              </label>
-              <label>Stavka / naziv
-                <input id="smartExportItem" placeholder="npr. CAT 330, MAN, kamen 0-31, BG123" />
-              </label>
-              <label>Excel kalup
-                <select id="exportTemplateType">
-                  <option value="classic">Klasični Excel kalup</option>
-                  <option value="summary">Obračunski kalup sa ukupnim zbirom</option>
-                </select>
-              </label>
+            <div class="export-step-card">
+              <div class="export-step-title">
+                <strong>2. Filteri</strong>
+                <small>Ostavi prazno ako želiš sve. Datum od/do koristi za mesečni ili dnevni obračun.</small>
+              </div>
+
+              <select id="smartExportType" class="hidden" aria-hidden="true">
+                <option value="all">Kompletno iz izabranih izveštaja</option>
+                <option value="hours_workers">Radnici / sati</option>
+                <option value="machines">Mašine / MTČ</option>
+                <option value="vehicles">Vozila / ture / m³</option>
+                <option value="materials">Materijal</option>
+                <option value="fuel_all">Gorivo – sva sipanja</option>
+                <option value="fuel_own">Gorivo – radnik/mašina/vozilo</option>
+                <option value="fuel_tanker">Gorivo – cisterna</option>
+                <option value="lowloader">Transport mašine labudicom</option>
+                <option value="warehouse">Magacin</option>
+                <option value="leave">Slobodni dani / godišnji</option>
+                <option value="defects">Kvarovi</option>
+              </select>
+
+              <div class="smart-export-grid simple-filter-grid">
+                <label>Od datuma
+                  <input id="smartExportFrom" type="date" />
+                </label>
+                <label>Do datuma
+                  <input id="smartExportTo" type="date" />
+                </label>
+                <label>Gradilište
+                  <input id="smartExportSite" placeholder="npr. Zmaj ili ostavi prazno za sva" />
+                </label>
+                <label id="smartExportWorkerWrap"><span id="smartExportWorkerLabel">Radnik</span>
+                  <input id="smartExportWorker" placeholder="npr. Marko ili prazno za sve" />
+                </label>
+                <label id="smartExportItemWrap"><span id="smartExportItemLabel">Stavka</span>
+                  <input id="smartExportItem" placeholder="npr. CAT 330, MAN, kamen 0-31" />
+                </label>
+                <label>Izgled papira
+                  <select id="exportTemplateType">
+                    <option value="classic">Klasična tabela</option>
+                    <option value="summary">Obračun sa ukupnim zbirom</option>
+                  </select>
+                </label>
+              </div>
             </div>
-            <div class="row compact">
-              <button id="previewExportBtn" class="primary" type="button">✅ Odaberi sve i prikaži tabelu</button>
-              <button id="applySmartExportBtn" class="secondary" type="button">✅ Samo odaberi sve</button>
-              <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filter</button>
+
+            <div class="export-step-card action-step-card">
+              <div class="export-step-title">
+                <strong>3. Pregled pre štampe</strong>
+                <small>Prvo prikaži tabelu. Zatim, ako treba, skini višak kolona ispod u delu “Kolone u tabeli”.</small>
+              </div>
+              <div class="row compact export-main-actions">
+                <button id="previewExportBtn" class="primary" type="button">👁️ Prikaži pregled</button>
+                <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filtere</button>
+              </div>
+              <p id="smartExportInfo" class="hint">Izaberi karticu i klikni “Prikaži pregled”. Ako nema podataka, ovde će pisati šta fali.</p>
             </div>
-            <p id="smartExportInfo" class="hint">Ako ostaviš prazno, uzima sve izveštaje za izabranu grupu. Posle pregleda možeš ručno skinuti štikle/rubrike.</p>
+
             <div class="export-preview-box export-preview-box-inline">
-            <div class="row space-between">
-              <div>
-                <h4>📄 Tabela za proveru pre štampe</h4>
-                <p class="muted">Pregled se pojavljuje ovde odmah, bez velikog skrolovanja. Posle možeš skinuti štikle/rubrike koje ne želiš.</p>
+              <div class="row space-between">
+                <div>
+                  <h4>📄 Pregled dokumenta</h4>
+                  <p class="muted">Ovo je prikaz pre štampe. Ne moraš otvarati Excel da vidiš kako će tabela izgledati.</p>
+                </div>
+                <div id="exportPreviewActions" class="row compact hidden">
+                  <button id="printExportBtn" class="primary" type="button">🖨️ Štampaj</button>
+                  <button class="secondary" type="button" onclick="exportExcelFile()">📥 Preuzmi Excel</button>
+                </div>
               </div>
-              <div id="exportPreviewActions" class="row compact hidden">
-                <button id="printExportBtn" class="primary" type="button">🖨️ Štampaj</button>
-              </div>
+              <div id="exportPreviewBox" class="export-preview-stage hidden"></div>
             </div>
-            <div id="exportPreviewBox" class="export-preview-stage hidden"></div>
-          </div>
-
-
           </div>
 
           <div class="export-box">
@@ -609,17 +628,17 @@
           <div class="export-box">
             <div class="row space-between">
               <div>
-                <h4>Podaci koje želiš u Excelu</h4>
-                <p class="muted">Izaberi jednostavan pregled za direktora ili detaljan pregled za operativu.</p>
+                <h4>Kolone u tabeli</h4>
+                <p class="muted">Posle pregleda možeš skinuti višak kolona. Ako nisi siguran, ostavi jednostavan prikaz.</p>
               </div>
               <div class="row compact">
-                <button id="simpleExportBtn" class="primary" type="button">Jednostavan Excel</button>
-                <button id="detailedExportBtn" class="secondary" type="button">Detaljan Excel</button>
+                <button id="simpleExportBtn" class="primary" type="button">Jednostavne kolone</button>
+                <button id="detailedExportBtn" class="secondary" type="button">Sve kolone</button>
               </div>
             </div>
             <div class="row compact export-master-actions">
-              <button id="selectAllColumnsBtn" class="secondary" type="button">Označi sve rubrike</button>
-              <button id="clearColumnsBtn" class="secondary" type="button">Poništi sve rubrike</button>
+              <button id="selectAllColumnsBtn" class="secondary" type="button">Označi sve kolone</button>
+              <button id="clearColumnsBtn" class="secondary" type="button">Poništi sve kolone</button>
             </div>
             <div id="exportColumnsBox" class="export-groups-list"></div>
           </div>
@@ -883,6 +902,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1254"></script>
+  <script src="script.js?v=1255"></script>
 </body>
 </html>

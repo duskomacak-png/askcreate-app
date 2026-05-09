@@ -2620,3 +2620,50 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 .export-column-check{
   cursor:pointer;
 }
+
+/* v1.25.5 — pojednostavljen pano za Direkciju: izveštaj → filteri → pregled */
+.export-panel-simple{
+  border:1px solid rgba(15,118,110,.22);
+  background:linear-gradient(180deg, rgba(240,253,250,.92), rgba(255,255,255,.96));
+}
+.export-step-card{
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.78);
+  border-radius:18px;
+  padding:14px;
+  margin-top:14px;
+  box-shadow:0 8px 22px rgba(15,23,42,.05);
+}
+.export-step-title{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.export-step-title strong{font-size:15px;color:var(--text)}
+.export-step-title small{color:var(--muted);font-size:12px;line-height:1.35;text-align:right;max-width:520px}
+.simple-export-cards{grid-template-columns:repeat(3,minmax(0,1fr));}
+.simple-export-cards .smart-export-card{min-height:86px;}
+.simple-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+.export-main-actions .primary{min-width:210px;}
+.export-preview-empty{
+  background:#fff;
+  border:1px dashed #cbd5e1;
+  border-radius:14px;
+  padding:18px;
+  color:#334155;
+}
+.export-preview-empty.error{border-color:#fca5a5;background:#fff7f7;color:#7f1d1d}
+.export-preview-empty b{display:block;margin-bottom:6px;color:inherit}
+.export-preview-empty p{margin:0;color:inherit;line-height:1.5}
+@media(max-width:900px){
+  .simple-export-cards{grid-template-columns:1fr 1fr;}
+  .simple-filter-grid{grid-template-columns:1fr 1fr;}
+  .export-step-title{display:block;}
+  .export-step-title small{display:block;text-align:left;margin-top:4px;max-width:none;}
+}
+@media(max-width:620px){
+  .simple-export-cards,.simple-filter-grid{grid-template-columns:1fr;}
+  .export-main-actions .primary{min-width:0;width:100%;}
+}

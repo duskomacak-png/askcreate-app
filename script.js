@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.4";
+const APP_VERSION = "1.25.5";
 
 
 let sb = null;
@@ -5815,11 +5815,13 @@ window.toggleExportColumn = (key, checked) => {
   const next = checked ? [...keys, key] : keys.filter(k => k !== key);
   setExportColumnKeys(Array.from(new Set(next)));
   renderExportPanel();
+  refreshExportPreviewIfVisible();
 };
 
 window.selectAllExportColumns = () => {
   setExportColumnKeys(EXPORT_COLUMNS.map(c => c.key));
   renderExportPanel();
+  refreshExportPreviewIfVisible();
   toast("Sve rubrike za Excel su označene.");
 };
 
@@ -5827,18 +5829,21 @@ window.clearExportColumns = () => {
   setExportColumnKeys([]);
   $$("#exportColumnsBox input[type='checkbox']").forEach(cb => cb.checked = false);
   renderExportPanel();
+  refreshExportPreviewIfVisible();
   toast("Sve rubrike za Excel su poništene.");
 };
 
 window.applySimpleExportColumns = () => {
   setExportColumnKeys(SIMPLE_EXPORT_KEYS);
   renderExportPanel();
+  refreshExportPreviewIfVisible();
   toast("Uključen je jednostavan Excel prikaz.");
 };
 
 window.applyDetailedExportColumns = () => {
   setExportColumnKeys(EXPORT_COLUMNS.map(c => c.key));
   renderExportPanel();
+  refreshExportPreviewIfVisible();
   toast("Uključen je detaljan Excel prikaz.");
 };
 
@@ -5848,6 +5853,7 @@ window.selectExportGroup = (groupId) => {
   const current = getExportColumnKeys();
   setExportColumnKeys(Array.from(new Set([...current, ...group.keys])));
   renderExportPanel();
+  refreshExportPreviewIfVisible();
 };
 
 window.clearExportGroup = (groupId) => {
@@ -5856,6 +5862,7 @@ window.clearExportGroup = (groupId) => {
   const remove = new Set(group.keys);
   setExportColumnKeys(getExportColumnKeys().filter(k => !remove.has(k)));
   renderExportPanel();
+  refreshExportPreviewIfVisible();
 };
 
 function getSelectedReportsForExport() {
@@ -6100,6 +6107,106 @@ function setExportTemplateType(type) {
 function exportTemplateLabel(type = getExportTemplateType()) {
   if (type === "summary") return "Obračunski kalup sa ukupnim zbirom";
   return "Klasični Excel kalup";
+}
+
+function getSmartExportUiText(type) {
+  const t = type || "all";
+  const map = {
+    hours_workers: {
+      workerLabel: "Radnik",
+      workerPlaceholder: "npr. Marko ili prazno za sve radnike",
+      itemLabel: "Dodatno",
+      itemPlaceholder: "nije obavezno za radne sate",
+      hideItem: true,
+      hint: "Radni sati: izaberi gradilište i period. Radnika upiši samo ako tražiš pojedinca."
+    },
+    machines: {
+      workerLabel: "Operator / radnik",
+      workerPlaceholder: "npr. Marko ili prazno za sve operatore",
+      itemLabel: "Mašina",
+      itemPlaceholder: "npr. CAT 330, bager, valjak",
+      hideItem: false,
+      hint: "Mašine / MTČ: u polje Mašina možeš upisati broj ili naziv mašine."
+    },
+    vehicles: {
+      workerLabel: "Vozač",
+      workerPlaceholder: "npr. Jovan ili prazno za sve vozače",
+      itemLabel: "Vozilo / tablice",
+      itemPlaceholder: "npr. MAN, BG123, kiper",
+      hideItem: false,
+      hint: "Vozila: koristi za ture, kilometražu i m³."
+    },
+    fuel_all: {
+      workerLabel: "Sipao / primio",
+      workerPlaceholder: "npr. Milan ili prazno za sve",
+      itemLabel: "Mašina / vozilo",
+      itemPlaceholder: "npr. CAT 330, MAN, BG123",
+      hideItem: false,
+      hint: "Gorivo: prikazuje samo sipanja goriva. Ne spaja se sa materijalom, satima ili MTČ radom."
+    },
+    fuel_tanker: {
+      workerLabel: "Primio gorivo",
+      workerPlaceholder: "npr. Marko ili prazno za sve",
+      itemLabel: "Tankovano sredstvo",
+      itemPlaceholder: "npr. bager, kamion, registracija",
+      hideItem: false,
+      hint: "Cisterna: prikazuje sipanja iz cisterne po gradilištu i datumu."
+    },
+    materials: {
+      workerLabel: "Vozač / radnik",
+      workerPlaceholder: "npr. Marko ili prazno za sve",
+      itemLabel: "Materijal",
+      itemPlaceholder: "npr. kamen 0-31, pesak, zemlja",
+      hideItem: false,
+      hint: "Materijal: svako ime materijala računa se posebno. Ture i količina ostaju materijal-only."
+    }
+  };
+  return map[t] || {
+    workerLabel: "Radnik / ime",
+    workerPlaceholder: "npr. Marko ili prazno za sve",
+    itemLabel: "Stavka / naziv",
+    itemPlaceholder: "npr. CAT 330, MAN, kamen 0-31",
+    hideItem: false,
+    hint: "Izaberi filtere i klikni Prikaži pregled."
+  };
+}
+
+function updateSmartExportFieldLabels(type) {
+  const text = getSmartExportUiText(type);
+  const workerLabel = $("#smartExportWorkerLabel");
+  const workerInput = $("#smartExportWorker");
+  const itemWrap = $("#smartExportItemWrap");
+  const itemLabel = $("#smartExportItemLabel");
+  const itemInput = $("#smartExportItem");
+  if (workerLabel) workerLabel.textContent = text.workerLabel;
+  if (workerInput) workerInput.placeholder = text.workerPlaceholder;
+  if (itemLabel) itemLabel.textContent = text.itemLabel;
+  if (itemInput) itemInput.placeholder = text.itemPlaceholder;
+  if (itemWrap) itemWrap.classList.toggle("hidden", !!text.hideItem);
+}
+
+function showExportPreviewMessage(message, isError = false) {
+  const box = $("#exportPreviewBox");
+  if (!box) return;
+  box.innerHTML = `<div class="export-preview-empty ${isError ? "error" : ""}">
+    <b>${isError ? "⚠️ Nema spremne tabele" : "ℹ️ Pregled"}</b>
+    <p>${escapeHtml(message)}</p>
+  </div>`;
+  box.classList.remove("hidden");
+  const actions = $("#exportPreviewActions");
+  if (actions) actions.classList.add("hidden");
+}
+
+function refreshExportPreviewIfVisible() {
+  const box = $("#exportPreviewBox");
+  if (!box || box.classList.contains("hidden") || !box.innerHTML.trim()) return;
+  try {
+    box.innerHTML = buildExportPreviewHtml();
+    const actions = $("#exportPreviewActions");
+    if (actions) actions.classList.remove("hidden");
+  } catch (e) {
+    showExportPreviewMessage(e.message, true);
+  }
 }
 
 function smartExportReportMatches(r, settings) {
@@ -6376,8 +6483,10 @@ window.setSmartExportType = (type) => {
   // Namerno biramo rubrike samo kada korisnik menja grupu.
   // Render panela više ne sme sam da vraća štiklirano, jer tada “Poništi sve rubrike” izgleda kao da ne radi.
   setExportColumnKeys(preset.keys);
+  updateSmartExportFieldLabels(cleanType);
   const info = $("#smartExportInfo");
-  if (info) info.textContent = `Izabrana grupa: ${preset.title}. Po potrebi upiši datum/gradilište/radnika. Zatim klikni “Odaberi sve i prikaži tabelu”.`;
+  if (info) info.textContent = getSmartExportUiText(cleanType).hint;
+  showExportPreviewMessage("Izabrana je grupa: " + preset.title + ". Upiši filtere ako treba, pa klikni Prikaži pregled.");
   renderExportPanel();
 };
 
@@ -6415,8 +6524,10 @@ window.clearSmartExportFilters = () => {
   });
   const tpl = $("#exportTemplateType");
   if (tpl) tpl.value = "classic";
+  updateSmartExportFieldLabels("all");
   const info = $("#smartExportInfo");
-  if (info) info.textContent = "Filter je očišćen. Možeš ručno birati izveštaje i kolone.";
+  if (info) info.textContent = "Filter je očišćen. Izaberi grupu i klikni Prikaži pregled.";
+  showExportPreviewMessage("Filteri su očišćeni. Izaberi grupu izveštaja i prikaži pregled.");
   toast("Filter za poseban Excel je očišćen.");
 };
 
@@ -6430,6 +6541,7 @@ function restoreSmartExportControls() {
   if ($("#smartExportItem")) $("#smartExportItem").value = settings.item;
   if ($("#exportTemplateType")) $("#exportTemplateType").value = getExportTemplateType();
   highlightSmartExportCards(settings.type || "all");
+  updateSmartExportFieldLabels(settings.type || "all");
 }
 
 function getExportRowsAndColumns() {
@@ -6617,9 +6729,13 @@ window.renderExportPreview = () => {
     box.classList.remove("hidden");
     const actions = $("#exportPreviewActions");
     if (actions) actions.classList.remove("hidden");
-    box.scrollIntoView({ behavior: "smooth", block: "start" });
-    toast("Tabela je prikazana. Sada možeš skinuti štikle koje ne želiš, štampati ili preuzeti Excel.");
+    const info = $("#smartExportInfo");
+    if (info) info.textContent = `${preset.title}: prikazan je pregled. Ako želiš manje kolona, skini štikle u delu “Kolone u tabeli”.`;
+    toast("Tabela je prikazana. Možeš štampati, preuzeti Excel ili skinuti višak kolona.");
   } catch(e) {
+    const info = $("#smartExportInfo");
+    if (info) info.textContent = e.message;
+    showExportPreviewMessage(e.message + " Proveri datum, gradilište ili izaberi drugu grupu.", true);
     toast(e.message, true);
   }
 };
