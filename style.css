@@ -3132,3 +3132,91 @@ body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-su
   background:#fffaf0!important;
   color:#5a3b14!important;
 }
+
+
+/* v1.27.1 — Direkcija/Uprava compact mouse buttons
+   Radnički/terenski panel ostaje sa većim touch dugmadima. */
+#viewDirectorDashboard .list .edit-btn,
+#viewDirectorDashboard .list .delete-btn,
+#viewDirectorDashboard .list .danger-btn,
+#viewDirectorDashboard .list .archive-btn,
+#viewDirectorDashboard .list .archive-report-btn,
+#viewDirectorDashboard .list .hard-delete-report-btn,
+#viewDirectorDashboard .director-search-results button,
+#viewDirectorDashboard .report-export-toolbar button.small-action,
+#viewDirectorDashboard .management-actions button,
+#viewDirectorDashboard .person-actions-v1116 button,
+#viewDirectorDashboard .asset-actions-v1117 button,
+#viewDirectorDashboard .material-actions-v1119 button {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 30px !important;
+  padding: 6px 9px !important;
+  border-radius: 9px !important;
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  flex: 0 0 auto !important;
+  box-shadow: none !important;
+  white-space: nowrap !important;
+}
+
+#viewDirectorDashboard .list .item button + button,
+#viewDirectorDashboard .list .card button + button,
+#viewDirectorDashboard .management-actions button + button,
+#viewDirectorDashboard .person-actions-v1116 button + button,
+#viewDirectorDashboard .asset-actions-v1117 button + button,
+#viewDirectorDashboard .material-actions-v1119 button + button {
+  margin-left: 6px !important;
+}
+
+#viewDirectorDashboard .list .item,
+#viewDirectorDashboard .list .card,
+#viewDirectorDashboard .item {
+  gap: 8px !important;
+}
+
+#viewDirectorDashboard .asset-actions-v1117,
+#viewDirectorDashboard .material-actions-v1119,
+#viewDirectorDashboard .person-actions-v1116,
+#viewDirectorDashboard .management-actions,
+#viewDirectorDashboard .list .item .row,
+#viewDirectorDashboard .list .item .actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+}
+
+#viewDirectorDashboard .list .danger-btn,
+#viewDirectorDashboard .list .hard-delete-report-btn {
+  color: #b42318 !important;
+  background: #fff5f4 !important;
+  border-color: #f3b8b2 !important;
+}
+
+#viewDirectorDashboard .list .edit-btn,
+#viewDirectorDashboard .list .archive-btn,
+#viewDirectorDashboard .list .archive-report-btn {
+  color: #244335 !important;
+  background: #ffffff !important;
+  border-color: #bfd4c8 !important;
+}
+
+@media (max-width: 640px) {
+  #viewDirectorDashboard .list .edit-btn,
+  #viewDirectorDashboard .list .delete-btn,
+  #viewDirectorDashboard .list .danger-btn,
+  #viewDirectorDashboard .list .archive-btn,
+  #viewDirectorDashboard .list .archive-report-btn,
+  #viewDirectorDashboard .list .hard-delete-report-btn {
+    min-height: 34px !important;
+    padding: 7px 10px !important;
+    font-size: 13px !important;
+  }
+}
