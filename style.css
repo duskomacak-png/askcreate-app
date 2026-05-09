@@ -2711,3 +2711,80 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 .paper-empty-signature{break-inside:avoid}
 .paper-signature-line{margin-top:30px;border-top:1px solid #111827;width:260px;padding-top:6px;font-size:11px;color:#475569;text-align:center}
 @media print{.signature-pad-wrap,.signature-actions{display:none!important}.paper-signature-box{break-inside:avoid}.paper-signature-box img{max-height:70px}}
+
+
+/* =========================================================
+   v1.25.8 - LAPTOP PRIKAZ ZA RADNIKA / ŠEFA GRADILIŠTA
+   Samo drugačiji raspored. Ne menja dozvole, login ni slanje.
+   ========================================================= */
+.permission-note{
+  margin:4px 0 10px 26px!important;
+  line-height:1.35;
+}
+body.worker-field-theme.worker-desktop-panel #viewWorkerForm{
+  max-width:1320px!important;
+  margin:0 auto!important;
+  padding:18px 22px 28px!important;
+}
+body.worker-field-theme.worker-desktop-panel #viewWorkerForm .dashboard-head{
+  align-items:center!important;
+  padding:18px 22px!important;
+}
+body.worker-field-theme.worker-desktop-panel #workerHello::after{
+  content:"  · laptop prikaz";
+  font-size:.78rem;
+  color:#fecaca;
+  font-weight:800;
+  letter-spacing:.01em;
+}
+@media (min-width: 980px){
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px!important;
+    align-items:start!important;
+    padding:20px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > h3,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > p.hint,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > label,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > input#wrDate,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > #workerReturnedReports,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > #secWorkerSite,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > .row:last-child{
+    grid-column:1 / -1!important;
+  }
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > .dyn-section.active,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm > .card > .dyn-section{
+    margin-top:0!important;
+  }
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .dyn-section,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .entry-card,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .returned-panel,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .fuel-memory-panel{
+    padding:16px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .entry-card .grid.two,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .mini-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm input,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm select,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm textarea{
+    min-height:46px!important;
+    padding:11px 13px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm textarea{
+    min-height:88px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .primary,
+  body.worker-field-theme.worker-desktop-panel #viewWorkerForm .secondary{
+    min-height:42px!important;
+    padding:10px 14px!important;
+  }
+}
+@media (max-width: 979px){
+  body.worker-field-theme.worker-desktop-panel #workerHello::after{
+    content:"";
+  }
+}

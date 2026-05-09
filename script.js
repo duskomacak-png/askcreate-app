@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.7";
+const APP_VERSION = "1.25.8";
 
 
 let sb = null;
@@ -195,6 +195,7 @@ function show(view) {
     if (loginCard) loginCard.classList.remove("worker-company-locked-card");
   }
   document.body.classList.toggle("worker-field-theme", view === "WorkerForm");
+  if (view !== "WorkerForm") document.body.classList.remove("worker-desktop-panel");
   if (publicViews.includes(view)) {
     clearCompanyBrandFromBody();
     setInternalHeader("", "", false);
@@ -1155,6 +1156,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
   { key: "signature", title: "Potpis radnika", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime potpisnika opciono"] },
+  { key: "desktop_panel", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
   { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
   { key: "defects", title: "Evidencija kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
@@ -7448,6 +7450,11 @@ async function openWorkerForm() {
   loadDraft();
   loadWorkerReturnedReports();
   const perms = currentWorker.permissions || {};
+  const useDesktopPanel = !!(perms.desktop_panel || perms.laptop_view || perms.desktop_worker_panel);
+  document.body.classList.toggle("worker-desktop-panel", useDesktopPanel);
+  if (useDesktopPanel) {
+    setInternalHeader("Terenski unos - laptop prikaz", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  }
   if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
   if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
   if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
