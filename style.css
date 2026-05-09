@@ -2905,7 +2905,7 @@ body.worker-field-theme.site-log-mode #viewWorkerForm .secondary{
 }
 
 
-/* v1.26.1 FIX — Dnevnik gradilišta: select vrednosti i dugmad uvek vidljivi */
+/* v1.26.2 FIX — Dnevnik gradilišta: select vrednosti i dugmad uvek vidljivi */
 body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel select,
 body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel select option,
 body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel option,
@@ -2940,4 +2940,84 @@ body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-ac
 }
 body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-preview-box.hidden{
   display:none!important;
+}
+
+
+/* v1.26.2 FIX — Dnevnik gradilišta A4: crno na belo + PDF bez praznog papira */
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 *{
+  color:#111111!important;
+  -webkit-text-fill-color:#111111!important;
+  opacity:1!important;
+  text-shadow:none!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4{
+  background:#ffffff!important;
+  border:1px solid #9ca3af!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .paper-title-block h3{
+  color:#0b2f1c!important;
+  -webkit-text-fill-color:#0b2f1c!important;
+  font-weight:900!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .paper-title-block p,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .paper-footer-note,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .signed-file-note{
+  color:#333333!important;
+  -webkit-text-fill-color:#333333!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 h4,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 th{
+  color:#0f2f1e!important;
+  -webkit-text-fill-color:#0f2f1e!important;
+  font-weight:900!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 table,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 th,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 td{
+  border-color:#525252!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 td{
+  color:#111111!important;
+  -webkit-text-fill-color:#111111!important;
+}
+.site-log-pdf-force,
+.site-log-pdf-force *{
+  color:#111111!important;
+  -webkit-text-fill-color:#111111!important;
+  opacity:1!important;
+  visibility:visible!important;
+  text-shadow:none!important;
+  background-color:transparent;
+}
+.site-log-pdf-force{
+  background:#ffffff!important;
+}
+.site-log-pdf-force h3,
+.site-log-pdf-force h4,
+.site-log-pdf-force th{
+  color:#0f2f1e!important;
+  -webkit-text-fill-color:#0f2f1e!important;
+  font-weight:900!important;
+}
+.site-log-pdf-force table,
+.site-log-pdf-force th,
+.site-log-pdf-force td{
+  border-color:#444444!important;
+}
+@media print{
+  body.printing-report-paper .site-log-a4,
+  body.printing-report-paper .site-log-a4 *{
+    color:#111111!important;
+    -webkit-text-fill-color:#111111!important;
+    opacity:1!important;
+    text-shadow:none!important;
+  }
+  body.printing-report-paper .site-log-a4 h3,
+  body.printing-report-paper .site-log-a4 h4,
+  body.printing-report-paper .site-log-a4 th{
+    color:#0f2f1e!important;
+    -webkit-text-fill-color:#0f2f1e!important;
+    font-weight:900!important;
+  }
 }

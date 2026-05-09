@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.26.1";
+const APP_VERSION = "1.26.2";
 
 
 let sb = null;
@@ -5492,34 +5492,73 @@ async function downloadSiteLogA4() {
   let paper = document.getElementById("site-log-paper");
   if (!paper) { previewSiteLog(); paper = document.getElementById("site-log-paper"); }
   if (!paper) return toast("Prvo prikaži dnevnik.", true);
+
   const file = safeFilePart(`dnevnik-gradilista_${data.report_date_manual || today()}_${data.site_name || "gradiliste"}`) + ".pdf";
+
+  // v1.26.2: PDF se pravi isključivo iz A4 papira, ne iz cele aplikacije.
+  // Klon se stavlja u DOM jer html2canvas/html2pdf ponekad napravi prazan PDF iz odvojenog node-a.
   if (window.html2pdf) {
+    let holder = null;
     try {
       toast("Pripremam PDF dnevnik...");
       const clone = paper.cloneNode(true);
+      clone.id = "site-log-paper-pdf-clone";
+      clone.classList.add("site-log-pdf-force");
       clone.style.width = "190mm";
       clone.style.maxWidth = "190mm";
+      clone.style.minHeight = "auto";
       clone.style.boxShadow = "none";
       clone.style.border = "0";
       clone.style.margin = "0";
+      clone.style.padding = "10mm";
       clone.style.background = "#ffffff";
+      clone.style.color = "#111111";
+
+      holder = document.createElement("div");
+      holder.id = "site-log-pdf-holder";
+      holder.style.position = "fixed";
+      holder.style.left = "-10000px";
+      holder.style.top = "0";
+      holder.style.width = "210mm";
+      holder.style.background = "#ffffff";
+      holder.appendChild(clone);
+      document.body.appendChild(holder);
+
+      clone.querySelectorAll("*").forEach(el => {
+        el.style.color = "#111111";
+        el.style.opacity = "1";
+        el.style.visibility = "visible";
+      });
+      clone.querySelectorAll("table, th, td").forEach(el => {
+        el.style.borderColor = "#444444";
+      });
+
       const opt = {
         margin: [8, 8, 8, 8],
         filename: file,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: 1200
+        },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], avoid: [".report-section", ".paper-title-block"] }
+        pagebreak: { mode: ["css", "legacy"], avoid: [".report-section", ".paper-title-block", "tr"] }
       };
       await window.html2pdf().set(opt).from(clone).save();
       toast("PDF dnevnik je preuzet.");
     } catch (err) {
       console.error(err);
-      toast("PDF nije mogao automatski da se napravi. Otvaram štampu — izaberi Save as PDF.", true);
+      toast("PDF nije mogao automatski da se napravi. Otvaram štampu — u prozoru izaberi Save as PDF.", true);
       printSiteLog();
+    } finally {
+      if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
     }
   } else {
-    toast("PDF alat nije učitan. Otvaram štampu — izaberi Save as PDF.", true);
+    toast("PDF alat nije učitan. Otvaram štampu — u prozoru izaberi Save as PDF.", true);
     printSiteLog();
   }
 }
