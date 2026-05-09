@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1251" />
+  <link rel="stylesheet" href="style.css?v=1252" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -566,9 +566,16 @@
               <label>Stavka / naziv
                 <input id="smartExportItem" placeholder="npr. CAT 330, MAN, kamen 0-31, BG123" />
               </label>
+              <label>Excel kalup
+                <select id="exportTemplateType">
+                  <option value="classic">Klasični Excel kalup</option>
+                  <option value="summary">Obračunski kalup sa ukupnim zbirom</option>
+                </select>
+              </label>
             </div>
             <div class="row compact">
               <button id="applySmartExportBtn" class="primary" type="button">🔎 Pripremi poseban Excel</button>
+              <button id="previewExportBtn" class="secondary" type="button">👁️ Prikaži kalup</button>
               <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filter</button>
             </div>
             <p id="smartExportInfo" class="hint">Primeri: “Radnici / sati” + Zmaj + maj; “Materijal” + kamen 0-31; “Gorivo – cisterna” + datum od/do.</p>
@@ -596,6 +603,19 @@
               <button id="clearColumnsBtn" class="secondary" type="button">Poništi sve rubrike</button>
             </div>
             <div id="exportColumnsBox" class="export-groups-list"></div>
+          </div>
+
+          <div class="export-box export-preview-box">
+            <div class="row space-between">
+              <div>
+                <h4>Pregled pre štampe</h4>
+                <p class="muted">Direkcija prvo vidi kako će izveštaj izgledati. Zatim može da preuzme Excel ili da štampa direktno iz aplikacije.</p>
+              </div>
+              <div id="exportPreviewActions" class="row compact hidden">
+                <button id="printExportBtn" class="primary" type="button">🖨️ Štampaj</button>
+              </div>
+            </div>
+            <div id="exportPreviewBox" class="export-preview-stage hidden"></div>
           </div>
 
           <div class="export-box export-download-box">
@@ -857,6 +877,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1251"></script>
+  <script src="script.js?v=1252"></script>
 </body>
 </html>

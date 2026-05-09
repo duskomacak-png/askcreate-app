@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.1";
+const APP_VERSION = "1.25.2";
 
 
 let sb = null;
@@ -5595,6 +5595,7 @@ function downloadBlob(blob, fileName) {
 const EXPORT_SELECTION_KEY = "swp_export_report_ids";
 const EXPORT_COLUMN_KEY = "swp_export_columns";
 const SMART_EXPORT_KEY = "swp_smart_export_settings";
+const EXPORT_TEMPLATE_KEY = "swp_export_template";
 
 const EXPORT_COLUMNS = [
   { key:"date", label:"Datum" },
@@ -6085,6 +6086,21 @@ function setSmartExportSettings(settings) {
   return clean;
 }
 
+function getExportTemplateType() {
+  return localStorage.getItem(EXPORT_TEMPLATE_KEY) || "classic";
+}
+
+function setExportTemplateType(type) {
+  const clean = ["classic", "summary"].includes(type) ? type : "classic";
+  localStorage.setItem(EXPORT_TEMPLATE_KEY, clean);
+  return clean;
+}
+
+function exportTemplateLabel(type = getExportTemplateType()) {
+  if (type === "summary") return "Obračunski kalup sa ukupnim zbirom";
+  return "Klasični Excel kalup";
+}
+
 function smartExportReportMatches(r, settings) {
   const d = r.data || {};
   const date = String(r.report_date || "").slice(0, 10);
@@ -6357,6 +6373,7 @@ window.applySmartExportFilters = () => {
     worker: $("#smartExportWorker")?.value || "",
     item: $("#smartExportItem")?.value || ""
   });
+  setExportTemplateType($("#exportTemplateType")?.value || "classic");
   const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
   const reports = directorReportsCache
     .filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r))
@@ -6373,11 +6390,14 @@ window.applySmartExportFilters = () => {
 
 window.clearSmartExportFilters = () => {
   setSmartExportSettings({ type:"all", from:"", to:"", site:"", worker:"", item:"" });
+  setExportTemplateType("classic");
   ["#smartExportType", "#smartExportFrom", "#smartExportTo", "#smartExportSite", "#smartExportWorker", "#smartExportItem"].forEach(sel => {
     const el = $(sel);
     if (!el) return;
     el.value = sel === "#smartExportType" ? "all" : "";
   });
+  const tpl = $("#exportTemplateType");
+  if (tpl) tpl.value = "classic";
   const info = $("#smartExportInfo");
   if (info) info.textContent = "Filter je očišćen. Možeš ručno birati izveštaje i kolone.";
   toast("Filter za poseban Excel je očišćen.");
@@ -6391,6 +6411,7 @@ function restoreSmartExportControls() {
   if ($("#smartExportSite")) $("#smartExportSite").value = settings.site;
   if ($("#smartExportWorker")) $("#smartExportWorker").value = settings.worker;
   if ($("#smartExportItem")) $("#smartExportItem").value = settings.item;
+  if ($("#exportTemplateType")) $("#exportTemplateType").value = getExportTemplateType();
 }
 
 function getExportRowsAndColumns() {
@@ -6465,6 +6486,134 @@ function renderExportPanel() {
     if (id) cb.checked = selectedIds.has(id);
   });
 }
+
+
+function numericValue(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  const n = parseFloat(String(value).replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function sumRowsByKey(rows, key) {
+  return rows.reduce((sum, row) => sum + numericValue(row[key]), 0);
+}
+
+function getExportSummaryLines(type, rows) {
+  const lines = [];
+  if (!rows.length) return lines;
+  if (type === "hours_workers") {
+    lines.push(["Ukupno sati", sumRowsByKey(rows, "hours") + sumRowsByKey(rows, "crew_hours")]);
+  }
+  if (type === "machines") lines.push(["Ukupno MTČ", sumRowsByKey(rows, "machine_hours")]);
+  if (type === "vehicles") {
+    lines.push(["Ukupno tura", sumRowsByKey(rows, "tours")]);
+    lines.push(["Ukupno m³", sumRowsByKey(rows, "cubic")]);
+  }
+  if (type === "fuel_all" || type === "fuel_own") lines.push(["Ukupno litara", sumRowsByKey(rows, "fuel_liters")]);
+  if (type === "fuel_tanker") lines.push(["Ukupno litara iz cisterne", sumRowsByKey(rows, "field_tanker_liters")]);
+  if (type === "materials") {
+    lines.push(["Ukupno tura materijala", sumRowsByKey(rows, "material_tours")]);
+    lines.push(["Ukupna količina", sumRowsByKey(rows, "quantity")]);
+  }
+  return lines.filter(line => line[1] !== 0 && line[1] !== "");
+}
+
+function currentCompanyExportName() {
+  return currentCompany?.company_name || currentCompany?.name || currentCompany?.approved_email || "Firma";
+}
+
+function exportFilterSummary(settings) {
+  return [
+    settings.site ? `Gradilište: ${settings.site}` : "Gradilište: sva",
+    settings.from ? `Od: ${settings.from}` : "Od: —",
+    settings.to ? `Do: ${settings.to}` : "Do: —",
+    settings.worker ? `Radnik: ${settings.worker}` : "Radnik: svi",
+    settings.item ? `Stavka: ${settings.item}` : "Stavka: sve"
+  ];
+}
+
+function buildExportPreviewHtml() {
+  const { columns, rows } = getExportRowsAndColumns();
+  const settings = getSmartExportSettings();
+  const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
+  const template = getExportTemplateType();
+  if (!columns.length) throw new Error("Štikliraj bar jednu rubriku za pregled.");
+  if (!rows.length) throw new Error("Nema redova za pregled. Proveri filtere ili izabrane izveštaje.");
+
+  const filters = exportFilterSummary(settings).map(x => `<span>${escapeHtml(x)}</span>`).join("");
+  const head = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
+  const body = rows.map((row) => `<tr>${columns.map(c => `<td>${escapeHtml(excelCellText(row[c.key]))}</td>`).join("")}</tr>`).join("");
+  const summaryLines = getExportSummaryLines(settings.type, rows);
+  const summaryHtml = summaryLines.length ? `<div class="export-preview-summary"><h4>Ukupno</h4>${summaryLines.map(([label, value]) => `<p><b>${escapeHtml(label)}:</b> ${escapeHtml(value)}</p>`).join("")}</div>` : "";
+  const className = template === "summary" ? "export-preview-paper summary-template" : "export-preview-paper classic-template";
+  return `<div class="${className}">
+    <div class="export-preview-head">
+      <div>
+        <small>START WORK PRO</small>
+        <h2>${escapeHtml(preset.title)}</h2>
+        <p>Firma: ${escapeHtml(currentCompanyExportName())}</p>
+      </div>
+      <div class="export-preview-stamp">
+        <b>${escapeHtml(exportTemplateLabel(template))}</b>
+        <span>${escapeHtml(today())}</span>
+      </div>
+    </div>
+    <div class="export-preview-filters">${filters}</div>
+    ${template === "summary" ? summaryHtml : ""}
+    <div class="export-preview-table-wrap">
+      <table class="export-preview-table">
+        <thead>${head}</thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+    ${template === "classic" ? summaryHtml : ""}
+    <div class="export-preview-signatures">
+      <span>Pripremio: ____________________</span>
+      <span>Kontrolisao: ____________________</span>
+    </div>
+  </div>`;
+}
+
+window.renderExportPreview = () => {
+  try {
+    const settings = setSmartExportSettings({
+      type: $("#smartExportType")?.value || "all",
+      from: $("#smartExportFrom")?.value || "",
+      to: $("#smartExportTo")?.value || "",
+      site: $("#smartExportSite")?.value || "",
+      worker: $("#smartExportWorker")?.value || "",
+      item: $("#smartExportItem")?.value || ""
+    });
+    const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
+    const reports = directorReportsCache
+      .filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r))
+      .filter(r => smartExportReportMatches(r, settings))
+      .filter(r => getSmartRowsForReport(r, settings).length > 0);
+    setExportSelectedIds(reports.map(r => r.id));
+    setExportColumnKeys(preset.keys);
+    setExportTemplateType($("#exportTemplateType")?.value || "classic");
+    const box = $("#exportPreviewBox");
+    if (!box) return;
+    box.innerHTML = buildExportPreviewHtml();
+    box.classList.remove("hidden");
+    const actions = $("#exportPreviewActions");
+    if (actions) actions.classList.remove("hidden");
+    toast("Pregled kalupa je pripremljen.");
+  } catch(e) {
+    toast(e.message, true);
+  }
+};
+
+window.printExportPreview = () => {
+  try {
+    if (!$("#exportPreviewBox")?.innerHTML.trim()) renderExportPreview();
+    document.body.classList.add("printing-export-preview");
+    setTimeout(() => window.print(), 50);
+    setTimeout(() => document.body.classList.remove("printing-export-preview"), 700);
+  } catch(e) {
+    toast(e.message, true);
+  }
+};
 
 function buildCsvContent(delimiter = ";") {
   const { columns, rows } = getExportRowsAndColumns();

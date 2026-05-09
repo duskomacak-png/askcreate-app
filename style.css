@@ -2523,3 +2523,40 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 .smart-export-card:hover{border-color:var(--primary);transform:translateY(-1px)}
 @media(max-width:900px){.smart-export-cards{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.smart-export-cards{grid-template-columns:1fr}.smart-export-card{padding:10px}}
+
+
+/* v1.25.2 — Excel kalupi: pregled pre štampe */
+.hidden{display:none!important}
+.export-preview-stage{margin-top:14px;overflow:auto;background:#e5e7eb;border:1px solid var(--border);border-radius:16px;padding:16px}
+.export-preview-paper{background:#fff;color:#111827;width:1120px;max-width:100%;min-height:520px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;box-shadow:0 14px 34px rgba(15,23,42,.16);font-family:Arial, Helvetica, sans-serif}
+.export-preview-head{display:flex;justify-content:space-between;gap:18px;border-bottom:3px solid #0f7a3b;padding-bottom:14px;margin-bottom:14px}
+.export-preview-head small{font-weight:900;letter-spacing:.12em;color:#0f7a3b}
+.export-preview-head h2{margin:5px 0 4px;font-size:22px;color:#111827;text-transform:uppercase}
+.export-preview-head p{margin:0;color:#374151;font-size:13px}
+.export-preview-stamp{text-align:right;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;min-width:180px;background:#f8fafc}
+.export-preview-stamp b,.export-preview-stamp span{display:block;color:#111827;font-size:12px}
+.export-preview-filters{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 14px}
+.export-preview-filters span{border:1px solid #d1d5db;background:#f9fafb;border-radius:999px;padding:6px 9px;font-size:12px;color:#374151}
+.export-preview-table-wrap{overflow:auto;border:1px solid #cbd5e1;border-radius:8px}
+.export-preview-table{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
+.export-preview-table th{background:#0f7a3b;color:#fff;border:1px solid #0b5f2e;padding:8px;text-align:left;white-space:nowrap}
+.export-preview-table td{border:1px solid #d1d5db;padding:7px 8px;vertical-align:top;background:#fff}
+.export-preview-table tbody tr:nth-child(even) td{background:#f8fbf8}
+.export-preview-summary{margin:14px 0;padding:12px 14px;border:1px solid #b7e0c2;background:#f0fdf4;border-radius:10px;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.export-preview-summary h4{margin:0;color:#14532d}
+.export-preview-summary p{margin:0;color:#111827}
+.summary-template .export-preview-summary{border-width:2px;font-size:14px}
+.export-preview-signatures{display:flex;justify-content:space-between;gap:20px;margin-top:26px;color:#374151;font-size:12px}
+@media(max-width:700px){.export-preview-stage{padding:8px}.export-preview-paper{padding:14px}.export-preview-head{flex-direction:column}.export-preview-stamp{text-align:left}.export-preview-signatures{flex-direction:column}}
+@media print{
+  body.printing-export-preview *{visibility:hidden!important}
+  body.printing-export-preview #exportPreviewBox,
+  body.printing-export-preview #exportPreviewBox *{visibility:visible!important}
+  body.printing-export-preview #exportPreviewBox{display:block!important;position:absolute;left:0;top:0;width:100%;background:#fff;border:0;padding:0;margin:0;overflow:visible}
+  body.printing-export-preview .export-preview-stage{display:block!important;background:#fff;border:0;padding:0;margin:0;overflow:visible}
+  body.printing-export-preview .export-preview-paper{width:100%;max-width:none;min-height:auto;border:0;box-shadow:none;margin:0;padding:0}
+  body.printing-export-preview .export-preview-table-wrap{overflow:visible;border:0}
+  body.printing-export-preview .export-preview-table{font-size:10px}
+  body.printing-export-preview .export-preview-head{break-inside:avoid}
+  body.printing-export-preview .export-preview-signatures{break-inside:avoid}
+}
