@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.28.4";
+const APP_VERSION = "1.28.5";
 
 
 let sb = null;
@@ -8435,4 +8435,13 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   loadWorkerReturnedReports();
   toast("Ispravljen izveštaj je ponovo poslat Upravi ✅ Forma je spremna za sledeći unos.");
   return true;
+}
+
+function copySupportEmail() {
+  const email = "duskomacak@gmail.com";
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(email).then(() => showToast("Email podrške je kopiran.")).catch(() => showToast(email));
+  } else {
+    showToast(email);
+  }
 }

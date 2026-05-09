@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AskCreate.app</title>
   <meta name="theme-color" content="#2f7d46" />
-  <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
+  <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1284" />
+  <link rel="stylesheet" href="style.css?v=1285" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -59,6 +59,82 @@
       <div class="notice home-mvp-notice">
         <strong>Pravilo rada:</strong> terenski izvršilac ne vidi staru arhivu. Popuni izveštaj, pošalje Upravi firme, forma se čisti.
       </div>
+
+      <section class="public-info-panel card" aria-label="Informacije o aplikaciji">
+        <div class="public-info-head">
+          <p class="business-eyebrow">Šta je AskCreate.app</p>
+          <h2>Terenski izveštaji, kancelarijska kontrola i Excel evidencija na jednom mestu</h2>
+          <p>AskCreate.app je poslovni alat namenjen firmama koje žele uredniji rad između terena i kancelarije. Terenski izvršilac unosi dnevni rad, odgovorno lice gradilišta vodi dnevnik gradilišta, a Uprava firme pregleda, vraća na ispravku, odobrava i izvozi podatke u Excel.</p>
+        </div>
+        <div class="public-info-grid">
+          <article>
+            <h3>Za koga je namenjeno</h3>
+            <p>Za građevinske, uslužne, terenske i manje poslovne firme koje žele manje papira, manje poziva i manje ručnog prepisivanja podataka.</p>
+          </article>
+          <article>
+            <h3>Šta aplikacija radi</h3>
+            <p>Omogućava evidenciju zaposlenih, gradilišta, sredstava rada, materijala, dnevnih izveštaja, dnevnika gradilišta, kvarova, odobravanja i izvoza u Excel.</p>
+          </article>
+          <article>
+            <h3>Kako se koristi</h3>
+            <p>Uprava podešava firmu i pristupe, zaposleni unose podatke sa terena, a kancelarija pregleda dokumente i čuva poslovnu evidenciju.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="public-legal-panel card" aria-label="Uslovi korišćenja i odgovornost korisnika">
+        <div class="public-info-head">
+          <p class="business-eyebrow">Uslovi i odgovornost</p>
+          <h2>Važne napomene za korisnike</h2>
+          <p>Ovaj deo je postavljen radi jasnog korišćenja aplikacije i zaštite korisnika i administratora platforme. Korišćenjem aplikacije korisnik prihvata da podatke unosi tačno, odgovorno i u skladu sa pravilima svoje firme.</p>
+        </div>
+
+        <div class="legal-details-list">
+          <details open>
+            <summary>Odgovornost za uneti sadržaj</summary>
+            <p>Korisnik i firma su odgovorni za tačnost, zakonitost i potpunost podataka koje unose u aplikaciju, uključujući izveštaje, opise rada, sate, materijale, gorivo, kvarove, potpise, dokumente i druge priloge. AskCreate.app ne potvrđuje istinitost unetih podataka i ne odgovara za netačne, nepotpune ili neovlašćeno unete informacije.</p>
+          </details>
+
+          <details>
+            <summary>Namena aplikacije</summary>
+            <p>Aplikacija je namenjena kao pomoćni poslovni alat za evidenciju i organizaciju rada. Izveštaji, Excel fajlovi, PDF dokumenti i štampani primerci služe kao interna poslovna evidencija firme, osim ako firma drugačije ne uredi svojim pravilima i važećim propisima.</p>
+          </details>
+
+          <details>
+            <summary>Pravila pristupa</summary>
+            <p>Uprava firme je odgovorna za kreiranje korisničkih profila, dodelu pristupnih kodova i uključivanje rubrika koje zaposleni ili odgovorna lica mogu koristiti. Korisnik ne treba da deli svoj pristupni kod sa drugim osobama.</p>
+          </details>
+
+          <details>
+            <summary>Čuvanje i izvoz podataka</summary>
+            <p>Uprava firme treba redovno da pregleda, odobrava, arhivira i izvozi važne podatke. Aplikacija pomaže u organizaciji podataka, ali firma ostaje odgovorna za svoju poslovnu arhivu, obračune, zakonske obaveze i interne kontrole.</p>
+          </details>
+
+          <details>
+            <summary>Tehnička dostupnost</summary>
+            <p>AskCreate.app se oslanja na internet, hosting, browser i povezane tehničke servise. Mogući su prekidi, kašnjenja, greške u vezi, održavanje sistema ili problemi na uređaju korisnika. Preporuka je da se važni izveštaji periodično izvoze u Excel/PDF i čuvaju u arhivi firme.</p>
+          </details>
+
+          <details>
+            <summary>Privatnost i poverljivost</summary>
+            <p>Korisnici ne treba da unose podatke za koje nemaju ovlašćenje. Firma je odgovorna da aplikaciju koristi u skladu sa svojim pravilima, ugovorima i obavezama prema zaposlenima, klijentima i partnerima.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="public-contact-panel card" aria-label="Kontakt i podrška">
+        <div>
+          <p class="business-eyebrow">Kontakt</p>
+          <h2>Kontaktirajte menadžera platforme</h2>
+          <p>Za aktivaciju firme, produženje korišćenja, tehničku podršku ili pitanje oko podešavanja aplikacije, pošaljite email administratoru platforme.</p>
+        </div>
+        <div class="public-contact-actions">
+          <a class="primary support-link-btn" href="mailto:duskomacak@gmail.com?subject=AskCreate.app%20-%20kontakt%20i%20podr%C5%A1ka">Kontaktiraj menadžera</a>
+          <button class="secondary" type="button" onclick="copySupportEmail()">Kopiraj email</button>
+        </div>
+        <p class="support-email-line">Email podrške: <strong>duskomacak@gmail.com</strong></p>
+      </section>
+
     </section>
 
     <section id="viewAdminLogin" class="view">
@@ -1042,6 +1118,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1284"></script>
+  <script src="script.js?v=1285"></script>
 </body>
 </html>
