@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.26.8";
+const APP_VERSION = "1.26.9";
 
 
 let sb = null;
@@ -56,8 +56,8 @@ function showCurrentCompanyLoginInfo() {
   if (!box || !currentCompany) return;
   const companyCode = currentCompany.code || currentCompany.company_code || "";
   box.innerHTML = `
-    <b>Prijava radnika:</b>
-    <span>Šifra firme je <strong>${escapeHtml(companyCode)}</strong>. Ovde upisuješ samo ličnu šifru radnika.</span>
+    <b>Prijava zaposlenog:</b>
+    <span>Šifra firme je <strong>${escapeHtml(companyCode)}</strong>. Ovde upisuješ samo lični pristupni kod zaposlenog.</span>
   `;
 }
 
@@ -164,7 +164,7 @@ function businessCollectFuelLiters(data) {
 
   // Važno: ne sabiramo rekurzivno sva polja iz report.data.
   // Stari kod je mogao duplo brojati d.fuel_liters + fuel_entries[].liters
-  // i praviti pogrešan zbir goriva u Direkcija dashboardu.
+  // i praviti pogrešan zbir goriva u Uprava firme dashboardu.
   if (fuelEntries.length || fieldTankerEntries.length) return fuelTotal + tankerTotal;
 
   // Fallback samo za stare izveštaje koji nemaju niz fuel_entries.
@@ -187,7 +187,7 @@ function businessUpdateReportsMetrics(list) {
 function show(view) {
   const publicViews = ["Home", "AdminLogin", "DirectorLogin", "WorkerLogin"];
   // VAŽNO: QR radnički login ima svoj "samo kod" izgled.
-  // Kada radnik uspešno uđe u profil, taj login izgled mora nestati,
+  // Kada zaposleni uspešno uđe u profil, taj login izgled mora nestati,
   // inače forma za prijavu ostaje iznad terenskog obrasca.
   if (view !== "WorkerLogin") {
     document.body.classList.remove("worker-code-only-mode", "worker-company-locked");
@@ -378,12 +378,12 @@ function setWorkerLoginModeLocked(isLocked) {
   const title = document.getElementById("workerLoginTitle");
   const codeLabel = document.getElementById("workerAccessCodeLabel");
   const help = document.getElementById("workerLoginHelpBox");
-  if (title) title.textContent = isLocked ? "Radnički ulaz" : "Terenski unos";
-  if (codeLabel) codeLabel.textContent = isLocked ? "Radnički kod" : "Šifra radnika";
+  if (title) title.textContent = isLocked ? "Radnički ulaz" : "Terenski radni unos";
+  if (codeLabel) codeLabel.textContent = isLocked ? "Pristupni kod zaposlenog" : "Pristupni kod zaposlenog";
   if (help) {
     help.innerHTML = isLocked
-      ? `<b>Radnički kod:</b><span>Upišite samo kod koji vam je dodelila Direkcija.</span>`
-      : `<b>Prijava radnika:</b><span>Radnik ulazi sa šifrom firme + svojim kodom. Kod radnika važi samo unutar ove firme.</span>`;
+      ? `<b>Pristupni kod zaposlenog:</b><span>Upišite samo kod koji vam je dodelila Uprava firme.</span>`
+      : `<b>Prijava zaposlenog:</b><span>Zaposleni ulazi sa šifrom firme + svojim kodom. Kod zaposlenog važi samo unutar ove firme.</span>`;
   }
 }
 
@@ -412,9 +412,9 @@ async function installWorkerApp() {
     }
     const ua = navigator.userAgent || "";
     if (/iphone|ipad|ipod/i.test(ua)) {
-      return alert("Za iPhone/iPad:\n\n1. Otvori ovaj link u Safari browseru.\n2. Dodirni Share / Podeli.\n3. Izaberi Add to Home Screen / Dodaj na početni ekran.\n\nPosle toga radnik otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
+      return alert("Za iPhone/iPad:\n\n1. Otvori ovaj link u Safari browseru.\n2. Dodirni Share / Podeli.\n3. Izaberi Add to Home Screen / Dodaj na početni ekran.\n\nPosle toga zaposleni otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
     }
-    alert("Ako se instalacija ne otvori automatski:\n\n1. Otvori meni browsera ⋮\n2. Izaberi Install app ili Add to Home screen\n3. Potvrdi dodavanje prečice.\n\nPosle toga radnik otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
+    alert("Ako se instalacija ne otvori automatski:\n\n1. Otvori meni browsera ⋮\n2. Izaberi Install app ili Add to Home screen\n3. Potvrdi dodavanje prečice.\n\nPosle toga zaposleni otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
   } catch (e) {
     toast("Instalacija nije uspela: " + (e?.message || e), true);
   }
@@ -502,9 +502,9 @@ function openCompanyQrModal(companyName, companyCode, source = "admin") {
   const nameEl = $("#companyQrCompanyName");
   const codeEl = $("#companyQrCompanyCode");
   const linkInput = $("#companyQrLink");
-  if (kicker) kicker.textContent = source === "director" ? "QR kod za radnike ove firme" : "Admin QR kod za radnike";
+  if (kicker) kicker.textContent = source === "director" ? "QR kod za zaposlene ove firme" : "Admin QR kod za zaposlene";
   if (title) title.textContent = `Radnički ulaz · ${name}`;
-  if (subtitle) subtitle.textContent = "Radnik skenira QR kod, preuzme app kao prečicu, a zatim upisuje samo svoj radnički kod.";
+  if (subtitle) subtitle.textContent = "Zaposleni skenira QR kod, preuzme app kao prečicu, a zatim upisuje samo svoj pristupni kod zaposlenog.";
   if (img) img.src = buildCompanyQrImageUrl(link, 420);
   if (nameEl) nameEl.textContent = name;
   if (codeEl) codeEl.textContent = code;
@@ -526,9 +526,9 @@ window.copyCompanyWorkerLinkFromModal = async () => {
   if (!link) return toast("Link nije pronađen.", true);
   try {
     await navigator.clipboard.writeText(link);
-    toast("Link za radnike je kopiran.");
+    toast("Link za zaposlene je kopiran.");
   } catch (e) {
-    window.prompt("Kopiraj link za radnike:", link);
+    window.prompt("Kopiraj link za zaposlene:", link);
   }
 };
 
@@ -573,7 +573,7 @@ function adminMessage(c, type = "renewed") {
     return `Poštovani,\n\nVaš Start Work PRO paket je istekao.\n\nFirma: ${company}\nPaket je važio do: ${validUntil}.\n\nMolimo vas da nas kontaktirate radi produženja paketa.\n\nStart Work PRO`;
   }
   if (type === "activation") {
-    return `Poštovani,\n\nVaša firma je dodata u Start Work PRO aplikaciju.\n\nPodaci za prvu aktivaciju:\n\nLink aplikacije: https://askcreate.app\nLink za radnike: ${buildWorkerCompanyLink(code)}\nEmail Uprave: ${email}\nŠifra firme: ${code}\nAktivacioni kod: ${invite}\n\nPrvi korak:\n1. Otvorite aplikaciju.\n2. Kliknite na “Uprava”.\n3. Registrujte email i lozinku.\n4. Unesite šifru firme i aktivacioni kod.\n5. Kliknite “Aktiviraj firmu”.\n\nNakon aktivacije, Uprava se ubuduće prijavljuje samo preko emaila i lozinke.\n\nStart Work PRO`;
+    return `Poštovani,\n\nVaša firma je dodata u Start Work PRO aplikaciju.\n\nPodaci za prvu aktivaciju:\n\nLink aplikacije: https://askcreate.app\nLink za zaposlene: ${buildWorkerCompanyLink(code)}\nEmail Uprave: ${email}\nŠifra firme: ${code}\nAktivacioni kod: ${invite}\n\nPrvi korak:\n1. Otvorite aplikaciju.\n2. Kliknite na “Uprava”.\n3. Registrujte email i lozinku.\n4. Unesite šifru firme i aktivacioni kod.\n5. Kliknite “Aktiviraj firmu”.\n\nNakon aktivacije, Uprava se ubuduće prijavljuje samo preko emaila i lozinke.\n\nStart Work PRO`;
   }
   return `Poštovani,\n\nVaš Start Work PRO paket je produžen.\n\nFirma: ${company}\nPaket važi do: ${validUntil}.\n\nMožete nastaviti normalno korišćenje aplikacije.\n\nHvala na poverenju.\nStart Work PRO`;
 }
@@ -614,8 +614,8 @@ function renderAdminCompanyCard(c, compact = false) {
       ${c.note ? `<p class="muted admin-note">Napomena: ${escapeHtml(c.note)}</p>` : ""}
       <div class="actions admin-crm-actions">
         <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
-        <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj radnika</button>
-        <button class="secondary" onclick="adminShowWorkerQr('${c.id}')">📲 QR za radnike</button>
+        <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj zaposlenog</button>
+        <button class="secondary" onclick="adminShowWorkerQr('${c.id}')">📲 QR za zaposlene</button>
         <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','activation')">📋 Prva aktivacija</button>
         <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','${messageType}')">📋 Poruka</button>
         <button class="secondary" onclick="adminOpenWhatsApp('${c.id}','${messageType}')">💬 WhatsApp</button>
@@ -746,8 +746,8 @@ async function loadCompanies() {
           ${adminRenewPackageHtml("companies", c.id, getCompanyPaidUntil(c))}
           <div class="actions admin-crm-actions">
             <button class="secondary" onclick="adminPreviewCompany('${c.id}','director')">👁️ Pogledaj firmu</button>
-            <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj radnika</button>
-        <button class="secondary" onclick="adminShowWorkerQr('${c.id}')">📲 QR za radnike</button>
+            <button class="secondary" onclick="adminPreviewCompany('${c.id}','worker')">👷 Pogledaj zaposlenog</button>
+        <button class="secondary" onclick="adminShowWorkerQr('${c.id}')">📲 QR za zaposlene</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','active')">Aktiviraj</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','expired')">Označi isteklo</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','blocked')">Blokiraj</button>
@@ -800,7 +800,7 @@ function renderAdminDirectorPreview(c) {
         <button>🏠 Početna / Ljudi</button>
         <button>🏗️ Gradilišta</button>
         <button>🚚 Sredstva rada</button>
-        <button>📄 Dnevni izveštaji</button>
+        <button>📄 Dnevni radni izveštaji</button>
         <button>📊 Izvoz u Excel</button>
       </aside>
       <main class="preview-main">
@@ -813,22 +813,22 @@ function renderAdminDirectorPreview(c) {
           <div class="preview-status">${adminPreviewStatusHtml(c)}</div>
         </div>
         <div class="preview-kpis">
-          <div><b>Radnici</b><strong>12</strong><small>primer prikaza</small></div>
+          <div><b>Zaposleni</b><strong>12</strong><small>primer prikaza</small></div>
           <div><b>Gradilišta</b><strong>4</strong><small>aktivna</small></div>
           <div><b>Izveštaji</b><strong>8</strong><small>za danas</small></div>
           <div><b>Gorivo</b><strong>340 L</strong><small>primer</small></div>
         </div>
         <div class="preview-grid">
           <section>
-            <h4>Dnevni izveštaji</h4>
-            <p>Uprava vidi izveštaje radnika, vraća na dopunu, odobrava i izvozi Excel.</p>
+            <h4>Dnevni radni izveštaji</h4>
+            <p>Uprava vidi izveštaje zaposlenog, vraća na ispravku, odobrava i izvozi Excel.</p>
             <div class="preview-table-row"><span>Bagerista</span><b>Novo</b></div>
-            <div class="preview-table-row"><span>Vozač kipera</span><b>Odobreno</b></div>
+            <div class="preview-table-row"><span>Ime i prezime vozača kipera</span><b>Odobreno</b></div>
             <div class="preview-table-row"><span>Kvar mašine</span><b>Za proveru</b></div>
           </section>
           <section>
             <h4>Brze akcije</h4>
-            <button>➕ Novi radnik</button>
+            <button>➕ Novi zaposleni</button>
             <button>🏗️ Novo gradilište</button>
             <button>📥 Preuzmi Excel</button>
           </section>
@@ -847,7 +847,7 @@ function renderAdminWorkerPreview(c) {
     <div class="preview-shell preview-worker brand-${brand}" style="--preview-brand:${color}">
       <div class="preview-phone">
         <div class="preview-phone-head">
-          <span>Terenski unos</span>
+          <span>Terenski radni unos</span>
           <b>${escapeHtml(name)}</b>
           <small>Šifra firme: ${escapeHtml(code)}</small>
         </div>
@@ -857,15 +857,15 @@ function renderAdminWorkerPreview(c) {
           <label>Ime gradilišta</label>
           <div class="fake-input">Gradilište iz liste Uprave</div>
         </div>
-        <div class="preview-worker-section"><b>👷 Radnici na gradilištu</b><small>radnik vidi samo ono što mu Uprava uključi</small></div>
+        <div class="preview-worker-section"><b>👷 Evidencija zaposlenih na gradilištu</b><small>zaposleni vidi samo ono što mu Uprava uključi</small></div>
         <div class="preview-worker-section"><b>⛽ Sipanje goriva</b><small>mašina/vozilo, litri, MTČ/km, primalac</small></div>
         <div class="preview-worker-section"><b>📦 Materijal</b><small>materijal, ture, količina, relacija</small></div>
-        <div class="preview-worker-section"><b>🛠️ Kvar</b><small>brzo slanje kvara šefu mehanizacije</small></div>
-        <button class="preview-send">Pošalji Direkciji</button>
+        <div class="preview-worker-section"><b>🛠️ Kvar</b><small>brzo slanje kvara odgovornom licu mehanizacije</small></div>
+        <button class="preview-send">Pošalji Upravi firme</button>
       </div>
       <div class="preview-worker-info">
-        <h4>Kako radnik vidi firmu</h4>
-        <p>Radnik vidi naziv firme, šifru firme i poslovnu boju firme. Ne vidi admin panel, plaćanje, druge firme ni tuđe izveštaje.</p>
+        <h4>Kako zaposleni vidi firmu</h4>
+        <p>Zaposleni vidi naziv firme, šifru firme i poslovnu boju firme. Ne vidi admin panel, plaćanje, druge firme ni tuđe izveštaje.</p>
         ${adminPreviewStatusHtml(c)}
       </div>
     </div>`;
@@ -882,8 +882,8 @@ window.adminPreviewCompany = (id, mode = "director") => {
   if (!modal || !body) return toast("Prozor za pregled nije pronađen.", true);
   const isWorker = mode === "worker";
   const name = adminCompanyDisplayName(c);
-  if (kicker) kicker.textContent = isWorker ? "Pregled radnika" : "Pregled Direkcije";
-  if (title) title.textContent = isWorker ? `Kako radnik vidi: ${name}` : `Kako Direkcija vidi: ${name}`;
+  if (kicker) kicker.textContent = isWorker ? "Pregled zaposlenog" : "Pregled Uprave firme";
+  if (title) title.textContent = isWorker ? `Kako zaposleni vidi: ${name}` : `Kako Uprava firme vidi: ${name}`;
   if (subtitle) subtitle.textContent = "Pregled je informativan. Ne menja podatke i ne šalje izveštaje.";
   body.innerHTML = isWorker ? renderAdminWorkerPreview(c) : renderAdminDirectorPreview(c);
   modal.classList.remove("hidden");
@@ -912,7 +912,7 @@ window.adminUpdateCompanyBrand = async (table, id, color) => {
     // VAŽNO v1.23.9:
     // Ako admin promeni boju u listi odobrenih firmi, a firma je već aktivirana,
     // mora se promeniti i red u tabeli companies. Inače Admin vidi novu boju,
-    // ali Uprava firme i radnik ostanu na staroj boji.
+    // ali Uprava firme i zaposleni ostanu na staroj boji.
     const companyCode = source?.company_code || "";
     const approvedEmail = source?.approved_email || source?.owner_email || "";
 
@@ -1128,7 +1128,7 @@ function setPersonFormMode(mode = "add") {
   const title = $("#personFormTitle");
   const btn = $("#addPersonBtn");
   const cancel = $("#cancelEditPersonBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi profil radnika" : "+ Dodaj osobu";
+  if (title) title.textContent = editing ? "✏️ Uredi unos profil zaposlenog" : "+ Dodaj osobu";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj osobu";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
@@ -1148,16 +1148,16 @@ function clearPersonForm() {
 
 const WORKER_PREVIEW_SECTIONS = [
   { key: "daily_work", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Uprave"] },
-  { key: "workers", title: "Radnici na gradilištu", lines: ["Ime i prezime radnika", "Sati rada", "+ Dodaj radnika"] },
+  { key: "workers", title: "Evidencija zaposlenih na gradilištu", lines: ["Ime i prezime zaposlenog", "Sati rada", "+ Dodaj zaposlenog"] },
   { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
   { key: "vehicles", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
   { key: "lowloader", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
   { key: "fuel", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
   { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
-  { key: "signature", title: "Potpis radnika", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime potpisnika opciono"] },
+  { key: "signature", title: "Potpis zaposlenog", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime i prezime potpisnika opciono"] },
   { key: "desktop_panel", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
-  { key: "site_daily_log", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Radnici/sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
+  { key: "site_daily_log", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
   { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
   { key: "defects", title: "Evidencija kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
@@ -1169,10 +1169,10 @@ const WORKER_PREVIEW_SECTIONS = [
 ];
 
 function getPersonPreviewData() {
-  const first = $("#personFirst")?.value.trim() || "Radnik";
+  const first = $("#personFirst")?.value.trim() || "Zaposleni";
   const last = $("#personLast")?.value.trim() || "";
-  const role = $("#personFunction")?.value.trim() || "terenski unos";
-  const code = $("#personCode")?.value.trim() || "šifra radnika";
+  const role = $("#personFunction")?.value.trim() || "terenski radni unos";
+  const code = $("#personCode")?.value.trim() || "šifra zaposlenog";
   const selectedKeys = $$(".perm:checked").map(ch => ch.value);
   const materialNames = $$(".material-perm:checked").map(ch => ch.dataset.name || ch.value).filter(Boolean);
   return { first, last, role, code, selectedKeys, materialNames };
@@ -1199,7 +1199,7 @@ function renderWorkerPreview(show = true) {
       <strong>${escapeHtml(section.title)}</strong>
       <ul>${section.lines.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
     </div>
-  `).join("") : `<p class="muted">Još nije štiklirana nijedna rubrika. Kad štikliraš rubriku levo, ovde se odmah vidi šta radnik dobija.</p>`;
+  `).join("") : `<p class="muted">Još nije štiklirana nijedna rubrika. Kad štikliraš rubriku levo, ovde se odmah vidi šta zaposleni dobija.</p>`;
 
   const materialsHtml = d.materialNames.length ? `
     <div class="worker-preview-section">
@@ -1210,14 +1210,14 @@ function renderWorkerPreview(show = true) {
 
   body.innerHTML = `
     <div class="phone-preview-shell">
-      <div class="phone-preview-topbar">Terenski unos</div>
+      <div class="phone-preview-topbar">Terenski radni unos</div>
       <div class="phone-preview-card">
         <h4>Dobrodošli, ${escapeHtml((d.first + " " + d.last).trim())}</h4>
         <p>${escapeHtml(currentCompany?.name || "Firma")} · ${escapeHtml(d.role)}</p>
-        <small>Šifra radnika: ${escapeHtml(d.code)}</small>
+        <small>Pristupni kod zaposlenog: ${escapeHtml(d.code)}</small>
       </div>
       <div class="phone-preview-card">
-        <h4>Rubrike koje će radnik videti</h4>
+        <h4>Rubrike koje će zaposleni videti</h4>
         ${sectionHtml}
         ${materialsHtml}
       </div>
@@ -1254,7 +1254,7 @@ window.editPerson = async (id) => {
       .eq("company_id", currentCompany.id)
       .maybeSingle();
     if (error) throw error;
-    if (!person) throw new Error("Radnik nije pronađen.");
+    if (!person) throw new Error("Zaposleni nije pronađen.");
 
     editingPersonId = person.id;
     $("#personFirst").value = person.first_name || "";
@@ -1269,7 +1269,7 @@ window.editPerson = async (id) => {
 
     setPersonFormMode("edit");
     renderWorkerPreview(true);
-    toast("Profil radnika je otvoren za izmenu.");
+    toast("Korisnički profil je otvoren za izmenu.");
     const title = $("#personFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (e) {
@@ -1286,10 +1286,10 @@ async function savePersonForm() {
     const functionTitle = $("#personFunction").value.trim();
     const code = normalizeLoginCode($("#personCode").value);
 
-    if (!firstName) throw new Error("Upiši ime radnika.");
-    if (!lastName) throw new Error("Upiši prezime radnika.");
-    if (!functionTitle) throw new Error("Upiši funkciju radnika.");
-    if (code.length < 4) throw new Error("Šifra radnika mora imati najmanje 4 karaktera.");
+    if (!firstName) throw new Error("Upiši ime zaposlenog.");
+    if (!lastName) throw new Error("Upiši prezime zaposlenog.");
+    if (!functionTitle) throw new Error("Upiši funkciju zaposlenog.");
+    if (code.length < 4) throw new Error("Pristupni kod zaposlenog mora imati najmanje 4 karaktera.");
 
     let duplicateQuery = sb
       .from("company_users")
@@ -1301,7 +1301,7 @@ async function savePersonForm() {
 
     const { data: existingCode, error: existingCodeError } = await duplicateQuery.maybeSingle();
     if (existingCodeError) throw existingCodeError;
-    if (existingCode) throw new Error("U ovoj firmi već postoji aktivan radnik sa tom šifrom. Izaberi drugu šifru radnika.");
+    if (existingCode) throw new Error("U ovoj firmi već postoji aktivan zaposleni sa tom šifrom. Izaberi drugu šifru zaposlenog.");
 
     const payload = {
       company_id: currentCompany.id,
@@ -1320,11 +1320,11 @@ async function savePersonForm() {
         .eq("id", editingPersonId)
         .eq("company_id", currentCompany.id);
       if (error) throw error;
-      toast("Profil radnika je sačuvan.");
+      toast("Korisnički profil je sačuvan.");
     } else {
       const { error } = await sb.from("company_users").insert(payload);
       if (error) throw error;
-      toast("Radnik je dodat.");
+      toast("Zaposleni je dodat.");
     }
 
     clearPersonForm();
@@ -1359,7 +1359,7 @@ function setAssetFormMode(mode = "add") {
   const title = document.querySelector("#assetFormTitle");
   const btn = document.querySelector("#addAssetBtn");
   const cancel = document.querySelector("#cancelEditAssetBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi sredstvo" : "+ Dodaj sredstvo";
+  if (title) title.textContent = editing ? "✏️ Uredi unos sredstvo" : "+ Dodaj sredstvo";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
@@ -1450,12 +1450,12 @@ function renderPersonItem(p) {
     <div class="item person-card-v1116" data-person-id="${escapeHtml(p.id)}">
       <div class="item-main">
         <strong>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</strong>
-        <small>${escapeHtml(p.function_title)} · šifra radnika: ${escapeHtml(p.access_code)}</small><br/>
+        <small>${escapeHtml(p.function_title)} · šifra zaposlenog: ${escapeHtml(p.access_code)}</small><br/>
         <span class="pill">Aktivan</span>
         <span class="pill">${permissionCount} rubrika</span>
       </div>
       <div class="person-actions-v1116">
-        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Uredi profil</button>
+        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Uredi unos profil</button>
         <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button>
         <button class="danger-btn" type="button" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>
       </div>
@@ -1524,7 +1524,7 @@ async function loadAssets() {
         <small>${escapeHtml(a.asset_type)} · ${escapeHtml(a.registration || "")} · ${escapeHtml(formatCapacityM3(a.capacity))}</small>
       </div>
       <div class="management-actions asset-actions-v1117">
-        <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Uredi</button>
+        <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Uredi unos</button>
         <button class="danger-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>
       </div>
     </div>
@@ -1542,9 +1542,9 @@ async function loadMaterials() {
   });
 
   if (error) {
-    if (list) list.innerHTML = `<p class="muted">Materijali se ne mogu učitati: ${escapeHtml(error.message)}. Pokreni SQL dopunu za v1.12.0.</p>`;
+    if (list) list.innerHTML = `<p class="muted">Evidencija materijala se ne mogu učitati: ${escapeHtml(error.message)}. Pokreni SQL ispravku za v1.12.0.</p>`;
     const box = $("#personMaterialPermissions");
-    if (box) box.innerHTML = `<p class="muted tiny">Materijali nisu učitani.</p>`;
+    if (box) box.innerHTML = `<p class="muted tiny">Evidencija materijala nisu učitani.</p>`;
     return;
   }
 
@@ -1556,7 +1556,7 @@ async function loadMaterials() {
           <small>${escapeHtml(m.unit || "")} ${m.category ? "· " + escapeHtml(m.category) : ""}</small>
         </div>
         <div class="management-actions material-actions-v1119">
-          <button class="edit-btn" type="button" onclick="editMaterial('${m.id}')">✏️ Uredi</button>
+          <button class="edit-btn" type="button" onclick="editMaterial('${m.id}')">✏️ Uredi unos</button>
           <button class="danger-btn" type="button" onclick="deleteMaterial('${m.id}', '${escapeHtml(m.name || '')}')">🔥 Trajno obriši iz baze</button>
         </div>
       </div>
@@ -1575,7 +1575,7 @@ function setMaterialFormMode(mode = "add") {
   const title = $("#materialFormTitle");
   const btn = $("#addMaterialBtn");
   const cancel = $("#cancelEditMaterialBtn");
-  if (title) title.textContent = editing ? "✏️ Uredi materijal" : "+ Dodaj materijal";
+  if (title) title.textContent = editing ? "✏️ Uredi unos materijal" : "+ Dodaj materijal";
   if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj materijal";
   if (cancel) cancel.classList.toggle("hidden", !editing);
 }
@@ -1672,7 +1672,7 @@ window.deletePerson = async (id, name = "") => {
     }
 
     const label = name ? ` (${name})` : "";
-    if (!confirm("Obrisati osobu/radnika iz aktivnog spiska" + label + "?\n\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
+    if (!confirm("Obrisati osobu/zaposlenog iz aktivnog spiska" + label + "?\n\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
 
     const { error } = await sb
       .from("company_users")
@@ -1705,8 +1705,8 @@ window.deletePersonPermanently = async (id, name = "") => {
     }
 
     const label = name ? ` (${name})` : "";
-    if (!confirm("TRAJNO obrisati radnika iz baze" + label + "?\n\nOvo se ne može vratiti. Ako Supabase odbije brisanje zbog povezanih izveštaja, prvo koristi ❌ Obriši iz spiska.")) return;
-    if (!confirm("Još jednom potvrdi: radnik će biti trajno obrisan iz company_users tabele.")) return;
+    if (!confirm("TRAJNO obrisati zaposlenog iz baze" + label + "?\n\nOvo se ne može vratiti. Ako Supabase odbije brisanje zbog povezanih izveštaja, prvo koristi ❌ Obriši iz spiska.")) return;
+    if (!confirm("Još jednom potvrdi: zaposleni će biti trajno obrisan iz company_users tabele.")) return;
 
     const { error } = await sb
       .from("company_users")
@@ -1715,7 +1715,7 @@ window.deletePersonPermanently = async (id, name = "") => {
       .eq("company_id", currentCompany.id);
 
     if (error) throw error;
-    toast("Radnik je trajno obrisan iz baze.");
+    toast("Zaposleni je trajno obrisan iz baze.");
     if (editingPersonId === id) clearPersonForm();
     loadPeople();
     if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
@@ -1812,10 +1812,10 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
     if (peopleRes.data) peopleRes.data.forEach(p => {
       const text = `${p.first_name} ${p.last_name} ${p.function_title} ${p.access_code} ${p.active ? "aktivan" : "neaktivan"}`;
       if (searchMatch(text, q)) results.push({
-        type:"Radnik / osoba",
+        type:"Zaposleni / osoba",
         title:`${p.first_name} ${p.last_name}`,
         subtitle:`${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
-        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Uredi profil</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button><button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>` : `<button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>`}`
+        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Uredi unos profil</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši iz spiska</button><button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>` : `<button class="danger-btn" onclick="deletePersonPermanently('${p.id}')">🔥 Trajno obriši iz baze</button>`}`
       });
     });
 
@@ -1825,7 +1825,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Mašina / vozilo",
         title:formatAssetTitleWithCode(a),
         subtitle:`broj: ${getAssetCode(a) || "—"} · ${a.asset_type} · ${a.registration || ""} · ${formatCapacityM3(a.capacity)}`,
-        actions:`<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Uredi</button><button class="danger-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>`
+        actions:`<button class="edit-btn" onclick="editAsset('${a.id}')">✏️ Uredi unos</button><button class="danger-btn" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">🔥 Trajno obriši iz baze</button>`
       });
     });
 
@@ -1948,8 +1948,8 @@ function reportStatusLabel(status) {
     novo: "Novo",
     approved: "Odobreno",
     odobreno: "Odobreno",
-    returned: "Vraćeno na dopunu",
-    vraceno: "Vraćeno na dopunu",
+    returned: "Vraćeno na ispravku",
+    vraceno: "Vraćeno na ispravku",
     exported: "Izvezeno",
     izvezeno: "Izvezeno",
     archived: "Arhivirano",
@@ -2017,14 +2017,14 @@ async function loadReports() {
   directorReportsCache = await enrichReportsWithUsers(data || []);
   businessUpdateReportsMetrics(directorReportsCache);
   const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
-  $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je radnik poslao kvar, pogledaj tab Kvarovi.</p>`;
+  $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je zaposleni poslao kvar, pogledaj tab Kvarovi.</p>`;
   renderDefectsList();
   renderExportPanel();
 }
 
 function defectHtml(r) {
   const d = r.data || {};
-  const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : (d.created_by_worker || "Nepoznat radnik");
+  const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : (d.created_by_worker || "Nepoznat zaposleni");
   const status = d.defect_status || "prijavljen";
   const reportedAt = d.defect_reported_at || r.submitted_at || r.created_at;
   const assetName = [d.defect_asset_code, d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name)].filter(Boolean).join(" · ") || "—";
@@ -2038,7 +2038,7 @@ function defectHtml(r) {
       <span class="pill">Gradilište/lokacija: ${escapeHtml(d.defect_site_name || d.site_name || "bez gradilišta")}</span>
       <span class="pill">Sredstvo: ${escapeHtml(assetName)}</span>
       ${d.defect_work_impact ? `<span class="pill">Uticaj na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
-      ${d.called_mechanic_by_phone ? `<span class="pill">Šef pozvan: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
+      ${d.called_mechanic_by_phone ? `<span class="pill">Odgovorno lice mehanizacije pozvano: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
       <div class="report-kv">
         <b>Primljeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_received_at))}</span>
@@ -2102,18 +2102,18 @@ function renderReportReadableDetails(d = {}, options = {}) {
       materials_stock_on_site: Array.isArray(d.materials_stock_on_site) ? d.materials_stock_on_site : [],
       truck_tours: Array.isArray(d.truck_tours) ? d.truck_tours : []
     };
-    const signed = siteLogData.site_log_signature_data_url ? `<div class="paper-signature-box"><img src="${esc(siteLogData.site_log_signature_data_url)}" alt="Potpis"/><div><b>${esc(siteLogData.site_log_signature_name || siteLogData.created_by_worker || "Potpisnik")}</b><span>${esc(formatDateTimeLocal(siteLogData.site_log_signature_signed_at) || "")}</span></div></div>` : `<div class="paper-signature-line">Potpis šefa gradilišta / odgovornog lica</div>`;
+    const signed = siteLogData.site_log_signature_data_url ? `<div class="paper-signature-box"><img src="${esc(siteLogData.site_log_signature_data_url)}" alt="Potpis"/><div><b>${esc(siteLogData.site_log_signature_name || siteLogData.created_by_worker || "Potpisnik")}</b><span>${esc(formatDateTimeLocal(siteLogData.site_log_signature_signed_at) || "")}</span></div></div>` : `<div class="paper-signature-line">Potpis odgovornog lica gradilišta</div>`;
     const uploaded = siteLogData.signed_file ? `<p class="signed-file-note">Dodat potpisan dokument: <b>${esc(siteLogData.signed_file.name || "fajl")}</b>. Uploadovani fajl služi kao dokaz; Excel koristi podatke iz forme.</p>` : "";
     return `<div class="report-readable site-log-report-readable">
-      <div class="report-section"><h4>Radnici i sati</h4>${siteLogTable(["#","Ime i prezime","Sati","Napomena"], siteLogData.workers, (w,i)=>[String(i+1), w.full_name, w.hours, w.note])}</div>
+      <div class="report-section"><h4>Evidencija zaposlenih i radnih sati</h4>${siteLogTable(["#","Ime i prezime","Sati","Napomena"], siteLogData.workers, (w,i)=>[String(i+1), w.full_name, w.hours, w.note])}</div>
       <div class="report-section"><h4>Opis radova danas</h4><p>${esc(siteLogData.today_work_description || "—")}</p></div>
-      <div class="report-section"><h4>Plan radova za sutra</h4><p>${esc(siteLogData.tomorrow_work_plan || "—")}</p></div>
+      <div class="report-section"><h4>Plan radova za naredni dan</h4><p>${esc(siteLogData.tomorrow_work_plan || "—")}</p></div>
       <div class="report-section"><h4>Ulaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], siteLogData.material_in, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
       <div class="report-section"><h4>Izlaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], siteLogData.material_out, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
       <div class="report-section"><h4>Ugrađeni materijali</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Pozicija/rad"], siteLogData.materials_installed, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.work_position || m.note])}</div>
-      <div class="report-section"><h4>Lager materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], siteLogData.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
-      <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Prevoznik","Dobavljač","Tablice","Vozač","Materijal","Ture","m³","Napomena"], siteLogData.truck_tours, (t,i)=>[String(i+1), siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
-      <div class="report-section report-signature-section"><h4>Potpis / overa</h4>${signed}${uploaded}</div>
+      <div class="report-section"><h4>Stanje materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], siteLogData.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
+      <div class="report-section"><h4>Evidencija kamionskih tura</h4>${siteLogTable(["#","Vrsta transporta","Izvor prevoza","Spoljni dobavljač","Reg. oznake","Ime i prezime vozača","Materijal","Broj tura","m³","Napomena"], siteLogData.truck_tours, (t,i)=>[String(i+1), siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
+      <div class="report-section report-signature-section"><h4>Potpis / overa dokumenta</h4>${signed}${uploaded}</div>
     </div>`;
   }
 
@@ -2201,9 +2201,9 @@ function renderReportReadableDetails(d = {}, options = {}) {
   addPreview("Osnovni podaci", "", "Sati rada", d.hours);
 
   workers.forEach((w, i) => {
-    const row = `Radnik ${i + 1}`;
-    addPreview("Radnici na gradilištu", row, "Ime i prezime", w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" "));
-    addPreview("Radnici na gradilištu", row, "Sati", w.hours);
+    const row = `Zaposleni ${i + 1}`;
+    addPreview("Evidencija zaposlenih na gradilištu", row, "Ime i prezime", w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" "));
+    addPreview("Evidencija zaposlenih na gradilištu", row, "Sati", w.hours);
   });
 
   machines.forEach((m, i) => {
@@ -2225,7 +2225,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
     addPreview("Evidencija rada vozila", row, "KM početak", v.km_start);
     addPreview("Evidencija rada vozila", row, "KM kraj", v.km_end);
     addPreview("Evidencija rada vozila", row, "Relacija", v.route);
-    addPreview("Evidencija rada vozila", row, "Broj tura", v.tours);
+    addPreview("Evidencija rada vozila", row, "Broj izvršenih tura", v.tours);
     addPreview("Evidencija rada vozila", row, "Ukupno m³", v.cubic_m3 || v.cubic_auto);
   });
 
@@ -2268,7 +2268,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
     const row = `Materijal ${i + 1}`;
     addPreview("Materijal", row, "Radnja", m.action || m.material_action);
     addPreview("Materijal", row, "Materijal", m.material || m.name);
-    addPreview("Materijal", row, "Broj tura", m.tours || m.material_tours);
+    addPreview("Materijal", row, "Broj izvršenih tura", m.tours || m.material_tours);
     addPreview("Materijal", row, "Količina po turi", m.per_tour || m.quantity_per_tour || m.material_per_tour);
     addPreview("Materijal", row, "Ukupna količina", materialQuantityValue(m));
     addPreview("Materijal", row, "Jedinica", materialUnitValue(m));
@@ -2319,7 +2319,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           </tr>
         `).join("")}
       </tbody>
-    </table>` : `<p class="report-empty">Nema dodatih radnika u ekipi.</p>`;
+    </table>` : `<p class="report-empty">Nema dodatih zaposlenog u ekipi.</p>`;
 
   const machineTable = machines.length ? `
     <table class="report-mini-table">
@@ -2537,9 +2537,9 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const hasSignature = safe(d.signature_data_url);
   const signatureBox = hasSignature ? `
     <div class="report-section report-signature-section">
-      <h4>Potpis radnika / odgovornog lica</h4>
+      <h4>Potpis zaposlenog / odgovornog lica</h4>
       <div class="paper-signature-box">
-        <img src="${esc(d.signature_data_url)}" alt="Potpis radnika" />
+        <img src="${esc(d.signature_data_url)}" alt="Potpis zaposlenog" />
         <div>
           <b>${esc(d.signature_name || d.created_by_worker || "Potpisnik")}</b>
           <span>${esc(formatDateTimeLocal(d.signature_signed_at) || "")}</span>
@@ -2548,7 +2548,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
     </div>` : `
     <div class="report-section report-signature-section paper-empty-signature">
       <h4>Potpis</h4>
-      <div class="paper-signature-line">Potpis radnika / odgovornog lica</div>
+      <div class="paper-signature-line">Potpis zaposlenog / odgovornog lica</div>
     </div>`;
 
   return `
@@ -2564,7 +2564,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </div>` : ""}
 
       ${hasWorkers ? `<div class="report-section">
-        <h4>Radnici na gradilištu</h4>
+        <h4>Evidencija zaposlenih na gradilištu</h4>
         ${workerTable}
       </div>` : ""}
 
@@ -2605,7 +2605,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
               ["Opis kvara", d.defect],
               ["Hitnost", d.defect_urgency],
               ["Uticaj na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
-              ["Pozvan šef mehanizacije", d.called_mechanic_by_phone],
+              ["Pozvan odgovorno lice mehanizacije", d.called_mechanic_by_phone],
               ["Status kvara", d.defect_status]
             ])}
           </div>
@@ -2660,18 +2660,18 @@ function getReportFilledSections(d = {}) {
 
   if (d.report_type === "site_daily_log") {
     sections.push("Dnevnik gradilišta");
-    if (arr(d.workers).some(hasEntry)) sections.push("Radnici");
+    if (arr(d.workers).some(hasEntry)) sections.push("Zaposleni");
     if (arr(d.material_in).some(hasEntry)) sections.push("Ulaz materijala");
     if (arr(d.material_out).some(hasEntry)) sections.push("Izlaz materijala");
     if (arr(d.materials_installed).some(hasEntry)) sections.push("Ugrađeno");
     if (arr(d.materials_stock_on_site).some(hasEntry)) sections.push("Lager");
-    if (arr(d.truck_tours).some(hasEntry)) sections.push("Ture");
+    if (arr(d.truck_tours).some(hasEntry)) sections.push("Broj tura");
     if (hasValue(d.site_log_signature_data_url) || d.signed_file) sections.push("Overa");
     return sections;
   }
 
   if (hasValue(d.site_name) || hasValue(d.description) || hasValue(d.hours) || hasValue(d.note)) sections.push("Osnovno");
-  if (arr(d.workers).some(hasEntry) || arr(d.worker_entries).some(hasEntry)) sections.push("Radnici");
+  if (arr(d.workers).some(hasEntry) || arr(d.worker_entries).some(hasEntry)) sections.push("Zaposleni");
   if (arr(d.machines).some(hasEntry)) sections.push("Mašina");
   if (arr(d.vehicles).some(hasEntry)) sections.push("Vozilo");
   if (arr(d.lowloader_moves).some(hasEntry) || arr(d.lowloader_entries).some(hasEntry)) sections.push("Transport");
@@ -2716,7 +2716,7 @@ window.printReportA4 = function(id) {
 window.downloadReportA4 = function(id) {
   const el = document.getElementById(`paper-${id}`);
   if (!el) return toast("Ne mogu da pronađem papirni pregled za preuzimanje.", true);
-  const title = (el.querySelector("h3")?.textContent || "Dnevni izveštaj").trim();
+  const title = (el.querySelector("h3")?.textContent || "Dnevni radni izveštaj").trim();
   const metaText = Array.from(el.querySelectorAll(".paper-meta-table td")).map(x => x.textContent.trim()).filter(Boolean);
   const fileName = safeFilePart(`${title}_${metaText[0] || ""}_${metaText[1] || ""}`) + ".html";
   const html = `<!doctype html>
@@ -2760,7 +2760,7 @@ window.downloadReportA4 = function(id) {
 function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
-  const title = d.report_type === "site_daily_log" ? "DNEVNIK GRADILIŠTA" : (isDefectOnlyReport(r) ? "EVIDENCIJA KVARA" : "DNEVNI IZVEŠTAJ SA TERENA");
+  const title = d.report_type === "site_daily_log" ? "DNEVNIK GRADILIŠTA" : (isDefectOnlyReport(r) ? "PRIJAVA KVARA" : "DNEVNI RADNI IZVEŠTAJ SA TERENA");
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
   const sections = getReportFilledSections(d);
   const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
@@ -2797,8 +2797,8 @@ function reportHtml(r) {
           <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', -0.1)">A−</button>
           <button class="secondary" type="button" onclick="setReportPaperZoom('${r.id}', 1)"><span id="paperZoom-${r.id}">100%</span></button>
           <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', 0.1)">A+</button>
-          <button class="secondary" type="button" onclick="downloadReportA4('${r.id}')">Preuzmi A4</button>
-          <button class="secondary" type="button" onclick="printReportA4('${r.id}')">Štampaj A4</button>
+          <button class="secondary" type="button" onclick="downloadReportA4('${r.id}')">Sačuvaj A4</button>
+          <button class="secondary" type="button" onclick="printReportA4('${r.id}')">Štampaj dokument A4</button>
         </div>
 
         <section class="report-paper-view" id="paper-${r.id}" style="--report-zoom:1">
@@ -2811,7 +2811,7 @@ function reportHtml(r) {
             <tbody>
               <tr><th>Datum</th><td>${escapeHtml(r.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
               <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
-              <tr><th>Radnik</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
+              <tr><th>Zaposleni</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
             </tbody>
           </table>
 
@@ -2832,7 +2832,7 @@ function reportHtml(r) {
           ` : ""}
 
           <button class="secondary" onclick="setReportStatus('${r.id}','approved')">Odobri</button>
-          <button class="secondary" onclick="returnReport('${r.id}')">Vrati na dopunu</button>
+          <button class="secondary" onclick="returnReport('${r.id}')">Vrati na ispravku</button>
           <button class="secondary" onclick="setReportStatus('${r.id}','exported')">Označi izvezeno</button>
           <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
           <button class="hard-delete-report-btn" onclick="deleteReportPermanently('${r.id}')">🔥 Obriši iz baze</button>
@@ -2852,7 +2852,7 @@ window.setReportStatus = async (id, status) => {
 };
 
 window.returnReport = async (id) => {
-  const reason = prompt("Razlog vraćanja radniku na dopunu/ispravku:");
+  const reason = prompt("Razlog vraćanja zaposlenom na ispravku:");
   if (!reason || !reason.trim()) return;
   const { error } = await sb
     .from("reports")
@@ -2863,7 +2863,7 @@ window.returnReport = async (id) => {
     .eq("id", id)
     .eq("company_id", currentCompany.id);
   if (error) return toast(error.message, true);
-  toast("Izveštaj je vraćen radniku na dopunu.");
+  toast("Izveštaj je vraćen zaposlenom na ispravku.");
   loadReports();
 };
 
@@ -2886,7 +2886,7 @@ function collectPermissions() {
   $$(".perm").forEach(ch => obj[ch.value] = ch.checked);
 
   // v1.11.9: posebna prava po materijalu.
-  // Ovo ne ruši stari login: ako nema izabranih materijala, radnik i dalje ima/ili nema osnovnu rubriku "Materijal" preko obj.materials.
+  // Ovo ne ruši stari login: ako nema izabranih materijala, zaposleni i dalje ima/ili nema osnovnu rubriku "Materijal" preko obj.materials.
   obj.allowed_material_ids = $$(".material-perm:checked").map(ch => ch.value);
   obj.allowed_material_names = $$(".material-perm:checked").map(ch => ch.dataset.name || "").filter(Boolean);
   return obj;
@@ -2902,7 +2902,7 @@ function renderPersonMaterialPermissions(materials = [], selectedIds = null) {
 
   const checkedNow = selectedIds || getCheckedMaterialPermissionIdsFromForm();
   if (!materials.length) {
-    box.innerHTML = `<p class="muted tiny">Nema dodatih materijala. Dodaj materijal u tabu Materijali pa će se pojaviti ovde za štikliranje.</p>`;
+    box.innerHTML = `<p class="muted tiny">Nema dodatih materijala. Dodaj materijal u tabu Evidencija materijala pa će se pojaviti ovde za štikliranje.</p>`;
     return;
   }
 
@@ -2929,7 +2929,7 @@ async function refreshPersonMaterialPermissions(selectedIds = null) {
 
   if (error) {
     const box = $("#personMaterialPermissions");
-    if (box) box.innerHTML = `<p class="muted tiny">Materijali nisu učitani: ${escapeHtml(error.message)}</p>`;
+    if (box) box.innerHTML = `<p class="muted tiny">Evidencija materijala nisu učitani: ${escapeHtml(error.message)}</p>`;
     return;
   }
   renderPersonMaterialPermissions(data || [], selectedIds);
@@ -3351,7 +3351,7 @@ async function loadWorkerAssets() {
   let rpcError = null;
   let directError = null;
 
-  // Prvi izvor: RPC. Ovo je pravilan put za radnika.
+  // Prvi izvor: RPC. Ovo je pravilan put za zaposlenog.
   try {
     const { data, error } = await sb.rpc("worker_list_assets", {
       p_company_code: worker.company_code,
@@ -3364,8 +3364,8 @@ async function loadWorkerAssets() {
   }
 
   // Drugi izvor: direktno iz assets po company_id.
-  // VAŽNO v1.19.7: ovo se sada pokušava UVEK kada radnik ima company_id,
-  // ne samo kada RPC vrati prazno. Tako radnik vidi mašine i ako je RPC star
+  // VAŽNO v1.19.7: ovo se sada pokušava UVEK kada zaposleni ima company_id,
+  // ne samo kada RPC vrati prazno. Tako zaposleni vidi mašine i ako je RPC star
   // i ne vraća sva polja/tipove, a ne diramo Supabase SQL.
   if (worker.company_id) {
     try {
@@ -3393,7 +3393,7 @@ async function loadWorkerAssets() {
   const otherCount = workerAssetOptions.filter(isOtherAsset).length;
 
   if (!workerAssetOptions.length) {
-    toast("Radniku nisu učitane mašine/vozila. Proveri da li u Upravi postoje sredstva za ovu firmu i da li je radnik u istoj firmi. Detalj: " + ((directError && directError.message) || (rpcError && rpcError.message) || "nema podataka"), true);
+    toast("Zaposlenom nisu učitane mašine/vozila. Proveri da li u Upravi postoje sredstva za ovu firmu i da li je zaposleni u istoj firmi. Detalj: " + ((directError && directError.message) || (rpcError && rpcError.message) || "nema podataka"), true);
   } else if (!machineCount && (vehicleCount || otherCount)) {
     toast(`Sredstva su učitana, ali nema tipa Mašina. U Upravi proveri Kategorija: Mašina. Učitano: vozila ${vehicleCount}, ostalo ${otherCount}.`, true);
   } else if (machineCount && !vehicleCount && !otherCount) {
@@ -3432,7 +3432,7 @@ function buildVehicleOptionsHtml(selectedValue = "", searchValue = "") {
   const q = normalizeVehicleSearch(searchValue);
 
   // v1.19.8: broj sredstva ne sme da blokira stari filter.
-  // Ako radnik ukuca tačan interni broj, prvo prikaži to sredstvo makar je tip došao čudno iz RPC-a.
+  // Ako zaposleni ukuca tačan interni broj, prvo prikaži to sredstvo makar je tip došao čudno iz RPC-a.
   const exact = findAssetByExactCode(searchValue);
   if (exact && !vehicles.some(v => String(v.id || "") === String(exact.id || ""))) {
     vehicles = [exact, ...vehicles];
@@ -3458,7 +3458,7 @@ function findVehicleAssetForSmartInput(searchValue) {
   const vehicles = (workerAssetOptions || []).filter(isVehicleAsset);
 
   // Interni broj ima prednost. Ako je broj tačan, uzmi sredstvo odmah.
-  // Ovo čuva praktičan rad na terenu: radnik zna broj, ne treba da bira iz tri polja.
+  // Ovo čuva praktičan rad na terenu: zaposleni zna broj, ne treba da bira iz tri polja.
   const exactCode = (workerAssetOptions || []).find(asset => normalizeVehicleSearch(getAssetCode(asset)) === q);
   if (exactCode) return exactCode;
 
@@ -3601,7 +3601,7 @@ function addVehicleEntry(values = {}) {
 
     <div class="mini-grid">
       <div>
-        <label>Broj tura</label>
+        <label>Broj izvršenih tura</label>
         <input class="v-tours" type="number" step="0.5" value="${escapeHtml(values.tours || "")}" />
       </div>
       <div>
@@ -3634,7 +3634,7 @@ function addVehicleEntry(values = {}) {
       await loadWorkerAssets();
       refreshOneVehicleSelect(div);
       updateVehicleCubic(div);
-      toast(workerAssetOptions.length ? "Vozila iz Uprave su osvežena." : "Nema učitanih vozila. Proveri firmu radnika i listu u Upravi.", !workerAssetOptions.length);
+      toast(workerAssetOptions.length ? "Vozila iz Uprave su osvežena." : "Nema učitanih vozila. Proveri firmu zaposlenog i listu u Upravi.", !workerAssetOptions.length);
     } finally {
       refreshVehiclesBtn.disabled = false;
       refreshVehiclesBtn.textContent = "Osveži vozila iz Uprave";
@@ -3682,7 +3682,7 @@ async function loadWorkerSites(selectedName = "") {
 
   const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
   if (!worker) {
-    select.innerHTML = `<option value="">Prvo se prijavi kao radnik</option>`;
+    select.innerHTML = `<option value="">Prvo se prijavi kao zaposleni</option>`;
     return;
   }
 
@@ -3725,7 +3725,7 @@ async function loadWorkerSites(selectedName = "") {
     if (hint) hint.textContent = "Pokreni Supabase SQL za v1.12.1: worker_list_sites. Detalj: " + (e.message || e);
     workerSiteOptions = [];
     refreshFieldTankerSelectors();
-    toast("Gradilišta za radnika nisu učitana: " + (e.message || e), true);
+    toast("Gradilišta za zaposlenog nisu učitana: " + (e.message || e), true);
   }
 }
 
@@ -3946,7 +3946,7 @@ function addMaterialEntry(values = {}) {
 
     <div class="mini-grid">
       <div>
-        <label>Broj tura <span class="muted">(materijal)</span></label>
+        <label>Broj izvršenih tura <span class="muted">(materijal)</span></label>
         <input class="mat-tours numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 6" value="${escapeHtml(values.tours || values.material_tours || "")}" />
       </div>
       <div>
@@ -4038,7 +4038,7 @@ function getMaterialEntries() {
 
 function workerSetSections(perms) {
   // v1.16.5 pravilo:
-  // "Gradilište i datum izveštaja" kod radnika prikazuje samo Datum/godinu + Gradilište iz liste Uprave.
+  // "Gradilište i datum izveštaja" kod zaposlenog prikazuje samo Datum/godinu + Gradilište iz liste Uprave.
   // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
   const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
 
@@ -4079,20 +4079,20 @@ function addWorkerEntry(values = {}) {
   const div = document.createElement("div");
   div.className = "entry-card worker-entry";
   div.innerHTML = `
-    <h5>Radnik ${idx}</h5>
+    <h5>Zaposleni ${idx}</h5>
     <div class="grid two">
       <div>
         <label>Ime</label>
-        <input class="worker-first" placeholder="Ime radnika" value="${escapeHtml(values.first_name || values.first || "")}" />
+        <input class="worker-first" placeholder="Ime zaposlenog" value="${escapeHtml(values.first_name || values.first || "")}" />
       </div>
       <div>
         <label>Prezime</label>
-        <input class="worker-last" placeholder="Prezime radnika" value="${escapeHtml(values.last_name || values.last || "")}" />
+        <input class="worker-last" placeholder="Prezime zaposlenog" value="${escapeHtml(values.last_name || values.last || "")}" />
       </div>
     </div>
     <label>Sati rada tog dana</label>
     <input class="worker-hours numeric-text" type="text" inputmode="decimal" placeholder="8" value="${escapeHtml(values.hours || "")}" />
-    <button class="secondary small-btn" type="button" onclick="this.closest('.worker-entry').remove(); renumberWorkerEntries();">Ukloni radnika</button>
+    <button class="secondary small-btn" type="button" onclick="this.closest('.worker-entry').remove(); renumberWorkerEntries();">Ukloni zaposlenog</button>
   `;
   list.appendChild(div);
 }
@@ -4100,7 +4100,7 @@ function addWorkerEntry(values = {}) {
 function renumberWorkerEntries() {
   $$("#workerEntries .worker-entry").forEach((card, i) => {
     const h = card.querySelector("h5");
-    if (h) h.textContent = `Radnik ${i + 1}`;
+    if (h) h.textContent = `Zaposleni ${i + 1}`;
   });
 }
 
@@ -4190,7 +4190,7 @@ function addMachineEntry(values = {}) {
       refreshMachinesBtn.textContent = "Učitavam...";
       await loadWorkerAssets();
       refreshOneMachineSelect(div);
-      toast(workerAssetOptions.length ? "Mašine/vozila iz Uprave su osvežene." : "Nema učitanih mašina/vozila. Proveri firmu radnika i listu u Upravi.", !workerAssetOptions.length);
+      toast(workerAssetOptions.length ? "Mašine/vozila iz Uprave su osvežene." : "Nema učitanih mašina/vozila. Proveri firmu zaposlenog i listu u Upravi.", !workerAssetOptions.length);
     } finally {
       refreshMachinesBtn.disabled = false;
       refreshMachinesBtn.textContent = "Osveži mašine iz Uprave";
@@ -4703,7 +4703,7 @@ async function sendStoredFieldTankerEntries() {
   try {
     if (!navigator.onLine) throw new Error("Nema interneta. Memorisana sipanja ostaju sačuvana na telefonu.");
     const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
-    if (!worker) throw new Error("Radnik nije prijavljen.");
+    if (!worker) throw new Error("Zaposleni nije prijavljen.");
 
     const entries = readStoredFieldTankerEntries().map(normalizeStoredFieldTankerEntry);
     if (!entries.length) throw new Error("Nema memorisanih sipanja za slanje.");
@@ -4975,7 +4975,7 @@ function addFuelEntry(values = {}) {
     <label>Ko je sipao</label>
     <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
 
-    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. Primalac goriva je automatski prijavljeni radnik koji šalje izveštaj.</p>
+    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. Primalac goriva je automatski prijavljeni zaposleni koji šalje izveštaj.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
@@ -5070,7 +5070,7 @@ async function loadWorkerReturnedReports() {
 
     list.innerHTML = data.map(r => {
       const d = r.data || {};
-      const title = d.report_type === "site_daily_log" ? "Dnevnik gradilišta" : (d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni izveštaj");
+      const title = d.report_type === "site_daily_log" ? "Dnevnik gradilišta" : (d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "Dnevni radni izveštaj");
       const site = d.site_name || d.defect_site_name || "Bez gradilišta";
       const reason = r.returned_reason || "Uprava nije upisala razlog.";
       const opis = d.defect || d.description || d.note || "";
@@ -5078,7 +5078,7 @@ async function loadWorkerReturnedReports() {
         <div class="returned-item">
           <strong>↩️ ${escapeHtml(title)} — ${escapeHtml(r.report_date || "")}</strong>
           <small>${escapeHtml(site)} ${opis ? "· " + escapeHtml(opis) : ""}</small>
-          <div class="returned-reason"><b>Razlog dopune:</b> ${escapeHtml(reason)}</div>
+          <div class="returned-reason"><b>Razlog ispravke:</b> ${escapeHtml(reason)}</div>
           <div class="returned-actions">
             <button class="secondary" type="button" onclick="loadReturnedReportIntoForm('${r.id}')">Otvori za ispravku</button>
           </div>
@@ -5091,7 +5091,7 @@ async function loadWorkerReturnedReports() {
 }
 
 async function getReturnedReportForWorker(reportId) {
-  if (!currentWorker) throw new Error("Radnik nije prijavljen.");
+  if (!currentWorker) throw new Error("Zaposleni nije prijavljen.");
   const { data, error } = await sb.rpc("worker_list_returned_reports", {
     p_company_code: currentWorker.company_code,
     p_access_code: currentWorker.access_code
@@ -5102,16 +5102,16 @@ async function getReturnedReportForWorker(reportId) {
 
 window.loadReturnedReportIntoForm = async (reportId) => {
   try {
-    if (!currentWorker) throw new Error("Radnik nije prijavljen.");
+    if (!currentWorker) throw new Error("Zaposleni nije prijavljen.");
 
     const r = await getReturnedReportForWorker(reportId);
-    if (!r) throw new Error("Izveštaj nije pronađen ili više nije vraćen na dopunu.");
+    if (!r) throw new Error("Izveštaj nije pronađen ili više nije vraćen na ispravku.");
 
     const d = r.data || {};
     if (d.report_type === "site_daily_log") {
       loadSiteLogDataIntoForm(d, r);
       localStorage.setItem("swp_returned_report_id", reportId);
-      toast("Dnevnik gradilišta je otvoren za ispravku. Ispravi ga i pošalji ponovo Direkciji.");
+      toast("Dnevnik gradilišta je otvoren za ispravku. Ispravi ga i pošalji ponovo Upravi firme.");
       const panel = $("#siteLogPanel");
       if (panel) panel.scrollIntoView({ behavior:"smooth", block:"start" });
       return;
@@ -5300,7 +5300,7 @@ function getSignatureData() {
 }
 
 
-/* v1.25.9 — Dnevnik gradilišta za šefa gradilišta / laptop unos */
+/* v1.25.9 — Dnevnik gradilišta za odgovorno lice gradilišta / laptop unos */
 let siteLogSignatureState = { initialized:false, drawing:false, hasInk:false };
 let siteLogSignedFileData = null;
 
@@ -5355,15 +5355,15 @@ window.addSiteLogWorkerEntry = function(values = {}) {
   const div = document.createElement("div");
   div.className = "entry-card site-log-worker-entry";
   div.innerHTML = `
-    <h5>Radnik ${idx}</h5>
+    <h5>Zaposleni ${idx}</h5>
     <div class="grid three">
       <div><label>Ime i prezime</label><input class="sl-worker-name" placeholder="Ime i prezime" value="${escapeHtml(values.full_name || values.name || "")}" /></div>
       <div><label>Sati</label><input class="sl-worker-hours numeric-text" type="text" inputmode="decimal" placeholder="8" value="${escapeHtml(values.hours || "")}" /></div>
       <div><label>Napomena</label><input class="sl-worker-note" placeholder="npr. iskop, nivelacija" value="${escapeHtml(values.note || "")}" /></div>
     </div>
     <div class="site-log-entry-actions">
-      <button class="primary small-btn" type="button" onclick="addSiteLogWorkerEntry(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Radnik');">+ Dodaj radnika</button>
-      <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-worker-entry').remove(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Radnik');">Ukloni radnika</button>
+      <button class="primary small-btn" type="button" onclick="addSiteLogWorkerEntry(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Zaposleni');">+ Dodaj zaposlenog</button>
+      <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-worker-entry').remove(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Zaposleni');">Ukloni zaposlenog</button>
     </div>`;
   list.appendChild(div);
 };
@@ -5374,8 +5374,8 @@ window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
   div.className = "entry-card site-log-material-entry";
   div.dataset.kind = kind;
   const extraLabel = kind === "materials_installed" ? "Pozicija/rad" : kind === "materials_stock_on_site" ? "Lokacija/napomena" : "Napomena";
-  const addLabel = ({ material_in:"+ Dodaj ulaz", material_out:"+ Dodaj izlaz", materials_installed:"+ Dodaj ugrađeno", materials_stock_on_site:"+ Dodaj lager" })[kind] || "+ Dodaj materijal";
-  const removeLabel = ({ material_in:"Ukloni ulaz", material_out:"Ukloni izlaz", materials_installed:"Ukloni ugrađeno", materials_stock_on_site:"Ukloni lager" })[kind] || "Ukloni materijal";
+  const addLabel = ({ material_in:"+ Dodaj ulaz", material_out:"+ Dodaj izlaz", materials_installed:"+ Dodaj ugrađeni materijal", materials_stock_on_site:"+ Dodaj stanje lagera" })[kind] || "+ Dodaj materijal";
+  const removeLabel = ({ material_in:"Ukloni ulaz", material_out:"Ukloni izlaz", materials_installed:"Ukloni ugrađeni materijal", materials_stock_on_site:"Ukloni stavku lagera" })[kind] || "Ukloni materijal";
   div.innerHTML = `
     <h5>${siteLogMaterialLabel(kind)} ${idx}</h5>
     <div class="grid four">
@@ -5392,11 +5392,11 @@ window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
   renumberSiteLogEntries(`#${siteLogMaterialListId(kind)}`, ".site-log-material-entry", siteLogMaterialLabel(kind));
 };
 function siteLogTruckTypeText(type) {
-  return type === "izvoz" ? "Izvoz sa gradilišta" : "Uvoz na gradilište";
+  return type === "izvoz" ? "Odvoz sa gradilišta" : "Dovoz na gradilište";
 }
 function siteLogTransportText(source, supplier) {
-  if (source === "dobavljac") return supplier ? `Dobavljač: ${supplier}` : "Dobavljač";
-  return "Naši kamioni";
+  if (source === "dobavljac") return supplier ? `Spoljni dobavljač: ${supplier}` : "Spoljni dobavljač";
+  return "Vozilo iz evidencije firme";
 }
 function updateSiteLogSupplierField(card) {
   const source = card?.querySelector(".sl-transport-source")?.value || "nasi_kamioni";
@@ -5413,19 +5413,19 @@ window.addSiteLogTruckEntry = function(values = {}) {
   div.innerHTML = `
     <h5>Tura ${idx}</h5>
     <div class="grid four">
-      <div><label>Tip ture</label><select class="sl-truck-type"><option value="uvoz" ${typeVal === "uvoz" ? "selected" : ""}>Uvoz na gradilište</option><option value="izvoz" ${typeVal === "izvoz" ? "selected" : ""}>Izvoz sa gradilišta</option></select></div>
-      <div><label>Prevoznik</label><select class="sl-transport-source"><option value="nasi_kamioni" ${sourceVal !== "dobavljac" ? "selected" : ""}>Naši kamioni</option><option value="dobavljac" ${sourceVal === "dobavljac" ? "selected" : ""}>Dobavljač</option></select></div>
-      <div class="sl-supplier-wrap"><label>Naziv dobavljača</label><input class="sl-partner-company" placeholder="naziv firme" value="${escapeHtml(values.partner_company || values.supplier_name || "")}" /></div>
-      <div><label>Tablice kamiona</label><input class="sl-truck-plate" placeholder="BG-123-AA" value="${escapeHtml(values.truck_plate || "")}" /></div>
-      <div><label>Vozač</label><input class="sl-driver-name" placeholder="ime i prezime" value="${escapeHtml(values.driver_name || "")}" /></div>
+      <div><label>Vrsta transporta</label><select class="sl-truck-type"><option value="uvoz" ${typeVal === "uvoz" ? "selected" : ""}>Dovoz na gradilište</option><option value="izvoz" ${typeVal === "izvoz" ? "selected" : ""}>Odvoz sa gradilišta</option></select></div>
+      <div><label>Izvor prevoza</label><select class="sl-transport-source"><option value="nasi_kamioni" ${sourceVal !== "dobavljac" ? "selected" : ""}>Vozilo iz evidencije firme</option><option value="dobavljac" ${sourceVal === "dobavljac" ? "selected" : ""}>Spoljni dobavljač</option></select></div>
+      <div class="sl-supplier-wrap"><label>Naziv dobavljača / prevoznika</label><input class="sl-partner-company" placeholder="naziv firme" value="${escapeHtml(values.partner_company || values.supplier_name || "")}" /></div>
+      <div><label>Registarske oznake vozila</label><input class="sl-truck-plate" placeholder="BG-123-AA" value="${escapeHtml(values.truck_plate || "")}" /></div>
+      <div><label>Ime i prezime vozača</label><input class="sl-driver-name" placeholder="ime i prezime" value="${escapeHtml(values.driver_name || "")}" /></div>
       <div><label>Materijal</label><select class="site-log-material-select sl-truck-material">${buildWorkerMaterialOptionsHtml(values.material_name || "")}</select></div>
-      <div><label>Broj tura</label><input class="sl-truck-tours numeric-text" type="text" inputmode="decimal" placeholder="4" value="${escapeHtml(values.tours || "")}" /></div>
+      <div><label>Broj izvršenih tura</label><input class="sl-truck-tours numeric-text" type="text" inputmode="decimal" placeholder="4" value="${escapeHtml(values.tours || "")}" /></div>
       <div><label>m³</label><input class="sl-truck-m3 numeric-text" type="text" inputmode="decimal" placeholder="32" value="${escapeHtml(values.m3 || "")}" /></div>
       <div><label>Napomena</label><input class="sl-truck-note" placeholder="napomena" value="${escapeHtml(values.note || "")}" /></div>
     </div>
     <div class="site-log-entry-actions">
-      <button class="primary small-btn" type="button" onclick="addSiteLogTruckEntry(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">+ Dodaj turu</button>
-      <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-truck-entry').remove(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">Ukloni turu</button>
+      <button class="primary small-btn" type="button" onclick="addSiteLogTruckEntry(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">+ Dodaj kamionsku turu</button>
+      <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-truck-entry').remove(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">Ukloni kamionsku turu</button>
     </div>`;
   list.appendChild(div);
   div.querySelector(".sl-transport-source")?.addEventListener("change", () => updateSiteLogSupplierField(div));
@@ -5489,24 +5489,24 @@ function siteLogTable(headers, rows, cellsFn) {
   return `<table class="report-mini-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r,i)=>`<tr>${cellsFn(r,i).map(c=>`<td>${escapeHtml(c || "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
 function renderSiteLogA4(data = collectSiteLogData()) {
-  const signed = data.site_log_signature_data_url ? `<div class="paper-signature-box"><img src="${escapeHtml(data.site_log_signature_data_url)}" alt="Potpis"/><div><b>${escapeHtml(data.site_log_signature_name || data.created_by_worker || "Potpisnik")}</b><span>${escapeHtml(formatDateTimeLocal(data.site_log_signature_signed_at) || "")}</span></div></div>` : `<div class="paper-signature-line">Potpis šefa gradilišta / odgovornog lica</div>`;
+  const signed = data.site_log_signature_data_url ? `<div class="paper-signature-box"><img src="${escapeHtml(data.site_log_signature_data_url)}" alt="Potpis"/><div><b>${escapeHtml(data.site_log_signature_name || data.created_by_worker || "Potpisnik")}</b><span>${escapeHtml(formatDateTimeLocal(data.site_log_signature_signed_at) || "")}</span></div></div>` : `<div class="paper-signature-line">Potpis odgovornog lica gradilišta</div>`;
   const uploaded = data.signed_file ? `<p class="signed-file-note">Dodat potpisan dokument: <b>${escapeHtml(data.signed_file.name || "fajl")}</b>. Fajl se čuva kao dokaz uz izveštaj.</p>` : "";
   return `<section class="report-paper-view site-log-a4" id="site-log-paper">
-    <div class="paper-title-block"><h3>DNEVNIK GRADILIŠTA</h3><p>A4 pregled za štampu, potpis i slanje Direkciji</p></div>
+    <div class="paper-title-block"><h3>DNEVNIK GRADILIŠTA</h3><p>A4 pregled za štampu, potpis i slanje Upravi firme</p></div>
     <table class="paper-meta-table"><tbody>
       <tr><th>Firma</th><td>${escapeHtml(currentWorker?.company_name || "—")}</td><th>Datum izveštaja</th><td>${escapeHtml(data.report_date_manual || today())}</td></tr>
       <tr><th>Gradilište</th><td>${escapeHtml(data.site_name || "—")}</td><th>Uneo</th><td>${escapeHtml(data.created_by_worker || "—")}</td></tr>
       <tr><th>Radno mesto</th><td>${escapeHtml(data.function_title || "—")}</td><th>Vreme pregleda</th><td>${escapeHtml(formatDateTimeLocal(new Date().toISOString()) || "")}</td></tr>
     </tbody></table>
-    <div class="report-section"><h4>Radnici i sati</h4>${siteLogTable(["#","Ime i prezime","Sati","Napomena"], data.workers, (w,i)=>[String(i+1), w.full_name, w.hours, w.note])}</div>
+    <div class="report-section"><h4>Evidencija zaposlenih i radnih sati</h4>${siteLogTable(["#","Ime i prezime","Sati","Napomena"], data.workers, (w,i)=>[String(i+1), w.full_name, w.hours, w.note])}</div>
     <div class="report-section"><h4>Opis radova danas</h4><p>${escapeHtml(data.today_work_description || "—")}</p></div>
-    <div class="report-section"><h4>Plan radova za sutra</h4><p>${escapeHtml(data.tomorrow_work_plan || "—")}</p></div>
+    <div class="report-section"><h4>Plan radova za naredni dan</h4><p>${escapeHtml(data.tomorrow_work_plan || "—")}</p></div>
     <div class="report-section"><h4>Ulaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], data.material_in, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
     <div class="report-section"><h4>Izlaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], data.material_out, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
     <div class="report-section"><h4>Ugrađeni materijali</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Pozicija/rad"], data.materials_installed, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.work_position || m.note])}</div>
-    <div class="report-section"><h4>Lager materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
-    <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Prevoznik","Dobavljač","Tablice","Vozač","Materijal","Ture","m³","Napomena"], data.truck_tours, (t,i)=>[String(i+1), siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
-    <div class="report-section report-signature-section"><h4>Potpis / overa</h4>${signed}${uploaded}</div>
+    <div class="report-section"><h4>Stanje materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
+    <div class="report-section"><h4>Evidencija kamionskih tura</h4>${siteLogTable(["#","Vrsta transporta","Izvor prevoza","Spoljni dobavljač","Reg. oznake","Ime i prezime vozača","Materijal","Broj tura","m³","Napomena"], data.truck_tours, (t,i)=>[String(i+1), siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
+    <div class="report-section report-signature-section"><h4>Potpis / overa dokumenta</h4>${signed}${uploaded}</div>
     <div class="paper-footer-note">Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme, uploadovani dokument je dokaz.</div>
   </section>`;
 }
@@ -5532,7 +5532,7 @@ function buildSiteLogStandaloneHtml(data = collectSiteLogData()) {
   const section = (name, content) => `<section><h2>${plain(name)}</h2>${content}</section>`;
   const signatureBlock = data.site_log_signature_data_url
     ? `<div class="signature-box"><img src="${plain(data.site_log_signature_data_url)}" alt="Potpis"><div><b>${e(data.site_log_signature_name || data.created_by_worker || "Potpisnik")}</b><br><span>${e(formatDateTimeLocal(data.site_log_signature_signed_at) || "")}</span></div></div>`
-    : `<div class="signature-line">Potpis šefa gradilišta / odgovornog lica</div>`;
+    : `<div class="signature-line">Potpis odgovornog lica gradilišta</div>`;
   const uploaded = data.signed_file
     ? `<div class="file-note">Dodat potpisan dokument: <b>${e(data.signed_file.name || "fajl")}</b>. Uploadovani fajl služi kao dokaz; Excel koristi podatke iz forme.</div>`
     : "";
@@ -5541,7 +5541,7 @@ function buildSiteLogStandaloneHtml(data = collectSiteLogData()) {
     <main class="paper">
       <header>
         <h1>DNEVNIK GRADILIŠTA</h1>
-        <p>A4 pregled za štampu, potpis i slanje Direkciji</p>
+        <p>A4 pregled za štampu, potpis i slanje Upravi firme</p>
       </header>
 
       <table class="meta"><tbody>
@@ -5550,15 +5550,15 @@ function buildSiteLogStandaloneHtml(data = collectSiteLogData()) {
         <tr><th>Radno mesto</th><td>${e(data.function_title || "—")}</td><th>Vreme pregleda</th><td>${e(formatDateTimeLocal(new Date().toISOString()) || "")}</td></tr>
       </tbody></table>
 
-      ${section("1. Radnici i sati", table(["#", "Ime i prezime", "Sati", "Napomena"], data.workers, (w,i)=>[i+1, w.full_name, w.hours, w.note]))}
+      ${section("1. Evidencija zaposlenih i radnih sati", table(["#", "Ime i prezime", "Sati", "Napomena"], data.workers, (w,i)=>[i+1, w.full_name, w.hours, w.note]))}
       ${section("2. Opis radova danas", paragraph(data.today_work_description))}
-      ${section("3. Plan radova za sutra", paragraph(data.tomorrow_work_plan))}
+      ${section("3. Plan radova za naredni dan", paragraph(data.tomorrow_work_plan))}
       ${section("4. Ulaz materijala", table(["#", "Materijal", "Količina", "Jed.", "Napomena"], data.material_in, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.note]))}
       ${section("5. Izlaz materijala", table(["#", "Materijal", "Količina", "Jed.", "Napomena"], data.material_out, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.note]))}
       ${section("6. Ugrađeni materijali", table(["#", "Materijal", "Količina", "Jed.", "Pozicija/rad"], data.materials_installed, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.work_position || m.note]))}
-      ${section("7. Lager materijala na gradilištu", table(["#", "Materijal", "Količina", "Jed.", "Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.location_note || m.note]))}
-      ${section("8. Ture kamiona", table(["#", "Tip", "Prevoznik", "Dobavljač", "Tablice", "Vozač", "Materijal", "Ture", "m³", "Napomena"], data.truck_tours, (t,i)=>[i+1, siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note]))}
-      ${section("9. Potpis / overa", signatureBlock + uploaded)}
+      ${section("7. Stanje materijala na gradilištu", table(["#", "Materijal", "Količina", "Jed.", "Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.location_note || m.note]))}
+      ${section("8. Evidencija kamionskih tura", table(["#", "Vrsta transporta", "Izvor prevoza", "Spoljni dobavljač", "Reg. oznake", "Ime i prezime vozača", "Materijal", "Broj tura", "m³", "Napomena"], data.truck_tours, (t,i)=>[i+1, siteLogTruckTypeText(t.tour_type), siteLogTransportText(t.transport_source, t.partner_company), t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note]))}
+      ${section("9. Potpis / overa dokumenta", signatureBlock + uploaded)}
 
       <footer>Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme.</footer>
     </main>`;
@@ -5689,7 +5689,7 @@ function loadSiteLogDataIntoForm(d = {}, r = {}) {
   if (!$("#siteLogMaterialIn")?.children.length) addSiteLogMaterialEntry("material_in");
   if (!$("#siteLogMaterialsStock")?.children.length) addSiteLogMaterialEntry("materials_stock_on_site", { unit:"m3" });
   $("#siteLogPreviewBox")?.classList.add("hidden");
-  if ($("#siteLogStatusBadge")) $("#siteLogStatusBadge").textContent = "Vraćeno na dopunu";
+  if ($("#siteLogStatusBadge")) $("#siteLogStatusBadge").textContent = "Vraćeno na ispravku";
 }
 
 function loadSiteLogDraft() {
@@ -5739,11 +5739,11 @@ function hasSiteLogAnyContent(d) {
 async function submitSiteLogToDirector() {
   try {
     if (!navigator.onLine) { saveSiteLogDraft(); throw new Error("Nema interneta. Nacrt dnevnika je sačuvan na ovom uređaju."); }
-    const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null"); if (!worker) throw new Error("Radnik nije prijavljen.");
+    const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null"); if (!worker) throw new Error("Zaposleni nije prijavljen.");
     const data = collectSiteLogData();
-    if (!data.site_name) throw new Error("Odaberi gradilište iz liste Direkcije.");
+    if (!data.site_name) throw new Error("Odaberi gradilište iz liste Uprave firme.");
     if (!hasSiteLogAnyContent(data)) throw new Error("Popuni bar jedan deo dnevnika pre slanja.");
-    if (!data.site_log_signature_data_url && !data.signed_file) throw new Error("Dodaj potpis u aplikaciji ili učitaj potpisan dokument pre slanja Direkciji.");
+    if (!data.site_log_signature_data_url && !data.signed_file) throw new Error("Dodaj potpis u aplikaciji ili učitaj potpisan dokument pre slanja Upravi firme.");
     const reportDate = data.report_date_manual || today();
     const returnedId = localStorage.getItem("swp_returned_report_id");
     if (returnedId) {
@@ -5758,16 +5758,16 @@ async function submitSiteLogToDirector() {
       if (error) throw error;
       localStorage.removeItem("swp_returned_report_id");
       localStorage.removeItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`);
-      $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Ponovo poslato Direkciji");
+      $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Ponovo poslato Upravi firme");
       loadWorkerReturnedReports();
-      toast("Ispravljen Dnevnik gradilišta je ponovo poslat Direkciji ✅");
+      toast("Ispravljen Dnevnik gradilišta je ponovo poslat Upravi firme ✅");
       return;
     }
     const { error } = await sb.rpc("submit_worker_report", { p_company_code: worker.company_code, p_access_code: worker.access_code, p_report_date: reportDate, p_site_id: data.site_id || null, p_data: data });
     if (error) throw error;
     localStorage.removeItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`);
-    $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Poslato Direkciji");
-    toast("Dnevnik gradilišta je poslat Direkciji ✅");
+    $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Poslato Upravi firme");
+    toast("Dnevnik gradilišta je poslat Upravi firme ✅");
   } catch (e) { toast(e.message, true); }
 }
 
@@ -5806,7 +5806,7 @@ function collectWorkerData() {
   };
 
   // v1.17.4: Labudica ne mora imati glavno gradilište iz osnovne rubrike.
-  // Ako radnik popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
+  // Ako zaposleni popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
   // iz prvog unosa labudice ili generički naziv, a p_site_id ostaje null.
   const firstLowloaderMove = lowloaderMoves.find(m =>
     m.from_site || m.to_site || m.from_address || m.to_address || m.machine || m.plates
@@ -5924,7 +5924,7 @@ function ensureWorkerDefaultEntries() {
   const perms = currentWorker?.permissions || {};
 
   // Ne pozivati ovu funkciju samu iz sebe. To je pravilo ranije pravilo
-  // beskonačnu petlju posle slanja izveštaja i radnik je dobijao grešku
+  // beskonačnu petlju posle slanja izveštaja i zaposleni je dobijao grešku
   // iako je RPC slanje možda već prošlo.
   if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
   if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
@@ -5954,7 +5954,7 @@ async function prepareWorkerFormForNextReport() {
 }
 
 async function verifyRecentlySubmittedReport(worker, reportDate) {
-  // Samo dijagnostika. Ako RLS ne dozvoli direktno čitanje, ne smemo blokirati radnika.
+  // Samo dijagnostika. Ako RLS ne dozvoli direktno čitanje, ne smemo blokirati zaposlenog.
   try {
     if (!worker?.company_id) return;
     const { data, error } = await sb
@@ -6036,19 +6036,19 @@ let lastWorkerUiAuditText = "";
 
 const WORKER_UI_PERMISSION_MAP = {
   daily_work: { label: "Gradilište i datum izveštaja", window: "Osnovno: gradilište i datum", worker: true },
-  workers: { label: "Radnici na gradilištu", window: "Radnici na gradilištu", worker: true },
+  workers: { label: "Evidencija zaposlenih na gradilištu", window: "Evidencija zaposlenih na gradilištu", worker: true },
   machines: { label: "Rad sa mašinom", window: "Evidencija rada mašine", worker: true },
   vehicles: { label: "Rad vozila / kamiona", window: "Vozilo / ture / m³", worker: true },
   lowloader: { label: "Transport mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
   fuel: { label: "Evidencija goriva – korisnik", window: "Sipanje goriva", worker: true },
   field_tanker: { label: "Evidencija goriva – cisterna", window: "Evidencija goriva – cisterna", worker: true },
   materials: { label: "Materijal", window: "Materijal", worker: true },
-  signature: { label: "Potpis radnika", window: "Potpis na dnevnom izveštaju", worker: true },
+  signature: { label: "Potpis zaposlenog", window: "Potpis na dnevnom izveštaju", worker: true },
   leave_request: { label: "Zahtev za odsustvo / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
   warehouse: { label: "Magacin", window: "Magacin", worker: true },
   defects: { label: "Evidencija kvara", window: "Evidencija kvara", worker: true },
 
-  // Upravljačka prava nisu radnički prozori. Ako ih ima običan radnik, audit ih označava kao upozorenje.
+  // Upravljačka prava nisu radnički prozori. Ako ih ima običan zaposleni, audit ih označava kao upozorenje.
   view_reports: { label: "Pregled izveštaja", window: "Uprava: pregled izveštaja", worker: false },
   approve_reports: { label: "Odobravanje izveštaja", window: "Uprava: odobravanje", worker: false },
   excel_export: { label: "Izvoz u Excel", window: "Uprava: Excel", worker: false },
@@ -6278,7 +6278,7 @@ function parseDecimalInput(value) {
 }
 
 function preventNumberInputScrollChanges(root = document) {
-  // Radnik na terenu često skroluje preko forme. Native input[type=number]
+  // Zaposleni na terenu često skroluje preko forme. Native input[type=number]
   // u Chrome/Edge može sam da promeni vrednost (npr. 4,5 -> 4,51) preko
   // točkića/trackpad-a ili strelica. Zato sva numerička polja zaključavamo
   // kao tekstualni unos sa decimalnom tastaturom. Parsiranje već podržava
@@ -6329,13 +6329,13 @@ const EXPORT_TEMPLATE_KEY = "swp_export_template";
 
 const EXPORT_COLUMNS = [
   { key:"date", label:"Datum" },
-  { key:"worker", label:"Radnik koji šalje izveštaj" },
+  { key:"worker", label:"Zaposleni koji šalje izveštaj" },
   { key:"function", label:"Radno mesto" },
   { key:"site", label:"Gradilište" },
   { key:"hours", label:"Ukupno sati rada" },
   { key:"description", label:"Šta je rađeno" },
-  { key:"crew_worker", label:"Ime radnika na gradilištu" },
-  { key:"crew_hours", label:"Sati tog radnika" },
+  { key:"crew_worker", label:"Ime zaposlenog na gradilištu" },
+  { key:"crew_hours", label:"Sati tog zaposlenog" },
   { key:"machine_code", label:"Broj mašine" },
   { key:"machine", label:"Mašina" },
   { key:"machine_start", label:"Početno stanje MTČ/KM" },
@@ -6349,7 +6349,7 @@ const EXPORT_COLUMNS = [
   { key:"km_start", label:"Početna kilometraža" },
   { key:"km_end", label:"Krajnja kilometraža" },
   { key:"route", label:"Relacija vožnje" },
-  { key:"tours", label:"Broj tura" },
+  { key:"tours", label:"Broj izvršenih tura" },
   { key:"cubic", label:"Ukupno m³" },
   { key:"lowloader_plates", label:"Tablice labudice" },
   { key:"lowloader_from", label:"Gradilište sa kog je mašina preuzeta" },
@@ -6400,7 +6400,7 @@ const EXPORT_COLUMNS = [
   { key:"defect", label:"Opis kvara" },
   { key:"defect_work_impact", label:"Uticaj na rad" },
   { key:"defect_urgency", label:"Hitnost" },
-  { key:"defect_called_mechanic", label:"Pozvan šef mehanizacije" },
+  { key:"defect_called_mechanic", label:"Pozvan odgovorno lice mehanizacije" },
   { key:"defect_status", label:"Status kvara" },
   { key:"status", label:"Status izveštaja" }
 ];
@@ -6420,8 +6420,8 @@ const EXPORT_GROUPS = [
   },
   {
     id: "crew",
-    title: "Radnici na gradilištu",
-    hint: "Radnici koje je šef uneo i koliko su sati radili.",
+    title: "Evidencija zaposlenih na gradilištu",
+    hint: "Zaposleni koje je odgovorno lice unelo i koliko su sati radili.",
     keys: ["crew_worker", "crew_hours"]
   },
   {
@@ -6439,7 +6439,7 @@ const EXPORT_GROUPS = [
   {
     id: "fuel",
     title: "Sipanje goriva",
-    hint: "Gorivo koje je radnik sipao u svoju mašinu ili vozilo.",
+    hint: "Gorivo koje je zaposleni sipao u svoju mašinu ili vozilo.",
     keys: ["fuel_type", "fuel_asset_code", "fuel_for", "fuel_registration", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_by", "fuel_receiver"]
   },
   {
@@ -6463,13 +6463,13 @@ const EXPORT_GROUPS = [
   {
     id: "warehouse",
     title: "Magacin",
-    hint: "Ulaz/izlaz/stanje u magacinu ako radnik ima tu rubriku.",
+    hint: "Ulaz/izlaz/stanje u magacinu ako zaposleni ima tu rubriku.",
     keys: ["warehouse_type", "warehouse_item", "warehouse_qty"]
   },
   {
     id: "leave",
     title: "Zahtev za odsustvo / godišnji odmor",
-    hint: "Zahtevi radnika za slobodan dan ili godišnji odmor.",
+    hint: "Zahtevi zaposlenog za slobodan dan ili godišnji odmor.",
     keys: ["leave_type", "leave_date", "leave_from", "leave_to", "leave_note"]
   },
   {
@@ -6762,7 +6762,7 @@ const SMART_EXPORT_PRESETS = {
     keys: ["date","worker","site","field_tanker_site","field_tanker_type","field_tanker_asset_code","field_tanker_asset","field_tanker_registration","field_tanker_km","field_tanker_mtc","field_tanker_liters","field_tanker_receiver","status"]
   },
   hours_workers: {
-    title: "Radni sati radnika",
+    title: "Radni sati zaposlenog",
     keys: ["date","site","worker","function","hours","description","crew_worker","crew_hours","status"]
   },
   machines: {
@@ -6843,15 +6843,15 @@ function getSmartExportUiText(type) {
   const t = type || "all";
   const map = {
     hours_workers: {
-      workerLabel: "Radnik",
-      workerPlaceholder: "npr. Marko ili prazno za sve radnike",
+      workerLabel: "Zaposleni",
+      workerPlaceholder: "npr. Marko ili prazno za sve zaposlene",
       itemLabel: "Dodatno",
       itemPlaceholder: "nije obavezno za radne sate",
       hideItem: true,
-      hint: "Radni sati: izaberi gradilište i period. Radnika upiši samo ako tražiš pojedinca."
+      hint: "Radni sati: izaberi gradilište i period. Zaposlenog upiši samo ako tražiš pojedinca."
     },
     machines: {
-      workerLabel: "Operator / radnik",
+      workerLabel: "Operator / zaposleni",
       workerPlaceholder: "npr. Marko ili prazno za sve operatore",
       itemLabel: "Mašina",
       itemPlaceholder: "npr. CAT 330, bager, valjak",
@@ -6859,7 +6859,7 @@ function getSmartExportUiText(type) {
       hint: "Mašine / MTČ: u polje Mašina možeš upisati broj ili naziv mašine."
     },
     vehicles: {
-      workerLabel: "Vozač",
+      workerLabel: "Ime i prezime vozača",
       workerPlaceholder: "npr. Jovan ili prazno za sve vozače",
       itemLabel: "Vozilo / tablice",
       itemPlaceholder: "npr. MAN, BG123, kiper",
@@ -6883,7 +6883,7 @@ function getSmartExportUiText(type) {
       hint: "Cisterna: prikazuje sipanja iz cisterne po gradilištu i datumu."
     },
     materials: {
-      workerLabel: "Vozač / radnik",
+      workerLabel: "Ime i prezime vozača / zaposleni",
       workerPlaceholder: "npr. Marko ili prazno za sve",
       itemLabel: "Materijal",
       itemPlaceholder: "npr. kamen 0-31, pesak, zemlja",
@@ -6892,7 +6892,7 @@ function getSmartExportUiText(type) {
     }
   };
   return map[t] || {
-    workerLabel: "Radnik / ime",
+    workerLabel: "Zaposleni / ime",
     workerPlaceholder: "npr. Marko ili prazno za sve",
     itemLabel: "Stavka / naziv",
     itemPlaceholder: "npr. CAT 330, MAN, kamen 0-31",
@@ -7306,7 +7306,7 @@ function renderExportPanel() {
     const d = r.data || {};
     return `<div class="export-selected-item">
       <b>${escapeHtml(r.report_date || "bez datuma")}</b>
-      <span>${escapeHtml(reportPersonName(r) || "Nepoznat radnik")}</span>
+      <span>${escapeHtml(reportPersonName(r) || "Nepoznat zaposleni")}</span>
       <small>${escapeHtml(d.site_name || "bez gradilišta")} · ${escapeHtml(r.status || "")}</small>
       <button class="secondary small-btn" type="button" onclick="toggleReportExportSelection('${r.id}', false); const cb=document.querySelector('[onchange*=\'${r.id}\']'); if(cb) cb.checked=false;">Ukloni</button>
     </div>`;
@@ -7387,7 +7387,7 @@ function exportFilterSummary(settings) {
     settings.site ? `Gradilište: ${settings.site}` : "Gradilište: sva",
     settings.from ? `Od: ${settings.from}` : "Od: —",
     settings.to ? `Do: ${settings.to}` : "Do: —",
-    settings.worker ? `Radnik: ${settings.worker}` : "Radnik: svi",
+    settings.worker ? `Zaposleni: ${settings.worker}` : "Zaposleni: svi",
     settings.item ? `Stavka: ${settings.item}` : "Stavka: sve"
   ];
 }
@@ -7584,7 +7584,7 @@ async function sendDefectNow() {
     }
 
     const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
-    if (!worker) throw new Error("Radnik nije prijavljen.");
+    if (!worker) throw new Error("Zaposleni nije prijavljen.");
 
     const defectText = $("#wrDefect")?.value.trim() || "";
     const defectAsset = getDefectAssetPayload();
@@ -7648,28 +7648,28 @@ async function loginWorkerByCode() {
     const codeInput = $("#workerAccessCode");
 
     if (!companyInput) throw new Error("Nedostaje polje Šifra firme.");
-    if (!codeInput) throw new Error("Nedostaje polje Šifra radnika.");
+    if (!codeInput) throw new Error("Nedostaje polje Pristupni kod zaposlenog.");
 
     const companyCode = normalizeLoginCode(companyInput.value);
     const accessCode = normalizeLoginCode(codeInput.value);
 
     if (!companyCode) throw new Error("Unesi šifru firme.");
-    if (!accessCode) throw new Error("Unesi šifru radnika.");
+    if (!accessCode) throw new Error("Unesi šifru zaposlenog.");
 
-    // Radnik se ne loguje emailom. Login mora proći samo preko para:
-    // šifra firme + šifra radnika. Ovo ide kroz Supabase RPC worker_login.
+    // Zaposleni se ne loguje emailom. Login mora proći samo preko para:
+    // šifra firme + šifra zaposlenog. Ovo ide kroz Supabase RPC worker_login.
     const { data, error } = await sb.rpc("worker_login", {
       p_company_code: companyCode,
       p_access_code: accessCode
     });
 
     if (error) {
-      throw new Error("Worker login SQL nije aktivan ili je star. Pokreni SQL dopunu iz ZIP-a, pa probaj opet. Detalj: " + error.message);
+      throw new Error("Worker login SQL nije aktivan ili je star. Pokreni SQL ispravku iz ZIP-a, pa probaj opet. Detalj: " + error.message);
     }
 
     const row = readRpcSingleRow(data);
     if (!row || !row.user_id || !row.company_id) {
-      throw new Error("Neispravna šifra firme ili šifra radnika. Proveri da je radnik AKTIVAN i da unosiš baš šifru firme + šifru radnika.");
+      throw new Error("Neispravna šifra firme ili šifra zaposlenog. Proveri da je zaposleni AKTIVAN i da unosiš baš šifru firme + šifru zaposlenog.");
     }
 
     currentWorker = {
@@ -7681,7 +7681,7 @@ async function loginWorkerByCode() {
     localStorage.setItem("swp_worker", JSON.stringify(currentWorker));
     localStorage.setItem("swp_worker_company_code", currentWorker.company_code || companyCode);
     openWorkerForm();
-    toast("Radnik je prijavljen.");
+    toast("Zaposleni je prijavljen.");
   } catch(e) {
     toast(e.message, true);
   }
@@ -7906,7 +7906,7 @@ function bindEvents() {
         throw new Error("Nema interneta. Nacrt je sačuvan na ovom telefonu.");
       }
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
-      if (!worker) throw new Error("Radnik nije prijavljen.");
+      if (!worker) throw new Error("Zaposleni nije prijavljen.");
       const data = collectWorkerData();
       if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Uprava.");
     if (await submitReturnedCorrectionIfNeeded(data)) return;
@@ -7948,7 +7948,7 @@ async function applyWorkerCompanyBrand() {
     currentWorker.brand_color = safeColor;
     applyCompanyBrandToBody(safeColor);
   } catch (e) {
-    console.warn("Start Work PRO: boja firme za radnika nije učitana", e?.message || e);
+    console.warn("Start Work PRO: boja firme za zaposlenog nije učitana", e?.message || e);
     applyCompanyBrandToBody(currentWorker?.brand_color || "green");
   }
 }
@@ -7975,7 +7975,7 @@ async function openWorkerForm() {
   }
   if (normalWorkerFormCard) normalWorkerFormCard.classList.toggle("hidden", siteLogEnabled);
   document.body.classList.toggle("site-log-mode", siteLogEnabled);
-  setInternalHeader(siteLogEnabled ? "Dnevnik gradilišta" : "Terenski unos", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  setInternalHeader(siteLogEnabled ? "Dnevnik gradilišta" : "Terenski radni unos", `${currentWorker?.full_name || "Zaposleni"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   const workerLogout = $("#workerLogoutBtn");
   if (workerLogout) {
     workerLogout.classList.remove("hidden");
@@ -7994,7 +7994,7 @@ async function openWorkerForm() {
   const useDesktopPanel = !!(perms.desktop_panel || perms.laptop_view || perms.desktop_worker_panel);
   document.body.classList.toggle("worker-desktop-panel", useDesktopPanel);
   if (useDesktopPanel && !perms.site_daily_log) {
-    setInternalHeader("Terenski unos - laptop prikaz", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+    setInternalHeader("Terenski radni unos - laptop prikaz", `${currentWorker?.full_name || "Zaposleni"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   }
   if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
   if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
@@ -8016,8 +8016,8 @@ async function boot() {
   const storedCompanyCode = getSavedWorkerCompanyCode();
   const stored = localStorage.getItem("swp_worker");
 
-  // QR/PWA radnički režim: telefon pamti firmu, ali ne otvara Direkciju i ne prikazuje javni meni.
-  // Radnik uvek vidi samo unos svog radničkog koda, pa tek onda ulazi u svoje štiklirane rubrike.
+  // QR/PWA radnički režim: telefon pamti firmu, ali ne otvara Upravu firme i ne prikazuje javni meni.
+  // Zaposleni uvek vidi samo unos svog radničkog koda, pa tek onda ulazi u svoje štiklirane rubrike.
   if (qrCompanyCode || storedCompanyCode) {
     if (qrCompanyCode) localStorage.setItem("swp_worker_company_code", qrCompanyCode);
     localStorage.removeItem("swp_worker");
