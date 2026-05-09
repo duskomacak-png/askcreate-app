@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.2";
+const APP_VERSION = "1.25.3";
 
 
 let sb = null;
@@ -6357,11 +6357,19 @@ function getSmartRowsForReport(r, settings) {
 }
 
 window.setSmartExportType = (type) => {
+  const cleanType = SMART_EXPORT_PRESETS[type] ? type : "all";
   const el = $("#smartExportType");
-  if (el) el.value = type;
-  const preset = SMART_EXPORT_PRESETS[type] || SMART_EXPORT_PRESETS.all;
+  if (el) el.value = cleanType;
+  const preset = SMART_EXPORT_PRESETS[cleanType] || SMART_EXPORT_PRESETS.all;
+  $$(".smart-export-card").forEach(btn => {
+    const clickCode = btn.getAttribute("onclick") || "";
+    btn.classList.toggle("active", clickCode.includes(`'${cleanType}'`) || clickCode.includes(`"${cleanType}"`));
+  });
+  const current = getSmartExportSettings();
+  setSmartExportSettings({ ...current, type: cleanType });
+  setExportColumnKeys(preset.keys);
   const info = $("#smartExportInfo");
-  if (info) info.textContent = `Izabrana grupa: ${preset.title}. Upiši datum, gradilište, radnika ili naziv stavke pa klikni “Pripremi poseban Excel”.`;
+  if (info) info.textContent = `Izabrana grupa: ${preset.title}. Upiši datum, gradilište, radnika ili naziv stavke pa klikni “Prikaži pregled za štampu”.`;
 };
 
 window.applySmartExportFilters = () => {
@@ -6412,6 +6420,7 @@ function restoreSmartExportControls() {
   if ($("#smartExportWorker")) $("#smartExportWorker").value = settings.worker;
   if ($("#smartExportItem")) $("#smartExportItem").value = settings.item;
   if ($("#exportTemplateType")) $("#exportTemplateType").value = getExportTemplateType();
+  setSmartExportType(settings.type || "all");
 }
 
 function getExportRowsAndColumns() {
@@ -6980,7 +6989,11 @@ function bindEvents() {
   if ($("#exportXlsBtn")) $("#exportXlsBtn").addEventListener("click", exportExcelFile);
   if ($("#copyExcelBtn")) $("#copyExcelBtn").addEventListener("click", copyExportTableForExcel);
   if ($("#applySmartExportBtn")) $("#applySmartExportBtn").addEventListener("click", applySmartExportFilters);
+  if ($("#previewExportBtn")) $("#previewExportBtn").addEventListener("click", renderExportPreview);
+  if ($("#printExportBtn")) $("#printExportBtn").addEventListener("click", printExportPreview);
   if ($("#clearSmartExportBtn")) $("#clearSmartExportBtn").addEventListener("click", clearSmartExportFilters);
+  if ($("#smartExportType")) $("#smartExportType").addEventListener("change", (e) => setSmartExportType(e.target.value));
+  if ($("#exportTemplateType")) $("#exportTemplateType").addEventListener("change", (e) => setExportTemplateType(e.target.value));
   ["#smartExportFrom", "#smartExportTo", "#smartExportSite", "#smartExportWorker", "#smartExportItem"].forEach(sel => {
     const el = $(sel);
     if (el) el.addEventListener("keydown", (e) => { if (e.key === "Enter") applySmartExportFilters(); });

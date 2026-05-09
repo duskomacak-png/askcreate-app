@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1252" />
+  <link rel="stylesheet" href="style.css?v=1253" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -522,8 +522,13 @@
           <p class="muted">Ovde stoje dnevni izveštaji koje je Uprava označila. Odaberi koje podatke želiš u Excel fajlu.</p>
 
           <div class="export-box smart-export-box">
-            <h4>📊 Excel izvoz po grupama</h4>
-            <p class="muted">Direkcija prvo bira grupu obračuna, pa period, gradilište i po potrebi radnika ili stavku. Gorivo, materijal, mašine i vozila ostaju odvojeni.</p>
+            <h4>📊 Pano za Excel / štampu</h4>
+            <p class="muted">Radi kao tri koraka: izaberi grupu, upiši filtere, pa klikni <b>Prikaži pregled za štampu</b>. Stari Excel export ostaje ispod kao rezerva.</p>
+            <div class="export-board-steps">
+              <span><b>1</b> Grupa obračuna</span>
+              <span><b>2</b> Period i gradilište</span>
+              <span><b>3</b> Pregled / štampa / Excel</span>
+            </div>
 
             <div class="smart-export-cards">
               <button type="button" class="smart-export-card" onclick="setSmartExportType('hours_workers')"><b>👷 Radnici / sati</b><span>Gradilište, datum od/do, jedan radnik ili svi.</span></button>
@@ -574,8 +579,8 @@
               </label>
             </div>
             <div class="row compact">
-              <button id="applySmartExportBtn" class="primary" type="button">🔎 Pripremi poseban Excel</button>
-              <button id="previewExportBtn" class="secondary" type="button">👁️ Prikaži kalup</button>
+              <button id="previewExportBtn" class="primary" type="button">👁️ Prikaži pregled za štampu</button>
+              <button id="applySmartExportBtn" class="secondary" type="button">🔎 Samo pripremi Excel</button>
               <button id="clearSmartExportBtn" class="secondary" type="button">Očisti filter</button>
             </div>
             <p id="smartExportInfo" class="hint">Primeri: “Radnici / sati” + Zmaj + maj; “Materijal” + kamen 0-31; “Gorivo – cisterna” + datum od/do.</p>
@@ -608,8 +613,8 @@
           <div class="export-box export-preview-box">
             <div class="row space-between">
               <div>
-                <h4>Pregled pre štampe</h4>
-                <p class="muted">Direkcija prvo vidi kako će izveštaj izgledati. Zatim može da preuzme Excel ili da štampa direktno iz aplikacije.</p>
+                <h4>📄 Papirni pregled</h4>
+                <p class="muted">Ovde će se pojaviti kalup pre štampe. Ako je pregled dobar, klikni Štampaj ili dole Preuzmi Excel.</p>
               </div>
               <div id="exportPreviewActions" class="row compact hidden">
                 <button id="printExportBtn" class="primary" type="button">🖨️ Štampaj</button>
@@ -877,6 +882,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1252"></script>
+  <script src="script.js?v=1253"></script>
 </body>
 </html>

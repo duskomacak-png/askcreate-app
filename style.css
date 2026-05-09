@@ -2525,7 +2525,7 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 @media(max-width:620px){.smart-export-cards{grid-template-columns:1fr}.smart-export-card{padding:10px}}
 
 
-/* v1.25.2 — Excel kalupi: pregled pre štampe */
+/* v1.25.3 — Excel kalupi: pregled pre štampe */
 .hidden{display:none!important}
 .export-preview-stage{margin-top:14px;overflow:auto;background:#e5e7eb;border:1px solid var(--border);border-radius:16px;padding:16px}
 .export-preview-paper{background:#fff;color:#111827;width:1120px;max-width:100%;min-height:520px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;box-shadow:0 14px 34px rgba(15,23,42,.16);font-family:Arial, Helvetica, sans-serif}
@@ -2559,4 +2559,46 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
   body.printing-export-preview .export-preview-table{font-size:10px}
   body.printing-export-preview .export-preview-head{break-inside:avoid}
   body.printing-export-preview .export-preview-signatures{break-inside:avoid}
+}
+
+
+/* v1.25.3 — jednostavniji pano za Excel/štampu */
+.export-board-steps{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:12px 0 14px;
+}
+.export-board-steps span{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border:1px solid rgba(15,122,59,.22);
+  border-radius:14px;
+  background:#f8fffb;
+  color:#1f2937;
+  font-weight:800;
+}
+.export-board-steps b{
+  display:inline-grid;
+  place-items:center;
+  width:24px;
+  height:24px;
+  border-radius:999px;
+  background:#0f7a3b;
+  color:#fff;
+  font-size:13px;
+}
+.smart-export-card.active{
+  border-color:#0f7a3b;
+  background:#ecfdf3;
+  box-shadow:0 10px 22px rgba(15,122,59,.15);
+}
+#previewExportBtn{
+  min-width:230px;
+}
+@media(max-width:760px){
+  .export-board-steps{grid-template-columns:1fr}
+  #previewExportBtn{width:100%;min-width:0}
 }
