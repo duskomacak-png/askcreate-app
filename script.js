@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.5";
+const APP_VERSION = "1.25.6";
 
 
 let sb = null;
@@ -1937,6 +1937,33 @@ function formatDateTimeLocal(value) {
   }
 }
 
+function reportStatusLabel(status) {
+  const key = String(status || "novo").toLowerCase();
+  const map = {
+    new: "Novo",
+    novo: "Novo",
+    approved: "Odobreno",
+    odobreno: "Odobreno",
+    returned: "Vraćeno na dopunu",
+    vraceno: "Vraćeno na dopunu",
+    exported: "Izvezeno",
+    izvezeno: "Izvezeno",
+    archived: "Arhivirano",
+    arhivirano: "Arhivirano",
+    draft: "Nacrt",
+    pending: "Na čekanju"
+  };
+  return map[key] || String(status || "Novo");
+}
+
+function safeFilePart(value) {
+  return String(value || "izvestaj")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "_")
+    .slice(0, 80) || "izvestaj";
+}
+
 
 function reportUserFallback(r) {
   const d = r?.data || {};
@@ -2475,17 +2502,15 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const hasLowloaders = lowloaders.some(hasUsefulEntry);
   const hasFuels = fuels.some(hasUsefulEntry);
   const hasFieldTankers = fieldTankers.some(hasUsefulEntry);
-  const hasBasic = safe(d.site_name) || safe(d.description) || safe(d.hours) || safe(d.note);
+  const hasGeneralNote = safe(d.description) || safe(d.note);
 
   return `
     <div class="report-readable">
-      ${hasBasic ? `<div class="report-section report-main-summary">
-        <h4>Osnovni podaci</h4>
+      ${hasGeneralNote ? `<div class="report-section report-note-summary">
+        <h4>Napomena / opis sa terena</h4>
         <div class="report-kv">
           ${rows([
-            ["Gradilište", d.site_name],
             ["Opis rada", d.description],
-            ["Sati rada", d.hours],
             ["Napomena", d.note]
           ])}
         </div>
@@ -2613,6 +2638,63 @@ window.changeReportPaperZoom = function(id, delta) {
   window.setReportPaperZoom(id, current + delta);
 };
 
+window.printReportA4 = function(id) {
+  const el = document.getElementById(`paper-${id}`);
+  if (!el) return toast("Ne mogu da pronađem papirni pregled za štampu.", true);
+  document.querySelectorAll(".print-target-report").forEach(x => x.classList.remove("print-target-report"));
+  el.classList.add("print-target-report");
+  document.body.classList.add("printing-report-paper");
+  setTimeout(() => window.print(), 50);
+  setTimeout(() => {
+    document.body.classList.remove("printing-report-paper");
+    el.classList.remove("print-target-report");
+  }, 800);
+};
+
+window.downloadReportA4 = function(id) {
+  const el = document.getElementById(`paper-${id}`);
+  if (!el) return toast("Ne mogu da pronađem papirni pregled za preuzimanje.", true);
+  const title = (el.querySelector("h3")?.textContent || "Dnevni izveštaj").trim();
+  const metaText = Array.from(el.querySelectorAll(".paper-meta-table td")).map(x => x.textContent.trim()).filter(Boolean);
+  const fileName = safeFilePart(`${title}_${metaText[0] || ""}_${metaText[1] || ""}`) + ".html";
+  const html = `<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(title)}</title>
+<style>
+  @page{size:A4;margin:12mm;}
+  *{box-sizing:border-box;}
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#fff;color:#17231b;font-size:12px;}
+  .report-paper-view{width:100%;max-width:190mm;margin:0 auto;background:#fff;}
+  .paper-title-block{border-bottom:2px solid #1f3326;margin-bottom:12px;padding-bottom:8px;text-align:center;}
+  .paper-title-block h3{margin:0 0 4px;font-size:18px;text-transform:uppercase;}
+  .paper-title-block p{margin:0;color:#5e6b62;font-size:11px;}
+  table{width:100%;border-collapse:collapse;page-break-inside:auto;}
+  th,td{border:1px solid #c8d2cc;padding:5px 7px;vertical-align:top;}
+  th{background:#edf1ee;text-align:left;font-weight:700;}
+  tr{page-break-inside:avoid;page-break-after:auto;}
+  h4{font-size:13px;text-transform:uppercase;border-bottom:2px solid #c8d2cc;margin:14px 0 7px;padding-bottom:5px;}
+  .report-section{page-break-inside:avoid;margin:12px 0;}
+  .report-kv{display:grid;grid-template-columns:45mm 1fr;border:1px solid #c8d2cc;}
+  .report-kv b,.report-kv span{border-bottom:1px solid #dce4df;padding:5px 7px;}
+  .report-kv b{background:#f2f4f3;}
+  .paper-footer-note{border-top:1px solid #c8d2cc;margin-top:14px;padding-top:7px;text-align:right;color:#66716a;font-size:10px;}
+  .report-excel-details{display:none;}
+</style>
+</head>
+<body>${el.outerHTML}</body>
+</html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast("A4 pregled je preuzet na kompjuter. Može da se otvori i štampa.");
+};
+
 function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
@@ -2622,6 +2704,7 @@ function reportHtml(r) {
   const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
   const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
   const statusText = r.status || "novo";
+  const statusLabel = reportStatusLabel(statusText);
 
   return `
     <article class="report-row-item">
@@ -2642,7 +2725,7 @@ function reportHtml(r) {
           <small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small>
         </div>
         <div class="report-list-sections">${sectionsHtml}</div>
-        <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusText)}</span></div>
+        <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusLabel)}</span></div>
       </div>
 
       <details class="report-paper-details">
@@ -2652,18 +2735,19 @@ function reportHtml(r) {
           <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', -0.1)">A−</button>
           <button class="secondary" type="button" onclick="setReportPaperZoom('${r.id}', 1)"><span id="paperZoom-${r.id}">100%</span></button>
           <button class="secondary" type="button" onclick="changeReportPaperZoom('${r.id}', 0.1)">A+</button>
-          <button class="secondary" type="button" onclick="window.print()">Štampaj</button>
+          <button class="secondary" type="button" onclick="downloadReportA4('${r.id}')">Preuzmi A4</button>
+          <button class="secondary" type="button" onclick="printReportA4('${r.id}')">Štampaj A4</button>
         </div>
 
         <section class="report-paper-view" id="paper-${r.id}" style="--report-zoom:1">
           <div class="paper-title-block">
             <h3>${escapeHtml(title)}</h3>
-            <p>Start Work PRO · pregled dnevnog izveštaja za kontrolu i odobravanje</p>
+            <p>Papirni pregled dnevnog izveštaja za kontrolu, potpis i štampu</p>
           </div>
 
           <table class="paper-meta-table">
             <tbody>
-              <tr><th>Datum</th><td>${escapeHtml(r.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusText)}</td></tr>
+              <tr><th>Datum</th><td>${escapeHtml(r.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
               <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
               <tr><th>Radnik</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
             </tbody>
@@ -2674,7 +2758,7 @@ function reportHtml(r) {
           ${renderReportReadableDetails(d)}
 
           <div class="paper-footer-note">
-            Izveštaj poslat iz Start Work PRO · ${escapeHtml(submitted || "")}
+            Pregled pripremljen za štampu · ${escapeHtml(submitted || "")}
           </div>
         </section>
 
