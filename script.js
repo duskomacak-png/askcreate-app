@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.27.5";
+const APP_VERSION = "1.27.6";
 
 
 let sb = null;
@@ -1989,7 +1989,9 @@ function reportStatusLabel(status) {
     archived: "Arhivirano",
     arhivirano: "Arhivirano",
     draft: "Nacrt",
-    pending: "Na čekanju"
+    pending: "Na čekanju",
+    sent: "Poslato",
+    submitted: "Poslato"
   };
   return map[key] || String(status || "Novo");
 }
@@ -2792,6 +2794,48 @@ window.downloadReportA4 = function(id) {
 };
 
 
+
+function reportDocumentPrefix(r) {
+  const d = r?.data || {};
+  const type = String(d.report_type || "").toLowerCase();
+  if (type === "site_daily_log") return "DG";      // Dnevnik gradilišta
+  if (type.includes("defect")) return "KV";        // Kvar
+  if (type.includes("fuel") || type.includes("tanker")) return "GR"; // Gorivo
+  return "DRI";                                    // Dnevni radni izveštaj
+}
+
+function compactDateForDocumentNumber(value) {
+  const raw = String(value || "").trim();
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}${m[2]}${m[3]}`;
+  const d = value ? new Date(value) : new Date();
+  if (!Number.isNaN(d.getTime())) {
+    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+  }
+  return new Date().toISOString().slice(0,10).replaceAll("-", "");
+}
+
+function compactTimeForDocumentNumber(value) {
+  const d = value ? new Date(value) : new Date();
+  if (!Number.isNaN(d.getTime())) {
+    return `${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
+  }
+  return "0000";
+}
+
+function reportDocumentNumber(r) {
+  const d = r?.data || {};
+  if (d.document_number) return String(d.document_number);
+  const prefix = reportDocumentPrefix(r);
+  const datePart = compactDateForDocumentNumber(r?.report_date || d.report_date_manual || d.report_date || r?.created_at || r?.submitted_at);
+  const timePart = compactTimeForDocumentNumber(r?.submitted_at || r?.created_at);
+  const idPart = String(r?.id || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 8)
+    .toUpperCase() || "NACRT";
+  return `${prefix}-${datePart}-${timePart}-${idPart}`;
+}
+
 function reportDocumentTitle(r) {
   const d = r?.data || {};
   return d.report_type === "site_daily_log" ? "DNEVNIK GRADILIŠTA" : (isDefectOnlyReport(r) ? "PRIJAVA KVARA" : "DNEVNI RADNI IZVEŠTAJ SA TERENA");
@@ -2821,7 +2865,7 @@ function buildReportPaperHtml(r, paperIdPrefix = "paper") {
           <tr><th>Datum izveštaja</th><td>${escapeHtml(r.report_date || d.report_date_manual || d.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
           <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
           <tr><th>Zaposleni / odgovorno lice</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
-          <tr><th>Firma</th><td>${escapeHtml(currentCompany?.company_name || currentCompany?.name || "—")}</td><th>Broj izveštaja</th><td>${escapeHtml(String(r.id || "").slice(0, 8))}</td></tr>
+          <tr><th>Firma</th><td>${escapeHtml(currentCompany?.company_name || currentCompany?.name || "—")}</td><th>Broj dokumenta</th><td>${escapeHtml(reportDocumentNumber(r))}</td></tr>
         </tbody>
       </table>
 
