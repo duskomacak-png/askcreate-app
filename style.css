@@ -3021,3 +3021,86 @@ body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4
     font-weight:900!important;
   }
 }
+
+
+/* v1.26.4 — Dnevnik gradilišta: čitljiv A4 i čist PDF/štampa */
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 * {
+  color:#000000 !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+  filter:none !important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 {
+  background:#ffffff !important;
+  border:1px solid #111827 !important;
+  box-shadow:0 12px 36px rgba(0,0,0,.18) !important;
+  font-family:Arial,Helvetica,sans-serif !important;
+  font-size:13px !important;
+  line-height:1.35 !important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .paper-title-block h3 {
+  color:#000 !important;
+  font-weight:900 !important;
+  font-size:22px !important;
+  letter-spacing:.04em !important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .paper-title-block p,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .paper-footer-note,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .signed-file-note,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 .report-empty {
+  color:#000 !important;
+  font-weight:700 !important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 h4 {
+  color:#000 !important;
+  border-bottom:2px solid #000 !important;
+  font-weight:900 !important;
+  text-transform:uppercase !important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 table,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 th,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 td {
+  border-color:#111827 !important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 th {
+  background:#e5f0e8 !important;
+  color:#000 !important;
+  font-weight:900 !important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 td,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-a4 p {
+  color:#000 !important;
+  font-weight:700 !important;
+}
+
+
+/* v1.26.5 — Dnevnik gradilišta: Dodaj/Ukloni dugmad u svakoj ponavljajućoj rubrici */
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-entry-actions,
+#siteLogPanel .site-log-entry-actions{
+  display:flex!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  margin-top:10px!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-entry-actions button,
+#siteLogPanel .site-log-entry-actions button{
+  width:auto!important;
+  min-width:132px!important;
+  padding:8px 12px!important;
+  justify-content:center!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-section-title,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-subtitle{
+  justify-content:flex-start!important;
+  gap:10px!important;
+  flex-wrap:wrap!important;
+}
+@media(max-width:700px){
+  body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-entry-actions button,
+  #siteLogPanel .site-log-entry-actions button{
+    flex:1 1 150px!important;
+  }
+}

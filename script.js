@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.26.2";
+const APP_VERSION = "1.26.5";
 
 
 let sb = null;
@@ -5353,7 +5353,10 @@ window.addSiteLogWorkerEntry = function(values = {}) {
       <div><label>Sati</label><input class="sl-worker-hours numeric-text" type="text" inputmode="decimal" placeholder="8" value="${escapeHtml(values.hours || "")}" /></div>
       <div><label>Napomena</label><input class="sl-worker-note" placeholder="npr. iskop, nivelacija" value="${escapeHtml(values.note || "")}" /></div>
     </div>
-    <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-worker-entry').remove(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Radnik');">Ukloni</button>`;
+    <div class="site-log-entry-actions">
+      <button class="primary small-btn" type="button" onclick="addSiteLogWorkerEntry(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Radnik');">+ Dodaj radnika</button>
+      <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-worker-entry').remove(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Radnik');">Ukloni radnika</button>
+    </div>`;
   list.appendChild(div);
 };
 window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
@@ -5363,6 +5366,8 @@ window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
   div.className = "entry-card site-log-material-entry";
   div.dataset.kind = kind;
   const extraLabel = kind === "materials_installed" ? "Pozicija/rad" : kind === "materials_stock_on_site" ? "Lokacija/napomena" : "Napomena";
+  const addLabel = ({ material_in:"+ Dodaj ulaz", material_out:"+ Dodaj izlaz", materials_installed:"+ Dodaj ugrađeno", materials_stock_on_site:"+ Dodaj lager" })[kind] || "+ Dodaj materijal";
+  const removeLabel = ({ material_in:"Ukloni ulaz", material_out:"Ukloni izlaz", materials_installed:"Ukloni ugrađeno", materials_stock_on_site:"Ukloni lager" })[kind] || "Ukloni materijal";
   div.innerHTML = `
     <h5>${siteLogMaterialLabel(kind)} ${idx}</h5>
     <div class="grid four">
@@ -5371,8 +5376,12 @@ window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
       <div><label>Jedinica</label><input class="sl-material-unit" placeholder="m3, t, kom" value="${escapeHtml(values.unit || "m3")}" /></div>
       <div><label>${extraLabel}</label><input class="sl-material-note" placeholder="${extraLabel}" value="${escapeHtml(values.note || values.work_position || values.location_note || "")}" /></div>
     </div>
-    <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-material-entry').remove();">Ukloni</button>`;
+    <div class="site-log-entry-actions">
+      <button class="primary small-btn" type="button" onclick="addSiteLogMaterialEntry('${kind}'); renumberSiteLogEntries('#${siteLogMaterialListId(kind)}','.site-log-material-entry','${siteLogMaterialLabel(kind)}');">${addLabel}</button>
+      <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-material-entry').remove(); renumberSiteLogEntries('#${siteLogMaterialListId(kind)}','.site-log-material-entry','${siteLogMaterialLabel(kind)}');">${removeLabel}</button>
+    </div>`;
   list.appendChild(div);
+  renumberSiteLogEntries(`#${siteLogMaterialListId(kind)}`, ".site-log-material-entry", siteLogMaterialLabel(kind));
 };
 window.addSiteLogTruckEntry = function(values = {}) {
   const list = $("#siteLogTrucks"); if (!list) return;
@@ -5391,7 +5400,10 @@ window.addSiteLogTruckEntry = function(values = {}) {
       <div><label>m³</label><input class="sl-truck-m3 numeric-text" type="text" inputmode="decimal" placeholder="32" value="${escapeHtml(values.m3 || "")}" /></div>
       <div><label>Napomena</label><input class="sl-truck-note" placeholder="napomena" value="${escapeHtml(values.note || "")}" /></div>
     </div>
-    <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-truck-entry').remove(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">Ukloni</button>`;
+    <div class="site-log-entry-actions">
+      <button class="primary small-btn" type="button" onclick="addSiteLogTruckEntry(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">+ Dodaj turu</button>
+      <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-truck-entry').remove(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">Ukloni turu</button>
+    </div>`;
   list.appendChild(div);
 };
 function renumberSiteLogEntries(listSel, itemSel, label) {
@@ -5479,88 +5491,120 @@ function previewSiteLog() {
   box.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 function editSiteLog() { $("#siteLogPreviewBox")?.classList.add("hidden"); $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Nacrt"); }
-function printSiteLog() {
-  const el = document.getElementById("site-log-paper"); if (!el) { previewSiteLog(); }
-  const paper = document.getElementById("site-log-paper"); if (!paper) return toast("Prvo prikaži dnevnik.", true);
-  document.querySelectorAll(".print-target-report").forEach(x => x.classList.remove("print-target-report"));
-  paper.classList.add("print-target-report"); document.body.classList.add("printing-report-paper");
-  setTimeout(() => window.print(), 50);
-  setTimeout(() => { document.body.classList.remove("printing-report-paper"); paper.classList.remove("print-target-report"); }, 800);
+function buildSiteLogStandaloneHtml(data = collectSiteLogData()) {
+  // v1.26.4: posebna PRINT/PDF verzija. Ne koristi CSS aplikacije niti html2pdf.
+  // Cilj: crn tekst, bela pozadina, bez bledih slova i bez prazne strane.
+  const title = safeFilePart(`dnevnik-gradilista_${data.report_date_manual || today()}_${data.site_name || "gradiliste"}`);
+  const e = (v) => escapeHtml(v == null || v === "" ? "—" : String(v));
+  const plain = (v) => escapeHtml(v == null ? "" : String(v));
+  const paragraph = (v) => `<div class="text-block">${e(v)}</div>`;
+  const table = (heads, rows, mapRow) => {
+    if (!rows || !rows.length) return `<div class="empty-row">Nema unosa.</div>`;
+    return `<table><thead><tr>${heads.map(h => `<th>${plain(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((row, i) => `<tr>${mapRow(row, i).map(c => `<td>${e(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  };
+  const section = (name, content) => `<section><h2>${plain(name)}</h2>${content}</section>`;
+  const signatureBlock = data.site_log_signature_data_url
+    ? `<div class="signature-box"><img src="${plain(data.site_log_signature_data_url)}" alt="Potpis"><div><b>${e(data.site_log_signature_name || data.created_by_worker || "Potpisnik")}</b><br><span>${e(formatDateTimeLocal(data.site_log_signature_signed_at) || "")}</span></div></div>`
+    : `<div class="signature-line">Potpis šefa gradilišta / odgovornog lica</div>`;
+  const uploaded = data.signed_file
+    ? `<div class="file-note">Dodat potpisan dokument: <b>${e(data.signed_file.name || "fajl")}</b>. Uploadovani fajl služi kao dokaz; Excel koristi podatke iz forme.</div>`
+    : "";
+
+  const html = `
+    <main class="paper">
+      <header>
+        <h1>DNEVNIK GRADILIŠTA</h1>
+        <p>A4 pregled za štampu, potpis i slanje Direkciji</p>
+      </header>
+
+      <table class="meta"><tbody>
+        <tr><th>Firma</th><td>${e(currentWorker?.company_name || "—")}</td><th>Datum izveštaja</th><td>${e(data.report_date_manual || today())}</td></tr>
+        <tr><th>Gradilište</th><td>${e(data.site_name || "—")}</td><th>Uneo</th><td>${e(data.created_by_worker || "—")}</td></tr>
+        <tr><th>Radno mesto</th><td>${e(data.function_title || "—")}</td><th>Vreme pregleda</th><td>${e(formatDateTimeLocal(new Date().toISOString()) || "")}</td></tr>
+      </tbody></table>
+
+      ${section("1. Radnici i sati", table(["#", "Ime i prezime", "Sati", "Napomena"], data.workers, (w,i)=>[i+1, w.full_name, w.hours, w.note]))}
+      ${section("2. Opis radova danas", paragraph(data.today_work_description))}
+      ${section("3. Plan radova za sutra", paragraph(data.tomorrow_work_plan))}
+      ${section("4. Ulaz materijala", table(["#", "Materijal", "Količina", "Jed.", "Napomena"], data.material_in, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.note]))}
+      ${section("5. Izlaz materijala", table(["#", "Materijal", "Količina", "Jed.", "Napomena"], data.material_out, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.note]))}
+      ${section("6. Ugrađeni materijali", table(["#", "Materijal", "Količina", "Jed.", "Pozicija/rad"], data.materials_installed, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.work_position || m.note]))}
+      ${section("7. Lager materijala na gradilištu", table(["#", "Materijal", "Količina", "Jed.", "Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[i+1, m.material_name, m.quantity, m.unit, m.location_note || m.note]))}
+      ${section("8. Ture kamiona", table(["#", "Tip", "Partner", "Tablice", "Vozač", "Materijal", "Ture", "m³", "Napomena"], data.truck_tours, (t,i)=>[i+1, t.tour_type, t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note]))}
+      ${section("9. Potpis / overa", signatureBlock + uploaded)}
+
+      <footer>Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme.</footer>
+    </main>`;
+
+  return `<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 11mm; }
+    html, body { margin:0; padding:0; background:#fff; color:#000; font-family: Arial, Helvetica, sans-serif; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    *, *::before, *::after { box-sizing:border-box; color:#000 !important; opacity:1 !important; text-shadow:none !important; filter:none !important; }
+    .paper { width:188mm; margin:0 auto; background:#fff; color:#000; font-size:13px; line-height:1.32; }
+    header { text-align:center; border-bottom:2px solid #000; padding:0 0 7px; margin:0 0 8px; }
+    h1 { margin:0; font-size:22px; letter-spacing:.04em; font-weight:900; }
+    header p { margin:4px 0 0; font-size:12px; font-weight:700; }
+    table { width:100%; border-collapse:collapse; margin:0; page-break-inside:auto; }
+    th, td { border:1px solid #111; padding:5px 6px; vertical-align:top; font-size:12.5px; }
+    th { background:#e5f0e8 !important; font-weight:900; text-align:left; }
+    td { font-weight:700; }
+    .meta { margin:7px 0 9px; }
+    .meta th { width:18%; }
+    .meta td { width:32%; }
+    section { margin:8px 0; page-break-inside:avoid; break-inside:avoid; }
+    h2 { margin:0 0 4px; padding-bottom:3px; border-bottom:1.5px solid #000; font-size:13px; font-weight:900; text-transform:uppercase; }
+    .text-block, .empty-row, .file-note { border:1px solid #111; padding:7px 8px; min-height:28px; white-space:pre-wrap; font-weight:700; background:#fff; }
+    .empty-row { color:#000 !important; font-style:normal; }
+    .signature-box { border:1px solid #111; min-height:76px; padding:8px; display:flex; align-items:center; gap:14px; page-break-inside:avoid; }
+    .signature-box img { max-width:250px; max-height:64px; object-fit:contain; background:#fff; border-bottom:1.5px solid #000; }
+    .signature-box b { font-size:12px; }
+    .signature-box span { font-size:11px; font-weight:700; }
+    .signature-line { margin-top:28px; border-top:1.5px solid #000; width:270px; padding-top:6px; font-size:12px; text-align:center; font-weight:800; }
+    .file-note { margin-top:8px; font-size:11.5px; }
+    footer { margin-top:10px; padding-top:5px; border-top:1px solid #000; font-size:10.5px; font-weight:700; }
+    @media screen { body { padding:12px; background:#e5e7eb; } .paper { padding:10mm; box-shadow:0 0 0 1px #ccc, 0 14px 45px rgba(0,0,0,.18); } }
+    @media print { body { background:#fff; } .paper { width:100%; padding:0; box-shadow:none; } }
+  </style>
+</head>
+<body>${html}</body>
+</html>`;
 }
-async function downloadSiteLogA4() {
+function openSiteLogPrintWindow(mode = "print") {
   const data = collectSiteLogData();
-  let paper = document.getElementById("site-log-paper");
-  if (!paper) { previewSiteLog(); paper = document.getElementById("site-log-paper"); }
-  if (!paper) return toast("Prvo prikaži dnevnik.", true);
-
-  const file = safeFilePart(`dnevnik-gradilista_${data.report_date_manual || today()}_${data.site_name || "gradiliste"}`) + ".pdf";
-
-  // v1.26.2: PDF se pravi isključivo iz A4 papira, ne iz cele aplikacije.
-  // Klon se stavlja u DOM jer html2canvas/html2pdf ponekad napravi prazan PDF iz odvojenog node-a.
-  if (window.html2pdf) {
-    let holder = null;
-    try {
-      toast("Pripremam PDF dnevnik...");
-      const clone = paper.cloneNode(true);
-      clone.id = "site-log-paper-pdf-clone";
-      clone.classList.add("site-log-pdf-force");
-      clone.style.width = "190mm";
-      clone.style.maxWidth = "190mm";
-      clone.style.minHeight = "auto";
-      clone.style.boxShadow = "none";
-      clone.style.border = "0";
-      clone.style.margin = "0";
-      clone.style.padding = "10mm";
-      clone.style.background = "#ffffff";
-      clone.style.color = "#111111";
-
-      holder = document.createElement("div");
-      holder.id = "site-log-pdf-holder";
-      holder.style.position = "fixed";
-      holder.style.left = "-10000px";
-      holder.style.top = "0";
-      holder.style.width = "210mm";
-      holder.style.background = "#ffffff";
-      holder.appendChild(clone);
-      document.body.appendChild(holder);
-
-      clone.querySelectorAll("*").forEach(el => {
-        el.style.color = "#111111";
-        el.style.opacity = "1";
-        el.style.visibility = "visible";
-      });
-      clone.querySelectorAll("table, th, td").forEach(el => {
-        el.style.borderColor = "#444444";
-      });
-
-      const opt = {
-        margin: [8, 8, 8, 8],
-        filename: file,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: 1200
-        },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], avoid: [".report-section", ".paper-title-block", "tr"] }
-      };
-      await window.html2pdf().set(opt).from(clone).save();
-      toast("PDF dnevnik je preuzet.");
-    } catch (err) {
-      console.error(err);
-      toast("PDF nije mogao automatski da se napravi. Otvaram štampu — u prozoru izaberi Save as PDF.", true);
-      printSiteLog();
-    } finally {
-      if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
-    }
-  } else {
-    toast("PDF alat nije učitan. Otvaram štampu — u prozoru izaberi Save as PDF.", true);
-    printSiteLog();
+  const html = buildSiteLogStandaloneHtml(data);
+  const w = window.open("", "_blank", "width=950,height=900");
+  if (!w) {
+    toast("Browser je blokirao novi prozor. Dozvoli pop-up za askcreate.app pa probaj ponovo.", true);
+    return;
   }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  const runPrint = () => {
+    try { w.focus(); w.print(); }
+    catch (err) { console.error(err); toast("Ne mogu da otvorim štampu u ovom browseru.", true); }
+  };
+  setTimeout(runPrint, 500);
+  if (mode === "pdf") {
+    toast("Otvoren je čist A4 prikaz. U prozoru za štampu izaberi: Destination/Odredište → Save as PDF.");
+  }
+}
+
+function printSiteLog() {
+  // v1.26.4: štampanje ide iz čistog odvojenog A4 prozora, bez tamne aplikacije u pozadini.
+  openSiteLogPrintWindow("print");
+}
+
+async function downloadSiteLogA4() {
+  // v1.26.4: html2pdf je davao bled/ružan PDF. Stabilnije je browser "Save as PDF" iz čistog A4 prozora.
+  openSiteLogPrintWindow("pdf");
 }
 function saveSiteLogDraft() {
   const data = collectSiteLogData();
