@@ -4417,3 +4417,389 @@ body.in-app #viewDirectorDashboard.director-business-page,
   #viewDirectorDashboard .director-business-hero h2{font-size:19px!important;}
   #viewDirectorDashboard .business-quick-actions{grid-template-columns:1fr!important;}
 }
+
+/* v1.29.1 — Direkcija / Uprava Excel Business Accent SAFE
+   Samo CSS dorada. Ne menja HTML id-jeve, onclick, Supabase ili workflow logiku. */
+#viewDirectorDashboard.director-business-page{
+  --excel-green:#217346;
+  --excel-green-dark:#14532d;
+  --excel-green-deep:#0b3d22;
+  --excel-green-soft:#eaf6ef;
+  --excel-green-softer:#f4fbf6;
+  --excel-line:#bfd9c7;
+  --office-line:#d9e5de;
+  --office-line-strong:#b8d2c2;
+  --office-bg:#f3f7f5;
+  --office-panel:#ffffff;
+  --office-text:#122018;
+  --office-muted:#5b6b62;
+  --office-blue:#1f3a5f;
+  background:
+    linear-gradient(180deg, rgba(33,115,70,.10) 0%, rgba(243,247,245,.95) 170px, #f6f8f7 100%)!important;
+  color:var(--office-text)!important;
+}
+
+/* Leva traka: poslovna, ali sa jasnim Excel identitetom */
+#viewDirectorDashboard .director-sidebar{
+  background:linear-gradient(180deg,#ffffff 0%, #f7faf8 100%)!important;
+  border-right:1px solid var(--office-line)!important;
+  box-shadow:6px 0 22px rgba(15,23,42,.045)!important;
+}
+#viewDirectorDashboard .director-logo-box{
+  border:1px solid var(--office-line)!important;
+  background:#fff!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.045)!important;
+}
+#viewDirectorDashboard .director-logo-mark{
+  background:linear-gradient(145deg,var(--excel-green),var(--excel-green-dark))!important;
+  color:#fff!important;
+  box-shadow:0 8px 16px rgba(33,115,70,.20)!important;
+}
+#viewDirectorDashboard .director-logo-box strong{color:#0f172a!important;}
+#viewDirectorDashboard .director-logo-box span{color:var(--excel-green-dark)!important;font-weight:800!important;}
+
+#viewDirectorDashboard .director-nav-tabs .tab{
+  min-height:38px!important;
+  margin-bottom:5px!important;
+  padding:9px 10px!important;
+  border-radius:10px!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:#26352d!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+}
+#viewDirectorDashboard .director-nav-tabs .tab:hover{
+  background:#f2f8f4!important;
+  color:var(--excel-green-dark)!important;
+  border-color:#d9eadf!important;
+}
+#viewDirectorDashboard .director-nav-tabs .tab.active{
+  background:linear-gradient(90deg,rgba(33,115,70,.14),rgba(33,115,70,.055))!important;
+  color:var(--excel-green-deep)!important;
+  border:1px solid #c8e1d0!important;
+  box-shadow:inset 4px 0 0 var(--excel-green), 0 6px 14px rgba(33,115,70,.08)!important;
+}
+
+/* Gornji deo: više karaktera, bez teških zelenih blokova */
+#viewDirectorDashboard .director-workspace{background:transparent!important;}
+#viewDirectorDashboard .director-business-topline{
+  background:rgba(255,255,255,.94)!important;
+  border:1px solid var(--office-line)!important;
+  border-top:3px solid var(--excel-green)!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.045)!important;
+}
+#viewDirectorDashboard .company-switch-pill{
+  background:#fff!important;
+  color:var(--excel-green-dark)!important;
+  border:1px solid #d5e6da!important;
+  font-weight:900!important;
+}
+#viewDirectorDashboard .director-user-pill{
+  background:#f5f9f6!important;
+  border:1px solid #dceae1!important;
+  color:#17251d!important;
+  font-weight:800!important;
+}
+#viewDirectorDashboard .director-business-hero{
+  position:relative!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(33,115,70,.10), transparent 290px),
+    linear-gradient(180deg,#ffffff 0%, #fbfdfb 100%)!important;
+  border:1px solid var(--office-line)!important;
+  border-left:4px solid var(--excel-green)!important;
+  box-shadow:0 14px 34px rgba(15,23,42,.055)!important;
+}
+#viewDirectorDashboard .business-eyebrow{
+  color:var(--excel-green)!important;
+  letter-spacing:.11em!important;
+  font-weight:950!important;
+}
+#viewDirectorDashboard .director-business-hero h2{
+  color:#0b1220!important;
+  font-weight:950!important;
+}
+#viewDirectorDashboard #directorCompanyLabel{color:#334155!important;}
+#viewDirectorDashboard #directorCompanyLabel::after{
+  content:"";
+  display:inline-block;
+  width:7px;
+  height:7px;
+  margin-left:8px;
+  border-radius:50%;
+  background:var(--excel-green);
+  box-shadow:0 0 0 4px rgba(33,115,70,.12);
+  vertical-align:middle;
+}
+#viewDirectorDashboard .director-layout-note{color:#52645a!important;}
+#viewDirectorDashboard .director-hero-actions .secondary,
+#viewDirectorDashboard .hero-date-pill{
+  border-color:#cfded5!important;
+  background:#ffffff!important;
+  color:#14251b!important;
+  font-weight:850!important;
+}
+#viewDirectorDashboard .director-hero-actions .secondary:hover{
+  border-color:var(--excel-green)!important;
+  background:var(--excel-green-soft)!important;
+  color:var(--excel-green-dark)!important;
+}
+
+/* KPI kartice: bela osnova + jasne zelene ikone */
+#viewDirectorDashboard .business-kpi-card{
+  border:1px solid var(--office-line)!important;
+  border-top:3px solid rgba(33,115,70,.55)!important;
+  background:linear-gradient(180deg,#ffffff 0%, #fcfefd 100%)!important;
+  box-shadow:0 10px 26px rgba(15,23,42,.052)!important;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease!important;
+}
+#viewDirectorDashboard .business-kpi-card:hover{
+  transform:translateY(-1px)!important;
+  border-color:#abcdb6!important;
+  box-shadow:0 16px 32px rgba(15,23,42,.07)!important;
+}
+#viewDirectorDashboard .business-kpi-card .kpi-icon,
+#viewDirectorDashboard .business-kpi-card .kpi-icon.green{
+  background:linear-gradient(145deg,var(--excel-green),var(--excel-green-dark))!important;
+  color:#fff!important;
+}
+#viewDirectorDashboard .business-kpi-card.kpi-warning{
+  border-top-color:#f59e0b!important;
+}
+#viewDirectorDashboard .business-kpi-card.kpi-warning .kpi-icon,
+#viewDirectorDashboard .business-kpi-card .kpi-icon.orange{
+  background:linear-gradient(145deg,#f59e0b,#b45309)!important;
+  color:#fff!important;
+}
+#viewDirectorDashboard .business-kpi-card strong{color:#0f172a!important;font-weight:950!important;}
+#viewDirectorDashboard .business-kpi-card span{color:#52645a!important;font-weight:750!important;}
+#viewDirectorDashboard .business-kpi-card button{
+  color:var(--excel-green)!important;
+  font-weight:950!important;
+}
+#viewDirectorDashboard .business-kpi-card button:hover{color:var(--excel-green-dark)!important;text-decoration:underline!important;}
+
+/* Pretraga i info linije */
+#viewDirectorDashboard .director-searchbar,
+#viewDirectorDashboard .director-live-refresh-line,
+#viewDirectorDashboard .support-status-box{
+  background:#ffffff!important;
+  border:1px solid var(--office-line)!important;
+  box-shadow:0 8px 18px rgba(15,23,42,.035)!important;
+}
+#viewDirectorDashboard .director-searchbar:focus-within{
+  border-color:#a7ccb3!important;
+  box-shadow:0 0 0 3px rgba(33,115,70,.10)!important;
+}
+#viewDirectorDashboard .director-searchbar input,
+#viewDirectorDashboard .search-input-wrap{
+  background:#f7faf8!important;
+}
+#viewDirectorDashboard .live-dot{
+  background:var(--excel-green)!important;
+  box-shadow:0 0 0 4px rgba(33,115,70,.16)!important;
+}
+
+/* Kartice i forme: kancelarijski, čisto, malo življe */
+#viewDirectorDashboard .director-content-main .card,
+#viewDirectorDashboard .business-quick-actions,
+#viewDirectorDashboard .director-search-results{
+  border:1px solid var(--office-line)!important;
+  background:#fff!important;
+  box-shadow:0 10px 24px rgba(15,23,42,.045)!important;
+}
+#viewDirectorDashboard .director-content-main .card > h3:first-child,
+#viewDirectorDashboard .business-quick-actions > h3:first-child{
+  background:linear-gradient(90deg,#eef8f1 0%, #ffffff 100%)!important;
+  color:#0f172a!important;
+  border-bottom:1px solid #d8e8de!important;
+  box-shadow:inset 4px 0 0 var(--excel-green)!important;
+}
+#viewDirectorDashboard label{color:#26362e!important;font-weight:850!important;}
+#viewDirectorDashboard input,
+#viewDirectorDashboard select,
+#viewDirectorDashboard textarea{
+  border-color:#cfddd4!important;
+  background:#ffffff!important;
+}
+#viewDirectorDashboard input:focus,
+#viewDirectorDashboard select:focus,
+#viewDirectorDashboard textarea:focus{
+  outline:none!important;
+  border-color:var(--excel-green)!important;
+  box-shadow:0 0 0 3px rgba(33,115,70,.10)!important;
+}
+#viewDirectorDashboard .permission-box,
+#viewDirectorDashboard .permission-group,
+#viewDirectorDashboard .material-permission-box{
+  border-color:#d7e7dc!important;
+  background:#fbfefc!important;
+}
+#viewDirectorDashboard .permission-group h4,
+#viewDirectorDashboard .permission-box h4{color:var(--excel-green-dark)!important;}
+
+/* Dugmad: Excel zeleno samo za glavne akcije */
+#viewDirectorDashboard .primary,
+#viewDirectorDashboard button.primary,
+#viewDirectorDashboard #goExportBtn,
+#viewDirectorDashboard #exportXlsBtn,
+#viewDirectorDashboard #exportCsvBtn{
+  background:linear-gradient(180deg,#25834f,var(--excel-green))!important;
+  border:1px solid #176139!important;
+  color:#fff!important;
+  box-shadow:0 7px 14px rgba(33,115,70,.18)!important;
+  font-weight:900!important;
+}
+#viewDirectorDashboard .primary:hover,
+#viewDirectorDashboard button.primary:hover,
+#viewDirectorDashboard #goExportBtn:hover,
+#viewDirectorDashboard #exportXlsBtn:hover,
+#viewDirectorDashboard #exportCsvBtn:hover{
+  background:linear-gradient(180deg,#1f7a48,var(--excel-green-dark))!important;
+  border-color:#0f4d2b!important;
+}
+#viewDirectorDashboard .secondary,
+#viewDirectorDashboard .small-action,
+#viewDirectorDashboard .edit-btn,
+#viewDirectorDashboard .archive-report-btn{
+  background:#fff!important;
+  border:1px solid #c9d8d1!important;
+  color:#18251e!important;
+  box-shadow:none!important;
+  font-weight:850!important;
+}
+#viewDirectorDashboard .secondary:hover,
+#viewDirectorDashboard .small-action:hover,
+#viewDirectorDashboard .edit-btn:hover,
+#viewDirectorDashboard .archive-report-btn:hover{
+  background:#f0f8f3!important;
+  border-color:#98c2a6!important;
+  color:var(--excel-green-dark)!important;
+}
+#viewDirectorDashboard .delete-btn,
+#viewDirectorDashboard .archive-btn{
+  background:#fff8f8!important;
+  border-color:#f2c7c7!important;
+  color:#991b1b!important;
+}
+
+/* Brze akcije: izgled kao office komandni panel */
+#viewDirectorDashboard .business-quick-actions .quick-action{
+  background:#ffffff!important;
+  border:1px solid #d5e2da!important;
+  color:#17251d!important;
+  font-weight:900!important;
+}
+#viewDirectorDashboard .business-quick-actions .quick-action:hover{
+  background:#eff8f2!important;
+  border-color:#9ac5a8!important;
+  color:var(--excel-green-dark)!important;
+}
+#viewDirectorDashboard .business-quick-actions .quick-action::before{
+  color:var(--excel-green)!important;
+}
+
+/* Liste / tabele: više Excel osećaja bez preterivanja */
+#viewDirectorDashboard #reportsList,
+#viewDirectorDashboard .list:has(.director-table-row){
+  border:1px solid var(--office-line-strong)!important;
+  background:#fff!important;
+  box-shadow:0 6px 14px rgba(15,23,42,.035)!important;
+}
+#viewDirectorDashboard .director-table-row,
+#viewDirectorDashboard .report-row-item{
+  background:#ffffff!important;
+  border-bottom:1px solid #dfe9e3!important;
+}
+#viewDirectorDashboard .director-table-row:nth-child(even),
+#viewDirectorDashboard .report-row-item:nth-child(even){
+  background:#f7fbf8!important;
+}
+#viewDirectorDashboard .director-table-row:hover,
+#viewDirectorDashboard #reportsList .report-row-item:hover{
+  background:#edf7f0!important;
+}
+#viewDirectorDashboard .director-table-row .dt-name{
+  background:rgba(33,115,70,.045)!important;
+}
+#viewDirectorDashboard .director-table-row .dt-cell,
+#viewDirectorDashboard .report-list-grid > .report-export-cell,
+#viewDirectorDashboard .report-list-grid > .report-list-date,
+#viewDirectorDashboard .report-list-grid > .report-list-site,
+#viewDirectorDashboard .report-list-grid > .report-list-worker,
+#viewDirectorDashboard .report-list-grid > .report-list-sections,
+#viewDirectorDashboard .report-list-grid > .report-list-status{
+  border-right-color:#e2ece6!important;
+}
+#viewDirectorDashboard .report-list-date strong,
+#viewDirectorDashboard .report-list-site strong,
+#viewDirectorDashboard .report-list-worker strong,
+#viewDirectorDashboard .director-table-row strong{
+  color:#111827!important;
+}
+#viewDirectorDashboard .report-list-date small,
+#viewDirectorDashboard .report-list-site small,
+#viewDirectorDashboard .report-list-worker small,
+#viewDirectorDashboard .director-table-row small{
+  color:#617267!important;
+}
+#viewDirectorDashboard .report-card-actions{
+  background:#f8fcf9!important;
+  border-top:1px solid #dfe9e3!important;
+}
+#viewDirectorDashboard .compact-doc-btn{
+  background:#ffffff!important;
+  border:1px solid var(--excel-green)!important;
+  color:var(--excel-green-dark)!important;
+  box-shadow:none!important;
+}
+#viewDirectorDashboard .compact-doc-btn:hover{
+  background:var(--excel-green)!important;
+  color:#fff!important;
+}
+
+/* Statusi: boje imaju značenje */
+#viewDirectorDashboard .dt-status,
+#viewDirectorDashboard .status-chip,
+#viewDirectorDashboard .pill,
+#viewDirectorDashboard .report-section-pill{
+  border-radius:999px!important;
+  font-weight:900!important;
+}
+#viewDirectorDashboard .dt-status,
+#viewDirectorDashboard .status-chip.status-approved,
+#viewDirectorDashboard .status-chip.status-exported{
+  background:#e8f7ee!important;
+  border-color:#abd4b7!important;
+  color:#14532d!important;
+}
+#viewDirectorDashboard .status-chip.status-returned,
+#viewDirectorDashboard .status-chip.status-revision{
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#9f1239!important;
+}
+#viewDirectorDashboard .status-chip.status-new,
+#viewDirectorDashboard .status-chip.status-pending{
+  background:#fff7ed!important;
+  border-color:#fed7aa!important;
+  color:#9a3412!important;
+}
+#viewDirectorDashboard .report-section-pill{
+  background:#edf7f0!important;
+  border:1px solid #c5dfcd!important;
+  color:#14532d!important;
+}
+
+/* Donji detalji */
+#viewDirectorDashboard .package-notice:not(.hidden){
+  border-left:4px solid var(--excel-green)!important;
+  background:#f4fbf6!important;
+}
+#viewDirectorDashboard .muted{color:#607166!important;}
+#viewDirectorDashboard hr{border-color:#dfe9e3!important;}
+
+@media (max-width:980px){
+  #viewDirectorDashboard .director-business-hero{border-left-width:3px!important;}
+}
