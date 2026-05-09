@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.29.1";
+const APP_VERSION = "1.29.2";
 
 
 let sb = null;
@@ -1889,7 +1889,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
       sb.from("assets").select("*").eq("company_id", currentCompany.id),
       sb.from("sites").select("*").eq("company_id", currentCompany.id),
       sb.from("materials").select("*").eq("company_id", currentCompany.id),
-      sb.from("reports").select("id, company_id, user_id, site_id, report_date, status, returned_reason, data, submitted_at, created_at, archived, deleted_at").eq("company_id", currentCompany.id).neq("status", "archived").order("created_at", { ascending:false }).limit(150)
+      directorRpcListReports()
     ]);
 
     if (peopleRes.data) peopleRes.data.forEach(p => {
@@ -1932,8 +1932,8 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
       });
     });
 
-    if (reportsRes.data) reportsRes.data = await enrichReportsWithUsers(reportsRes.data);
-    if (reportsRes.data) reportsRes.data.forEach(r => {
+    const reportsForSearch = await enrichReportsWithUsers(Array.isArray(reportsRes) ? reportsRes.slice(0, 150) : (reportsRes.data || []));
+    reportsForSearch.forEach(r => {
       const d = r.data || {};
       const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "");
       const text = `${person} ${r.status} ${r.report_date} ${d.site_name || ""} ${d.description || ""} ${d.machine || ""} ${d.vehicle || ""} ${d.material || ""} ${d.defect || ""} ${d.note || ""}`;
@@ -1961,6 +1961,48 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
 }
 
 let directorReportsCache = [];
+
+
+// v1.29.2 — sigurniji put za izveštaje Direkcije.
+// Direkcija čita/odobrava/vraća/arhivira izveštaje preko RPC funkcija,
+// umesto direktnog rada nad tabelom reports. Ovo je priprema da se kasnije
+// zatvore stare reports_*_all_mvp RLS politike bez lomljenja aplikacije.
+async function directorRpcListReports() {
+  if (!currentCompany?.id) return [];
+  const { data, error } = await sb.rpc("director_list_reports", {
+    p_company_id: currentCompany.id
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function directorRpcApproveReport(reportId) {
+  if (!currentCompany?.id) throw new Error("Firma nije učitana.");
+  const { error } = await sb.rpc("director_approve_report", {
+    p_company_id: currentCompany.id,
+    p_report_id: reportId
+  });
+  if (error) throw error;
+}
+
+async function directorRpcReturnReport(reportId, reason) {
+  if (!currentCompany?.id) throw new Error("Firma nije učitana.");
+  const { error } = await sb.rpc("director_return_report", {
+    p_company_id: currentCompany.id,
+    p_report_id: reportId,
+    p_reason: reason
+  });
+  if (error) throw error;
+}
+
+async function directorRpcArchiveReport(reportId) {
+  if (!currentCompany?.id) throw new Error("Firma nije učitana.");
+  const { error } = await sb.rpc("director_archive_report", {
+    p_company_id: currentCompany.id,
+    p_report_id: reportId
+  });
+  if (error) throw error;
+}
 
 function isDefectOnlyReport(r) {
   const d = r?.data || {};
@@ -2149,17 +2191,11 @@ async function loadReports(options = {}) {
   const silent = !!options.silent;
   if (!currentCompany) return;
 
-  // v1.18.8: ne koristimo Supabase embed reports -> company_users.
-  // Baza ima duple FK veze, zato prvo čitamo reports, pa korisnike posebno kroz enrichReportsWithUsers().
-  const { data, error } = await sb
-    .from("reports")
-    .select("id, company_id, user_id, site_id, report_date, status, data, returned_reason, submitted_at, approved_at, exported_at, created_at, archived, deleted_at, exported")
-    .eq("company_id", currentCompany.id)
-    .neq("status", "archived")
-    .order("created_at", { ascending:false });
-
-  if (error) {
-    if (silent) console.warn("Automatsko osvežavanje izveštaja nije uspelo:", error.message);
+  let data = [];
+  try {
+    data = await directorRpcListReports();
+  } catch (error) {
+    if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
     else toast(error.message, true);
     updateDirectorRefreshStatus(`Greška pri osvežavanju · ${formatRefreshTime()}`);
     return;
@@ -3176,11 +3212,15 @@ function reportHtml(r) {
 }
 
 window.setReportStatus = async (id, status) => {
-  const patch = { status };
-  if (status === "approved") patch.approved_at = new Date().toISOString();
-  if (status === "exported") patch.exported_at = new Date().toISOString();
-  const { error } = await sb.from("reports").update(patch).eq("id", id);
-  if (error) return toast(error.message, true);
+  try {
+    if (status === "approved") {
+      await directorRpcApproveReport(id);
+    } else {
+      throw new Error("Ovaj status još nije prebačen na sigurni RPC tok: " + status);
+    }
+  } catch (error) {
+    return toast(error.message || String(error), true);
+  }
   toast("Status izveštaja promenjen.");
   await loadReports();
   if (typeof openReportDocumentCenter === "function" && document.getElementById("reportDocumentCenter") && !document.getElementById("reportDocumentCenter").classList.contains("hidden")) {
@@ -3190,12 +3230,11 @@ window.setReportStatus = async (id, status) => {
 
 window.archiveReport = async (id) => {
   if (!confirm("Arhivirati izveštaj?\n\nIzveštaj ostaje u bazi, ali se sklanja iz aktivne liste.")) return;
-  const { error } = await sb
-    .from("reports")
-    .update({ status: "archived", archived: true })
-    .eq("id", id)
-    .eq("company_id", currentCompany.id);
-  if (error) return toast(error.message, true);
+  try {
+    await directorRpcArchiveReport(id);
+  } catch (error) {
+    return toast(error.message || String(error), true);
+  }
   toast("Izveštaj je arhiviran. Podaci ostaju sačuvani u bazi.");
   closeReportDocumentCenter?.();
   loadReports();
@@ -3204,29 +3243,25 @@ window.archiveReport = async (id) => {
 window.returnReport = async (id) => {
   const reason = prompt("Razlog vraćanja zaposlenom na ispravku:");
   if (!reason || !reason.trim()) return;
-  const { error } = await sb
-    .from("reports")
-    .update({
-      status: "returned",
-      returned_reason: reason.trim()
-    })
-    .eq("id", id)
-    .eq("company_id", currentCompany.id);
-  if (error) return toast(error.message, true);
+  try {
+    await directorRpcReturnReport(id, reason.trim());
+  } catch (error) {
+    return toast(error.message || String(error), true);
+  }
   toast("Izveštaj je vraćen zaposlenom na ispravku.");
   await loadReports();
   if (typeof openReportDocumentCenter === "function") openReportDocumentCenter(id);
 };
 
 window.setDefectRecordStatus = async (id, newStatus) => {
-  const { data: row, error: readError } = await sb.from("reports").select("data").eq("id", id).maybeSingle();
+  const { data: row, error: readError } = await sb.from("reports").select("data").eq("id", id).eq("company_id", currentCompany.id).maybeSingle();
   if (readError) return toast(readError.message, true);
   const d = row?.data || {};
   d.defect_status = newStatus;
   if (newStatus === "primljeno") d.defect_received_at = new Date().toISOString();
   if (newStatus === "u_popravci") d.defect_repair_started_at = new Date().toISOString();
   if (newStatus === "reseno") d.defect_resolved_at = new Date().toISOString();
-  const { error } = await sb.from("reports").update({ data: d }).eq("id", id);
+  const { error } = await sb.from("reports").update({ data: d }).eq("id", id).eq("company_id", currentCompany.id);
   if (error) return toast(error.message, true);
   toast("Status kvara promenjen.");
   loadReports();
