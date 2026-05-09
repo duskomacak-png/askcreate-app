@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.28.6";
+const APP_VERSION = "1.28.7";
 
 
 let sb = null;
@@ -2314,6 +2314,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(ll.km_end)}</td>
         <td>${val(ll.km_total)}</td>
         <td>${val(ll.machine)}</td>
+        <td>${val(ll.accompanying_tools || ll.tools)}</td>
         <td>${val(f.asset_name || f.machine || f.vehicle || f.other)}</td>
         <td>${val(f.liters)}</td>
         <td>${val(f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""))}</td>
@@ -2390,7 +2391,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
     addPreview("Transport mašine labudicom", row, "KM početak", ll.km_start);
     addPreview("Transport mašine labudicom", row, "KM kraj", ll.km_end);
     addPreview("Transport mašine labudicom", row, "Ukupno km", ll.km_total);
-    addPreview("Transport mašine labudicom", row, "Mašina koja se seli", ll.machine);
+    addPreview("Transport mašine labudicom", row, "Mašina koja se transportuje", ll.machine);
+    addPreview("Transport mašine labudicom", row, "Prateći alat uz mašinu", ll.accompanying_tools || ll.tools);
   });
 
   fuels.forEach((f, i) => {
@@ -2547,7 +2549,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>KM početak</th>
           <th>KM kraj</th>
           <th>Ukupno km</th>
-          <th>Mašina koja se seli</th>
+          <th>Mašina koja se transportuje</th>
+          <th>Prateći alat</th>
         </tr>
       </thead>
       <tbody>
@@ -2561,6 +2564,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(ll.km_end)}</td>
             <td>${val(ll.km_total)}</td>
             <td>${val(ll.machine)}</td>
+            <td>${val(ll.accompanying_tools || ll.tools)}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -3619,6 +3623,12 @@ function buildLowloaderSiteDatalistOptionsHtml() {
   }).join("");
 }
 
+function refreshDefectSiteDatalist() {
+  const list = $("#defectSiteList");
+  if (!list) return;
+  list.innerHTML = buildLowloaderSiteDatalistOptionsHtml();
+}
+
 function parseLowloaderDecimalInput(value) {
   const n = Number(String(value || "").replace(",", ".").trim());
   return Number.isFinite(n) ? n : null;
@@ -4050,6 +4060,7 @@ async function loadWorkerSites(selectedName = "") {
       select.innerHTML = `<option value="">Nema aktivnih gradilišta</option>`;
       if (hint) hint.textContent = "Uprava još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
       refreshFieldTankerSelectors();
+      refreshDefectSiteDatalist();
       return;
     }
 
@@ -4065,6 +4076,7 @@ async function loadWorkerSites(selectedName = "") {
       if (match) select.value = match.value;
     }
     refreshFieldTankerSelectors();
+    refreshDefectSiteDatalist();
 
     if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Uprava.";
   } catch (e) {
@@ -4072,6 +4084,7 @@ async function loadWorkerSites(selectedName = "") {
     if (hint) hint.textContent = "Pokreni Supabase SQL za v1.12.1: worker_list_sites. Detalj: " + (e.message || e);
     workerSiteOptions = [];
     refreshFieldTankerSelectors();
+    refreshDefectSiteDatalist();
     toast("Gradilišta za zaposlenog nisu učitana: " + (e.message || e), true);
   }
 }
@@ -4625,6 +4638,10 @@ function addLowloaderEntry(values = {}) {
     <input class="ll-machine asset-code-search" list="lowloaderMachineList-${uid}" placeholder="upisati broj mašine, npr. 101" value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
     <datalist class="ll-machine-list" id="lowloaderMachineList-${uid}">${buildLowloaderMachineDatalistOptionsHtml()}</datalist>
     <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Uprave. Ako seliš tuđu/zamensku mašinu, samo je upiši naziv.</p>
+
+    <label>Prateći alat uz mašinu <span class="muted">(opciono)</span></label>
+    <textarea class="ll-tools" rows="2" placeholder="npr. kašika 80 cm, pikamer, creva, lanci, nastavci...">${escapeHtml(values.accompanying_tools || values.tools || values.machine_tools || values.note_tools || "")}</textarea>
+    <p class="field-hint">Upiši alat ili dodatnu opremu koja ide uz mašinu, da Uprava kasnije zna šta je prevezeno zajedno sa njom.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -4658,6 +4675,7 @@ function getLowloaderEntries() {
     updateLowloaderKmTotal(el);
     const km = el.querySelector(".ll-km")?.value.trim() || "";
     const machine = el.querySelector(".ll-machine")?.value.trim() || "";
+    const tools = el.querySelector(".ll-tools")?.value.trim() || "";
     const customMachine = machine;
     return {
       no: i + 1,
@@ -4671,9 +4689,11 @@ function getLowloaderEntries() {
       km_end: kmEnd,
       km_total: km,
       machine,
-      machine_custom: customMachine
+      machine_custom: customMachine,
+      accompanying_tools: tools,
+      tools
     };
-  }).filter(x => x.plates || x.from_address || x.to_address || x.km_start || x.km_end || x.km_total || x.machine);
+  }).filter(x => x.plates || x.from_address || x.to_address || x.km_start || x.km_end || x.km_total || x.machine || x.accompanying_tools);
 }
 
 
@@ -6735,6 +6755,7 @@ const EXPORT_COLUMNS = [
   { key:"lowloader_km_end", label:"Završna kilometraža labudice" },
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
+  { key:"lowloader_tools", label:"Prateći alat uz mašinu" },
   { key:"fuel_type", label:"Kategorija sredstva" },
   { key:"fuel_asset_code", label:"Broj sredstva" },
   { key:"fuel_for", label:"Naziv sredstva" },
@@ -6823,7 +6844,7 @@ const EXPORT_GROUPS = [
     id: "lowloader",
     title: "Transport mašine labudicom",
     hint: "Selidba mašine sa jedne lokacije na drugu.",
-    keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km_start", "lowloader_km_end", "lowloader_km", "lowloader_machine"]
+    keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km_start", "lowloader_km_end", "lowloader_km", "lowloader_machine", "lowloader_tools"]
   },
   {
     id: "fieldTanker",
@@ -7045,7 +7066,8 @@ function flattenReportRowsForExport(r) {
     lowloader_km_start: ll.km_start || "",
     lowloader_km_end: ll.km_end || "",
     lowloader_km: ll.km_total || "",
-    lowloader_machine: ll.machine || ""
+    lowloader_machine: ll.machine || "",
+    lowloader_tools: ll.accompanying_tools || ll.tools || ""
   }));
 
   fuels.forEach(f => pushRow({
@@ -7449,7 +7471,8 @@ function smartRowsForReport(r, type) {
       lowloader_km_start: ll.km_start || "",
       lowloader_km_end: ll.km_end || "",
       lowloader_km: ll.km_total || "",
-      lowloader_machine: ll.machine || ""
+      lowloader_machine: ll.machine || "",
+      lowloader_tools: ll.accompanying_tools || ll.tools || ""
     }));
   }
 
@@ -7521,7 +7544,8 @@ function smartExportRowMatches(row, settings) {
       row.field_tanker_site,
       row.defect_site,
       row.lowloader_from,
-      row.lowloader_to
+      row.lowloader_to,
+      row.lowloader_tools
     ].filter(Boolean).join(" "));
     if (!siteText.includes(siteQ)) return false;
   }
@@ -7559,6 +7583,7 @@ function smartExportRowMatches(row, settings) {
       row.defect_asset,
       row.defect_registration,
       row.lowloader_machine,
+      row.lowloader_tools,
       row.lowloader_plates
     ].filter(Boolean).join(" "));
     if (!itemText.includes(itemQ)) return false;

@@ -3987,7 +3987,7 @@ body.in-app .internal-brand-callout strong{
   .public-contact-panel{align-items:flex-start;}
 }
 
-/* v1.28.6 - jasnije grupe dozvola u profilu zaposlenog */
+/* v1.28.7 - jasnije grupe dozvola u profilu zaposlenog */
 .permission-group{
   border:1px solid rgba(15,118,110,.18);
   background:rgba(240,253,244,.58);
