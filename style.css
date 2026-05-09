@@ -3986,3 +3986,18 @@ body.in-app .internal-brand-callout strong{
   .public-info-grid{grid-template-columns:1fr;}
   .public-contact-panel{align-items:flex-start;}
 }
+
+/* v1.28.6 - jasnije grupe dozvola u profilu zaposlenog */
+.permission-group{
+  border:1px solid rgba(15,118,110,.18);
+  background:rgba(240,253,244,.58);
+  border-radius:12px;
+  padding:10px 12px;
+  margin:10px 0;
+}
+.permission-group h4{margin:0 0 5px;font-size:13px;color:#14532d;}
+.permission-group-office{background:rgba(248,250,252,.9);border-color:rgba(100,116,139,.22);}
+.permission-group-office h4{color:#334155;}
+.permission-group-layout{background:rgba(239,246,255,.82);border-color:rgba(37,99,235,.18);}
+.permission-group-layout h4{color:#1e3a8a;}
+.permission-box .permission-group label{margin:6px 0;}

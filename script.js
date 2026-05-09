@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.28.5";
+const APP_VERSION = "1.28.6";
 
 
 let sb = null;
@@ -1182,25 +1182,25 @@ function clearPersonForm() {
 
 
 const WORKER_PREVIEW_SECTIONS = [
-  { key: "daily_work", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Uprave"] },
-  { key: "workers", title: "Evidencija zaposlenih na gradilištu", lines: ["Ime i prezime zaposlenog", "Sati rada", "+ Dodaj zaposlenog"] },
-  { key: "machines", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
-  { key: "vehicles", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
-  { key: "lowloader", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
-  { key: "fuel", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
-  { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
-  { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
-  { key: "signature", title: "Potpis zaposlenog", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime i prezime potpisnika opciono"] },
-  { key: "desktop_panel", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
-  { key: "site_daily_log", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
-  { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
-  { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
-  { key: "defects", title: "Evidencija kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
-  { key: "view_reports", title: "Pregled izveštaja", lines: ["Pregled odobrenih / vraćenih izveštaja ako je uključeno za ovog korisnika"] },
-  { key: "approve_reports", title: "Odobravanje izveštaja", lines: ["Odobravanje izveštaja ili vraćanje izveštaja, samo za ovlašćene korisnike"] },
-  { key: "excel_export", title: "Izvoz u Excel", lines: ["Priprema i preuzimanje Excel/CSV izvoza"] },
-  { key: "manage_people", title: "Upravljanje korisnicima", lines: ["Dodavanje i izmena ljudi u firmi"] },
-  { key: "settings", title: "Podešavanja firme", lines: ["Osnovna podešavanja firme"] }
+  { key: "daily_work", group: "field", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Uprave"] },
+  { key: "workers", group: "field", title: "Evidencija zaposlenih na gradilištu", lines: ["Ime i prezime zaposlenog", "Sati rada", "+ Dodaj zaposlenog"] },
+  { key: "machines", group: "field", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
+  { key: "vehicles", group: "field", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
+  { key: "lowloader", group: "field", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
+  { key: "fuel", group: "field", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
+  { key: "field_tanker", group: "field", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
+  { key: "materials", group: "field", title: "Evidencija materijala", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
+  { key: "signature", group: "field", title: "Potpis zaposlenog", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime i prezime potpisnika opciono"] },
+  { key: "leave_request", group: "field", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
+  { key: "warehouse", group: "field", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
+  { key: "defects", group: "field", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
+  { key: "desktop_panel", group: "layout", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
+  { key: "site_daily_log", group: "layout", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
+  { key: "view_reports", group: "office", title: "Pregled izveštaja", lines: ["Kancelarijsko ovlašćenje - nije polje u terenskom izveštaju"] },
+  { key: "approve_reports", group: "office", title: "Odobravanje izveštaja", lines: ["Kancelarijsko ovlašćenje - odobravanje ili vraćanje izveštaja"] },
+  { key: "excel_export", group: "office", title: "Izvoz u Excel", lines: ["Kancelarijsko ovlašćenje - priprema i preuzimanje Excel/CSV izvoza"] },
+  { key: "manage_people", group: "office", title: "Upravljanje korisnicima", lines: ["Kancelarijsko ovlašćenje - dodavanje i izmena ljudi u firmi"] },
+  { key: "settings", group: "office", title: "Podešavanja firme", lines: ["Kancelarijsko ovlašćenje - osnovna podešavanja firme"] }
 ];
 
 function getPersonPreviewData() {
@@ -1229,19 +1229,39 @@ function renderWorkerPreview(show = true) {
   }
 
   const selected = WORKER_PREVIEW_SECTIONS.filter(s => d.selectedKeys.includes(s.key));
-  const sectionHtml = selected.length ? selected.map(section => `
-    <div class="worker-preview-section">
-      <strong>${escapeHtml(section.title)}</strong>
-      <ul>${section.lines.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
+  const fieldSelected = selected.filter(s => s.group === "field");
+  const layoutSelected = selected.filter(s => s.group === "layout");
+  const officeSelected = selected.filter(s => s.group === "office");
+
+  const renderPreviewGroup = (title, sections, emptyText = "") => sections.length ? `
+    <div class="worker-preview-section worker-preview-grouped">
+      <strong>${escapeHtml(title)}</strong>
+      ${sections.map(section => `
+        <div class="worker-preview-mini-section">
+          <b>${escapeHtml(section.title)}</b>
+          <ul>${section.lines.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
+        </div>
+      `).join("")}
     </div>
-  `).join("") : `<p class="muted">Još nije štiklirana nijedna rubrika. Kad štikliraš rubriku levo, ovde se odmah vidi šta zaposleni dobija.</p>`;
+  ` : (emptyText ? `<p class="muted tiny">${escapeHtml(emptyText)}</p>` : "");
+
+  const sectionHtml = selected.length ? `
+    ${renderPreviewGroup("Rubrike koje ulaze u terenski izveštaj", fieldSelected, "Nije štiklirana nijedna terenska rubrika.")}
+    ${renderPreviewGroup("Poseban prikaz", layoutSelected)}
+    ${renderPreviewGroup("Kancelarijska ovlašćenja", officeSelected)}
+  ` : `<p class="muted">Još nije štiklirana nijedna stavka. Kad štikliraš rubriku levo, ovde se odmah vidi šta zaposleni dobija.</p>`;
 
   const materialsHtml = d.materialNames.length ? `
     <div class="worker-preview-section">
-      <strong>Dozvoljeni materijali</strong>
+      <strong>Posebno označeni materijali</strong>
       <ul>${d.materialNames.map(name => `<li>${escapeHtml(name)}</li>`).join("")}</ul>
     </div>
-  ` : "";
+  ` : (d.selectedKeys.includes("materials") ? `
+    <div class="worker-preview-section">
+      <strong>Materijali</strong>
+      <p class="muted tiny">Zaposleni koristi aktivne materijale iz evidencije firme.</p>
+    </div>
+  ` : "");
 
   body.innerHTML = `
     <div class="phone-preview-shell">
@@ -1252,7 +1272,7 @@ function renderWorkerPreview(show = true) {
         <small>Pristupni kod zaposlenog: ${escapeHtml(d.code)}</small>
       </div>
       <div class="phone-preview-card">
-        <h4>Rubrike koje će zaposleni videti</h4>
+        <h4>Šta ovaj profil dobija</h4>
         ${sectionHtml}
         ${materialsHtml}
       </div>

@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1285" />
+  <link rel="stylesheet" href="style.css?v=1286" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -451,30 +451,47 @@
             <label>Pristupni kod zaposlenog</label>
             <input id="personCode" placeholder="npr. zor1234" />
             <div class="permission-box">
-              <h4>Dodeljene radne rubrike</h4>
-              <label><input type="checkbox" class="perm" value="daily_work" /> Gradilište i datum izveštaja</label>
-              <label><input type="checkbox" class="perm" value="workers" /> Evidencija zaposlenih na gradilištu</label>
-              <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
-              <label><input type="checkbox" class="perm" value="vehicles" /> Rad vozila / kamiona</label>
-              <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
-              <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
-              <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
-              <label><input type="checkbox" class="perm" value="materials" /> Materijal</label>
-              <label><input type="checkbox" class="perm" value="signature" /> Potpis zaposlenog</label>
-              <label><input type="checkbox" class="perm" value="desktop_panel" /> Laptop prikaz</label>
-              <label><input type="checkbox" class="perm" value="site_daily_log" /> Dnevnik gradilišta</label>
-              <p class="muted tiny permission-note">Laptop prikaz je za odgovorno lice gradilišta ili zaposlenog koji izveštaje unosi sa laptopa. Dnevnik gradilišta otvara poseban A4 modul za odgovorno lice: zaposleni, materijali, ture, opis radova, plan za sutra i overa.</p>
-              <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za odsustvo / godišnji odmor</label>
-              <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
-              <label><input type="checkbox" class="perm" value="defects" /> Evidencija kvara</label>
-              <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
-              <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje izveštaja</label>
-              <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
-              <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje korisnicima</label>
-              <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
+              <h4>Dodeljene radne rubrike i ovlašćenja</h4>
+              <p class="muted tiny">Rubrike su razdvojene da se ne mešaju polja koja ulaze u terenski izveštaj i kancelarijska ovlašćenja.</p>
+
+              <div class="permission-group permission-group-field">
+                <h4>📋 Rubrike za terenski izveštaj</h4>
+                <p class="muted tiny">Ove stavke se stvarno pojavljuju zaposlenom/odgovornom licu u formi za unos i mogu ući u izveštaj.</p>
+                <label><input type="checkbox" class="perm" value="daily_work" /> Gradilište i datum izveštaja</label>
+                <label><input type="checkbox" class="perm" value="workers" /> Evidencija zaposlenih na gradilištu</label>
+                <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
+                <label><input type="checkbox" class="perm" value="vehicles" /> Rad vozila / kamiona</label>
+                <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
+                <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
+                <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
+                <label><input type="checkbox" class="perm" value="materials" /> Evidencija materijala</label>
+                <label><input type="checkbox" class="perm" value="signature" /> Potpis zaposlenog</label>
+                <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za odsustvo / godišnji odmor</label>
+                <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
+                <label><input type="checkbox" class="perm" value="defects" /> Prijava kvara</label>
+              </div>
+
+              <div class="permission-group permission-group-layout">
+                <h4>💻 Poseban prikaz</h4>
+                <p class="muted tiny">Ove stavke menjaju način prikaza. Same po sebi ne dodaju novu poslovnu rubriku u običan radnički izveštaj.</p>
+                <label><input type="checkbox" class="perm" value="desktop_panel" /> Laptop prikaz</label>
+                <label><input type="checkbox" class="perm" value="site_daily_log" /> Dnevnik gradilišta</label>
+                <p class="muted tiny permission-note">Dnevnik gradilišta otvara poseban A4 modul za odgovorno lice: zaposleni, materijali, ture, opis radova, plan za sutra i overa.</p>
+              </div>
+
+              <div class="permission-group permission-group-office">
+                <h4>🏢 Kancelarijska ovlašćenja</h4>
+                <p class="muted tiny">Ove stavke se ne pojavljuju kao polja u terenskom izveštaju. One samo daju pristup pregledima, odobravanjima ili podešavanjima.</p>
+                <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
+                <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje izveštaja</label>
+                <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
+                <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje korisnicima</label>
+                <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
+              </div>
+
               <div class="material-permission-box">
                 <h4>Evidencija materijala dostupna zaposlenom</h4>
-                <p class="muted tiny">Materijal dodat u tabu Evidencija materijala automatski se pojavljuje ovde za štikliranje.</p>
+                <p class="muted tiny">Za osnovni rad dovoljno je štiklirati “Evidencija materijala”. Tada zaposleni koristi aktivne materijale iz evidencije firme. Pojedinačno štikliranje koristi se samo ako kasnije želite ograničiti materijale po zaposlenom.</p>
                 <div id="personMaterialPermissions" class="dynamic-check-list"></div>
               </div>
             </div>
@@ -1118,6 +1135,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1285"></script>
+  <script src="script.js?v=1286"></script>
 </body>
 </html>
