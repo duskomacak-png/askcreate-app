@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.6";
+const APP_VERSION = "1.25.7";
 
 
 let sb = null;
@@ -1154,6 +1154,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "fuel", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
   { key: "field_tanker", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
+  { key: "signature", title: "Potpis radnika", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime potpisnika opciono"] },
   { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
   { key: "defects", title: "Evidencija kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
@@ -2503,6 +2504,22 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const hasFuels = fuels.some(hasUsefulEntry);
   const hasFieldTankers = fieldTankers.some(hasUsefulEntry);
   const hasGeneralNote = safe(d.description) || safe(d.note);
+  const hasSignature = safe(d.signature_data_url);
+  const signatureBox = hasSignature ? `
+    <div class="report-section report-signature-section">
+      <h4>Potpis radnika / odgovornog lica</h4>
+      <div class="paper-signature-box">
+        <img src="${esc(d.signature_data_url)}" alt="Potpis radnika" />
+        <div>
+          <b>${esc(d.signature_name || d.created_by_worker || "Potpisnik")}</b>
+          <span>${esc(formatDateTimeLocal(d.signature_signed_at) || "")}</span>
+        </div>
+      </div>
+    </div>` : `
+    <div class="report-section report-signature-section paper-empty-signature">
+      <h4>Potpis</h4>
+      <div class="paper-signature-line">Potpis radnika / odgovornog lica</div>
+    </div>`;
 
   return `
     <div class="report-readable">
@@ -2593,6 +2610,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           </div>`}
         </div>` : ""}
 
+      ${signatureBox}
+
       <details class="report-section report-excel-section report-excel-details">
         <summary>📊 Prikaži Excel pregled izveštaja</summary>
         <p class="field-hint">Ovo je kompaktan Excel pregled ovog izveštaja: sekcija, red, polje i vrednost. Za preuzimanje fajla koristi glavni izvoz u Excel.</p>
@@ -2618,6 +2637,7 @@ function getReportFilledSections(d = {}) {
   if (arr(d.field_tanker_entries).some(hasEntry) || arr(d.tanker_fuel_entries).some(hasEntry)) sections.push("Cisterna");
   if (hasValue(d.defect) || hasValue(d.defect_asset_name) || hasValue(d.defect_urgency) || hasValue(d.defect_work_impact)) sections.push("Kvar");
   if (arr(d.material_entries).some(hasEntry) || arr(d.material_movements).some(hasEntry) || hasValue(d.material) || hasValue(d.quantity)) sections.push("Materijal");
+  if (hasValue(d.signature_data_url)) sections.push("Potpis");
   if (hasValue(d.warehouse_type) || hasValue(d.warehouse_item) || hasValue(d.warehouse_qty)) sections.push("Magacin");
   if (hasValue(d.leave_request_type) || hasValue(d.leave_type) || hasValue(d.leave_date) || hasValue(d.leave_from) || hasValue(d.leave_to) || (d.leave_request && hasEntry(d.leave_request))) sections.push("Odsustvo");
   return sections.length ? sections : ["Izveštaj"];
@@ -3997,6 +4017,7 @@ function workerSetSections(perms) {
     fuel: "#secFuel",
     field_tanker: "#secFieldTanker",
     materials: "#secMaterials",
+    signature: "#secSignature",
     leave_request: "#secLeaveRequest",
     warehouse: "#secWarehouse",
     defects: "#secDefects"
@@ -5084,7 +5105,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       wrDefect:"defect",
       wrDefectStopsWork:"defect_work_impact",
       wrDefectUrgency:"defect_urgency",
-      wrDefectCalledMechanic:"called_mechanic_by_phone",}).forEach(([id,key]) => {
+      wrDefectCalledMechanic:"called_mechanic_by_phone", wrSignatureName:"signature_name",}).forEach(([id,key]) => {
       const el = $("#" + id);
       if (el) el.value = d[key] || "";
     });
@@ -5131,6 +5152,103 @@ function hasLeaveRequestData(req) {
   return !!(req.date || req.date_from || req.date_to || req.note);
 }
 
+let signaturePadState = { drawing: false, hasInk: false, initialized: false };
+
+function getSignatureCanvas() {
+  return document.getElementById("wrSignatureCanvas");
+}
+
+function signatureEventPoint(evt, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  const src = evt.touches && evt.touches.length ? evt.touches[0] : evt;
+  return {
+    x: (src.clientX - rect.left) * (canvas.width / rect.width),
+    y: (src.clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+function prepareSignatureCanvasBackground(canvas) {
+  const ctx = canvas.getContext("2d");
+  ctx.save();
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function initSignaturePad() {
+  const canvas = getSignatureCanvas();
+  if (!canvas || signaturePadState.initialized) return;
+  signaturePadState.initialized = true;
+  prepareSignatureCanvasBackground(canvas);
+  const ctx = canvas.getContext("2d");
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#111827";
+
+  const start = (evt) => {
+    evt.preventDefault();
+    signaturePadState.drawing = true;
+    const p = signatureEventPoint(evt, canvas);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+  const move = (evt) => {
+    if (!signaturePadState.drawing) return;
+    evt.preventDefault();
+    const p = signatureEventPoint(evt, canvas);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    signaturePadState.hasInk = true;
+  };
+  const end = (evt) => {
+    if (!signaturePadState.drawing) return;
+    evt.preventDefault();
+    signaturePadState.drawing = false;
+  };
+
+  canvas.addEventListener("mousedown", start);
+  canvas.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", end);
+  canvas.addEventListener("touchstart", start, { passive: false });
+  canvas.addEventListener("touchmove", move, { passive: false });
+  canvas.addEventListener("touchend", end, { passive: false });
+}
+
+function clearSignatureCanvas(showToast = false) {
+  const canvas = getSignatureCanvas();
+  if (!canvas) return;
+  prepareSignatureCanvasBackground(canvas);
+  signaturePadState.hasInk = false;
+  if (showToast) toast("Potpis je obrisan.");
+}
+
+function setSignatureImage(dataUrl) {
+  const canvas = getSignatureCanvas();
+  if (!canvas || !dataUrl) return;
+  prepareSignatureCanvasBackground(canvas);
+  const img = new Image();
+  img.onload = () => {
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    signaturePadState.hasInk = true;
+  };
+  img.src = dataUrl;
+}
+
+function getSignatureData() {
+  const canvas = getSignatureCanvas();
+  const name = ($("#wrSignatureName")?.value || "").trim();
+  if (!canvas || !signaturePadState.hasInk) {
+    return { signature_data_url: "", signature_name: name, signature_signed_at: "" };
+  }
+  return {
+    signature_data_url: canvas.toDataURL("image/png"),
+    signature_name: name || currentWorker?.full_name || "",
+    signature_signed_at: new Date().toISOString()
+  };
+}
+
 function collectWorkerData() {
   const perms = currentWorker?.permissions || {};
   const machines = perms.machines ? getMachineEntries() : [];
@@ -5140,6 +5258,7 @@ function collectWorkerData() {
   const canDaily = !!(perms.daily_work || perms.daily_work_site);
   const canWorkers = !!perms.workers;
   const canMaterials = !!perms.materials;
+  const canSignature = !!perms.signature;
   const canLeaveRequest = !!perms.leave_request;
   const canWarehouse = !!perms.warehouse;
   const canDefects = !!perms.defects;
@@ -5187,6 +5306,7 @@ function collectWorkerData() {
     field_tanker: fieldTankerEntries.length > 0,
     fuel: fuelEntries.length > 0,
     materials: materialEntries.length > 0,
+    signature: !!(canSignature && getSignatureData().signature_data_url),
     leave_request: !!(canLeaveRequest && hasLeaveRequestData(leaveRequest)),
     warehouse: !!(canWarehouse && (($("#wrWarehouseItem")?.value || "").trim() || ($("#wrWarehouseQty")?.value || "").trim())),
     defects: !!(canDefects && (($("#wrDefect")?.value || "").trim() || ($("#wrDefectAssetName")?.value || "").trim()))
@@ -5231,6 +5351,7 @@ function collectWorkerData() {
     cubic_m3: vehicles.map(v => v.cubic_m3).filter(Boolean).join(" | "),
     material_entries: materialEntries,
     material_movements: materialEntries,
+    ...getSignatureData(),
     material: canMaterials ? materialEntries.map(m => `${m.action || ""}: ${m.material || ""}`.trim()).filter(Boolean).join(" | ") : "",
     material_tours: canMaterials ? materialEntries.map(m => m.tours || m.material_tours).filter(Boolean).join(" | ") : "",
     material_per_tour: canMaterials ? materialEntries.map(m => m.per_tour || m.quantity_per_tour).filter(Boolean).join(" | ") : "",
@@ -5259,7 +5380,7 @@ function collectWorkerData() {
 }
 
 function clearWorkerForm() {
-  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrLeaveType","wrLeaveDate","wrLeaveFrom","wrLeaveTo","wrLeaveNote","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefect","wrDefectStopsWork","wrDefectUrgency","wrDefectCalledMechanic"].forEach(id => {
+  ["wrSiteName","wrDescription","wrHours","wrVehicle","wrKmStart","wrKmEnd","wrRoute","wrTours","wrLeaveType","wrLeaveDate","wrLeaveFrom","wrLeaveTo","wrLeaveNote","wrWarehouseType","wrWarehouseItem","wrWarehouseQty","wrDefectAssetName","wrDefectSiteName","wrDefect","wrDefectStopsWork","wrDefectUrgency","wrDefectCalledMechanic","wrSignatureName"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
@@ -5274,6 +5395,7 @@ function clearWorkerForm() {
   if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
+  clearSignatureCanvas(false);
 }
 
 function ensureWorkerDefaultEntries() {
@@ -5368,8 +5490,9 @@ function loadDraft() {
     (d.material_entries || d.material_movements || []).forEach(m => addMaterialEntry(m));
 
     Object.entries({
-      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_code", wrDefectSiteName:"defect_site_name", wrDefect:"defect", wrDefectStopsWork:"defect_work_impact", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone"
+      wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_code", wrDefectSiteName:"defect_site_name", wrDefect:"defect", wrDefectStopsWork:"defect_work_impact", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone", wrSignatureName:"signature_name"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
+    if (d.signature_data_url) setSignatureImage(d.signature_data_url);
     updateLeaveRequestVisibility();
   } catch {}
 }
@@ -5398,6 +5521,7 @@ const WORKER_UI_PERMISSION_MAP = {
   fuel: { label: "Evidencija goriva – korisnik", window: "Sipanje goriva", worker: true },
   field_tanker: { label: "Evidencija goriva – cisterna", window: "Evidencija goriva – cisterna", worker: true },
   materials: { label: "Materijal", window: "Materijal", worker: true },
+  signature: { label: "Potpis radnika", window: "Potpis na dnevnom izveštaju", worker: true },
   leave_request: { label: "Zahtev za odsustvo / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
   warehouse: { label: "Magacin", window: "Magacin", worker: true },
   defects: { label: "Evidencija kvara", window: "Evidencija kvara", worker: true },
@@ -7246,6 +7370,8 @@ function bindEvents() {
 
   $("#saveDraftBtn").addEventListener("click", saveDraft);
   if ($("#wrLeaveType")) $("#wrLeaveType").addEventListener("change", updateLeaveRequestVisibility);
+  initSignaturePad();
+  if ($("#clearSignatureBtn")) $("#clearSignatureBtn").addEventListener("click", () => clearSignatureCanvas(true));
   if ($("#wrDefectAssetName")) {
     $("#wrDefectAssetName").addEventListener("input", updateDefectAssetSmartResult);
     $("#wrDefectAssetName").addEventListener("change", updateDefectAssetSmartResult);

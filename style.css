@@ -2669,7 +2669,7 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
 }
 
 
-/* v1.25.6 — čist A4 dnevni izveštaj bez brendiranja i sa ciljanom štampom */
+/* v1.25.7 — čist A4 dnevni izveštaj bez brendiranja i sa ciljanom štampom */
 .report-paper-view{background:#fff;max-width:210mm;margin:14px auto;padding:14mm 12mm;}
 .report-paper-view .paper-title-block{text-align:center;}
 .report-paper-view .paper-title-block h3{margin-bottom:4px;}
@@ -2698,3 +2698,16 @@ body.worker-field-theme #viewWorkerForm .mini-grid{
   body.printing-report-paper .print-target-report .paper-title-block{break-after:avoid;}
   body.printing-report-paper .print-target-report .report-section{break-inside:avoid;}
 }
+
+
+/* v1.25.7 — Potpis radnika na dnevnom izveštaju */
+.signature-pad-wrap{background:#f8fafc;border:1px solid #cbd5e1;border-radius:14px;padding:10px;max-width:760px}
+.signature-pad{display:block;width:100%;height:190px;background:#fff;border:1px dashed #94a3b8;border-radius:10px;touch-action:none;cursor:crosshair}
+.signature-actions{margin-top:8px}
+.paper-signature-box{border:1px solid #d1d5db;border-radius:10px;padding:10px;background:#fff;display:flex;align-items:center;gap:16px;min-height:92px}
+.paper-signature-box img{max-width:260px;max-height:80px;object-fit:contain;border-bottom:1px solid #111827;background:#fff}
+.paper-signature-box b{display:block;color:#111827;margin-bottom:3px}
+.paper-signature-box span{display:block;color:#64748b;font-size:11px}
+.paper-empty-signature{break-inside:avoid}
+.paper-signature-line{margin-top:30px;border-top:1px solid #111827;width:260px;padding-top:6px;font-size:11px;color:#475569;text-align:center}
+@media print{.signature-pad-wrap,.signature-actions{display:none!important}.paper-signature-box{break-inside:avoid}.paper-signature-box img{max-height:70px}}

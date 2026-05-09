@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1256" />
+  <link rel="stylesheet" href="style.css?v=1257" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -380,6 +380,7 @@
               <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
               <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
               <label><input type="checkbox" class="perm" value="materials" /> Materijal</label>
+              <label><input type="checkbox" class="perm" value="signature" /> Potpis radnika</label>
               <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za odsustvo / godišnji odmor</label>
               <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
               <label><input type="checkbox" class="perm" value="defects" /> Evidencija kvara</label>
@@ -806,6 +807,19 @@
         </div>
 
 
+        <div id="secSignature" class="dyn-section">
+          <h4>Potpis radnika / odgovornog lica</h4>
+          <p class="hint">Ako Direkcija uključi ovu rubriku, radnik ili šef gradilišta može potpisati dnevni izveštaj prstom na telefonu ili mišem na laptopu.</p>
+          <div class="signature-pad-wrap">
+            <canvas id="wrSignatureCanvas" class="signature-pad" width="720" height="220" aria-label="Polje za potpis"></canvas>
+          </div>
+          <div class="row compact-row signature-actions">
+            <button id="clearSignatureBtn" class="secondary" type="button">Obriši potpis</button>
+          </div>
+          <label>Ime potpisnika <span class="muted">(opciono)</span></label>
+          <input id="wrSignatureName" placeholder="npr. Duško Mačak / šef gradilišta" />
+        </div>
+
         <div id="secLeaveRequest" class="dyn-section">
           <h4>Zahtev za odsustvo / godišnji odmor</h4>
           <p class="hint">Ova rubrika služi za slanje zahteva za odsustvo ili godišnji odmor.</p>
@@ -902,6 +916,6 @@
     <span>Start Work PRO</span>
   </footer>
 
-  <script src="script.js?v=1256"></script>
+  <script src="script.js?v=1257"></script>
 </body>
 </html>
