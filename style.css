@@ -2903,3 +2903,41 @@ body.worker-field-theme.site-log-mode #viewWorkerForm .secondary{
   body.printing-report-paper .print-target-report *{visibility:visible!important}
   body.printing-report-paper .print-target-report{position:absolute!important;left:0!important;top:0!important;width:100%!important}
 }
+
+
+/* v1.26.1 FIX — Dnevnik gradilišta: select vrednosti i dugmad uvek vidljivi */
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel select,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel select option,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel option,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel input,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel textarea{
+  color:#13251a!important;
+  -webkit-text-fill-color:#13251a!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel select{
+  background-color:#ffffff!important;
+  background-image:none!important;
+  opacity:1!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel select:invalid,
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel select option[value=""]{
+  color:#536b5a!important;
+  -webkit-text-fill-color:#536b5a!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-actions .hidden{
+  display:inline-flex!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-actions{
+  display:flex!important;
+  gap:8px!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-actions button{
+  width:auto!important;
+  min-width:120px!important;
+  justify-content:center!important;
+}
+body.worker-field-theme.site-log-mode #viewWorkerForm #siteLogPanel .site-log-preview-box.hidden{
+  display:none!important;
+}
