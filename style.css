@@ -2788,3 +2788,31 @@ body.worker-field-theme.worker-desktop-panel #workerHello::after{
     content:"";
   }
 }
+
+
+/* v1.25.9 — Dnevnik gradilišta / šef gradilišta */
+.site-log-mode{background:#eef6f0;}
+.site-log-panel{border:1px solid #b7d7c2;background:linear-gradient(180deg,#f8fff9,#eef8f1);box-shadow:0 18px 40px rgba(25,90,52,.12)}
+.site-log-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-bottom:1px solid #cfe3d5;padding-bottom:14px;margin-bottom:16px}
+.site-log-eyebrow{margin:0 0 4px;color:#217346;font-weight:900;text-transform:uppercase;letter-spacing:.08em;font-size:.76rem}
+.site-log-head h3{margin:.1rem 0;color:#143d27;font-size:1.45rem}
+.site-log-status{background:#217346;color:#fff;border-radius:999px;padding:.45em .85em;font-weight:800;white-space:nowrap}
+.site-log-form-grid{display:grid;grid-template-columns:220px 1fr;gap:14px;margin-bottom:14px}
+.site-log-section{background:#fff;border:1px solid #d6e8dc;border-radius:14px;padding:14px;margin:14px 0;box-shadow:0 8px 22px rgba(15,80,45,.06)}
+.site-log-section-title,.site-log-subtitle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.site-log-section h4{margin:0;color:#173b24}
+.site-log-subsection{border:1px solid #edf4ef;background:#fbfdfb;border-radius:12px;padding:10px;margin:10px 0}
+.site-log-subtitle b{color:#1c5a36}
+.site-log-entry-list .entry-card{border-color:#cfe3d5;background:#ffffff}
+.grid.three{display:grid;grid-template-columns:1.2fr .45fr 1.2fr;gap:10px}
+.grid.four{display:grid;grid-template-columns:1.2fr .55fr .5fr 1fr;gap:10px}
+.site-log-signature-wrap{background:#fff;border-color:#aacdb7}
+.signed-file-info{border:1px dashed #b7d7c2;background:#f4fbf6;border-radius:10px;padding:8px 10px;margin-top:6px}
+.site-log-actions{position:sticky;bottom:8px;background:rgba(244,251,246,.96);border:1px solid #cfe3d5;border-radius:14px;padding:10px;z-index:5;box-shadow:0 10px 25px rgba(15,80,45,.10)}
+.site-log-preview-box{margin-top:18px;background:#e7f1ea;border:1px solid #cfe3d5;border-radius:16px;padding:14px;overflow:auto}
+.site-log-a4{background:#fff;color:#17231b;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;padding:14mm 12mm;border:1px solid #c8d2cc;box-shadow:0 18px 38px rgba(15,23,42,.16);font-family:Arial,Helvetica,sans-serif}
+.site-log-a4 .report-mini-table{min-width:0;width:100%;font-size:.9rem}
+.site-log-a4 p{white-space:pre-wrap;line-height:1.45}
+.signed-file-note{border:1px solid #cfe3d5;background:#f6fbf7;border-radius:9px;padding:8px 10px;color:#173b24}
+@media(max-width:850px){.site-log-form-grid,.grid.three,.grid.four{grid-template-columns:1fr}.site-log-head{flex-direction:column}.site-log-actions{position:static}.site-log-a4{width:100%;min-height:auto;padding:14px}}
+@media print{.site-log-actions,.site-log-panel .no-print{display:none!important}.site-log-a4{box-shadow:none;border:0;width:100%;min-height:auto;padding:0}}

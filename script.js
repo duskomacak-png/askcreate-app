@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.25.8";
+const APP_VERSION = "1.25.9";
 
 
 let sb = null;
@@ -1157,6 +1157,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "materials", title: "Materijal", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
   { key: "signature", title: "Potpis radnika", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime potpisnika opciono"] },
   { key: "desktop_panel", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
+  { key: "site_daily_log", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Radnici/sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
   { key: "leave_request", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
   { key: "defects", title: "Evidencija kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
@@ -2089,6 +2090,33 @@ function renderReportReadableDetails(d = {}, options = {}) {
     Array.isArray(d.materials) ? d.materials :
     [];
 
+
+  if (d.report_type === "site_daily_log") {
+    const siteLogData = {
+      ...d,
+      report_date_manual: d.report_date_manual || d.report_date,
+      workers: Array.isArray(d.workers) ? d.workers : [],
+      material_in: Array.isArray(d.material_in) ? d.material_in : [],
+      material_out: Array.isArray(d.material_out) ? d.material_out : [],
+      materials_installed: Array.isArray(d.materials_installed) ? d.materials_installed : [],
+      materials_stock_on_site: Array.isArray(d.materials_stock_on_site) ? d.materials_stock_on_site : [],
+      truck_tours: Array.isArray(d.truck_tours) ? d.truck_tours : []
+    };
+    const signed = siteLogData.site_log_signature_data_url ? `<div class="paper-signature-box"><img src="${esc(siteLogData.site_log_signature_data_url)}" alt="Potpis"/><div><b>${esc(siteLogData.site_log_signature_name || siteLogData.created_by_worker || "Potpisnik")}</b><span>${esc(formatDateTimeLocal(siteLogData.site_log_signature_signed_at) || "")}</span></div></div>` : `<div class="paper-signature-line">Potpis šefa gradilišta / odgovornog lica</div>`;
+    const uploaded = siteLogData.signed_file ? `<p class="signed-file-note">Dodat potpisan dokument: <b>${esc(siteLogData.signed_file.name || "fajl")}</b>. Uploadovani fajl služi kao dokaz; Excel koristi podatke iz forme.</p>` : "";
+    return `<div class="report-readable site-log-report-readable">
+      <div class="report-section"><h4>Radnici i sati</h4>${siteLogTable(["#","Ime i prezime","Sati","Napomena"], siteLogData.workers, (w,i)=>[String(i+1), w.full_name, w.hours, w.note])}</div>
+      <div class="report-section"><h4>Opis radova danas</h4><p>${esc(siteLogData.today_work_description || "—")}</p></div>
+      <div class="report-section"><h4>Plan radova za sutra</h4><p>${esc(siteLogData.tomorrow_work_plan || "—")}</p></div>
+      <div class="report-section"><h4>Ulaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], siteLogData.material_in, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
+      <div class="report-section"><h4>Izlaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], siteLogData.material_out, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
+      <div class="report-section"><h4>Ugrađeni materijali</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Pozicija/rad"], siteLogData.materials_installed, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.work_position || m.note])}</div>
+      <div class="report-section"><h4>Lager materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], siteLogData.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
+      <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Partner","Tablice","Vozač","Materijal","Ture","m³","Napomena"], siteLogData.truck_tours, (t,i)=>[String(i+1), t.tour_type, t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
+      <div class="report-section report-signature-section"><h4>Potpis / overa</h4>${signed}${uploaded}</div>
+    </div>`;
+  }
+
   const reportRows = [];
   const leaveRequest = d.leave_request || {};
   const previewLeaveRequest = leaveRequest;
@@ -2630,6 +2658,18 @@ function getReportFilledSections(d = {}) {
   const arr = (v) => Array.isArray(v) ? v : [];
   const sections = [];
 
+  if (d.report_type === "site_daily_log") {
+    sections.push("Dnevnik gradilišta");
+    if (arr(d.workers).some(hasEntry)) sections.push("Radnici");
+    if (arr(d.material_in).some(hasEntry)) sections.push("Ulaz materijala");
+    if (arr(d.material_out).some(hasEntry)) sections.push("Izlaz materijala");
+    if (arr(d.materials_installed).some(hasEntry)) sections.push("Ugrađeno");
+    if (arr(d.materials_stock_on_site).some(hasEntry)) sections.push("Lager");
+    if (arr(d.truck_tours).some(hasEntry)) sections.push("Ture");
+    if (hasValue(d.site_log_signature_data_url) || d.signed_file) sections.push("Overa");
+    return sections;
+  }
+
   if (hasValue(d.site_name) || hasValue(d.description) || hasValue(d.hours) || hasValue(d.note)) sections.push("Osnovno");
   if (arr(d.workers).some(hasEntry) || arr(d.worker_entries).some(hasEntry)) sections.push("Radnici");
   if (arr(d.machines).some(hasEntry)) sections.push("Mašina");
@@ -2720,7 +2760,7 @@ window.downloadReportA4 = function(id) {
 function reportHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name || ""} ${r.company_users.last_name || ""}`.trim() : (d.created_by_worker || d.worker_name || "Nepoznat korisnik");
-  const title = isDefectOnlyReport(r) ? "EVIDENCIJA KVARA" : "DNEVNI IZVEŠTAJ SA TERENA";
+  const title = d.report_type === "site_daily_log" ? "DNEVNIK GRADILIŠTA" : (isDefectOnlyReport(r) ? "EVIDENCIJA KVARA" : "DNEVNI IZVEŠTAJ SA TERENA");
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
   const sections = getReportFilledSections(d);
   const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
@@ -5251,6 +5291,275 @@ function getSignatureData() {
   };
 }
 
+
+/* v1.25.9 — Dnevnik gradilišta za šefa gradilišta / laptop unos */
+let siteLogSignatureState = { initialized:false, drawing:false, hasInk:false };
+let siteLogSignedFileData = null;
+
+function getSiteLogCanvas() { return document.getElementById("siteLogSignatureCanvas"); }
+function initSiteLogSignaturePad() {
+  const canvas = getSiteLogCanvas();
+  if (!canvas || siteLogSignatureState.initialized) return;
+  siteLogSignatureState.initialized = true;
+  prepareSignatureCanvasBackground(canvas);
+  const ctx = canvas.getContext("2d");
+  ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#111827";
+  const start = (evt) => { evt.preventDefault(); siteLogSignatureState.drawing = true; const p = signatureEventPoint(evt, canvas); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+  const move = (evt) => { if (!siteLogSignatureState.drawing) return; evt.preventDefault(); const p = signatureEventPoint(evt, canvas); ctx.lineTo(p.x, p.y); ctx.stroke(); siteLogSignatureState.hasInk = true; };
+  const end = (evt) => { if (!siteLogSignatureState.drawing) return; evt.preventDefault(); siteLogSignatureState.drawing = false; };
+  canvas.addEventListener("mousedown", start); canvas.addEventListener("mousemove", move); window.addEventListener("mouseup", end);
+  canvas.addEventListener("touchstart", start, { passive:false }); canvas.addEventListener("touchmove", move, { passive:false }); canvas.addEventListener("touchend", end, { passive:false });
+}
+function clearSiteLogSignature(showToast = false) {
+  const canvas = getSiteLogCanvas(); if (!canvas) return;
+  prepareSignatureCanvasBackground(canvas); siteLogSignatureState.hasInk = false;
+  if (showToast) toast("Potpis dnevnika je obrisan.");
+}
+function getSiteLogSignatureData() {
+  const canvas = getSiteLogCanvas();
+  const name = ($("#siteLogSignatureName")?.value || "").trim();
+  if (!canvas || !siteLogSignatureState.hasInk) return { site_log_signature_data_url:"", site_log_signature_name:name, site_log_signature_signed_at:"" };
+  return { site_log_signature_data_url: canvas.toDataURL("image/png"), site_log_signature_name: name || currentWorker?.full_name || "", site_log_signature_signed_at: new Date().toISOString() };
+}
+function siteLogSelectSiteOptions(selectedValue = "") {
+  const selected = String(selectedValue || "").trim().toLowerCase();
+  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Uprave</option>`;
+  return `<option value="">Odaberi gradilište</option>` + workerSiteOptions.map(site => {
+    const name = site.name || "Gradilište"; const loc = site.location ? ` · ${site.location}` : "";
+    const isSelected = selected && String(name).trim().toLowerCase() === selected ? "selected" : "";
+    return `<option value="${escapeHtml(name)}" data-site-id="${escapeHtml(site.id || "")}" ${isSelected}>${escapeHtml(name + loc)}</option>`;
+  }).join("");
+}
+function refreshSiteLogSelectors() {
+  const site = $("#siteLogSite");
+  if (site) { const old = site.value || ""; site.innerHTML = siteLogSelectSiteOptions(old); if (old && Array.from(site.options).some(o => o.value === old)) site.value = old; }
+  $$(".site-log-material-select").forEach(sel => { const old = sel.value || ""; sel.innerHTML = buildWorkerMaterialOptionsHtml(old); if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old; });
+}
+function siteLogMaterialListId(kind) {
+  return ({ material_in:"siteLogMaterialIn", material_out:"siteLogMaterialOut", materials_installed:"siteLogMaterialsInstalled", materials_stock_on_site:"siteLogMaterialsStock" })[kind] || "siteLogMaterialIn";
+}
+function siteLogMaterialLabel(kind) {
+  return ({ material_in:"Ulaz", material_out:"Izlaz", materials_installed:"Ugrađeno", materials_stock_on_site:"Lager" })[kind] || "Materijal";
+}
+window.addSiteLogWorkerEntry = function(values = {}) {
+  const list = $("#siteLogWorkers"); if (!list) return;
+  const idx = list.querySelectorAll(".site-log-worker-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card site-log-worker-entry";
+  div.innerHTML = `
+    <h5>Radnik ${idx}</h5>
+    <div class="grid three">
+      <div><label>Ime i prezime</label><input class="sl-worker-name" placeholder="Ime i prezime" value="${escapeHtml(values.full_name || values.name || "")}" /></div>
+      <div><label>Sati</label><input class="sl-worker-hours numeric-text" type="text" inputmode="decimal" placeholder="8" value="${escapeHtml(values.hours || "")}" /></div>
+      <div><label>Napomena</label><input class="sl-worker-note" placeholder="npr. iskop, nivelacija" value="${escapeHtml(values.note || "")}" /></div>
+    </div>
+    <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-worker-entry').remove(); renumberSiteLogEntries('#siteLogWorkers','.site-log-worker-entry','Radnik');">Ukloni</button>`;
+  list.appendChild(div);
+};
+window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
+  const list = document.getElementById(siteLogMaterialListId(kind)); if (!list) return;
+  const idx = list.querySelectorAll(".site-log-material-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card site-log-material-entry";
+  div.dataset.kind = kind;
+  const extraLabel = kind === "materials_installed" ? "Pozicija/rad" : kind === "materials_stock_on_site" ? "Lokacija/napomena" : "Napomena";
+  div.innerHTML = `
+    <h5>${siteLogMaterialLabel(kind)} ${idx}</h5>
+    <div class="grid four">
+      <div><label>Materijal</label><select class="site-log-material-select sl-material-name">${buildWorkerMaterialOptionsHtml(values.material_name || values.material || "")}</select></div>
+      <div><label>Količina</label><input class="sl-material-qty numeric-text" type="text" inputmode="decimal" placeholder="60" value="${escapeHtml(values.quantity || "")}" /></div>
+      <div><label>Jedinica</label><input class="sl-material-unit" placeholder="m3, t, kom" value="${escapeHtml(values.unit || "m3")}" /></div>
+      <div><label>${extraLabel}</label><input class="sl-material-note" placeholder="${extraLabel}" value="${escapeHtml(values.note || values.work_position || values.location_note || "")}" /></div>
+    </div>
+    <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-material-entry').remove();">Ukloni</button>`;
+  list.appendChild(div);
+};
+window.addSiteLogTruckEntry = function(values = {}) {
+  const list = $("#siteLogTrucks"); if (!list) return;
+  const idx = list.querySelectorAll(".site-log-truck-entry").length + 1;
+  const div = document.createElement("div");
+  div.className = "entry-card site-log-truck-entry";
+  div.innerHTML = `
+    <h5>Tura ${idx}</h5>
+    <div class="grid four">
+      <div><label>Tip ture</label><select class="sl-truck-type"><option value="uvoz" ${values.tour_type === "uvoz" ? "selected" : ""}>Uvoz na gradilište</option><option value="izvoz" ${values.tour_type === "izvoz" ? "selected" : ""}>Izvoz sa gradilišta</option><option value="partnerska_firma" ${values.tour_type === "partnerska_firma" ? "selected" : ""}>Partnerska firma</option></select></div>
+      <div><label>Partnerska firma</label><input class="sl-partner-company" placeholder="naziv firme" value="${escapeHtml(values.partner_company || "")}" /></div>
+      <div><label>Tablice kamiona</label><input class="sl-truck-plate" placeholder="BG-123-AA" value="${escapeHtml(values.truck_plate || "")}" /></div>
+      <div><label>Vozač</label><input class="sl-driver-name" placeholder="ime i prezime" value="${escapeHtml(values.driver_name || "")}" /></div>
+      <div><label>Materijal</label><select class="site-log-material-select sl-truck-material">${buildWorkerMaterialOptionsHtml(values.material_name || "")}</select></div>
+      <div><label>Broj tura</label><input class="sl-truck-tours numeric-text" type="text" inputmode="decimal" placeholder="4" value="${escapeHtml(values.tours || "")}" /></div>
+      <div><label>m³</label><input class="sl-truck-m3 numeric-text" type="text" inputmode="decimal" placeholder="32" value="${escapeHtml(values.m3 || "")}" /></div>
+      <div><label>Napomena</label><input class="sl-truck-note" placeholder="napomena" value="${escapeHtml(values.note || "")}" /></div>
+    </div>
+    <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-truck-entry').remove(); renumberSiteLogEntries('#siteLogTrucks','.site-log-truck-entry','Tura');">Ukloni</button>`;
+  list.appendChild(div);
+};
+function renumberSiteLogEntries(listSel, itemSel, label) {
+  $$(listSel + " " + itemSel).forEach((card, i) => { const h = card.querySelector("h5"); if (h) h.textContent = `${label} ${i + 1}`; });
+}
+function getSiteLogSite() {
+  const el = $("#siteLogSite"); const option = el?.options ? el.options[el.selectedIndex] : null;
+  return { site_id: option?.dataset?.siteId || null, site_name: (el?.value || "").trim() };
+}
+function collectSiteLogWorkers() {
+  return $$("#siteLogWorkers .site-log-worker-entry").map(el => ({ full_name: el.querySelector(".sl-worker-name")?.value.trim() || "", hours: el.querySelector(".sl-worker-hours")?.value.trim() || "", note: el.querySelector(".sl-worker-note")?.value.trim() || "" })).filter(x => x.full_name || x.hours || x.note);
+}
+function collectSiteLogMaterials(kind) {
+  return $$(`#${siteLogMaterialListId(kind)} .site-log-material-entry`).map(el => {
+    const sel = el.querySelector(".sl-material-name"); const opt = sel?.options ? sel.options[sel.selectedIndex] : null; const note = el.querySelector(".sl-material-note")?.value.trim() || "";
+    const obj = { material_id: opt?.dataset?.materialId || "", material_name: sel?.value.trim() || "", quantity: el.querySelector(".sl-material-qty")?.value.trim() || "", unit: el.querySelector(".sl-material-unit")?.value.trim() || "m3", note };
+    if (kind === "materials_installed") obj.work_position = note;
+    if (kind === "materials_stock_on_site") obj.location_note = note;
+    return obj;
+  }).filter(x => x.material_name || x.quantity || x.note);
+}
+function collectSiteLogTrucks() {
+  return $$("#siteLogTrucks .site-log-truck-entry").map(el => {
+    const mat = el.querySelector(".sl-truck-material"); const opt = mat?.options ? mat.options[mat.selectedIndex] : null;
+    return { tour_type: el.querySelector(".sl-truck-type")?.value || "uvoz", partner_company: el.querySelector(".sl-partner-company")?.value.trim() || "", truck_plate: el.querySelector(".sl-truck-plate")?.value.trim() || "", driver_name: el.querySelector(".sl-driver-name")?.value.trim() || "", material_id: opt?.dataset?.materialId || "", material_name: mat?.value.trim() || "", tours: el.querySelector(".sl-truck-tours")?.value.trim() || "", m3: el.querySelector(".sl-truck-m3")?.value.trim() || "", note: el.querySelector(".sl-truck-note")?.value.trim() || "" };
+  }).filter(x => x.partner_company || x.truck_plate || x.driver_name || x.material_name || x.tours || x.m3 || x.note);
+}
+function collectSiteLogData() {
+  const site = getSiteLogSite();
+  const sig = getSiteLogSignatureData();
+  return {
+    report_type: "site_daily_log",
+    report_label: "Dnevnik gradilišta",
+    created_by_worker: currentWorker?.full_name || "",
+    function_title: currentWorker?.function_title || "",
+    site_id: site.site_id,
+    site_name: site.site_name,
+    report_date_manual: $("#siteLogDate")?.value || today(),
+    workers: collectSiteLogWorkers(),
+    worker_entries: collectSiteLogWorkers(),
+    today_work_description: $("#siteLogDescription")?.value.trim() || "",
+    tomorrow_work_plan: $("#siteLogTomorrowPlan")?.value.trim() || "",
+    material_in: collectSiteLogMaterials("material_in"),
+    material_out: collectSiteLogMaterials("material_out"),
+    materials_installed: collectSiteLogMaterials("materials_installed"),
+    materials_stock_on_site: collectSiteLogMaterials("materials_stock_on_site"),
+    truck_tours: collectSiteLogTrucks(),
+    signature_mode: sig.site_log_signature_data_url ? "app_signature" : (siteLogSignedFileData ? "uploaded_signed_file" : "none"),
+    signed_file: siteLogSignedFileData,
+    ...sig,
+    report_sections_sent: { site_daily_log:true }
+  };
+}
+function siteLogTable(headers, rows, cellsFn) {
+  if (!rows || !rows.length) return `<p class="report-empty">Nema unosa.</p>`;
+  return `<table class="report-mini-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r,i)=>`<tr>${cellsFn(r,i).map(c=>`<td>${escapeHtml(c || "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+function renderSiteLogA4(data = collectSiteLogData()) {
+  const signed = data.site_log_signature_data_url ? `<div class="paper-signature-box"><img src="${escapeHtml(data.site_log_signature_data_url)}" alt="Potpis"/><div><b>${escapeHtml(data.site_log_signature_name || data.created_by_worker || "Potpisnik")}</b><span>${escapeHtml(formatDateTimeLocal(data.site_log_signature_signed_at) || "")}</span></div></div>` : `<div class="paper-signature-line">Potpis šefa gradilišta / odgovornog lica</div>`;
+  const uploaded = data.signed_file ? `<p class="signed-file-note">Dodat potpisan dokument: <b>${escapeHtml(data.signed_file.name || "fajl")}</b>. Fajl se čuva kao dokaz uz izveštaj.</p>` : "";
+  return `<section class="report-paper-view site-log-a4" id="site-log-paper">
+    <div class="paper-title-block"><h3>DNEVNIK GRADILIŠTA</h3><p>A4 pregled za štampu, potpis i slanje Direkciji</p></div>
+    <table class="paper-meta-table"><tbody>
+      <tr><th>Firma</th><td>${escapeHtml(currentWorker?.company_name || "—")}</td><th>Datum izveštaja</th><td>${escapeHtml(data.report_date_manual || today())}</td></tr>
+      <tr><th>Gradilište</th><td>${escapeHtml(data.site_name || "—")}</td><th>Uneo</th><td>${escapeHtml(data.created_by_worker || "—")}</td></tr>
+      <tr><th>Radno mesto</th><td>${escapeHtml(data.function_title || "—")}</td><th>Vreme pregleda</th><td>${escapeHtml(formatDateTimeLocal(new Date().toISOString()) || "")}</td></tr>
+    </tbody></table>
+    <div class="report-section"><h4>Radnici i sati</h4>${siteLogTable(["#","Ime i prezime","Sati","Napomena"], data.workers, (w,i)=>[String(i+1), w.full_name, w.hours, w.note])}</div>
+    <div class="report-section"><h4>Opis radova danas</h4><p>${escapeHtml(data.today_work_description || "—")}</p></div>
+    <div class="report-section"><h4>Plan radova za sutra</h4><p>${escapeHtml(data.tomorrow_work_plan || "—")}</p></div>
+    <div class="report-section"><h4>Ulaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], data.material_in, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
+    <div class="report-section"><h4>Izlaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], data.material_out, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
+    <div class="report-section"><h4>Ugrađeni materijali</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Pozicija/rad"], data.materials_installed, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.work_position || m.note])}</div>
+    <div class="report-section"><h4>Lager materijala na gradilištu</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Lokacija/napomena"], data.materials_stock_on_site, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.location_note || m.note])}</div>
+    <div class="report-section"><h4>Ture kamiona</h4>${siteLogTable(["#","Tip","Partner","Tablice","Vozač","Materijal","Ture","m³","Napomena"], data.truck_tours, (t,i)=>[String(i+1), t.tour_type, t.partner_company, t.truck_plate, t.driver_name, t.material_name, t.tours, t.m3, t.note])}</div>
+    <div class="report-section report-signature-section"><h4>Potpis / overa</h4>${signed}${uploaded}</div>
+    <div class="paper-footer-note">Dnevnik pripremljen u Start Work PRO · podaci za Excel dolaze iz forme, uploadovani dokument je dokaz.</div>
+  </section>`;
+}
+function previewSiteLog() {
+  const box = $("#siteLogPreviewBox"); if (!box) return;
+  box.innerHTML = renderSiteLogA4(); box.classList.remove("hidden");
+  ["#siteLogEditBtn", "#siteLogPrintBtn", "#siteLogDownloadBtn", "#siteLogSubmitBtn"].forEach(sel => $(sel)?.classList.remove("hidden"));
+  $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Pregled");
+  box.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+function editSiteLog() { $("#siteLogPreviewBox")?.classList.add("hidden"); $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Nacrt"); }
+function printSiteLog() {
+  const el = document.getElementById("site-log-paper"); if (!el) { previewSiteLog(); }
+  const paper = document.getElementById("site-log-paper"); if (!paper) return toast("Prvo prikaži dnevnik.", true);
+  document.querySelectorAll(".print-target-report").forEach(x => x.classList.remove("print-target-report"));
+  paper.classList.add("print-target-report"); document.body.classList.add("printing-report-paper");
+  setTimeout(() => window.print(), 50);
+  setTimeout(() => { document.body.classList.remove("printing-report-paper"); paper.classList.remove("print-target-report"); }, 800);
+}
+function downloadSiteLogA4() {
+  const data = collectSiteLogData();
+  const html = `<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>Dnevnik gradilišta</title><style>@page{size:A4;margin:12mm}body{font-family:Arial,Helvetica,sans-serif;color:#17231b}.report-paper-view{max-width:190mm;margin:0 auto}.paper-title-block{text-align:center;border-bottom:2px solid #1f3326;margin-bottom:12px;padding-bottom:8px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #c8d2cc;padding:5px 7px;text-align:left;vertical-align:top}th{background:#edf1ee}h4{font-size:13px;text-transform:uppercase;border-bottom:2px solid #c8d2cc;margin:14px 0 7px;padding-bottom:5px}.report-section{page-break-inside:avoid}.paper-signature-box{border:1px solid #d1d5db;border-radius:8px;padding:10px;display:flex;gap:16px;align-items:center}.paper-signature-box img{max-width:260px;max-height:80px}.paper-signature-line{margin-top:40px;border-top:1px solid #111827;width:260px;padding-top:6px;text-align:center;font-size:11px}.paper-footer-note{border-top:1px solid #c8d2cc;margin-top:14px;padding-top:7px;text-align:right;color:#66716a;font-size:10px}</style></head><body>${renderSiteLogA4(data)}</body></html>`;
+  const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+  const file = safeFilePart(`dnevnik-gradilista_${data.report_date_manual || today()}_${data.site_name || "gradiliste"}`) + ".html";
+  downloadBlob(blob, file); toast("A4 dnevnik je preuzet. Može da se otvori u browseru i štampa kao PDF.");
+}
+function saveSiteLogDraft() {
+  const data = collectSiteLogData();
+  localStorage.setItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`, JSON.stringify(data));
+  toast("Nacrt dnevnika gradilišta je sačuvan na ovom uređaju.");
+}
+function loadSiteLogDraft() {
+  try {
+    const raw = localStorage.getItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`); if (!raw) return false;
+    const d = JSON.parse(raw); if (!d) return false;
+    if ($("#siteLogDate")) $("#siteLogDate").value = d.report_date_manual || today();
+    if ($("#siteLogDescription")) $("#siteLogDescription").value = d.today_work_description || "";
+    if ($("#siteLogTomorrowPlan")) $("#siteLogTomorrowPlan").value = d.tomorrow_work_plan || "";
+    if ($("#siteLogSignatureName")) $("#siteLogSignatureName").value = d.site_log_signature_name || "";
+    ["#siteLogWorkers","#siteLogMaterialIn","#siteLogMaterialOut","#siteLogMaterialsInstalled","#siteLogMaterialsStock","#siteLogTrucks"].forEach(sel => { const el = $(sel); if (el) el.innerHTML = ""; });
+    (d.workers || []).forEach(addSiteLogWorkerEntry);
+    (d.material_in || []).forEach(x => addSiteLogMaterialEntry("material_in", x));
+    (d.material_out || []).forEach(x => addSiteLogMaterialEntry("material_out", x));
+    (d.materials_installed || []).forEach(x => addSiteLogMaterialEntry("materials_installed", x));
+    (d.materials_stock_on_site || []).forEach(x => addSiteLogMaterialEntry("materials_stock_on_site", x));
+    (d.truck_tours || []).forEach(addSiteLogTruckEntry);
+    siteLogSignedFileData = d.signed_file || null; updateSiteLogSignedFileInfo(); refreshSiteLogSelectors();
+    if (d.site_name && $("#siteLogSite")) $("#siteLogSite").value = d.site_name;
+    return true;
+  } catch { return false; }
+}
+function updateSiteLogSignedFileInfo() {
+  const info = $("#siteLogSignedFileInfo"); if (!info) return;
+  if (!siteLogSignedFileData) { info.textContent = "Nije dodat potpisan dokument."; return; }
+  info.innerHTML = `Dodat fajl: <b>${escapeHtml(siteLogSignedFileData.name || "potpisan dokument")}</b> · ${(siteLogSignedFileData.size/1024).toFixed(0)} KB`;
+}
+function initSiteLogPanel() {
+  initSiteLogSignaturePad();
+  if ($("#siteLogDate") && !$("#siteLogDate").value) $("#siteLogDate").value = today();
+  refreshSiteLogSelectors();
+  if (!$$("#siteLogWorkers .site-log-worker-entry").length) addSiteLogWorkerEntry();
+  if (!$$("#siteLogMaterialIn .site-log-material-entry").length) addSiteLogMaterialEntry("material_in");
+  if (!$$("#siteLogMaterialsStock .site-log-material-entry").length) addSiteLogMaterialEntry("materials_stock_on_site", { material_name:"", unit:"m3" });
+  const clearBtn = $("#clearSiteLogSignatureBtn"); if (clearBtn && !clearBtn.dataset.bound) { clearBtn.dataset.bound = "1"; clearBtn.addEventListener("click", () => clearSiteLogSignature(true)); }
+  const file = $("#siteLogSignedFile"); if (file && !file.dataset.bound) { file.dataset.bound = "1"; file.addEventListener("change", () => {
+    const f = file.files && file.files[0]; if (!f) { siteLogSignedFileData = null; updateSiteLogSignedFileInfo(); return; }
+    if (f.size > 2 * 1024 * 1024) { file.value = ""; siteLogSignedFileData = null; updateSiteLogSignedFileInfo(); return toast("Fajl je veći od 2 MB. Za sada učitaj manji PDF/sliku.", true); }
+    const reader = new FileReader(); reader.onload = () => { siteLogSignedFileData = { name:f.name, type:f.type, size:f.size, data_url:reader.result }; updateSiteLogSignedFileInfo(); toast("Potpisan dokument je dodat kao dokaz."); }; reader.readAsDataURL(f);
+  }); }
+  const bind = (id, fn) => { const el = $(id); if (el && !el.dataset.bound) { el.dataset.bound = "1"; el.addEventListener("click", fn); } };
+  bind("#siteLogSaveDraftBtn", saveSiteLogDraft); bind("#siteLogPreviewBtn", previewSiteLog); bind("#siteLogEditBtn", editSiteLog); bind("#siteLogPrintBtn", printSiteLog); bind("#siteLogDownloadBtn", downloadSiteLogA4); bind("#siteLogSubmitBtn", submitSiteLogToDirector);
+}
+function hasSiteLogAnyContent(d) {
+  return !!(d.site_name || d.today_work_description || d.tomorrow_work_plan || d.workers.length || d.material_in.length || d.material_out.length || d.materials_installed.length || d.materials_stock_on_site.length || d.truck_tours.length);
+}
+async function submitSiteLogToDirector() {
+  try {
+    if (!navigator.onLine) { saveSiteLogDraft(); throw new Error("Nema interneta. Nacrt dnevnika je sačuvan na ovom uređaju."); }
+    const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null"); if (!worker) throw new Error("Radnik nije prijavljen.");
+    const data = collectSiteLogData();
+    if (!data.site_name) throw new Error("Odaberi gradilište iz liste Direkcije.");
+    if (!hasSiteLogAnyContent(data)) throw new Error("Popuni bar jedan deo dnevnika pre slanja.");
+    if (!data.site_log_signature_data_url && !data.signed_file) throw new Error("Dodaj potpis u aplikaciji ili učitaj potpisan dokument pre slanja Direkciji.");
+    const reportDate = data.report_date_manual || today();
+    const { error } = await sb.rpc("submit_worker_report", { p_company_code: worker.company_code, p_access_code: worker.access_code, p_report_date: reportDate, p_site_id: data.site_id || null, p_data: data });
+    if (error) throw error;
+    localStorage.removeItem(`swp_site_log_draft_${currentWorker?.id || currentWorker?.access_code || "worker"}`);
+    $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Poslato Direkciji");
+    toast("Dnevnik gradilišta je poslat Direkciji ✅");
+  } catch (e) { toast(e.message, true); }
+}
+
 function collectWorkerData() {
   const perms = currentWorker?.permissions || {};
   const machines = perms.machines ? getMachineEntries() : [];
@@ -7439,7 +7748,16 @@ async function openWorkerForm() {
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
   workerSetSections(currentWorker.permissions || {});
-  setInternalHeader("Terenski unos", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  const siteLogEnabled = !!(currentWorker.permissions || {}).site_daily_log;
+  const siteLogPanel = $("#siteLogPanel");
+  const normalWorkerFormCard = $("#normalWorkerFormCard");
+  if (siteLogPanel) {
+    siteLogPanel.classList.toggle("hidden", !siteLogEnabled);
+    siteLogPanel.setAttribute("aria-hidden", siteLogEnabled ? "false" : "true");
+  }
+  if (normalWorkerFormCard) normalWorkerFormCard.classList.toggle("hidden", siteLogEnabled);
+  document.body.classList.toggle("site-log-mode", siteLogEnabled);
+  setInternalHeader(siteLogEnabled ? "Dnevnik gradilišta" : "Terenski unos", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   const workerLogout = $("#workerLogoutBtn");
   if (workerLogout) {
     workerLogout.classList.remove("hidden");
@@ -7447,12 +7765,17 @@ async function openWorkerForm() {
   }
   show("WorkerForm");
   await Promise.all([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
-  loadDraft();
-  loadWorkerReturnedReports();
   const perms = currentWorker.permissions || {};
+  if (perms.site_daily_log) {
+    initSiteLogPanel();
+    loadSiteLogDraft();
+  } else {
+    loadDraft();
+  }
+  loadWorkerReturnedReports();
   const useDesktopPanel = !!(perms.desktop_panel || perms.laptop_view || perms.desktop_worker_panel);
   document.body.classList.toggle("worker-desktop-panel", useDesktopPanel);
-  if (useDesktopPanel) {
+  if (useDesktopPanel && !perms.site_daily_log) {
     setInternalHeader("Terenski unos - laptop prikaz", `${currentWorker?.full_name || "Radnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   }
   if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
