@@ -4081,3 +4081,339 @@ body.in-app .internal-brand-callout strong{
   border-color:var(--pro-green)!important;
   box-shadow:0 0 0 3px rgba(31,107,79,.12)!important;
 }
+
+
+/* v1.29.0 — Direkcija/Uprava CLEAN OFFICE SAFE
+   Samo vizuelno zatezanje. Bez promene JS logike, Supabase poziva, ID-jeva i workflow-a. */
+body.in-app #viewDirectorDashboard.director-business-page,
+#viewDirectorDashboard.director-business-page{
+  --office-green:#334155;
+  --office-green-2:#64748b;
+  --office-line:#d8dee7;
+  --office-soft:#f8fafc;
+  --office-head:#f1f5f9;
+  --office-text:#111827;
+  --office-muted:#64748b;
+  --office-blue:#1d4ed8;
+  --office-blue-soft:#eff6ff;
+  background:#f3f6fa!important;
+}
+
+#viewDirectorDashboard .director-workspace{
+  padding:14px 18px 22px!important;
+  gap:10px!important;
+}
+
+#viewDirectorDashboard .director-business-topline,
+#viewDirectorDashboard .director-business-hero,
+#viewDirectorDashboard .director-searchbar,
+#viewDirectorDashboard .director-content-main .card,
+#viewDirectorDashboard .business-quick-actions,
+#viewDirectorDashboard #reportsList,
+#viewDirectorDashboard .list:has(.director-table-row){
+  border:1px solid var(--office-line)!important;
+  background:#ffffff!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.04)!important;
+}
+
+#viewDirectorDashboard .director-business-topline{
+  border-radius:10px!important;
+  padding:7px 10px!important;
+}
+
+#viewDirectorDashboard .director-business-hero{
+  border-radius:12px!important;
+  padding:12px 14px!important;
+  margin:6px 0 10px!important;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)!important;
+}
+
+#viewDirectorDashboard .director-business-hero h2{
+  font-size:22px!important;
+  color:#0f172a!important;
+  letter-spacing:-.025em!important;
+}
+
+#viewDirectorDashboard .business-eyebrow,
+#viewDirectorDashboard .business-kpi-card button{
+  color:#334155!important;
+}
+
+#viewDirectorDashboard .director-layout-note,
+#viewDirectorDashboard .director-business-hero p,
+#viewDirectorDashboard .director-content-main .card > p.hint:first-of-type{
+  color:#64748b!important;
+}
+
+#viewDirectorDashboard .business-kpi-grid{
+  gap:8px!important;
+  margin:8px 0 10px!important;
+}
+
+#viewDirectorDashboard .business-kpi-card{
+  min-height:68px!important;
+  border-radius:10px!important;
+  padding:9px 10px!important;
+  border-color:var(--office-line)!important;
+  grid-template-columns:30px 1fr auto!important;
+  gap:8px!important;
+}
+
+#viewDirectorDashboard .business-kpi-card .kpi-icon,
+#viewDirectorDashboard .kpi-icon.green,
+#viewDirectorDashboard .kpi-icon.blue,
+#viewDirectorDashboard .kpi-icon.orange,
+#viewDirectorDashboard .kpi-icon.red{
+  width:30px!important;
+  height:30px!important;
+  border-radius:8px!important;
+  background:#f1f5f9!important;
+  color:#334155!important;
+  box-shadow:none!important;
+}
+
+#viewDirectorDashboard .business-kpi-card strong{
+  font-size:22px!important;
+  color:#111827!important;
+}
+
+#viewDirectorDashboard .business-kpi-card span{
+  color:#64748b!important;
+  font-size:11.5px!important;
+}
+
+#viewDirectorDashboard .director-content-grid{
+  grid-template-columns:minmax(0,1fr) 210px!important;
+  gap:10px!important;
+}
+
+#viewDirectorDashboard .director-content-main .card{
+  border-radius:12px!important;
+  padding:12px!important;
+}
+
+#viewDirectorDashboard .director-content-main .card > h3:first-child,
+#viewDirectorDashboard .business-quick-actions > h3:first-child{
+  margin:-12px -12px 10px!important;
+  padding:10px 12px!important;
+  background:#f8fafc!important;
+  color:#111827!important;
+  border-bottom:1px solid var(--office-line)!important;
+  font-size:16px!important;
+}
+
+#viewDirectorDashboard .business-quick-actions{
+  border-radius:12px!important;
+  padding:10px!important;
+}
+
+#viewDirectorDashboard .business-quick-actions .quick-action{
+  min-height:34px!important;
+  padding:7px 9px!important;
+  border-radius:8px!important;
+  font-size:12px!important;
+  border:1px solid #d8dee7!important;
+  background:#fff!important;
+  color:#1f2937!important;
+  box-shadow:none!important;
+}
+
+#viewDirectorDashboard .business-quick-actions .quick-action.green,
+#viewDirectorDashboard .business-quick-actions .quick-action.light,
+#viewDirectorDashboard .quick-action.green,
+#viewDirectorDashboard .quick-action.outline{
+  background:#ffffff!important;
+  color:#1f2937!important;
+  border-color:#d8dee7!important;
+}
+
+#viewDirectorDashboard .business-quick-actions .quick-action:hover,
+#viewDirectorDashboard .quick-action:hover{
+  background:#f8fafc!important;
+  border-color:#cbd5e1!important;
+  transform:none!important;
+}
+
+#viewDirectorDashboard .director-searchbar{
+  border-radius:10px!important;
+  padding:7px!important;
+}
+
+#viewDirectorDashboard .director-searchbar input,
+#viewDirectorDashboard .director-content-main input,
+#viewDirectorDashboard .director-content-main select,
+#viewDirectorDashboard .director-content-main textarea,
+#viewDirectorDashboard .tab-panel.active input,
+#viewDirectorDashboard .tab-panel.active select,
+#viewDirectorDashboard .tab-panel.active textarea{
+  min-height:34px!important;
+  border-radius:8px!important;
+  border-color:#d8dee7!important;
+  background:#ffffff!important;
+  color:#111827!important;
+  box-shadow:none!important;
+}
+
+#viewDirectorDashboard .director-searchbar input:focus,
+#viewDirectorDashboard .director-content-main input:focus,
+#viewDirectorDashboard .director-content-main select:focus,
+#viewDirectorDashboard .director-content-main textarea:focus,
+#viewDirectorDashboard .tab-panel.active input:focus,
+#viewDirectorDashboard .tab-panel.active select:focus,
+#viewDirectorDashboard .tab-panel.active textarea:focus{
+  border-color:#94a3b8!important;
+  box-shadow:0 0 0 3px rgba(148,163,184,.18)!important;
+}
+
+#viewDirectorDashboard .director-content-main label{
+  color:#374151!important;
+  font-size:11.5px!important;
+}
+
+#viewDirectorDashboard .permission-box,
+#viewDirectorDashboard .permission-group{
+  border-color:#d8dee7!important;
+  background:#ffffff!important;
+  border-radius:10px!important;
+}
+
+#viewDirectorDashboard .permission-group h4,
+#viewDirectorDashboard .permission-box h4{
+  color:#1f2937!important;
+}
+
+#viewDirectorDashboard .director-table-row,
+#viewDirectorDashboard .report-row-item{
+  border-bottom-color:#e5e7eb!important;
+}
+
+#viewDirectorDashboard .director-table-row:nth-child(even),
+#viewDirectorDashboard .report-row-item:nth-child(even),
+#viewDirectorDashboard #reportsList .report-row-item:hover{
+  background:#f8fafc!important;
+}
+
+#viewDirectorDashboard .director-table-row .dt-name{
+  background:#f8fafc!important;
+}
+
+#viewDirectorDashboard .director-table-row .dt-cell,
+#viewDirectorDashboard .report-list-grid > .report-export-cell,
+#viewDirectorDashboard .report-list-grid > .report-list-date,
+#viewDirectorDashboard .report-list-grid > .report-list-site,
+#viewDirectorDashboard .report-list-grid > .report-list-worker,
+#viewDirectorDashboard .report-list-grid > .report-list-sections,
+#viewDirectorDashboard .report-list-grid > .report-list-status{
+  border-right-color:#eef2f7!important;
+}
+
+#viewDirectorDashboard .dt-status,
+#viewDirectorDashboard .status-chip{
+  background:#f1f5f9!important;
+  color:#334155!important;
+  border-color:#cbd5e1!important;
+}
+
+#viewDirectorDashboard .report-card-actions{
+  background:#f8fafc!important;
+  border-top-color:#e5e7eb!important;
+}
+
+#viewDirectorDashboard button,
+#viewDirectorDashboard .primary,
+#viewDirectorDashboard .secondary,
+#viewDirectorDashboard .small-action,
+#viewDirectorDashboard .edit-btn,
+#viewDirectorDashboard .archive-btn,
+#viewDirectorDashboard .archive-report-btn,
+#viewDirectorDashboard .delete-btn,
+#viewDirectorDashboard .report-card-actions button,
+#viewDirectorDashboard .report-export-toolbar button,
+#viewDirectorDashboard .export-main-actions button,
+#viewDirectorDashboard .export-master-actions button{
+  box-shadow:none!important;
+  border-radius:7px!important;
+}
+
+#viewDirectorDashboard .primary,
+#viewDirectorDashboard button.primary{
+  background:#1f2937!important;
+  border-color:#1f2937!important;
+  color:#ffffff!important;
+}
+
+#viewDirectorDashboard .primary:hover,
+#viewDirectorDashboard button.primary:hover{
+  background:#111827!important;
+  border-color:#111827!important;
+}
+
+#viewDirectorDashboard .secondary,
+#viewDirectorDashboard .small-action,
+#viewDirectorDashboard .edit-btn,
+#viewDirectorDashboard .archive-report-btn{
+  background:#ffffff!important;
+  border-color:#cbd5e1!important;
+  color:#1f2937!important;
+}
+
+#viewDirectorDashboard .secondary:hover,
+#viewDirectorDashboard .small-action:hover,
+#viewDirectorDashboard .edit-btn:hover,
+#viewDirectorDashboard .archive-report-btn:hover{
+  background:#f8fafc!important;
+  border-color:#94a3b8!important;
+}
+
+#viewDirectorDashboard .delete-btn,
+#viewDirectorDashboard .archive-btn{
+  background:#fffafa!important;
+  border-color:#fecaca!important;
+  color:#991b1b!important;
+}
+
+#viewDirectorDashboard .director-nav-tabs .tab{
+  border-radius:8px!important;
+  padding:8px 9px!important;
+  color:#334155!important;
+  background:#fff!important;
+  border:1px solid transparent!important;
+}
+
+#viewDirectorDashboard .director-nav-tabs .tab.active{
+  background:#f1f5f9!important;
+  color:#0f172a!important;
+  border:1px solid #d8dee7!important;
+  box-shadow:inset 3px 0 0 #64748b!important;
+}
+
+#viewDirectorDashboard .director-nav-tabs .tab:hover{
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  transform:none!important;
+}
+
+#viewDirectorDashboard .director-live-refresh-line,
+#viewDirectorDashboard .support-status-box{
+  background:#f8fafc!important;
+  border-color:#d8dee7!important;
+  color:#334155!important;
+}
+
+#viewDirectorDashboard .live-dot{
+  background:#64748b!important;
+  box-shadow:0 0 0 4px rgba(100,116,139,.14)!important;
+}
+
+@media (max-width:980px){
+  #viewDirectorDashboard .director-content-grid{grid-template-columns:1fr!important;}
+  #viewDirectorDashboard .business-quick-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  #viewDirectorDashboard .business-quick-actions > h3:first-child{grid-column:1/-1!important;}
+}
+
+@media (max-width:720px){
+  #viewDirectorDashboard .director-workspace{padding:10px!important;}
+  #viewDirectorDashboard .business-kpi-grid{grid-template-columns:1fr 1fr!important;}
+  #viewDirectorDashboard .director-business-hero h2{font-size:19px!important;}
+  #viewDirectorDashboard .business-quick-actions{grid-template-columns:1fr!important;}
+}
