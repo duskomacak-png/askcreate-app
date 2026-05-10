@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.31.8";
+const APP_VERSION = "1.31.9";
 
 
 let sb = null;
@@ -8910,7 +8910,7 @@ async function sendDefectNow() {
 
     if (error) throw error;
 
-    sendMechanicPushAfterDefect(worker, urgentData);
+    await sendMechanicPushAfterDefect(worker, urgentData);
     toast("Kvar je poslat odmah 🚨 Vide ga Uprava/Direkcija i Šef mehanizacije.");
   } catch(e) {
     toast(e.message, true);
@@ -9337,20 +9337,42 @@ async function enableMechanicPushNotifications() {
 
 async function sendMechanicPushAfterDefect(worker, defectPayload) {
   try {
-    if (!sb?.functions?.invoke) return;
-    await sb.functions.invoke("send-mechanic-defect-push", {
-      body: {
-        company_code: worker.company_code,
-        access_code: worker.access_code,
-        defect: {
-          asset: defectPayload.defect_asset_name || defectPayload.defect_machine || defectPayload.machine || "Sredstvo u kvaru",
-          site: defectPayload.defect_site_name || defectPayload.site_name || "Lokacija nije upisana",
-          text: defectPayload.defect || "Novi kvar je prijavljen.",
-          urgency: defectPayload.defect_urgency || "",
-          reporter: defectPayload.created_by_worker || worker.full_name || "Zaposleni"
-        }
+    if (!worker?.company_code || !worker?.access_code) {
+      console.warn("Push za Šefa mehanizacije preskočen: nema company_code ili access_code.");
+      return;
+    }
+
+    const body = {
+      company_code: worker.company_code,
+      access_code: worker.access_code,
+      defect: {
+        asset: defectPayload.defect_asset_name || defectPayload.defect_machine || defectPayload.machine || "Sredstvo u kvaru",
+        site: defectPayload.defect_site_name || defectPayload.site_name || "Lokacija nije upisana",
+        text: defectPayload.defect || "Novi kvar je prijavljen.",
+        urgency: defectPayload.defect_urgency || "",
+        reporter: defectPayload.created_by_worker || worker.full_name || "Zaposleni"
       }
+    };
+
+    const fnUrl = `${SUPABASE_URL}/functions/v1/send-mechanic-defect-push`;
+    const res = await fetch(fnUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`
+      },
+      body: JSON.stringify(body)
     });
+
+    let json = null;
+    try { json = await res.json(); } catch (_) {}
+
+    if (!res.ok || (json && json.ok === false)) {
+      throw new Error((json && json.error) || `Edge Function greška: HTTP ${res.status}`);
+    }
+
+    console.log("Push za Šefa mehanizacije pozvan:", json || { ok: true });
   } catch (e) {
     console.warn("Push za Šefa mehanizacije nije poslat. Kvar je ipak sačuvan:", e?.message || e);
   }
