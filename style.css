@@ -4915,3 +4915,38 @@ body.in-app #viewDirectorDashboard.director-business-page,
   border-color: #d9e2dd;
   background: #f7faf8;
 }
+
+
+/* v1.29.9 - jasna validacija radničkih rubrika */
+.worker-section-needs-attention{
+  border-color:#ef4444!important;
+  box-shadow:0 0 0 3px rgba(239,68,68,.14), 0 12px 28px rgba(127,29,29,.08)!important;
+  background:linear-gradient(180deg,#fff7f7,#ffffff)!important;
+}
+.entry-needs-attention{
+  border-color:#fca5a5!important;
+  box-shadow:0 0 0 2px rgba(239,68,68,.10)!important;
+}
+.worker-validation-message{
+  margin:8px 0 12px;
+  padding:10px 12px;
+  border:1px solid #fca5a5;
+  background:#fff1f2;
+  color:#7f1d1d;
+  border-radius:12px;
+  font-weight:800;
+  line-height:1.35;
+}
+.validation-field-missing{
+  border-color:#ef4444!important;
+  box-shadow:0 0 0 3px rgba(239,68,68,.16)!important;
+  background:#fffafa!important;
+}
+.signature-pad.validation-field-missing{
+  outline:3px solid rgba(239,68,68,.25);
+  outline-offset:3px;
+}
+.toast.toast-error{
+  background:#7f1d1d!important;
+  color:#fff!important;
+}

@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.29.8";
+const APP_VERSION = "1.29.9";
 
 
 let sb = null;
@@ -41,9 +41,11 @@ function initSupabase() {
 function toast(msg, isError = false) {
   const el = $("#toast");
   el.textContent = msg;
-  el.style.borderColor = isError ? "rgba(211,47,47,.65)" : "rgba(245,185,66,.35)";
+  el.style.borderColor = isError ? "rgba(185,28,28,.75)" : "rgba(245,185,66,.35)";
+  el.style.background = isError ? "#7f1d1d" : "#173b24";
+  el.classList.toggle("toast-error", !!isError);
   el.classList.remove("hidden");
-  setTimeout(() => el.classList.add("hidden"), 4500);
+  setTimeout(() => el.classList.add("hidden"), isError ? 6500 : 4500);
 }
 
 
@@ -5315,12 +5317,12 @@ function normalizeStoredFieldTankerEntry(entry = {}, index = 0) {
 }
 
 function validateFieldTankerEntryForMemory(entry) {
-  if (!entry.site_name) return "Upiši ili izaberi gradilište/lokaciju za svako sipanje.";
-  if (!entry.asset_name) return "Izaberi mašinu/vozilo ili upiši naziv šta je tankovano.";
-  if (!entry.liters) return "Upiši koliko litara je sipano.";
-  if (entry.asset_kind === "vehicle" && !entry.km && !entry.current_km) return "Za vozilo upiši kilometražu / KM.";
-  if (entry.asset_kind === "machine" && !entry.mtc && !entry.current_mtc) return "Za mašinu upiši trenutni MTČ.";
-  if (!entry.receiver) return "Upiši ko je primio gorivo.";
+  if (!entry.site_name) return "Cisterna goriva: izaberi ili upiši gradilište/lokaciju za svako sipanje.";
+  if (!entry.asset_name) return "Cisterna goriva: upiši interni broj, naziv ili tablice sredstva koje je tankovano.";
+  if (!entry.km && !entry.current_km) return "Cisterna goriva: KM je obavezan. Ako se ne vodi za ovo sredstvo, upiši 0.";
+  if (!entry.mtc && !entry.current_mtc) return "Cisterna goriva: MTČ je obavezan. Ako se ne vodi za ovo sredstvo, upiši 0.";
+  if (!entry.liters) return "Cisterna goriva: upiši koliko litara je sipano.";
+  if (!entry.receiver) return "Cisterna goriva: upiši ko je primio gorivo.";
   return "";
 }
 
@@ -6822,6 +6824,106 @@ async function verifyRecentlySubmittedReport(worker, reportDate) {
   } catch (e) {
     console.warn("AskCreate.app: provera poslatog izveštaja nije uspela", e);
   }
+}
+
+
+function clearWorkerValidationHighlights() {
+  $$(".worker-section-needs-attention").forEach(el => el.classList.remove("worker-section-needs-attention"));
+  $$(".entry-needs-attention").forEach(el => el.classList.remove("entry-needs-attention"));
+  $$(".validation-field-missing").forEach(el => el.classList.remove("validation-field-missing"));
+  $$(".worker-validation-message").forEach(el => el.remove());
+}
+
+function showWorkerValidationMessage(section, message) {
+  if (!section) return;
+  let box = section.querySelector(":scope > .worker-validation-message");
+  if (!box) {
+    box = document.createElement("div");
+    box.className = "worker-validation-message";
+    const head = section.querySelector("h4, label, .hint");
+    if (head && head.nextSibling) section.insertBefore(box, head.nextSibling);
+    else section.insertBefore(box, section.firstChild || null);
+  }
+  box.textContent = message;
+}
+
+function focusWorkerValidationIssue(issue) {
+  if (!issue) return;
+  clearWorkerValidationHighlights();
+  const section = issue.section ? $(issue.section) : null;
+  const entry = issue.entry || (issue.entrySelector ? $(issue.entrySelector) : null);
+  const field = issue.field || (issue.fieldSelector ? $(issue.fieldSelector) : null);
+  if (section) {
+    section.classList.add("active");
+    section.classList.add("worker-section-needs-attention");
+    showWorkerValidationMessage(section, issue.message || "Popuni označeno polje pre slanja.");
+  }
+  if (entry) entry.classList.add("entry-needs-attention");
+  if (field) field.classList.add("validation-field-missing");
+  const scrollTarget = entry || section || field;
+  if (scrollTarget?.scrollIntoView) {
+    scrollTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  setTimeout(() => {
+    try { if (field && typeof field.focus === "function") field.focus({ preventScroll: true }); } catch {}
+  }, 350);
+}
+
+function getFirstFieldTankerValidationIssue() {
+  const section = $("#secFieldTanker");
+  if (!section || !section.classList.contains("active")) return null;
+  const cards = $$("#fieldTankerEntries .field-tanker-entry");
+  if (!cards.length) {
+    return { section: "#secFieldTanker", message: "Dodaj bar jedno sipanje u rubrici Evidencija goriva – cisterna." };
+  }
+  for (let i = 0; i < cards.length; i += 1) {
+    const card = cards[i];
+    const n = i + 1;
+    const siteSelect = card.querySelector(".ft-site-select");
+    const siteCustom = card.querySelector(".ft-site-custom");
+    const assetSearch = card.querySelector(".ft-asset-search");
+    const km = card.querySelector(".ft-km");
+    const mtc = card.querySelector(".ft-mtc");
+    const liters = card.querySelector(".ft-liters");
+    const receiver = card.querySelector(".ft-receiver");
+    const siteValue = (siteCustom?.value || "").trim() || (siteSelect?.value || "").trim();
+    const assetValue = (assetSearch?.value || "").trim();
+    if (!siteValue) return { section: "#secFieldTanker", entry: card, field: siteSelect || siteCustom, message: `Cisterna goriva ${n}: izaberi ili upiši gradilište/lokaciju.` };
+    if (!assetValue) return { section: "#secFieldTanker", entry: card, field: assetSearch, message: `Cisterna goriva ${n}: upiši interni broj, naziv ili tablice sredstva koje je tankovano.` };
+    if (!(km?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: km, message: `Cisterna goriva ${n}: upiši KM. Ako je mašina, upiši 0 ili stvarno stanje ako firma tako vodi evidenciju.` };
+    if (!(mtc?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: mtc, message: `Cisterna goriva ${n}: upiši MTČ. Ako je vozilo, upiši 0 ili stvarno stanje ako firma tako vodi evidenciju.` };
+    if (!(liters?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: liters, message: `Cisterna goriva ${n}: upiši koliko litara je sipano.` };
+    if (!(receiver?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: receiver, message: `Cisterna goriva ${n}: upiši ime osobe koja je primila gorivo.` };
+  }
+  return null;
+}
+
+function validateWorkerReportBeforeSubmit(data) {
+  const siteSection = $("#secWorkerSite");
+  if (siteSection?.classList.contains("active") && !($("#wrSiteName")?.value || "").trim()) {
+    return {
+      section: "#secWorkerSite",
+      field: $("#wrSiteName"),
+      message: "Izveštaj nije poslat. Prvo izaberi gradilište iz liste Uprave firme. Označio sam rubriku koju treba popuniti."
+    };
+  }
+
+  const tankerIssue = getFirstFieldTankerValidationIssue();
+  if (tankerIssue) {
+    tankerIssue.message = `Izveštaj nije poslat. ${tankerIssue.message}`;
+    return tankerIssue;
+  }
+
+  const signatureSection = $("#secSignature");
+  if (signatureSection?.classList.contains("active") && !data.signature_data_url) {
+    return {
+      section: "#secSignature",
+      field: $("#wrSignatureCanvas"),
+      message: "Izveštaj nije poslat. Nedostaje potpis. Potpiši se u označenoj rubrici pa ponovo klikni Pošalji Upravi."
+    };
+  }
+
+  return null;
 }
 
 function saveDraft() {
@@ -8760,8 +8862,13 @@ function bindEvents() {
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Zaposleni nije prijavljen.");
       const data = collectWorkerData();
+      const validationIssue = validateWorkerReportBeforeSubmit(data);
+      if (validationIssue) {
+        focusWorkerValidationIssue(validationIssue);
+        throw new Error(validationIssue.message);
+      }
       if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Uprava.");
-    if (await submitReturnedCorrectionIfNeeded(data)) return;
+      if (await submitReturnedCorrectionIfNeeded(data)) return;
       const reportDate = $("#wrDate").value || today();
       const { error } = await sb.rpc("submit_worker_report", {
         p_company_code: worker.company_code,
