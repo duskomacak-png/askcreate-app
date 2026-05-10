@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.1";
+const APP_VERSION = "1.30.2";
 
 
 let sb = null;
@@ -3938,6 +3938,25 @@ function buildLowloaderMachineDatalistOptionsHtml() {
   }).join("");
 }
 
+function buildLowloaderMachineOptionsHtml(selectedValue = "") {
+  const selected = String(selectedValue || "").trim();
+  const machines = getMachineAssetsFromDirection();
+  if (!workerAssetOptions.length) return `<option value="">Nema sredstava iz Uprave</option>`;
+  if (!machines.length) return `<option value="">Nema mašina iz Uprave</option>`;
+  const options = [`<option value="">Odaberi mašinu iz Uprave</option>`];
+  let hasSelected = false;
+  machines.forEach(m => {
+    const label = formatMachineLabel(m);
+    const isSelected = selected && label === selected;
+    if (isSelected) hasSelected = true;
+    options.push(`<option value="${escapeHtml(label)}" data-asset-id="${escapeHtml(m.id || "")}" data-asset-code="${escapeHtml(getAssetCode(m))}" ${isSelected ? "selected" : ""}>${escapeHtml(label)}</option>`);
+  });
+  if (selected && !hasSelected) {
+    options.push(`<option value="${escapeHtml(selected)}" selected>Stari / ručni unos: ${escapeHtml(selected)}</option>`);
+  }
+  return options.join("");
+}
+
 function buildLowloaderSiteDatalistOptionsHtml() {
   return (Array.isArray(workerSiteOptions) ? workerSiteOptions : []).map(site => {
     const name = site.name || site.site_name || site.title || "";
@@ -3945,6 +3964,28 @@ function buildLowloaderSiteDatalistOptionsHtml() {
     const label = String(name + loc).trim();
     return label ? `<option value="${escapeHtml(label)}"></option>` : "";
   }).join("");
+}
+
+function buildLowloaderSiteOptionsHtml(selectedValue = "") {
+  const selected = String(selectedValue || "").trim();
+  const sites = Array.isArray(workerSiteOptions) ? workerSiteOptions : [];
+  if (!sites.length) return `<option value="">Nema gradilišta iz Uprave</option>`;
+  const options = [`<option value="">Odaberi gradilište iz Uprave</option>`];
+  let hasSelected = false;
+  sites.forEach(site => {
+    const name = site.name || site.site_name || site.title || "";
+    const loc = site.location ? ` · ${site.location}` : "";
+    const label = String(name + loc).trim();
+    const value = String(name).trim();
+    if (!value) return;
+    const isSelected = selected && (value.toLowerCase() === selected.toLowerCase() || label.toLowerCase() === selected.toLowerCase());
+    if (isSelected) hasSelected = true;
+    options.push(`<option value="${escapeHtml(value)}" data-site-id="${escapeHtml(site.id || "")}" ${isSelected ? "selected" : ""}>${escapeHtml(label)}</option>`);
+  });
+  if (selected && !hasSelected) {
+    options.push(`<option value="${escapeHtml(selected)}" selected>Stari / ručni unos: ${escapeHtml(selected)}</option>`);
+  }
+  return options.join("");
 }
 
 function refreshDefectSiteDatalist() {
@@ -3978,8 +4019,19 @@ function updateLowloaderKmTotal(entryEl) {
 }
 
 function refreshOneLowloaderMachineSelect(entryEl) {
+  const machineSelect = entryEl.querySelector("select.ll-machine");
+  if (machineSelect) {
+    const oldValue = machineSelect.value;
+    machineSelect.innerHTML = buildLowloaderMachineOptionsHtml(oldValue);
+    if (oldValue && Array.from(machineSelect.options).some(o => o.value === oldValue)) machineSelect.value = oldValue;
+  }
   const machineList = entryEl.querySelector(".ll-machine-list");
   if (machineList) machineList.innerHTML = buildLowloaderMachineDatalistOptionsHtml();
+  entryEl.querySelectorAll("select.ll-from, select.ll-to").forEach(select => {
+    const oldValue = select.value;
+    select.innerHTML = buildLowloaderSiteOptionsHtml(oldValue);
+    if (oldValue && Array.from(select.options).some(o => o.value === oldValue)) select.value = oldValue;
+  });
   entryEl.querySelectorAll(".ll-site-list").forEach(list => {
     list.innerHTML = buildLowloaderSiteDatalistOptionsHtml();
   });
@@ -4971,13 +5023,11 @@ function addLowloaderEntry(values = {}) {
     <div class="grid two">
       <div>
         <label>Gradilište sa kog preuzima mašinu</label>
-        <input class="ll-from" list="lowloaderFromSiteList-${uid}" placeholder="izaberi gradilište ili upiši naziv" value="${escapeHtml(fromSite)}" />
-        <datalist class="ll-site-list" id="lowloaderFromSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
+        <select class="ll-from">${buildLowloaderSiteOptionsHtml(fromSite)}</select>
       </div>
       <div>
         <label>Gradilište gde vozi mašinu</label>
-        <input class="ll-to" list="lowloaderToSiteList-${uid}" placeholder="izaberi gradilište ili upiši naziv" value="${escapeHtml(toSite)}" />
-        <datalist class="ll-site-list" id="lowloaderToSiteList-${uid}">${buildLowloaderSiteDatalistOptionsHtml()}</datalist>
+        <select class="ll-to">${buildLowloaderSiteOptionsHtml(toSite)}</select>
       </div>
     </div>
 
@@ -4997,10 +5047,9 @@ function addLowloaderEntry(values = {}) {
     </div>
     <p class="field-hint">Ukupno kilometara se računa automatski: završna kilometraža minus početna kilometraža.</p>
 
-    <label>Interni broj ili ime mašine koju seliš</label>
-    <input class="ll-machine asset-code-search" list="lowloaderMachineList-${uid}" placeholder="upisati broj mašine, npr. 101" value="${escapeHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}" />
-    <datalist class="ll-machine-list" id="lowloaderMachineList-${uid}">${buildLowloaderMachineDatalistOptionsHtml()}</datalist>
-    <p class="field-hint">Ako je firmina mašina, izaberi je iz liste Uprave. Ako seliš tuđu/zamensku mašinu, samo je upiši naziv.</p>
+    <label>Mašina koju seliš</label>
+    <select class="ll-machine">${buildLowloaderMachineOptionsHtml(values.machine || values.machine_name || values.machine_custom || values.manual_machine || "")}</select>
+    <p class="field-hint">Izaberi mašinu iz evidencije Uprave. Ako se mašina ne vidi, prvo proveri da li je dodata u Sredstva rada i da li je tip podešen kao mašina.</p>
 
     <label>Prateći alat uz mašinu <span class="muted">(opciono)</span></label>
     <textarea class="ll-tools" rows="2" placeholder="npr. kašika 80 cm, pikamer, creva, lanci, nastavci...">${escapeHtml(values.accompanying_tools || values.tools || values.machine_tools || values.note_tools || "")}</textarea>
