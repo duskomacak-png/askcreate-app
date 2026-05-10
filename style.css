@@ -5182,3 +5182,49 @@ body.in-app #viewDirectorDashboard.director-business-page,
   .mechanic-mobile-cards { display:block; }
   .mechanic-boss-head { align-items:flex-start; }
 }
+
+
+/* v1.30.8 — čitljivost i odvojen QR za šefa mehanizacije */
+body.mechanic-boss-mode #viewMechanicBossPanel {
+  color: #0f172a;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-summary-card,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-table-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #dbe3ee !important;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-summary-card h3,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-table-card h3,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-card h4 {
+  color: #0f172a !important;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-summary-card p,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-summary-card .hint,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-table-card p,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-table-card .hint {
+  color: #475569 !important;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-mini-line,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-card {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-table td {
+  color: #0f172a !important;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-boss-head h2,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-boss-head p {
+  color: #f8fafc !important;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .secondary {
+  color: #0f172a !important;
+}
+@media (max-width: 780px) {
+  body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-summary-card {
+    min-height: 96px;
+  }
+  body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-summary-card h3 {
+    font-size: 1.25rem;
+  }
+}

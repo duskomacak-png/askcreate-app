@@ -404,7 +404,8 @@
             <p id="directorCompanyLabel">Firma</p><p class="director-layout-note">Kancelarijski pregled: evidencije, izveštaji, odobravanje i Excel na jednom mestu.</p>
           </div>
           <div class="director-hero-actions">
-            <button id="directorShowWorkerQrBtn" class="secondary" type="button">📲 Prikaži QR kod za zaposlene</button>
+            <button id="directorShowWorkerQrBtn" class="secondary" type="button">📲 QR za radnike</button>
+            <button id="directorShowMechanicQrBtn" class="secondary" type="button">🔧 QR za šefa mehanizacije</button>
             <div class="hero-date-pill">📅 Danas</div>
           </div>
         </div>
@@ -866,7 +867,7 @@
             <label id="workerAccessCodeLabel">Pristupni kod zaposlenog</label>
         <input id="workerAccessCode" placeholder="unesite svoj kod" autocomplete="one-time-code" />
         <p id="workerAccessCodeNote" class="code-login-note">Kod zaposlenog koji je Uprava firme upisala u profilu zaposlenog.</p>
-        <label class="keep-login-option"><input id="workerKeepLogin" type="checkbox" /> Ostani prijavljen na ovom uređaju <span>— koristi se za Šefa mehanizacije, da PWA ikona odmah otvara panel kvarova.</span></label>
+        <label class="keep-login-option hidden"><input id="workerKeepLogin" type="checkbox" /> Ostani prijavljen na ovom uređaju <span>— samo za Šefa mehanizacije. Običan radnik se i dalje prijavljuje kodom svaki put.</span></label>
         <button id="workerLoginBtn" class="primary">Uđi u svoj profil</button>
         <p class="hint">Običan zaposleni i dalje svaki put unosi svoj kod. Šef mehanizacije može ostati prijavljen ako je čekirano i ako mu je Uprava dala tu dozvolu.</p>
       </div>

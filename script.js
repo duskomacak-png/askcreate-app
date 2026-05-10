@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.7";
+const APP_VERSION = "1.30.8";
 
 
 let sb = null;
@@ -384,6 +384,23 @@ function buildWorkerCompanyLink(companyCode) {
   return url.toString();
 }
 
+function buildMechanicCompanyLink(companyCode) {
+  const url = new URL(getAppPublicBaseUrl());
+  url.searchParams.set("ulaz", "mehanika");
+  url.searchParams.set("firma", String(companyCode || "").trim());
+  return url.toString();
+}
+
+function getWorkerEntryModeFromUrl() {
+  const params = new URLSearchParams(window.location.search || "");
+  const mode = String(params.get("ulaz") || "").toLowerCase();
+  return mode === "mehanika" || mode === "sef_mehanizacije" || mode === "mechanic" ? "mechanic" : "worker";
+}
+
+function isMechanicEntryMode() {
+  return localStorage.getItem("swp_worker_entry_mode") === "mechanic" || getWorkerEntryModeFromUrl() === "mechanic";
+}
+
 function buildCompanyQrImageUrl(link, size = 380) {
   const cleanSize = Math.max(220, Math.min(600, Number(size) || 380));
   return `https://api.qrserver.com/v1/create-qr-code/?size=${cleanSize}x${cleanSize}&margin=12&data=${encodeURIComponent(link)}`;
@@ -502,14 +519,30 @@ function applyWorkerCompanyContextFromUrlOrStorage() {
   const fromUrl = getWorkerCompanyCodeFromUrl();
   if (fromUrl) {
     localStorage.setItem("swp_worker_company_code", fromUrl);
+    localStorage.setItem("swp_worker_entry_mode", getWorkerEntryModeFromUrl() === "mechanic" ? "mechanic" : "worker");
+    updateWorkerEntryModeUi();
     return setWorkerCompanyQrContext(fromUrl, "qr");
   }
   const saved = localStorage.getItem("swp_worker_company_code") || "";
   return setWorkerCompanyQrContext(saved, "saved");
 }
 
+function updateWorkerEntryModeUi() {
+  const isMechanic = isMechanicEntryMode();
+  document.body.classList.toggle("mechanic-worker-entry", isMechanic);
+  const keep = $("#workerKeepLogin")?.closest(".keep-login-option");
+  if (keep) keep.classList.toggle("hidden", !isMechanic);
+  const help = $("#workerLoginHelpBox");
+  if (help) {
+    help.innerHTML = isMechanic
+      ? `<b>Prijava šefa mehanizacije:</b><span>Ovaj ulaz je samo za osobu kojoj je Uprava štiklirala “Šef mehanizacije”. Ako običan radnik unese kod, app ga NE pušta u panel kvarova.</span>`
+      : `<b>Prijava zaposlenog:</b><span>Zaposleni ulazi preko QR koda firme + svojim pristupnim kodom. Kod zaposlenog mora biti jedinstven u celoj aplikaciji.</span>`;
+  }
+}
+
 window.clearWorkerCompanyQrContext = () => {
   localStorage.removeItem("swp_worker_company_code");
+  localStorage.removeItem("swp_worker_entry_mode");
   const input = $("#workerCompanyCode");
   if (input) {
     input.readOnly = false;
@@ -525,11 +558,12 @@ window.clearWorkerCompanyQrContext = () => {
   toast("Firma je sklonjena. Sada možeš ručno upisati drugu šifru firme.");
 };
 
-function openCompanyQrModal(companyName, companyCode, source = "admin") {
+function openCompanyQrModal(companyName, companyCode, source = "admin", target = "worker") {
   const code = String(companyCode || "").trim();
   if (!code) return toast("Ova firma nema šifru firme, pa QR kod ne može da se napravi.", true);
   const name = companyName || "Firma";
-  const link = buildWorkerCompanyLink(code);
+  const isMechanicQr = target === "mechanic";
+  const link = isMechanicQr ? buildMechanicCompanyLink(code) : buildWorkerCompanyLink(code);
   const modal = $("#companyQrModal");
   if (!modal) return toast("Prozor za QR kod nije pronađen.", true);
   const title = $("#companyQrTitle");
@@ -539,9 +573,11 @@ function openCompanyQrModal(companyName, companyCode, source = "admin") {
   const nameEl = $("#companyQrCompanyName");
   const codeEl = $("#companyQrCompanyCode");
   const linkInput = $("#companyQrLink");
-  if (kicker) kicker.textContent = source === "director" ? "QR kod za zaposlene ove firme" : "Admin QR kod za zaposlene";
-  if (title) title.textContent = `Radnički ulaz · ${name}`;
-  if (subtitle) subtitle.textContent = "Zaposleni skenira QR kod, preuzme app kao prečicu, a zatim upisuje samo svoj pristupni kod zaposlenog.";
+  if (kicker) kicker.textContent = isMechanicQr ? "QR kod za šefa mehanizacije" : (source === "director" ? "QR kod za zaposlene ove firme" : "Admin QR kod za zaposlene");
+  if (title) title.textContent = `${isMechanicQr ? "Ulaz šefa mehanizacije" : "Radnički ulaz"} · ${name}`;
+  if (subtitle) subtitle.textContent = isMechanicQr
+    ? "Ovaj QR se daje samo osobi kojoj je u Upravi štiklirano: Šef mehanizacije. Bez te dozvole običan radnik ne može otvoriti panel kvarova."
+    : "Zaposleni skenira QR kod, preuzme app kao prečicu, a zatim upisuje samo svoj pristupni kod zaposlenog.";
   if (img) img.src = buildCompanyQrImageUrl(link, 420);
   if (nameEl) nameEl.textContent = name;
   if (codeEl) codeEl.textContent = code;
@@ -595,6 +631,11 @@ window.adminShowWorkerQr = (id) => {
 window.directorShowWorkerQr = () => {
   if (!currentCompany) return toast("Firma nije učitana.", true);
   openCompanyQrModal(currentCompany.name || currentCompany.company_name || "Firma", currentCompany.company_code || currentCompany.code, "director");
+};
+
+window.directorShowMechanicQr = () => {
+  if (!currentCompany) return toast("Firma nije učitana.", true);
+  openCompanyQrModal(currentCompany.name || currentCompany.company_name || "Firma", currentCompany.company_code || currentCompany.code, "director", "mechanic");
 };
 
 function adminMessage(c, type = "renewed") {
@@ -8986,6 +9027,7 @@ function bindEvents() {
   if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
   if ($("#directorManualRefreshBtn")) $("#directorManualRefreshBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
+  if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
@@ -9482,6 +9524,7 @@ async function boot() {
     }
     localStorage.removeItem("swp_worker");
     localStorage.removeItem("swp_mechanic_keep_login");
+    updateWorkerEntryModeUi();
     show("WorkerLogin");
     applyWorkerCompanyContextFromUrlOrStorage();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
