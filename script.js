@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.9";
+const APP_VERSION = "1.31.0";
 
 
 let sb = null;
@@ -4147,9 +4147,31 @@ function buildLowloaderSiteOptionsHtml(selectedValue = "") {
 }
 
 function refreshDefectSiteDatalist() {
+  // v1.31.0: Na telefonu datalist ne otvara uvek lepo listu.
+  // Zato za kvar koristimo pravi SELECT iz gradilišta Uprave + posebno polje za ručnu lokaciju.
+  const select = $("#wrDefectSiteName");
+  if (select && select.tagName === "SELECT") {
+    const oldValue = select.value || "";
+    select.innerHTML = buildLowloaderSiteOptionsHtml(oldValue);
+    if (oldValue && Array.from(select.options).some(o => o.value === oldValue)) select.value = oldValue;
+  }
   const list = $("#defectSiteList");
-  if (!list) return;
-  list.innerHTML = buildLowloaderSiteDatalistOptionsHtml();
+  if (list) list.innerHTML = buildLowloaderSiteDatalistOptionsHtml();
+}
+
+function getSelectedDefectSite() {
+  const select = $("#wrDefectSiteName");
+  const manual = String($("#wrDefectSiteManual")?.value || "").trim();
+  const selectedName = String(select?.value || "").trim();
+  const selectedOption = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
+  const siteId = selectedOption?.dataset?.siteId || "";
+  const siteName = manual || selectedName;
+  return {
+    site_id: siteId,
+    site_name: siteName,
+    manual_location: manual,
+    selected_site_name: selectedName
+  };
 }
 
 function parseLowloaderDecimalInput(value) {
@@ -8832,8 +8854,9 @@ async function sendDefectNow() {
     const defectAsset = getDefectAssetPayload();
     const defectAssetName = defectAsset.defect_asset_name || defectAsset.defect_manual_asset_name || "";
     const defectImpact = getDefectImpactPayload();
-    const selectedDefectSite = getSelectedWorkerSite ? getSelectedWorkerSite() : {};
-    const defectSiteName = $("#wrDefectSiteName")?.value.trim() || selectedDefectSite.site_name || "";
+    const selectedDefectSite = getSelectedDefectSite ? getSelectedDefectSite() : (getSelectedWorkerSite ? getSelectedWorkerSite() : {});
+    const fallbackMainSite = getSelectedWorkerSite ? getSelectedWorkerSite() : {};
+    const defectSiteName = selectedDefectSite.site_name || fallbackMainSite.site_name || "";
 
     if (!defectText && !defectAssetName) {
       throw new Error("Upiši sredstvo u kvaru ili opis kvara.");
@@ -8847,9 +8870,11 @@ async function sendDefectNow() {
       sent_immediately: true,
       defect_status: "prijavljen",
       defect_reported_at: new Date().toISOString(),
-      site_id: selectedDefectSite.site_id || getSelectedWorkerSite().site_id,
-      site_name: defectSiteName || getSelectedWorkerSite().site_name,
-      defect_site_name: defectSiteName || getSelectedWorkerSite().site_name,
+      site_id: selectedDefectSite.site_id || fallbackMainSite.site_id || null,
+      site_name: defectSiteName || fallbackMainSite.site_name || "",
+      defect_site_name: defectSiteName || fallbackMainSite.site_name || "",
+      defect_site_manual_location: selectedDefectSite.manual_location || "",
+      defect_site_selected_name: selectedDefectSite.selected_site_name || "",
       machine: firstMachine,
       ...defectAsset,
       defect_machine: defectAssetName,
@@ -8869,7 +8894,7 @@ async function sendDefectNow() {
       p_company_code: worker.company_code,
       p_access_code: worker.access_code,
       p_report_date: $("#wrDate").value || today(),
-      p_site_id: getSelectedWorkerSite().site_id,
+      p_site_id: selectedDefectSite.site_id || fallbackMainSite.site_id || null,
       p_data: urgentData
     });
 
