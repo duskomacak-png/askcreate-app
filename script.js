@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.31.9";
+const APP_VERSION = "1.32.0";
 
 
 let sb = null;
@@ -9241,6 +9241,19 @@ function stopMechanicBossWatcher() {
 }
 
 
+async function registerAskCreateServiceWorker(forceUpdate = false) {
+  if (!("serviceWorker" in navigator)) return null;
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1320", { updateViaCache: "none" });
+  if (forceUpdate && reg.update) {
+    try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
+  }
+  try {
+    if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+    if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: "SKIP_WAITING" });
+  } catch (e) {}
+  return reg;
+}
+
 function mechanicPushSupported() {
   return !!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
 }
@@ -9306,7 +9319,7 @@ async function enableMechanicPushNotifications() {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") throw new Error("Obaveštenja nisu dozvoljena. Uključi ih u podešavanjima browsera/telefona.");
 
-    const reg = await navigator.serviceWorker.register("./sw.js");
+    const reg = await registerAskCreateServiceWorker(true);
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
       sub = await reg.pushManager.subscribe({
@@ -9837,7 +9850,7 @@ async function boot() {
         currentWorker = JSON.parse(stored);
         if (isMechanicBossWorker(currentWorker)) {
           openWorkerForm();
-          if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+          if ("serviceWorker" in navigator) registerAskCreateServiceWorker(true).catch(() => {});
           return;
         }
       } catch {}
@@ -9847,7 +9860,7 @@ async function boot() {
     updateWorkerEntryModeUi();
     show("WorkerLogin");
     applyWorkerCompanyContextFromUrlOrStorage();
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+    if ("serviceWorker" in navigator) registerAskCreateServiceWorker(true).catch(() => {});
     return;
   }
 
@@ -9859,7 +9872,7 @@ async function boot() {
     } catch {}
   }
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    registerAskCreateServiceWorker(true).catch(() => {});
   }
 }
 

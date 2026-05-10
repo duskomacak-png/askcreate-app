@@ -1,9 +1,9 @@
-const CACHE_NAME = "askcreate-app-v1319";
+const CACHE_NAME = "askcreate-app-v1320";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1319",
-  "./script.js?v=1319",
+  "./style.css?v=1320",
+  "./script.js?v=1320",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
@@ -25,6 +25,12 @@ self.addEventListener("activate", (event) => {
     await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
     await self.clients.claim();
   })());
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -49,6 +55,12 @@ self.addEventListener("push", (event) => {
     tag: payload.tag || "askcreate-mechanic-defect",
     renotify: true,
     requireInteraction: true,
+    silent: false,
+    vibrate: [250, 120, 250, 120, 450],
+    timestamp: Date.now(),
+    actions: [
+      { action: "open", title: "Otvori kvar" }
+    ],
     data: {
       url: payload.url || "./?ulaz=mehanika",
       badgeCount: payload.badgeCount || 1
