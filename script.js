@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.0";
+const APP_VERSION = "1.30.1";
 
 
 let sb = null;
@@ -8869,7 +8869,10 @@ function bindEvents() {
         focusWorkerValidationIssue(validationIssue);
         throw new Error(validationIssue.message);
       }
-      if (!data.site_name) throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Uprava.");
+      const mainSiteSection = $("#secWorkerSite");
+      if (mainSiteSection?.classList.contains("active") && !data.site_name) {
+        throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Uprava.");
+      }
       if (await submitReturnedCorrectionIfNeeded(data)) return;
       const reportDate = $("#wrDate").value || today();
       const { error } = await sb.rpc("submit_worker_report", {
