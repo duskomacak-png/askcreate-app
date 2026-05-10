@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.29.9";
+const APP_VERSION = "1.30.0";
 
 
 let sb = null;
@@ -5183,7 +5183,7 @@ function addFieldTankerEntry(values = {}) {
 
     <label>MTČ</label>
     <input class="ft-mtc numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(mtcValue)}" />
-    <p class="field-hint">Ako tankuješ vozilo, obavezno upiši KM. Ako tankuješ mašinu, obavezno upiši MTČ. Možeš popuniti oba ako firma tako traži.</p>
+    <p class="field-hint">Obavezno upiši KM ili MTČ. Ako je vozilo najčešće se upisuje KM, ako je mašina MTČ. Dovoljno je jedno od ta dva, a možeš popuniti oba ako firma tako traži.</p>
 
     <label>Litara</label>
     <input class="ft-liters numeric-text" type="text" inputmode="decimal" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
@@ -5319,8 +5319,9 @@ function normalizeStoredFieldTankerEntry(entry = {}, index = 0) {
 function validateFieldTankerEntryForMemory(entry) {
   if (!entry.site_name) return "Cisterna goriva: izaberi ili upiši gradilište/lokaciju za svako sipanje.";
   if (!entry.asset_name) return "Cisterna goriva: upiši interni broj, naziv ili tablice sredstva koje je tankovano.";
-  if (!entry.km && !entry.current_km) return "Cisterna goriva: KM je obavezan. Ako se ne vodi za ovo sredstvo, upiši 0.";
-  if (!entry.mtc && !entry.current_mtc) return "Cisterna goriva: MTČ je obavezan. Ako se ne vodi za ovo sredstvo, upiši 0.";
+  const kmValue = String(entry.km || entry.current_km || "").trim();
+  const mtcValue = String(entry.mtc || entry.current_mtc || "").trim();
+  if (!kmValue && !mtcValue) return "Cisterna goriva: upiši KM ili MTČ za svako sipanje. Dovoljno je jedno od ta dva polja.";
   if (!entry.liters) return "Cisterna goriva: upiši koliko litara je sipano.";
   if (!entry.receiver) return "Cisterna goriva: upiši ko je primio gorivo.";
   return "";
@@ -6890,8 +6891,9 @@ function getFirstFieldTankerValidationIssue() {
     const assetValue = (assetSearch?.value || "").trim();
     if (!siteValue) return { section: "#secFieldTanker", entry: card, field: siteSelect || siteCustom, message: `Cisterna goriva ${n}: izaberi ili upiši gradilište/lokaciju.` };
     if (!assetValue) return { section: "#secFieldTanker", entry: card, field: assetSearch, message: `Cisterna goriva ${n}: upiši interni broj, naziv ili tablice sredstva koje je tankovano.` };
-    if (!(km?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: km, message: `Cisterna goriva ${n}: upiši KM. Ako je mašina, upiši 0 ili stvarno stanje ako firma tako vodi evidenciju.` };
-    if (!(mtc?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: mtc, message: `Cisterna goriva ${n}: upiši MTČ. Ako je vozilo, upiši 0 ili stvarno stanje ako firma tako vodi evidenciju.` };
+    const kmValue = (km?.value || "").trim();
+    const mtcValue = (mtc?.value || "").trim();
+    if (!kmValue && !mtcValue) return { section: "#secFieldTanker", entry: card, field: km || mtc, message: `Cisterna goriva ${n}: upiši KM ili MTČ. Dovoljno je jedno od ta dva polja — vozilo obično KM, mašina obično MTČ.` };
     if (!(liters?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: liters, message: `Cisterna goriva ${n}: upiši koliko litara je sipano.` };
     if (!(receiver?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: receiver, message: `Cisterna goriva ${n}: upiši ime osobe koja je primila gorivo.` };
   }
