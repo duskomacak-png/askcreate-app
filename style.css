@@ -4916,6 +4916,20 @@ body.in-app #viewDirectorDashboard.director-business-page,
   background: #f7faf8;
 }
 
+#personCode.code-ok-input{
+  border-color:#16a34a!important;
+  background:#f0fdf4!important;
+  box-shadow:0 0 0 3px rgba(22,163,74,.14)!important;
+}
+#personCode.code-bad-input{
+  border-color:#ef4444!important;
+  background:#fff1f2!important;
+  box-shadow:0 0 0 3px rgba(239,68,68,.14)!important;
+}
+#personCode.code-info-input{
+  border-color:#cbd5e1!important;
+}
+
 
 /* v1.29.9 - jasna validacija radničkih rubrika */
 .worker-section-needs-attention{

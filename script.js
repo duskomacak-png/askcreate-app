@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.5";
+const APP_VERSION = "1.30.6";
 
 
 let sb = null;
@@ -1231,16 +1231,22 @@ function clearPersonForm() {
   editingPersonId = null;
   setPersonFormMode("add");
   refreshPersonMaterialPermissions();
-  setPersonCodeStatus("Kod mora biti jedinstven u ovoj firmi. Ne možeš koristiti isti kod za dva profila.", "info");
+  setPersonCodeStatus("Kod mora biti jedinstven u celoj aplikaciji. Kucaj kod — crveno znači zauzeto/neispravno, zeleno znači da može.", "info");
   hideWorkerPreview();
 }
 
 function setPersonCodeStatus(message, type = "info") {
   const el = $("#personCodeStatus");
-  if (!el) return;
-  el.textContent = message || "";
-  el.classList.remove("code-ok", "code-bad", "code-info");
-  el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+  const input = $("#personCode");
+  if (el) {
+    el.textContent = message || "";
+    el.classList.remove("code-ok", "code-bad", "code-info");
+    el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+  }
+  if (input) {
+    input.classList.remove("code-ok-input", "code-bad-input", "code-info-input");
+    input.classList.add(type === "ok" ? "code-ok-input" : type === "bad" ? "code-bad-input" : "code-info-input");
+  }
 }
 
 async function findDuplicatePersonAccessCode(rawCode) {
@@ -1267,7 +1273,7 @@ async function checkPersonCodeAvailability(showFreeMessage = true) {
 
   const code = normalizeLoginCode(input.value);
   if (!code) {
-    setPersonCodeStatus("Kod mora biti jedinstven u ovoj firmi. Ne možeš koristiti isti kod za dva profila.", "info");
+    setPersonCodeStatus("Kod mora biti jedinstven u celoj aplikaciji. Kucaj kod — crveno znači zauzeto/neispravno, zeleno znači da može.", "info");
     return true;
   }
 
@@ -1276,15 +1282,37 @@ async function checkPersonCodeAvailability(showFreeMessage = true) {
     return false;
   }
 
+  // Prvo proveravamo lokalno u trenutno učitanoj firmi, da korisnik dobije ime ako je duplikat u istoj firmi.
   const duplicate = await findDuplicatePersonAccessCode(code);
   if (duplicate) {
     const fullName = `${duplicate.first_name || ""} ${duplicate.last_name || ""}`.trim() || "drugi zaposleni";
     const status = duplicate.active === false ? "neaktivan/arhiviran profil" : "aktivan profil";
-    setPersonCodeStatus(`Ovaj kod već koristi ${fullName} (${status}). Odredi drugi kod da se zaposleni ne bi mešali.`, "bad");
+    setPersonCodeStatus(`Crveno: ovaj kod već koristi ${fullName} (${status}). Odredi drugi kod.`, "bad");
     return false;
   }
 
-  if (showFreeMessage) setPersonCodeStatus("Kod je slobodan i može se koristiti za ovog zaposlenog.", "ok");
+  // Zatim proveravamo globalno preko RPC-a, jer baza sada ne dozvoljava isti kod ni u drugoj firmi.
+  try {
+    if (sb?.rpc) {
+      const { data, error } = await sb.rpc("check_worker_access_code_available", {
+        p_access_code: code,
+        p_current_person_id: editingPersonId || null
+      });
+      if (error) throw error;
+
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row && row.available === false) {
+        setPersonCodeStatus(row.message || "Crveno: ovaj pristupni kod već postoji u sistemu. Odredi drugi kod.", "bad");
+        return false;
+      }
+    }
+  } catch (err) {
+    console.warn("Globalna provera pristupnog koda nije uspela, oslanjam se na zaštitu baze:", err);
+    setPersonCodeStatus("Ne mogu trenutno proveriti kod u celoj aplikaciji. Sačuvaj profil — baza će ga svakako odbiti ako je zauzet.", "bad");
+    return false;
+  }
+
+  if (showFreeMessage) setPersonCodeStatus("Zeleno: kod je slobodan u celoj aplikaciji i može se koristiti.", "ok");
   return true;
 }
 
@@ -1293,7 +1321,7 @@ function schedulePersonCodeAvailabilityCheck() {
   personCodeCheckTimer = setTimeout(() => {
     checkPersonCodeAvailability(true).catch(err => {
       console.warn("Provera pristupnog koda nije uspela", err);
-      setPersonCodeStatus("Ne mogu trenutno proveriti kod. Pokušaj ponovo ili sačuvaj pa će aplikacija proveriti.", "bad");
+      setPersonCodeStatus("Ne mogu trenutno proveriti kod u celoj aplikaciji. Pokušaj ponovo za par sekundi.", "bad");
     });
   }, 350);
 }
@@ -1472,7 +1500,7 @@ async function savePersonForm() {
     if (duplicatePerson) {
       const fullName = `${duplicatePerson.first_name || ""} ${duplicatePerson.last_name || ""}`.trim() || "drugi zaposleni";
       const status = duplicatePerson.active === false ? "neaktivan/arhiviran profil" : "aktivan profil";
-      throw new Error(`Ovaj pristupni kod već koristi ${fullName} (${status}). Odredi drugi kod, jer jedan kod ne sme pripadati dvema osobama u istoj firmi.`);
+      throw new Error(`Ovaj pristupni kod već koristi ${fullName} (${status}). Odredi drugi kod, jer jedan kod ne sme pripadati dvema osobama u celoj aplikaciji.`);
     }
 
     const payload = {
@@ -1502,7 +1530,15 @@ async function savePersonForm() {
     clearPersonForm();
     loadPeople();
   } catch (e) {
-    toast(e.message, true);
+    const msg = String(e?.message || "");
+    if (msg.includes("company_users_access_code_global_unique") || msg.toLowerCase().includes("duplicate key")) {
+      setPersonCodeStatus("Crveno: ovaj pristupni kod već postoji u celoj aplikaciji. Odredi drugi kod.", "bad");
+      const codeInput = $("#personCode");
+      if (codeInput) codeInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      toast("Ovaj pristupni kod već postoji u sistemu. Odredi drugi kod.", true);
+    } else {
+      toast(e.message, true);
+    }
   }
 }
 

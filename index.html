@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1305" />
+  <link rel="stylesheet" href="style.css?v=1306" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -465,7 +465,7 @@
             </div>
             <label>Pristupni kod zaposlenog</label>
             <input id="personCode" placeholder="npr. zor1234" />
-            <div id="personCodeStatus" class="person-code-status muted tiny">Kod mora biti jedinstven u ovoj firmi. Ne možeš koristiti isti kod za dva profila.</div>
+            <div id="personCodeStatus" class="person-code-status muted tiny">Kod mora biti jedinstven u celoj aplikaciji. Crveno znači zauzeto/neispravno, zeleno znači da može.</div>
             <div class="permission-box">
               <h4>Dodeljene radne rubrike i ovlašćenja</h4>
               <p class="muted tiny">Rubrike su razdvojene da se ne mešaju polja koja ulaze u terenski izveštaj i kancelarijska ovlašćenja.</p>
@@ -860,7 +860,7 @@
         </div>
         <div id="workerLoginHelpBox" class="code-help-box">
               <b>Prijava zaposlenog:</b>
-              <span>Zaposleni ulazi sa šifrom firme + svojim kodom. Kod zaposlenog važi samo unutar ove firme.</span>
+              <span>Zaposleni ulazi preko QR koda firme + svojim pristupnim kodom. Kod zaposlenog mora biti jedinstven u celoj aplikaciji.</span>
             </div>
             <label id="workerAccessCodeLabel">Pristupni kod zaposlenog</label>
         <input id="workerAccessCode" placeholder="unesite svoj kod" autocomplete="one-time-code" />
@@ -1163,6 +1163,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1305"></script>
+  <script src="script.js?v=1306"></script>
 </body>
 </html>
