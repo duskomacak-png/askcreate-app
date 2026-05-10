@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.29.3";
+const APP_VERSION = "1.29.5";
 
 
 let sb = null;
@@ -1177,7 +1177,71 @@ function clearPersonForm() {
   editingPersonId = null;
   setPersonFormMode("add");
   refreshPersonMaterialPermissions();
+  setPersonCodeStatus("Kod mora biti jedinstven u ovoj firmi. Ne možeš koristiti isti kod za dva profila.", "info");
   hideWorkerPreview();
+}
+
+function setPersonCodeStatus(message, type = "info") {
+  const el = $("#personCodeStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("code-ok", "code-bad", "code-info");
+  el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+}
+
+async function findDuplicatePersonAccessCode(rawCode) {
+  if (!currentCompany) return null;
+  const normalizedCode = normalizeLoginCode(rawCode);
+  if (!normalizedCode) return null;
+
+  const { data, error } = await sb
+    .from("company_users")
+    .select("id, first_name, last_name, function_title, access_code, active")
+    .eq("company_id", currentCompany.id);
+  if (error) throw error;
+
+  return (data || []).find(person => {
+    if (editingPersonId && String(person.id) === String(editingPersonId)) return false;
+    return normalizeLoginCode(person.access_code) === normalizedCode;
+  }) || null;
+}
+
+let personCodeCheckTimer = null;
+async function checkPersonCodeAvailability(showFreeMessage = true) {
+  const input = $("#personCode");
+  if (!input) return true;
+
+  const code = normalizeLoginCode(input.value);
+  if (!code) {
+    setPersonCodeStatus("Kod mora biti jedinstven u ovoj firmi. Ne možeš koristiti isti kod za dva profila.", "info");
+    return true;
+  }
+
+  if (code.length < 4) {
+    setPersonCodeStatus("Kod je prekratak. Upiši najmanje 4 karaktera, npr. ime + broj.", "bad");
+    return false;
+  }
+
+  const duplicate = await findDuplicatePersonAccessCode(code);
+  if (duplicate) {
+    const fullName = `${duplicate.first_name || ""} ${duplicate.last_name || ""}`.trim() || "drugi zaposleni";
+    const status = duplicate.active === false ? "neaktivan/arhiviran profil" : "aktivan profil";
+    setPersonCodeStatus(`Ovaj kod već koristi ${fullName} (${status}). Odredi drugi kod da se zaposleni ne bi mešali.`, "bad");
+    return false;
+  }
+
+  if (showFreeMessage) setPersonCodeStatus("Kod je slobodan i može se koristiti za ovog zaposlenog.", "ok");
+  return true;
+}
+
+function schedulePersonCodeAvailabilityCheck() {
+  clearTimeout(personCodeCheckTimer);
+  personCodeCheckTimer = setTimeout(() => {
+    checkPersonCodeAvailability(true).catch(err => {
+      console.warn("Provera pristupnog koda nije uspela", err);
+      setPersonCodeStatus("Ne mogu trenutno proveriti kod. Pokušaj ponovo ili sačuvaj pa će aplikacija proveriti.", "bad");
+    });
+  }, 350);
 }
 
 
@@ -1288,7 +1352,10 @@ function hideWorkerPreview() {
 function bindPersonPreviewEvents() {
   ["personFirst", "personLast", "personFunction", "personCode"].forEach(id => {
     const el = $("#" + id);
-    if (el) el.addEventListener("input", () => renderWorkerPreview(true));
+    if (el) el.addEventListener("input", () => {
+      renderWorkerPreview(true);
+      if (id === "personCode") schedulePersonCodeAvailabilityCheck();
+    });
   });
   document.addEventListener("change", (e) => {
     if (e.target?.classList?.contains("perm") || e.target?.classList?.contains("material-perm")) {
@@ -1324,6 +1391,7 @@ window.editPerson = async (id) => {
 
     setPersonFormMode("edit");
     renderWorkerPreview(true);
+    checkPersonCodeAvailability(false).catch(() => {});
     toast("Korisnički profil je otvoren za izmenu.");
     const title = $("#personFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1346,17 +1414,12 @@ async function savePersonForm() {
     if (!functionTitle) throw new Error("Upiši funkciju zaposlenog.");
     if (code.length < 4) throw new Error("Pristupni kod zaposlenog mora imati najmanje 4 karaktera.");
 
-    let duplicateQuery = sb
-      .from("company_users")
-      .select("id")
-      .eq("company_id", currentCompany.id)
-      .eq("access_code", code)
-      .eq("active", true);
-    if (editingPersonId) duplicateQuery = duplicateQuery.neq("id", editingPersonId);
-
-    const { data: existingCode, error: existingCodeError } = await duplicateQuery.maybeSingle();
-    if (existingCodeError) throw existingCodeError;
-    if (existingCode) throw new Error("U ovoj firmi već postoji aktivan zaposleni sa tom šifrom. Izaberi drugu šifru zaposlenog.");
+    const duplicatePerson = await findDuplicatePersonAccessCode(code);
+    if (duplicatePerson) {
+      const fullName = `${duplicatePerson.first_name || ""} ${duplicatePerson.last_name || ""}`.trim() || "drugi zaposleni";
+      const status = duplicatePerson.active === false ? "neaktivan/arhiviran profil" : "aktivan profil";
+      throw new Error(`Ovaj pristupni kod već koristi ${fullName} (${status}). Odredi drugi kod, jer jedan kod ne sme pripadati dvema osobama u istoj firmi.`);
+    }
 
     const payload = {
       company_id: currentCompany.id,
@@ -1697,6 +1760,80 @@ async function loadMaterials() {
   renderPersonMaterialPermissions(activeMaterials);
 }
 
+function setMaterialNameStatus(message, type = "info") {
+  const el = $("#materialNameStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("code-ok", "code-bad", "code-info");
+  el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+}
+
+function normalizeMaterialNameKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function findDuplicateMaterialName(rawName) {
+  if (!currentCompany) return null;
+  const wanted = normalizeMaterialNameKey(rawName);
+  if (!wanted) return null;
+
+  let rows = [];
+  const rpcRes = await sb.rpc("director_list_materials", { p_company_id: currentCompany.id });
+  if (rpcRes.error) {
+    const fallback = await sb
+      .from("materials")
+      .select("id, name, unit, category")
+      .eq("company_id", currentCompany.id);
+    if (fallback.error) throw fallback.error;
+    rows = fallback.data || [];
+  } else {
+    rows = rpcRes.data || [];
+  }
+
+  return rows.find(material => {
+    if (editingMaterialId && String(material.id) === String(editingMaterialId)) return false;
+    return normalizeMaterialNameKey(material.name) === wanted;
+  }) || null;
+}
+
+let materialNameCheckTimer = null;
+async function checkMaterialNameAvailability(showFreeMessage = true) {
+  const input = $("#materialName");
+  if (!input) return true;
+
+  const name = input.value.trim();
+  if (!name) {
+    setMaterialNameStatus("Naziv materijala mora biti jedinstven u ovoj firmi. Ne upisuj isti materijal dva puta.", "info");
+    return true;
+  }
+
+  const duplicate = await findDuplicateMaterialName(name);
+  if (duplicate) {
+    const unit = duplicate.unit ? ` · jedinica: ${duplicate.unit}` : "";
+    setMaterialNameStatus(`Ovaj materijal već postoji u evidenciji: ${duplicate.name || name}${unit}. Nemoj praviti dupli materijal — izmeni postojeći ili upiši drugačiji naziv.`, "bad");
+    return false;
+  }
+
+  if (showFreeMessage) setMaterialNameStatus("Naziv je slobodan. Materijal možeš sačuvati u evidenciji firme.", "ok");
+  return true;
+}
+
+function scheduleMaterialNameAvailabilityCheck() {
+  clearTimeout(materialNameCheckTimer);
+  materialNameCheckTimer = setTimeout(() => {
+    checkMaterialNameAvailability(true).catch(err => {
+      console.warn("Provera naziva materijala nije uspela", err);
+      setMaterialNameStatus("Ne mogu trenutno proveriti naziv materijala. Pokušaj ponovo ili sačuvaj pa će aplikacija proveriti.", "bad");
+    });
+  }, 350);
+}
+
 function setMaterialFormMode(mode = "add") {
   const editing = mode === "edit";
   const title = $("#materialFormTitle");
@@ -1716,6 +1853,7 @@ function clearMaterialForm() {
   if (unit) unit.value = "m3";
   editingMaterialId = null;
   setMaterialFormMode("add");
+  setMaterialNameStatus("Naziv materijala mora biti jedinstven u ovoj firmi. Ne upisuj isti materijal dva puta.", "info");
 }
 
 window.editMaterial = async (id) => {
@@ -1734,6 +1872,7 @@ window.editMaterial = async (id) => {
     $("#materialUnit").value = material.unit || "m3";
     $("#materialCategory").value = material.category || "";
     setMaterialFormMode("edit");
+    checkMaterialNameAvailability(false).catch(() => {});
     toast("Materijal je otvoren za izmenu.");
     const title = $("#materialFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1747,6 +1886,12 @@ async function saveMaterialForm() {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
     const name = $("#materialName").value.trim();
     if (!name) throw new Error("Upiši naziv materijala.");
+
+    const duplicateMaterial = await findDuplicateMaterialName(name);
+    if (duplicateMaterial) {
+      const unit = duplicateMaterial.unit ? ` · jedinica: ${duplicateMaterial.unit}` : "";
+      throw new Error(`Ovaj materijal već postoji u evidenciji: ${duplicateMaterial.name || name}${unit}. Ne možeš dva puta upisati isti naziv materijala. Izmeni postojeći materijal ili odredi drugačiji naziv.`);
+    }
 
     const { error } = await sb.rpc("director_upsert_material", {
       p_company_id: currentCompany.id,
@@ -8272,6 +8417,7 @@ function bindEvents() {
 
   if ($("#addMaterialBtn")) $("#addMaterialBtn").addEventListener("click", saveMaterialForm);
   if ($("#cancelEditMaterialBtn")) $("#cancelEditMaterialBtn").addEventListener("click", clearMaterialForm);
+  if ($("#materialName")) $("#materialName").addEventListener("input", scheduleMaterialNameAvailabilityCheck);
 
   if ($("#selectAllReportsBtn")) $("#selectAllReportsBtn").addEventListener("click", selectAllReportsForExport);
   if ($("#clearReportsBtn")) $("#clearReportsBtn").addEventListener("click", clearReportsForExport);

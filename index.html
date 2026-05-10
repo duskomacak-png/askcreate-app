@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1293" />
+  <link rel="stylesheet" href="style.css?v=1295" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -450,6 +450,7 @@
             </div>
             <label>Pristupni kod zaposlenog</label>
             <input id="personCode" placeholder="npr. zor1234" />
+            <div id="personCodeStatus" class="person-code-status muted tiny">Kod mora biti jedinstven u ovoj firmi. Ne možeš koristiti isti kod za dva profila.</div>
             <div class="permission-box">
               <h4>Dodeljene radne rubrike i ovlašćenja</h4>
               <p class="muted tiny">Rubrike su razdvojene da se ne mešaju polja koja ulaze u terenski izveštaj i kancelarijska ovlašćenja.</p>
@@ -570,6 +571,7 @@
             <h3 id="materialFormTitle">+ Dodaj materijal</h3>
             <label>Naziv materijala</label>
             <input id="materialName" placeholder="npr. Kamen 0-31, pesak, rizla..." />
+            <div id="materialNameStatus" class="person-code-status muted tiny">Naziv materijala mora biti jedinstven u ovoj firmi. Ne upisuj isti materijal dva puta.</div>
             <label>Jedinica</label>
             <select id="materialUnit">
               <option value="m3">m³</option>
@@ -1141,6 +1143,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1293"></script>
+  <script src="script.js?v=1295"></script>
 </body>
 </html>

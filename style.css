@@ -4889,3 +4889,29 @@ body.in-app #viewDirectorDashboard.director-business-page,
     padding:8px 10px!important;
   }
 }
+
+/* v1.29.4 - bezbedniji unos pristupnog koda zaposlenog */
+.person-code-status {
+  display: block;
+  margin: 6px 0 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #d9e2dd;
+  background: #f7faf8;
+  line-height: 1.35;
+}
+.person-code-status.code-ok {
+  color: #14532d;
+  border-color: #b7dfc3;
+  background: #edf8f0;
+}
+.person-code-status.code-bad {
+  color: #8a1f1f;
+  border-color: #f1b9b9;
+  background: #fff1f1;
+}
+.person-code-status.code-info {
+  color: #475569;
+  border-color: #d9e2dd;
+  background: #f7faf8;
+}
