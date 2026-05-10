@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BNFB3Zs8op_mn7nUQgxcOQWCNco_jb7M7gdvTE__orfWVg8p5dGg6KWvJ4fM2Psg1eauWH0ybr5QnOLgjeMeQHs";
-const APP_VERSION = "1.31.5";
+const APP_VERSION = "1.31.6";
 
 
 let sb = null;
@@ -9259,8 +9259,15 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 function setMechanicPushUi(status, detail = "") {
+  const card = $("#mechanicPushCard");
   const box = $("#mechanicPushStatus");
   const btn = $("#enableMechanicPushBtn");
+  const isReady = status === "ready";
+
+  // Kada su obaveštenja uspešno uključena, sklanjamo ceo veliki blok da ne zauzima ekran.
+  // Ako obaveštenja nisu uključena ili postoji greška, blok ostaje vidljiv da šef zna šta treba da uradi.
+  if (card) card.classList.toggle("hidden", isReady);
+
   if (box) {
     box.className = "mechanic-push-status " + (status || "idle");
     const labels = {
@@ -9273,7 +9280,7 @@ function setMechanicPushUi(status, detail = "") {
     };
     box.textContent = (labels[status] || "Status obaveštenja") + (detail ? " " + detail : "");
   }
-  if (btn) btn.disabled = status === "ready" || status === "unsupported";
+  if (btn) btn.disabled = isReady || status === "unsupported";
 }
 
 async function refreshMechanicPushUi() {
