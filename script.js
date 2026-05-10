@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.31.1";
+const APP_VERSION = "1.31.2";
 
 
 let sb = null;
@@ -9340,6 +9340,24 @@ async function mechanicListDefectsSafe() {
   return (data || []).filter(hasDefectData);
 }
 
+
+function toggleMechanicSection(bodyId) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const isHidden = body.classList.contains("hidden");
+  body.classList.toggle("hidden", !isHidden);
+  const card = body.closest(".mechanic-collapsible");
+  if (card) card.classList.toggle("is-collapsed", !isHidden);
+  const toggle = document.querySelector(`[aria-controls="${bodyId}"]`);
+  if (toggle) toggle.setAttribute("aria-expanded", String(isHidden));
+}
+
+function setMechanicSectionCount(id, count, suffix = "") {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = `${count}${suffix}`;
+}
+
 function renderMechanicBossDefects() {
   const tableBody = $("#mechanicBossTableBody");
   const cards = $("#mechanicBossCards");
@@ -9353,6 +9371,10 @@ function renderMechanicBossDefects() {
   const countActive = list.filter(r => mechanicStatusGroup(r) === "active").length;
   const countResolved = list.filter(r => mechanicStatusGroup(r) === "resolved").length;
   if (badge) badge.textContent = `${countNew} novih · ${countActive} aktivnih · ${countResolved} rešenih`;
+  setMechanicSectionCount("mechanicNewCountMini", countNew);
+  setMechanicSectionCount("mechanicActiveCountMini", countActive);
+  setMechanicSectionCount("mechanicResolvedCountMini", countResolved);
+  setMechanicSectionCount("mechanicAllCountMini", list.length, " ukupno");
 
   const actionsHtml = (r) => `
     <div class="mechanic-actions">

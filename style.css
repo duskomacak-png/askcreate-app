@@ -5253,3 +5253,46 @@ body.mechanic-boss-mode #viewMechanicBossPanel .secondary {
   font-weight: 900;
   border: 1px solid #fecaca;
 }
+
+/* sw1312: Šef mehanizacije - sklopive sekcije da duga lista kvarova ne zatrpa telefon */
+.mechanic-collapsible { padding: 0 !important; overflow: hidden; }
+.mechanic-section-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.mechanic-section-toggle span { font-weight: 900; font-size: clamp(1.35rem, 5vw, 2rem); line-height: 1.12; }
+.mechanic-section-toggle small {
+  flex: 0 0 auto;
+  min-width: 36px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  font-weight: 900;
+  text-align: center;
+}
+.mechanic-section-toggle::after {
+  content: "⌄";
+  font-size: 1.25rem;
+  color: #475569;
+  transition: transform .18s ease;
+}
+.mechanic-collapsible:not(.is-collapsed) .mechanic-section-toggle::after { transform: rotate(180deg); }
+.mechanic-collapsible-body { padding: 0 24px 22px; }
+.mechanic-collapsible-hint { padding: 0 24px 20px; margin-top: -8px; }
+.mechanic-table-card .mechanic-collapsible-body { padding-top: 0; }
+.mechanic-summary-card .mechanic-mini-list.hidden,
+.mechanic-table-card .mechanic-collapsible-body.hidden { display: none !important; }
+.mechanic-summary-card.is-collapsed { min-height: 96px; }
+.mechanic-summary-card:not(.is-collapsed) { min-height: 0; }
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color: #0f172a; }

@@ -892,46 +892,56 @@
       <div id="mechanicNewSignal" class="mechanic-new-signal hidden">🔴 Novi kvar prijavljen</div>
 
       <div class="mechanic-summary-grid">
-        <div class="card mechanic-summary-card mechanic-new">
-          <h3>Novi kvarovi</h3>
-          <div id="mechanicNewDefects" class="mechanic-mini-list"></div>
+        <div class="card mechanic-summary-card mechanic-new mechanic-collapsible is-collapsed" data-mechanic-section="new">
+          <button class="mechanic-section-toggle" type="button" onclick="toggleMechanicSection('mechanicNewDefects')" aria-controls="mechanicNewDefects" aria-expanded="false">
+            <span>Novi kvarovi</span>
+            <small id="mechanicNewCountMini">0</small>
+          </button>
+          <div id="mechanicNewDefects" class="mechanic-mini-list mechanic-collapsible-body hidden"></div>
         </div>
-        <div class="card mechanic-summary-card mechanic-active">
-          <h3>Aktivni kvarovi</h3>
-          <div id="mechanicActiveDefects" class="mechanic-mini-list"></div>
+        <div class="card mechanic-summary-card mechanic-active mechanic-collapsible is-collapsed" data-mechanic-section="active">
+          <button class="mechanic-section-toggle" type="button" onclick="toggleMechanicSection('mechanicActiveDefects')" aria-controls="mechanicActiveDefects" aria-expanded="false">
+            <span>Aktivni kvarovi</span>
+            <small id="mechanicActiveCountMini">0</small>
+          </button>
+          <div id="mechanicActiveDefects" class="mechanic-mini-list mechanic-collapsible-body hidden"></div>
         </div>
-        <div class="card mechanic-summary-card mechanic-resolved">
-          <h3>Rešeni kvarovi</h3>
-          <div id="mechanicResolvedDefects" class="mechanic-mini-list"></div>
+        <div class="card mechanic-summary-card mechanic-resolved mechanic-collapsible is-collapsed" data-mechanic-section="resolved">
+          <button class="mechanic-section-toggle" type="button" onclick="toggleMechanicSection('mechanicResolvedDefects')" aria-controls="mechanicResolvedDefects" aria-expanded="false">
+            <span>Rešeni kvarovi</span>
+            <small id="mechanicResolvedCountMini">0</small>
+          </button>
+          <div id="mechanicResolvedDefects" class="mechanic-mini-list mechanic-collapsible-body hidden"></div>
         </div>
       </div>
 
-      <div class="card mechanic-table-card">
-        <div class="mechanic-table-title">
-          <div>
-            <h3>Kvarovi za mehanizaciju</h3>
-            <p class="hint">Panel proverava nove kvarove svakih 30 sekundi dok je aplikacija otvorena.</p>
+      <div class="card mechanic-table-card mechanic-collapsible is-collapsed">
+        <button class="mechanic-section-toggle mechanic-section-toggle-wide" type="button" onclick="toggleMechanicSection('mechanicAllDefectsPanel')" aria-controls="mechanicAllDefectsPanel" aria-expanded="false">
+          <span>Kvarovi za mehanizaciju</span>
+          <small id="mechanicAllCountMini">0 ukupno</small>
+        </button>
+        <p class="hint mechanic-collapsible-hint">Panel proverava nove kvarove svakih 30 sekundi dok je aplikacija otvorena. Klikni naslov da otvoriš tabelu/kartice.</p>
+        <div id="mechanicAllDefectsPanel" class="mechanic-collapsible-body hidden">
+          <div class="mechanic-table-wrap">
+            <table class="mechanic-table">
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th>Mašina / vozilo</th>
+                  <th>Gradilište</th>
+                  <th>Problem</th>
+                  <th>Prijavio</th>
+                  <th>Status</th>
+                  <th>Akcija</th>
+                </tr>
+              </thead>
+              <tbody id="mechanicBossTableBody">
+                <tr><td colspan="7" class="muted">Učitavam kvarove...</td></tr>
+              </tbody>
+            </table>
           </div>
+          <div id="mechanicBossCards" class="mechanic-mobile-cards"></div>
         </div>
-        <div class="mechanic-table-wrap">
-          <table class="mechanic-table">
-            <thead>
-              <tr>
-                <th>Datum</th>
-                <th>Mašina / vozilo</th>
-                <th>Gradilište</th>
-                <th>Problem</th>
-                <th>Prijavio</th>
-                <th>Status</th>
-                <th>Akcija</th>
-              </tr>
-            </thead>
-            <tbody id="mechanicBossTableBody">
-              <tr><td colspan="7" class="muted">Učitavam kvarove...</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div id="mechanicBossCards" class="mechanic-mobile-cards"></div>
       </div>
     </section>
 
