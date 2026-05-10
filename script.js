@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.4";
+const APP_VERSION = "1.30.5";
 
 
 let sb = null;
@@ -1721,6 +1721,8 @@ async function loadPeople() {
 
   if (error) return toast(error.message, true);
 
+  directorPeopleCache = data || [];
+  updateSmartExportDatalists();
   businessUpdatePeopleCount(data || []);
   const list = $("#peopleList");
   if (!list) return;
@@ -1738,6 +1740,8 @@ async function loadSites() {
 
   if (error) return toast(error.message, true);
 
+  directorSitesCache = data || [];
+  updateSmartExportDatalists();
   businessUpdateSitesCount(data || []);
   $("#sitesList").innerHTML = (data || []).map(s => `
     <div class="director-table-row management-item">
@@ -1901,6 +1905,8 @@ async function loadAssets() {
 
   if (error) return toast(error.message, true);
 
+  directorAssetsCache = data || [];
+  updateSmartExportDatalists();
   const activeAssets = (data || []).filter(a => a.active !== false);
   $("#assetsList").innerHTML = activeAssets.map(a => `
     <div class="director-table-row management-item">
@@ -1933,6 +1939,8 @@ async function loadMaterials() {
     return;
   }
 
+  directorMaterialsCache = data || [];
+  updateSmartExportDatalists();
   const activeMaterials = (data || []).filter(m => m.active !== false);
 
   if (list) {
@@ -2302,6 +2310,10 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
 }
 
 let directorReportsCache = [];
+let directorSitesCache = [];
+let directorAssetsCache = [];
+let directorMaterialsCache = [];
+let directorPeopleCache = [];
 
 
 // v1.29.2 — sigurniji put za izveštaje Direkcije.
@@ -7958,6 +7970,81 @@ function getSmartExportUiText(type) {
   };
 }
 
+function exportOptionHtml(value, label = "") {
+  const v = String(value || "").trim();
+  if (!v) return "";
+  const l = String(label || "").trim();
+  return `<option value="${escapeHtml(v)}"${l ? ` label="${escapeHtml(l)}"` : ""}></option>`;
+}
+
+function activeDirectorSites() {
+  return (directorSitesCache || []).filter(s => s && s.active !== false && (s.name || s.location));
+}
+
+function activeDirectorAssets() {
+  return (directorAssetsCache || []).filter(a => a && a.active !== false && (getAssetCode(a) || getAssetName(a) || getAssetRegistration(a)));
+}
+
+function activeDirectorMaterials() {
+  return (directorMaterialsCache || []).filter(m => m && m.active !== false && m.name);
+}
+
+function activeDirectorPeople() {
+  return (directorPeopleCache || []).filter(p => p && p.active !== false && (p.first_name || p.last_name || p.access_code));
+}
+
+function buildAssetExportOptions(assets) {
+  const options = [];
+  const seen = new Set();
+  (assets || []).forEach(a => {
+    const code = getAssetCode(a);
+    const name = getAssetName(a);
+    const reg = getAssetRegistration(a);
+    const label = [code ? `broj ${code}` : "", name, reg ? `reg. ${reg}` : ""].filter(Boolean).join(" · ");
+    [code, name, reg].filter(Boolean).forEach(value => {
+      const key = normalizeSearch(value);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      options.push(exportOptionHtml(value, label));
+    });
+  });
+  return options.join("");
+}
+
+function updateSmartExportDatalists(type = $("#smartExportType")?.value || getSmartExportSettings().type || "all") {
+  const siteList = $("#smartExportSiteList");
+  if (siteList) {
+    siteList.innerHTML = activeDirectorSites().map(s => exportOptionHtml(s.name, [s.location, "gradilište iz Uprave"].filter(Boolean).join(" · "))).join("");
+  }
+
+  const workerList = $("#smartExportWorkerList");
+  if (workerList) {
+    workerList.innerHTML = activeDirectorPeople().map(p => {
+      const full = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+      return exportOptionHtml(full || p.access_code, [p.function_title, p.access_code ? `kod ${p.access_code}` : ""].filter(Boolean).join(" · "));
+    }).join("");
+  }
+
+  const itemList = $("#smartExportItemList");
+  if (!itemList) return;
+  let html = "";
+  if (type === "materials") {
+    html = activeDirectorMaterials().map(m => exportOptionHtml(m.name, [m.unit, m.category].filter(Boolean).join(" · "))).join("");
+  } else if (type === "vehicles") {
+    html = buildAssetExportOptions(activeDirectorAssets().filter(isVehicleAsset));
+  } else if (type === "machines") {
+    html = buildAssetExportOptions(activeDirectorAssets().filter(isMachineAsset));
+  } else if (type === "fuel_all" || type === "fuel_own" || type === "fuel_tanker" || type === "lowloader") {
+    html = buildAssetExportOptions(activeDirectorAssets());
+  } else {
+    html = [
+      buildAssetExportOptions(activeDirectorAssets()),
+      activeDirectorMaterials().map(m => exportOptionHtml(m.name, [m.unit, m.category].filter(Boolean).join(" · "))).join("")
+    ].join("");
+  }
+  itemList.innerHTML = html || `<option value="Nema učitanih stavki iz Uprave"></option>`;
+}
+
 function updateSmartExportFieldLabels(type) {
   const text = getSmartExportUiText(type);
   const workerLabel = $("#smartExportWorkerLabel");
@@ -7970,6 +8057,7 @@ function updateSmartExportFieldLabels(type) {
   if (itemLabel) itemLabel.textContent = text.itemLabel;
   if (itemInput) itemInput.placeholder = text.itemPlaceholder;
   if (itemWrap) itemWrap.classList.toggle("hidden", !!text.hideItem);
+  updateSmartExportDatalists(type);
 }
 
 function showExportPreviewMessage(message, isError = false) {

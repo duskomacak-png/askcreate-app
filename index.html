@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1304" />
+  <link rel="stylesheet" href="style.css?v=1305" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -712,14 +712,17 @@
                   <input id="smartExportTo" type="date" />
                 </label>
                 <label>Gradilište
-                  <input id="smartExportSite" placeholder="npr. Zmaj ili ostavi prazno za sva" />
+                  <input id="smartExportSite" list="smartExportSiteList" placeholder="Izaberi gradilište iz Uprave ili ostavi prazno za sva" />
                 </label>
                 <label id="smartExportWorkerWrap"><span id="smartExportWorkerLabel">Zaposleni</span>
-                  <input id="smartExportWorker" placeholder="npr. Marko ili prazno za sve" />
+                  <input id="smartExportWorker" list="smartExportWorkerList" placeholder="npr. Marko ili prazno za sve" />
                 </label>
                 <label id="smartExportItemWrap"><span id="smartExportItemLabel">Stavka</span>
-                  <input id="smartExportItem" placeholder="npr. CAT 330, MAN, kamen 0-31" />
+                  <input id="smartExportItem" list="smartExportItemList" placeholder="Unesi interni broj, registraciju ili izaberi iz liste" />
                 </label>
+                <datalist id="smartExportSiteList"></datalist>
+                <datalist id="smartExportWorkerList"></datalist>
+                <datalist id="smartExportItemList"></datalist>
                 <label>Izgled papira
                   <select id="exportTemplateType">
                     <option value="classic">Klasična tabela</option>
@@ -1160,6 +1163,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1304"></script>
+  <script src="script.js?v=1305"></script>
 </body>
 </html>
