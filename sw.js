@@ -1,9 +1,9 @@
-const CACHE_NAME = "askcreate-app-v1308";
+const CACHE_NAME = "askcreate-app-v1309";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1308",
-  "./script.js?v=1308",
+  "./style.css?v=1309",
+  "./script.js?v=1309",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"

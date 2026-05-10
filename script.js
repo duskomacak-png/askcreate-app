@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.8";
+const APP_VERSION = "1.30.9";
 
 
 let sb = null;
@@ -2640,7 +2640,22 @@ async function loadReports(options = {}) {
   const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je zaposleni poslao kvar, pogledaj tab Kvarovi.</p>`;
   renderDefectsList();
+  renderDirectorDefectNoticeInReports();
   renderExportPanel();
+}
+
+
+function renderDirectorDefectNoticeInReports() {
+  const listBox = $("#reportsList");
+  if (!listBox) return;
+  const defects = directorReportsCache.filter(hasDefectData);
+  if (!defects.length) return;
+  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
+  const notice = document.createElement("div");
+  notice.className = "item report-item defect-alert-notice";
+  notice.innerHTML = `<strong>🚨 Ima ${defects.length} prijavljenih kvarova</strong><p class="muted">Kvarovi nisu u listi dnevnih izveštaja. Klikni podtab <b>Kvarovi</b> u ovom ekranu da vidiš prijave kvarova.</p><button class="secondary small-action" type="button" data-business-tab="defects">Otvori kvarove</button>`;
+  if (dailyReports.length) listBox.prepend(notice);
+  else listBox.innerHTML = notice.outerHTML;
 }
 
 function defectHtml(r) {
@@ -9239,6 +9254,63 @@ function mechanicDefectTime(report) {
   return d.defect_reported_at || report?.submitted_at || report?.created_at || report?.report_date || "";
 }
 
+
+async function attachReportUsersFallback(reports = []) {
+  try {
+    if (typeof enrichReportsWithUsers === "function") return await enrichReportsWithUsers(reports);
+  } catch (e) {
+    console.warn("Ne mogu povezati prijavioce kvarova, prikazujem osnovne podatke:", e);
+  }
+  return Array.isArray(reports) ? reports : [];
+}
+
+function renderMechanicBossError(message) {
+  const safeMsg = escapeHtml(message || "Ne mogu učitati kvarove za šefa mehanizacije.");
+  const tableBody = $("#mechanicBossTableBody");
+  const cards = $("#mechanicBossCards");
+  const newBox = $("#mechanicNewDefects");
+  const activeBox = $("#mechanicActiveDefects");
+  const resolvedBox = $("#mechanicResolvedDefects");
+  const badge = $("#mechanicNewBadge");
+  if (badge) badge.textContent = "0 novih · 0 aktivnih · 0 rešenih";
+  if (tableBody) tableBody.innerHTML = `<tr><td colspan="7" class="muted">${safeMsg}</td></tr>`;
+  if (cards) cards.innerHTML = `<p class="muted">${safeMsg}</p>`;
+  if (newBox) newBox.innerHTML = `<p class="muted tiny">${safeMsg}</p>`;
+  if (activeBox) activeBox.innerHTML = `<p class="muted tiny">Nema aktivnih kvarova.</p>`;
+  if (resolvedBox) resolvedBox.innerHTML = `<p class="muted tiny">Nema rešenih kvarova.</p>`;
+}
+
+async function mechanicListDefectsSafe() {
+  // Prvo pokušavamo sigurni RPC za šefa mehanizacije. Ako SQL još nije dodat,
+  // vraćamo se na stari direktan select da ne pokvarimo postojeći MVP.
+  try {
+    const { data, error } = await sb.rpc("mechanic_list_defects", {
+      p_company_code: currentWorker.company_code,
+      p_access_code: currentWorker.access_code
+    });
+    if (!error) return data || [];
+    const msg = String(error.message || "").toLowerCase();
+    if (!msg.includes("mechanic_list_defects") && !msg.includes("function") && !msg.includes("schema cache")) {
+      throw error;
+    }
+    console.warn("mechanic_list_defects RPC ne postoji još, koristim direktan select:", error.message);
+  } catch (e) {
+    const msg = String(e.message || "").toLowerCase();
+    if (!msg.includes("mechanic_list_defects") && !msg.includes("function") && !msg.includes("schema cache")) {
+      throw e;
+    }
+  }
+
+  const { data, error } = await sb
+    .from("reports")
+    .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
+    .eq("company_id", currentWorker.company_id)
+    .order("submitted_at", { ascending: false, nullsFirst: false })
+    .limit(200);
+  if (error) throw error;
+  return (data || []).filter(hasDefectData);
+}
+
 function renderMechanicBossDefects() {
   const tableBody = $("#mechanicBossTableBody");
   const cards = $("#mechanicBossCards");
@@ -9305,14 +9377,7 @@ function renderMechanicBossDefects() {
 async function loadMechanicBossDefects({ silent = false } = {}) {
   if (!currentWorker?.company_id || !sb) return;
   try {
-    const { data, error } = await sb
-      .from("reports")
-      .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
-      .eq("company_id", currentWorker.company_id)
-      .order("submitted_at", { ascending: false, nullsFirst: false })
-      .limit(200);
-    if (error) throw error;
-    const defects = (data || []).filter(hasDefectData);
+    const defects = await mechanicListDefectsSafe();
     mechanicBossReportsCache = await attachReportUsersFallback(defects);
     const newReports = mechanicBossReportsCache.filter(r => mechanicStatusGroup(r) === "new");
     const signature = newReports.map(r => r.id).join("|");
@@ -9325,6 +9390,7 @@ async function loadMechanicBossDefects({ silent = false } = {}) {
     if (!silent) toast("Kvarovi su osveženi.");
   } catch (e) {
     console.warn("Ne mogu učitati kvarove za šefa mehanizacije:", e);
+    renderMechanicBossError(e.message || "Ne mogu učitati kvarove. Ako se ovo ponavlja, treba dodati mechanic_list_defects SQL RPC.");
     if (!silent) toast(e.message || "Ne mogu učitati kvarove.", true);
   }
 }
