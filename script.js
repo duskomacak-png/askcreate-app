@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.31.0";
+const APP_VERSION = "1.31.1";
 
 
 let sb = null;
@@ -2668,6 +2668,7 @@ function defectHtml(r) {
   return `
     <div class="item report-item defect-item">
       <strong>🚨 KVAR · ${escapeHtml(d.defect_urgency || "prijavljen")}</strong>
+      ${d.sent_immediately ? `<span class="pill danger-pill">Evidentirano odmah · vidi Direkcija i Šef mehanizacije</span>` : ""}
       <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || d.function_title || "")} · ${escapeHtml(r.report_date || "")}</small><br/>
       <span class="pill">Prijavljeno: ${escapeHtml(formatDateTimeLocal(reportedAt))}</span>
       <span class="pill">Status: ${escapeHtml(status)}</span>
@@ -8866,8 +8867,12 @@ async function sendDefectNow() {
     const firstMachine = defectAssetName || machines[0]?.name || "";
 
     const urgentData = {
-      report_type: "defect_record",
+      report_type: "defect_alert",
       sent_immediately: true,
+      defect_channel: "immediate_button",
+      visible_to_director: true,
+      visible_to_mechanic_boss: true,
+      sent_to: "direkcija_i_sef_mehanizacije",
       defect_status: "prijavljen",
       defect_reported_at: new Date().toISOString(),
       site_id: selectedDefectSite.site_id || fallbackMainSite.site_id || null,
@@ -8886,8 +8891,7 @@ async function sendDefectNow() {
       defect_urgency: $("#wrDefectUrgency")?.value || "",
       created_by_worker: worker.full_name,
       function_title: worker.function_title,
-      called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
-      sent_to: "direkcija_mehanizacija_direktor"
+      called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || ""
     };
 
     const { error } = await sb.rpc("submit_worker_report", {
@@ -8900,7 +8904,7 @@ async function sendDefectNow() {
 
     if (error) throw error;
 
-    toast("Kvar je evidentiran odmah 🚨 Uprava i direktor mogu pratiti vreme rešavanja.");
+    toast("Kvar je poslat odmah 🚨 Vide ga Uprava/Direkcija i Šef mehanizacije.");
   } catch(e) {
     toast(e.message, true);
   }
@@ -9379,6 +9383,7 @@ function renderMechanicBossDefects() {
     const icon = group === "new" ? "🔴" : group === "active" ? "🟠" : "🟢";
     return `<article class="mechanic-card mechanic-${group}">
       <div class="mechanic-card-head"><strong>${icon} ${escapeHtml(mechanicStatusLabel(r))}</strong><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || "")}</span></div>
+      ${d.sent_immediately ? `<p class="mechanic-immediate-badge">🚨 Evidentirano odmah</p>` : ""}
       <h4>${escapeHtml(mechanicDefectAssetName(r))}</h4>
       <p><b>Gradilište:</b> ${escapeHtml(mechanicDefectSiteName(r))}</p>
       <p><b>Problem:</b> ${escapeHtml(mechanicDefectText(r))}</p>
