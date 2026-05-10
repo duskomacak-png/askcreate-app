@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.6";
+const APP_VERSION = "1.30.7";
 
 
 let sb = null;
@@ -229,7 +229,8 @@ function show(view) {
     const loginCard = document.querySelector("#viewWorkerLogin .card");
     if (loginCard) loginCard.classList.remove("worker-company-locked-card");
   }
-  document.body.classList.toggle("worker-field-theme", view === "WorkerForm");
+  document.body.classList.toggle("worker-field-theme", view === "WorkerForm" || view === "MechanicBossPanel");
+  document.body.classList.toggle("mechanic-boss-mode", view === "MechanicBossPanel");
   if (view !== "WorkerForm") document.body.classList.remove("worker-desktop-panel");
   if (publicViews.includes(view)) {
     clearCompanyBrandFromBody();
@@ -1342,6 +1343,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "defects", group: "field", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
   { key: "desktop_panel", group: "layout", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
   { key: "site_daily_log", group: "layout", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
+  { key: "mechanic_boss", group: "layout", title: "Šef mehanizacije", lines: ["Poseban panel za kvarove", "Novi / aktivni / rešeni kvarovi", "Preuzmi, U radu, Rešeno, napomena"] },
   { key: "view_reports", group: "office", title: "Pregled izveštaja", lines: ["Kancelarijsko ovlašćenje - nije polje u terenskom izveštaju"] },
   { key: "approve_reports", group: "office", title: "Odobravanje izveštaja", lines: ["Kancelarijsko ovlašćenje - odobravanje ili vraćanje izveštaja"] },
   { key: "excel_export", group: "office", title: "Izvoz u Excel", lines: ["Kancelarijsko ovlašćenje - priprema i preuzimanje Excel/CSV izvoza"] },
@@ -8864,8 +8866,11 @@ async function loginWorkerByCode() {
 
     localStorage.setItem("swp_worker", JSON.stringify(currentWorker));
     localStorage.setItem("swp_worker_company_code", currentWorker.company_code || companyCode);
+    const keepMechanic = !!$("#workerKeepLogin")?.checked && isMechanicBossWorker(currentWorker);
+    if (keepMechanic) localStorage.setItem("swp_mechanic_keep_login", "1");
+    else localStorage.removeItem("swp_mechanic_keep_login");
     openWorkerForm();
-    toast("Zaposleni je prijavljen.");
+    toast(isMechanicBossWorker(currentWorker) ? "Šef mehanizacije je prijavljen." : "Zaposleni je prijavljen.");
   } catch(e) {
     toast(e.message, true);
   }
@@ -9056,10 +9061,14 @@ function bindEvents() {
 
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
   if ($("#workerInstallBtn")) $("#workerInstallBtn").addEventListener("click", installWorkerApp);
+  if ($("#refreshMechanicDefectsBtn")) $("#refreshMechanicDefectsBtn").addEventListener("click", () => loadMechanicBossDefects({ silent: false }));
+  if ($("#mechanicLogoutBtn")) $("#mechanicLogoutBtn").addEventListener("click", logoutMechanicBoss);
 
   $("#workerLogoutBtn").addEventListener("click", () => {
+    stopMechanicBossWatcher();
     localStorage.removeItem("swp_worker");
     localStorage.removeItem("swp_draft");
+    localStorage.removeItem("swp_mechanic_keep_login");
     currentWorker = null;
     const workerLogout = $("#workerLogoutBtn");
     if (workerLogout) {
@@ -9121,6 +9130,254 @@ function bindEvents() {
 }
 
 
+
+let mechanicBossTimer = null;
+let mechanicBossLastNewCount = 0;
+let mechanicBossLastSignature = "";
+let mechanicBossReportsCache = [];
+
+function isMechanicBossWorker(worker = currentWorker) {
+  const perms = worker?.permissions || {};
+  return !!(perms.mechanic_boss || perms.mechanicBoss || perms.mechanic_manager || perms.head_mechanic);
+}
+
+function stopMechanicBossWatcher() {
+  if (mechanicBossTimer) clearInterval(mechanicBossTimer);
+  mechanicBossTimer = null;
+}
+
+function mechanicStatusRaw(report) {
+  const d = report?.data || {};
+  return String(d.defect_status || "novo").toLowerCase().trim();
+}
+
+function mechanicStatusGroup(report) {
+  const s = mechanicStatusRaw(report).replace(/\s+/g, "_");
+  if (["reseno", "rešeno", "resolved", "done"].includes(s)) return "resolved";
+  if (["preuzeto", "u_radu", "u_popravci", "primljeno", "active"].includes(s)) return "active";
+  return "new";
+}
+
+function mechanicStatusLabel(report) {
+  const g = mechanicStatusGroup(report);
+  const s = mechanicStatusRaw(report);
+  if (g === "resolved") return "Rešeno";
+  if (["u_radu", "u popravci", "u_popravci"].includes(s)) return "U radu";
+  if (["preuzeto", "primljeno"].includes(s)) return "Preuzeto";
+  return "Novo";
+}
+
+function mechanicDefectAssetName(report) {
+  const d = report?.data || {};
+  return [
+    d.defect_asset_code,
+    d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || d.defect_manual_asset_name,
+    d.defect_asset_registration
+  ].filter(Boolean).join(" · ") || "—";
+}
+
+function mechanicDefectSiteName(report) {
+  const d = report?.data || {};
+  return d.defect_site_name || d.site_name || d.location || "—";
+}
+
+function mechanicDefectReporter(report) {
+  const d = report?.data || {};
+  if (report?.company_users) return `${report.company_users.first_name || ""} ${report.company_users.last_name || ""}`.trim() || "—";
+  return d.created_by_worker || d.worker_name || d.created_by || "—";
+}
+
+function mechanicDefectText(report) {
+  const d = report?.data || {};
+  return d.defect || d.defect_description || d.problem || "Bez opisa kvara";
+}
+
+function mechanicDefectTime(report) {
+  const d = report?.data || {};
+  return d.defect_reported_at || report?.submitted_at || report?.created_at || report?.report_date || "";
+}
+
+function renderMechanicBossDefects() {
+  const tableBody = $("#mechanicBossTableBody");
+  const cards = $("#mechanicBossCards");
+  const newBox = $("#mechanicNewDefects");
+  const activeBox = $("#mechanicActiveDefects");
+  const resolvedBox = $("#mechanicResolvedDefects");
+  const badge = $("#mechanicNewBadge");
+  const list = Array.isArray(mechanicBossReportsCache) ? mechanicBossReportsCache : [];
+
+  const countNew = list.filter(r => mechanicStatusGroup(r) === "new").length;
+  const countActive = list.filter(r => mechanicStatusGroup(r) === "active").length;
+  const countResolved = list.filter(r => mechanicStatusGroup(r) === "resolved").length;
+  if (badge) badge.textContent = `${countNew} novih · ${countActive} aktivnih · ${countResolved} rešenih`;
+
+  const actionsHtml = (r) => `
+    <div class="mechanic-actions">
+      <button class="secondary small-action" type="button" onclick="updateMechanicDefectStatus('${escapeHtml(r.id)}','preuzeto')">Preuzmi kvar</button>
+      <button class="secondary small-action" type="button" onclick="updateMechanicDefectStatus('${escapeHtml(r.id)}','u_radu')">U radu</button>
+      <button class="primary small-action" type="button" onclick="updateMechanicDefectStatus('${escapeHtml(r.id)}','reseno')">Rešeno</button>
+      <button class="secondary small-action" type="button" onclick="addMechanicDefectNote('${escapeHtml(r.id)}')">Napomena</button>
+    </div>`;
+
+  const rowHtml = list.map(r => {
+    const d = r.data || {};
+    return `<tr class="mechanic-row mechanic-${mechanicStatusGroup(r)}">
+      <td>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || mechanicDefectTime(r))}</td>
+      <td><b>${escapeHtml(mechanicDefectAssetName(r))}</b>${d.defect_asset_code ? `<small>Interni broj: ${escapeHtml(d.defect_asset_code)}</small>` : ""}</td>
+      <td>${escapeHtml(mechanicDefectSiteName(r))}</td>
+      <td>${escapeHtml(mechanicDefectText(r))}${d.mechanic_note ? `<small>Napomena: ${escapeHtml(d.mechanic_note)}</small>` : ""}</td>
+      <td>${escapeHtml(mechanicDefectReporter(r))}</td>
+      <td><span class="mechanic-status-pill status-${mechanicStatusGroup(r)}">${escapeHtml(mechanicStatusLabel(r))}</span></td>
+      <td>${actionsHtml(r)}</td>
+    </tr>`;
+  }).join("");
+
+  if (tableBody) tableBody.innerHTML = rowHtml || `<tr><td colspan="7" class="muted">Nema prijavljenih kvarova za ovu firmu.</td></tr>`;
+
+  const cardHtml = list.map(r => {
+    const d = r.data || {};
+    const group = mechanicStatusGroup(r);
+    const icon = group === "new" ? "🔴" : group === "active" ? "🟠" : "🟢";
+    return `<article class="mechanic-card mechanic-${group}">
+      <div class="mechanic-card-head"><strong>${icon} ${escapeHtml(mechanicStatusLabel(r))}</strong><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || "")}</span></div>
+      <h4>${escapeHtml(mechanicDefectAssetName(r))}</h4>
+      <p><b>Gradilište:</b> ${escapeHtml(mechanicDefectSiteName(r))}</p>
+      <p><b>Problem:</b> ${escapeHtml(mechanicDefectText(r))}</p>
+      <p><b>Prijavio:</b> ${escapeHtml(mechanicDefectReporter(r))}</p>
+      ${d.mechanic_note ? `<p><b>Napomena:</b> ${escapeHtml(d.mechanic_note)}</p>` : ""}
+      ${actionsHtml(r)}
+    </article>`;
+  }).join("");
+  if (cards) cards.innerHTML = cardHtml || `<p class="muted">Nema prijavljenih kvarova.</p>`;
+
+  const renderGroup = (box, group, empty) => {
+    if (!box) return;
+    const groupRows = list.filter(r => mechanicStatusGroup(r) === group);
+    box.innerHTML = groupRows.map(r => `<div class="mechanic-mini-line"><b>${escapeHtml(mechanicDefectAssetName(r))}</b><span>${escapeHtml(mechanicDefectSiteName(r))}</span><small>${escapeHtml(mechanicDefectText(r))}</small></div>`).join("") || `<p class="muted tiny">${empty}</p>`;
+  };
+  renderGroup(newBox, "new", "Nema novih kvarova.");
+  renderGroup(activeBox, "active", "Nema aktivnih kvarova.");
+  renderGroup(resolvedBox, "resolved", "Nema rešenih kvarova u listi.");
+}
+
+async function loadMechanicBossDefects({ silent = false } = {}) {
+  if (!currentWorker?.company_id || !sb) return;
+  try {
+    const { data, error } = await sb
+      .from("reports")
+      .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
+      .eq("company_id", currentWorker.company_id)
+      .order("submitted_at", { ascending: false, nullsFirst: false })
+      .limit(200);
+    if (error) throw error;
+    const defects = (data || []).filter(hasDefectData);
+    mechanicBossReportsCache = await attachReportUsersFallback(defects);
+    const newReports = mechanicBossReportsCache.filter(r => mechanicStatusGroup(r) === "new");
+    const signature = newReports.map(r => r.id).join("|");
+    if (signature && mechanicBossLastSignature && signature !== mechanicBossLastSignature && newReports.length >= mechanicBossLastNewCount) {
+      showMechanicNewDefectSignal();
+    }
+    mechanicBossLastSignature = signature;
+    mechanicBossLastNewCount = newReports.length;
+    renderMechanicBossDefects();
+    if (!silent) toast("Kvarovi su osveženi.");
+  } catch (e) {
+    console.warn("Ne mogu učitati kvarove za šefa mehanizacije:", e);
+    if (!silent) toast(e.message || "Ne mogu učitati kvarove.", true);
+  }
+}
+
+function showMechanicNewDefectSignal() {
+  const signal = $("#mechanicNewSignal");
+  if (signal) {
+    signal.classList.remove("hidden");
+    signal.textContent = "🔴 Novi kvar prijavljen";
+  }
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.value = 0.04;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      setTimeout(() => { osc.stop(); ctx.close?.(); }, 180);
+    }
+  } catch {}
+  toast("Novi kvar prijavljen 🚨");
+}
+
+async function openMechanicBossPanel() {
+  stopMechanicBossWatcher();
+  await applyWorkerCompanyBrand();
+  setInternalHeader("Šef mehanizacije", `${currentWorker?.full_name || "Zaposleni"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  const name = $("#mechanicBossName");
+  const label = $("#mechanicBossCompanyLabel");
+  if (name) name.textContent = currentWorker?.full_name || "Šef mehanizacije";
+  if (label) label.textContent = `${currentWorker?.company_name || "Firma"} · panel kvarova`;
+  show("MechanicBossPanel");
+  await loadMechanicBossDefects({ silent: true });
+  mechanicBossTimer = setInterval(() => loadMechanicBossDefects({ silent: true }), 30000);
+}
+
+window.updateMechanicDefectStatus = async (id, newStatus) => {
+  try {
+    if (!currentWorker?.company_id) throw new Error("Šef mehanizacije nije prijavljen.");
+    const { data: row, error: readError } = await sb.from("reports").select("data, company_id").eq("id", id).eq("company_id", currentWorker.company_id).maybeSingle();
+    if (readError) throw readError;
+    const d = row?.data || {};
+    d.defect_status = newStatus;
+    d.mechanic_status = newStatus;
+    d.mechanic_updated_by = currentWorker.full_name || "Šef mehanizacije";
+    d.mechanic_updated_at = new Date().toISOString();
+    if (newStatus === "preuzeto") d.defect_received_at = d.defect_received_at || new Date().toISOString();
+    if (newStatus === "u_radu") d.defect_repair_started_at = d.defect_repair_started_at || new Date().toISOString();
+    if (newStatus === "reseno") d.defect_resolved_at = d.defect_resolved_at || new Date().toISOString();
+    const { error } = await sb.from("reports").update({ data: d }).eq("id", id).eq("company_id", currentWorker.company_id);
+    if (error) throw error;
+    toast("Status kvara je promenjen.");
+    await loadMechanicBossDefects({ silent: true });
+  } catch(e) {
+    toast(e.message || String(e), true);
+  }
+};
+
+window.addMechanicDefectNote = async (id) => {
+  try {
+    if (!currentWorker?.company_id) throw new Error("Šef mehanizacije nije prijavljen.");
+    const current = mechanicBossReportsCache.find(r => String(r.id) === String(id));
+    const oldNote = current?.data?.mechanic_note || "";
+    const note = prompt("Napomena mehanizacije za ovaj kvar:", oldNote);
+    if (note === null) return;
+    const { data: row, error: readError } = await sb.from("reports").select("data, company_id").eq("id", id).eq("company_id", currentWorker.company_id).maybeSingle();
+    if (readError) throw readError;
+    const d = row?.data || {};
+    d.mechanic_note = note.trim();
+    d.mechanic_note_by = currentWorker.full_name || "Šef mehanizacije";
+    d.mechanic_note_at = new Date().toISOString();
+    const { error } = await sb.from("reports").update({ data: d }).eq("id", id).eq("company_id", currentWorker.company_id);
+    if (error) throw error;
+    toast("Napomena je sačuvana.");
+    await loadMechanicBossDefects({ silent: true });
+  } catch(e) {
+    toast(e.message || String(e), true);
+  }
+};
+
+function logoutMechanicBoss() {
+  stopMechanicBossWatcher();
+  localStorage.removeItem("swp_worker");
+  localStorage.removeItem("swp_mechanic_keep_login");
+  currentWorker = null;
+  clearCompanyBrandFromBody();
+  setInternalHeader("", "", false);
+  show("WorkerLogin");
+}
+
 async function applyWorkerCompanyBrand() {
   try {
     if (!currentWorker?.company_id || !sb) {
@@ -9144,6 +9401,9 @@ async function applyWorkerCompanyBrand() {
 
 async function openWorkerForm() {
   await applyWorkerCompanyBrand();
+  if (isMechanicBossWorker(currentWorker)) {
+    return openMechanicBossPanel();
+  }
   $("#wrDate").value = today();
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
@@ -9209,7 +9469,19 @@ async function boot() {
   // Zaposleni uvek vidi samo unos svog radničkog koda, pa tek onda ulazi u svoje štiklirane rubrike.
   if (qrCompanyCode || storedCompanyCode) {
     if (qrCompanyCode) localStorage.setItem("swp_worker_company_code", qrCompanyCode);
+    const keepMechanic = localStorage.getItem("swp_mechanic_keep_login") === "1";
+    if (stored && keepMechanic) {
+      try {
+        currentWorker = JSON.parse(stored);
+        if (isMechanicBossWorker(currentWorker)) {
+          openWorkerForm();
+          if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+          return;
+        }
+      } catch {}
+    }
     localStorage.removeItem("swp_worker");
+    localStorage.removeItem("swp_mechanic_keep_login");
     show("WorkerLogin");
     applyWorkerCompanyContextFromUrlOrStorage();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});

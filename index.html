@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1306" />
+  <link rel="stylesheet" href="style.css?v=1307" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -492,7 +492,8 @@
                 <p class="muted tiny">Ove stavke menjaju način prikaza. Same po sebi ne dodaju novu poslovnu rubriku u običan radnički izveštaj.</p>
                 <label><input type="checkbox" class="perm" value="desktop_panel" /> Laptop prikaz</label>
                 <label><input type="checkbox" class="perm" value="site_daily_log" /> Dnevnik gradilišta</label>
-                <p class="muted tiny permission-note">Dnevnik gradilišta otvara poseban A4 modul za odgovorno lice: zaposleni, materijali, ture, opis radova, plan za sutra i overa.</p>
+                <label><input type="checkbox" class="perm" value="mechanic_boss" /> Šef mehanizacije</label>
+                <p class="muted tiny permission-note">Dnevnik gradilišta otvara poseban A4 modul za odgovorno lice. Šef mehanizacije otvara poseban panel samo za kvarove/mehanizaciju.</p>
               </div>
 
               <div class="permission-group permission-group-office">
@@ -865,8 +866,71 @@
             <label id="workerAccessCodeLabel">Pristupni kod zaposlenog</label>
         <input id="workerAccessCode" placeholder="unesite svoj kod" autocomplete="one-time-code" />
         <p id="workerAccessCodeNote" class="code-login-note">Kod zaposlenog koji je Uprava firme upisala u profilu zaposlenog.</p>
+        <label class="keep-login-option"><input id="workerKeepLogin" type="checkbox" /> Ostani prijavljen na ovom uređaju <span>— koristi se za Šefa mehanizacije, da PWA ikona odmah otvara panel kvarova.</span></label>
         <button id="workerLoginBtn" class="primary">Uđi u svoj profil</button>
-        <p class="hint">Telefon pamti firmu. Zaposleni svaki put vidi samo unos svog koda.</p>
+        <p class="hint">Običan zaposleni i dalje svaki put unosi svoj kod. Šef mehanizacije može ostati prijavljen ako je čekirano i ako mu je Uprava dala tu dozvolu.</p>
+      </div>
+    </section>
+
+
+
+    <section id="viewMechanicBossPanel" class="view">
+      <div class="dashboard-head mechanic-boss-head">
+        <div>
+          <p class="business-eyebrow">Panel šefa mehanizacije</p>
+          <h2 id="mechanicBossName">Šef mehanizacije</h2>
+          <p id="mechanicBossCompanyLabel">Kvarovi i mehanizacija</p>
+        </div>
+        <div class="mechanic-head-actions">
+          <span id="mechanicNewBadge" class="mechanic-badge">0 novih · 0 aktivnih · 0 rešenih</span>
+          <button id="refreshMechanicDefectsBtn" class="secondary" type="button">Osveži kvarove</button>
+          <button id="mechanicLogoutBtn" class="secondary" type="button">Odjavi uređaj</button>
+        </div>
+      </div>
+
+      <div id="mechanicNewSignal" class="mechanic-new-signal hidden">🔴 Novi kvar prijavljen</div>
+
+      <div class="mechanic-summary-grid">
+        <div class="card mechanic-summary-card mechanic-new">
+          <h3>Novi kvarovi</h3>
+          <div id="mechanicNewDefects" class="mechanic-mini-list"></div>
+        </div>
+        <div class="card mechanic-summary-card mechanic-active">
+          <h3>Aktivni kvarovi</h3>
+          <div id="mechanicActiveDefects" class="mechanic-mini-list"></div>
+        </div>
+        <div class="card mechanic-summary-card mechanic-resolved">
+          <h3>Rešeni kvarovi</h3>
+          <div id="mechanicResolvedDefects" class="mechanic-mini-list"></div>
+        </div>
+      </div>
+
+      <div class="card mechanic-table-card">
+        <div class="mechanic-table-title">
+          <div>
+            <h3>Kvarovi za mehanizaciju</h3>
+            <p class="hint">Panel proverava nove kvarove svakih 30 sekundi dok je aplikacija otvorena.</p>
+          </div>
+        </div>
+        <div class="mechanic-table-wrap">
+          <table class="mechanic-table">
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Mašina / vozilo</th>
+                <th>Gradilište</th>
+                <th>Problem</th>
+                <th>Prijavio</th>
+                <th>Status</th>
+                <th>Akcija</th>
+              </tr>
+            </thead>
+            <tbody id="mechanicBossTableBody">
+              <tr><td colspan="7" class="muted">Učitavam kvarove...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="mechanicBossCards" class="mechanic-mobile-cards"></div>
       </div>
     </section>
 
@@ -1163,6 +1227,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1306"></script>
+  <script src="script.js?v=1307"></script>
 </body>
 </html>

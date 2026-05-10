@@ -5100,3 +5100,85 @@ body.in-app #viewDirectorDashboard.director-business-page,
   .admin-director-bridge{grid-template-columns:1fr!important}
   .admin-bridge-flow{justify-content:flex-start!important}
 }
+
+
+/* v1.30.7 — Šef mehanizacije panel */
+.keep-login-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, .35);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, .04);
+  margin: 10px 0;
+  font-weight: 700;
+}
+.keep-login-option span { display:block; font-weight: 500; color: #64748b; font-size: .86rem; margin-top: 2px; }
+.mechanic-boss-mode .app-shell { background: #0f172a; }
+.mechanic-boss-head {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border: 1px solid rgba(148, 163, 184, .25);
+  color: #f8fafc;
+}
+.mechanic-boss-head p,
+.mechanic-boss-head .business-eyebrow { color: #cbd5e1; }
+.mechanic-head-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
+.mechanic-badge {
+  display:inline-flex; align-items:center; padding:8px 12px; border-radius:999px;
+  background: rgba(248, 250, 252, .12); color:#f8fafc; border:1px solid rgba(248,250,252,.2); font-weight:800;
+}
+.mechanic-new-signal {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  font-weight: 900;
+}
+.mechanic-summary-grid {
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.mechanic-summary-card { border-left: 4px solid #94a3b8; }
+.mechanic-summary-card.mechanic-new { border-left-color: #dc2626; }
+.mechanic-summary-card.mechanic-active { border-left-color: #f97316; }
+.mechanic-summary-card.mechanic-resolved { border-left-color: #16a34a; }
+.mechanic-mini-list { display:flex; flex-direction:column; gap:8px; }
+.mechanic-mini-line { padding:9px 10px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; }
+.mechanic-mini-line b, .mechanic-mini-line span, .mechanic-mini-line small { display:block; }
+.mechanic-mini-line span { color:#475569; font-size:.88rem; }
+.mechanic-mini-line small { color:#64748b; margin-top:2px; }
+.mechanic-table-card { margin-top: 12px; }
+.mechanic-table-title { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.mechanic-table-wrap { overflow-x:auto; }
+.mechanic-table { width:100%; border-collapse:collapse; min-width: 920px; }
+.mechanic-table th {
+  text-align:left; padding:10px; background:#0f172a; color:#f8fafc; font-size:.82rem; letter-spacing:.02em;
+}
+.mechanic-table td { padding:10px; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+.mechanic-table td small { display:block; color:#64748b; margin-top:4px; }
+.mechanic-row.mechanic-new td { background:#fff7f7; }
+.mechanic-row.mechanic-active td { background:#fff7ed; }
+.mechanic-row.mechanic-resolved td { background:#f0fdf4; }
+.mechanic-status-pill { display:inline-flex; padding:6px 9px; border-radius:999px; font-weight:900; font-size:.78rem; }
+.mechanic-status-pill.status-new { background:#fee2e2; color:#991b1b; }
+.mechanic-status-pill.status-active { background:#ffedd5; color:#9a3412; }
+.mechanic-status-pill.status-resolved { background:#dcfce7; color:#166534; }
+.mechanic-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.mechanic-actions .small-action { padding:7px 9px; font-size:.8rem; }
+.mechanic-mobile-cards { display:none; }
+.mechanic-card { border:1px solid #e2e8f0; border-radius:16px; padding:12px; background:#fff; margin-bottom:10px; }
+.mechanic-card-head { display:flex; justify-content:space-between; gap:8px; color:#64748b; font-size:.85rem; }
+.mechanic-card h4 { margin:6px 0; }
+.mechanic-card p { margin:5px 0; }
+@media (max-width: 780px) {
+  .mechanic-summary-grid { grid-template-columns: 1fr; }
+  .mechanic-head-actions { justify-content:flex-start; }
+  .mechanic-table-wrap { display:none; }
+  .mechanic-mobile-cards { display:block; }
+  .mechanic-boss-head { align-items:flex-start; }
+}
