@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.2";
+const APP_VERSION = "1.30.3";
 
 
 let sb = null;
@@ -836,8 +836,9 @@ function renderAdminDirectorPreview(c) {
         <button>🏠 Početna / Ljudi</button>
         <button>🏗️ Gradilišta</button>
         <button>🚚 Sredstva rada</button>
-        <button>📄 Dnevni radni izveštaji</button>
-        <button>📊 Izvoz u Excel</button>
+        <button>📦 Materijali</button>
+        <button>📄 Izveštaji</button>
+        <button>⚙️ Podešavanja</button>
       </aside>
       <main class="preview-main">
         <div class="preview-topbar">
@@ -863,13 +864,13 @@ function renderAdminDirectorPreview(c) {
             <div class="preview-table-row"><span>Kvar mašine</span><b>Za proveru</b></div>
           </section>
           <section>
-            <h4>Brze akcije</h4>
-            <button>➕ Novi zaposleni</button>
-            <button>🏗️ Novo gradilište</button>
-            <button>📥 Preuzmi Excel</button>
+            <h4>Povezanost sa Adminom</h4>
+            <p>Admin podešava firmu, paket, status, boju i QR pristup. Uprava zatim u svom radnom prostoru vodi zaposlene, gradilišta, sredstva rada, materijale i izveštaje.</p>
+            <div class="preview-flow-row"><span>Admin</span><b>firma / paket / boja</b></div>
+            <div class="preview-flow-row"><span>Direkcija</span><b>radni prostor firme</b></div>
           </section>
         </div>
-        <p class="preview-note">Ovo je prozor za admin pregled. Ne ulaziš u tuđ nalog i ne menjaš izveštaje.</p>
+        <p class="preview-note"><b>Admin pregled:</b> ovo nije ulazak u nalog firme. Pregled služi da vidiš kako firma izgleda i šta joj je podešeno. Radnike, gradilišta, sredstva, materijale i izveštaje vodi Direkcija u svom radnom prostoru.</p>
       </main>
     </div>`;
 }
