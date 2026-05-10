@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.29.7";
+const APP_VERSION = "1.29.8";
 
 
 let sb = null;
@@ -4503,20 +4503,26 @@ async function loadWorkerMaterials(selectedValue = "") {
   try {
     let materials = normalizeWorkerMaterialList(permissionNames);
 
-    if (!materials.length && worker?.company_id && sb) {
-      const { data, error } = await sb.rpc("director_list_materials", {
-        p_company_id: worker.company_id
+    // Radnik/šef nije Direkcija i ne sme da koristi director_list_materials.
+    // Zato lista materijala za teren mora ići preko posebne RPC funkcije koja proverava
+    // company_code + access_code, isto kao worker_list_sites i worker_list_assets.
+    if (!materials.length && worker?.company_code && worker?.access_code && sb) {
+      const { data, error } = await sb.rpc("worker_list_materials", {
+        p_company_code: worker.company_code,
+        p_access_code: worker.access_code
       });
-      if (!error) materials = normalizeWorkerMaterialList((data || []).filter(m => m.active !== false));
+      if (!error) materials = normalizeWorkerMaterialList(data || []);
     }
 
+    // Fallback ostaje samo za staru/test bazu ako worker_list_materials još nije ubačen.
+    // U produkciji očekujemo RPC worker_list_materials, jer direktan select često blokira RLS.
     if (!materials.length && worker?.company_id && sb) {
       const { data, error } = await sb
         .from("materials")
-        .select("id,name,unit,category,active")
+        .select("id,name,unit,category")
         .eq("company_id", worker.company_id)
         .order("name", { ascending: true });
-      if (!error) materials = normalizeWorkerMaterialList((data || []).filter(m => m.active !== false));
+      if (!error) materials = normalizeWorkerMaterialList(data || []);
     }
 
     workerMaterialOptions = materials;
