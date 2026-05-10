@@ -4803,3 +4803,89 @@ body.in-app #viewDirectorDashboard.director-business-page,
 @media (max-width:980px){
   #viewDirectorDashboard .director-business-hero{border-left-width:3px!important;}
 }
+
+/* v1.29.3 — Direkcija: levi radni prostor + osnovni meni A, bez desnih brzih akcija */
+#viewDirectorDashboard .director-basic-menu{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:6px!important;
+}
+#viewDirectorDashboard .director-basic-menu .workspace-hidden-tab{
+  display:none!important;
+}
+#viewDirectorDashboard .director-nav-tabs .tab{
+  width:100%!important;
+  justify-content:flex-start!important;
+  text-align:left!important;
+  min-height:42px!important;
+  padding:10px 12px!important;
+  border-radius:10px!important;
+  font-weight:700!important;
+  letter-spacing:.01em!important;
+}
+#viewDirectorDashboard .director-nav-tabs .tab.active{
+  background:#e8f4ee!important;
+  border-color:#9ccfac!important;
+  color:#14532d!important;
+  box-shadow:inset 4px 0 0 #217346!important;
+}
+#viewDirectorDashboard .director-content-grid,
+#viewDirectorDashboard .director-content-grid-single{
+  display:block!important;
+  grid-template-columns:1fr!important;
+}
+#viewDirectorDashboard .director-content-main{
+  width:100%!important;
+  max-width:none!important;
+}
+#viewDirectorDashboard .business-quick-actions{
+  display:none!important;
+}
+#viewDirectorDashboard .workspace-section-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  padding:0 0 14px!important;
+  margin:0 0 14px!important;
+  border-bottom:1px solid #dde7e1!important;
+}
+#viewDirectorDashboard .workspace-section-head h3{
+  margin:0 0 4px!important;
+  font-size:22px!important;
+}
+#viewDirectorDashboard .workspace-subnav{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  justify-content:flex-end!important;
+}
+#viewDirectorDashboard .workspace-subnav .small-action{
+  min-height:34px!important;
+  padding:7px 10px!important;
+  white-space:nowrap!important;
+}
+#viewDirectorDashboard .reports-workspace-card{
+  padding:16px!important;
+}
+@media (max-width: 900px){
+  #viewDirectorDashboard .workspace-section-head{
+    flex-direction:column!important;
+  }
+  #viewDirectorDashboard .workspace-subnav{
+    justify-content:flex-start!important;
+  }
+}
+@media (max-width: 760px){
+  #viewDirectorDashboard .director-basic-menu{
+    flex-direction:row!important;
+    overflow-x:auto!important;
+    gap:8px!important;
+  }
+  #viewDirectorDashboard .director-nav-tabs .tab{
+    width:auto!important;
+    white-space:nowrap!important;
+    min-height:36px!important;
+    padding:8px 10px!important;
+  }
+}

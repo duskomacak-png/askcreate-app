@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1292" />
+  <link rel="stylesheet" href="style.css?v=1293" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -364,15 +364,15 @@
             <span>uprava firme</span>
           </div>
         </div>
-        <div class="tabs director-nav-tabs">
+        <div class="tabs director-nav-tabs director-basic-menu">
           <button class="tab active" data-tab="people">🏠 Početna / Ljudi</button>
           <button class="tab" data-tab="sites">🏗️ Gradilišta</button>
           <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
-          <button class="tab" data-tab="materials">📦 Evidencija materijala</button>
-          <button class="tab" data-tab="reports">📄 Dnevni radni izveštaji</button>
-          <button class="tab" data-tab="defects">🛠️ Kvarovi</button>
-          <button class="tab" data-tab="export">📊 Izvoz u Excel</button>
-          <button class="tab" data-tab="support">❔ Pomoć i podrška</button>
+          <button class="tab" data-tab="materials">📦 Materijali</button>
+          <button class="tab" data-tab="reports">📄 Izveštaji</button>
+          <button class="tab" data-tab="support">⚙️ Podešavanja</button>
+          <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
+          <button class="tab workspace-hidden-tab" data-tab="export" type="button">📊 Izvoz u Excel</button>
         </div>
       </aside>
 
@@ -432,7 +432,7 @@
           <div id="directorSearchResultsList" class="list"></div>
         </div>
 
-        <div class="director-content-grid">
+        <div class="director-content-grid director-content-grid-single">
           <div class="director-content-main">
       <div id="tabPeople" class="tab-panel active">
         <div class="grid two">
@@ -591,7 +591,19 @@
       </div>
 
       <div id="tabReports" class="tab-panel">
-        <div class="card">
+        <div class="card reports-workspace-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Radni prostor</p>
+              <h3>Izveštaji</h3>
+              <p class="muted">Ovde su dnevni izveštaji, kvarovi i Excel izvoz. Sve je na jednom mestu, bez dodatne desne kolone.</p>
+            </div>
+            <div class="workspace-subnav">
+              <button class="secondary small-action" type="button" data-business-tab="reports">Dnevni izveštaji</button>
+              <button class="secondary small-action" type="button" data-business-tab="defects">Kvarovi</button>
+              <button class="primary small-action" type="button" data-business-tab="export">Excel izvoz</button>
+            </div>
+          </div>
           <h3>Inbox izveštaja</h3>
           <p class="muted">Štikliraj dnevne izveštaje koje želiš da prebaciš u izvoz za Excel.</p>
           <div class="director-live-refresh-line">
@@ -798,13 +810,6 @@
         </div>
       </div>
           </div>
-          <aside class="business-quick-actions card">
-            <h3>Brze akcije</h3>
-            <button type="button" class="quick-action green" data-business-tab="people">➕ Novi zaposleni <span>›</span></button>
-            <button type="button" class="quick-action green" data-business-tab="sites">➕ Novo gradilište <span>›</span></button>
-            <button type="button" class="quick-action light" data-business-tab="assets">➕ Novo sredstvo rada <span>›</span></button>
-            <button type="button" class="quick-action light" data-business-tab="materials">➕ Novi materijal <span>›</span></button>
-          </aside>
         </div>
       </div>
     </section>
@@ -1136,6 +1141,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1292"></script>
+  <script src="script.js?v=1293"></script>
 </body>
 </html>
