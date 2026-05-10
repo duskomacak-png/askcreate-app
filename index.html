@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1295" />
+  <link rel="stylesheet" href="style.css?v=1296" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -522,7 +522,8 @@
           <div class="card">
             <h3 id="siteFormTitle">+ Dodaj gradilište</h3>
             <label>Naziv</label>
-            <input id="siteName" placeholder="Gradilište 1" />
+            <input id="siteName" placeholder="Gradilište 1" autocomplete="off" />
+            <div id="siteNameStatus" class="person-code-status muted tiny">Naziv gradilišta mora biti jedinstven u ovoj firmi. Ne upisuj isto gradilište dva puta.</div>
             <label>Lokacija / opis</label>
             <input id="siteLocation" placeholder="Mesto, ulica, deonica..." />
             <div class="form-actions-inline"><button id="addSiteBtn" class="primary" type="button">Sačuvaj gradilište</button><button id="cancelEditSiteBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
@@ -540,6 +541,7 @@
             <h3 id="assetFormTitle">+ Dodaj sredstvo</h3>
             <label>Interni broj sredstva</label>
             <input id="assetCode" placeholder="npr. 101, B-12, KAM-05" autocomplete="off" />
+            <div id="assetCodeStatus" class="person-code-status muted tiny">Interni broj sredstva mora biti jedinstven u ovoj firmi. Ne koristi isti broj za dve mašine, vozila ili opremu.</div>
             <p class="field-hint">Ovaj broj služi da zaposleni ukuca/pronađe sredstvo po broju, a aplikacija pokaže pravi naziv.</p>
             <label>Naziv</label>
             <input id="assetName" placeholder="CAT 330 / MAN kiper" />
@@ -1143,6 +1145,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1295"></script>
+  <script src="script.js?v=1296"></script>
 </body>
 </html>

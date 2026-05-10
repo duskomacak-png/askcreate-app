@@ -4890,7 +4890,7 @@ body.in-app #viewDirectorDashboard.director-business-page,
   }
 }
 
-/* v1.29.4 - bezbedniji unos pristupnog koda zaposlenog */
+/* v1.29.4-1.29.6 - bezbedniji unosi: kod zaposlenog, interni broj sredstva, naziv gradilišta i naziv materijala */
 .person-code-status {
   display: block;
   margin: 6px 0 12px;

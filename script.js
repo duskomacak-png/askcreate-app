@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.29.5";
+const APP_VERSION = "1.29.6";
 
 
 let sb = null;
@@ -1491,6 +1491,75 @@ function clearAssetForm() {
   if (type) type.value = "machine";
   editingAssetId = null;
   setAssetFormMode("add");
+  setAssetCodeStatus("Interni broj sredstva mora biti jedinstven u ovoj firmi. Ne koristi isti broj za dve mašine, vozila ili opremu.", "info");
+}
+
+function setAssetCodeStatus(message, type = "info") {
+  const el = $("#assetCodeStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("code-ok", "code-bad", "code-info");
+  el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+}
+
+function normalizeUniqueKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function findDuplicateAssetCode(rawCode) {
+  if (!currentCompany) return null;
+  const wanted = normalizeUniqueKey(rawCode);
+  if (!wanted) return null;
+
+  const { data, error } = await sb
+    .from("assets")
+    .select("id, asset_code, name, registration, active")
+    .eq("company_id", currentCompany.id);
+  if (error) throw error;
+
+  return (data || []).find(asset => {
+    if (editingAssetId && String(asset.id) === String(editingAssetId)) return false;
+    return normalizeUniqueKey(asset.asset_code) === wanted;
+  }) || null;
+}
+
+let assetCodeCheckTimer = null;
+async function checkAssetCodeAvailability(showFreeMessage = true) {
+  const input = $("#assetCode");
+  if (!input) return true;
+  const code = input.value.trim();
+
+  if (!code) {
+    setAssetCodeStatus("Interni broj nije obavezan, ali ako ga upišeš mora biti jedinstven u ovoj firmi.", "info");
+    return true;
+  }
+
+  const duplicate = await findDuplicateAssetCode(code);
+  if (duplicate) {
+    const assetName = duplicate.name ? ` — ${duplicate.name}` : "";
+    const reg = duplicate.registration ? ` · registracija/oznaka: ${duplicate.registration}` : "";
+    setAssetCodeStatus(`Interni broj ${code} već postoji u evidenciji${assetName}${reg}. Odredi drugi broj, jer jedan interni broj ne sme pripadati dvema sredstvima rada.`, "bad");
+    return false;
+  }
+
+  if (showFreeMessage) setAssetCodeStatus("Interni broj je slobodan. Možeš sačuvati sredstvo rada.", "ok");
+  return true;
+}
+
+function scheduleAssetCodeAvailabilityCheck() {
+  clearTimeout(assetCodeCheckTimer);
+  assetCodeCheckTimer = setTimeout(() => {
+    checkAssetCodeAvailability(true).catch(err => {
+      console.warn("Provera internog broja sredstva nije uspela", err);
+      setAssetCodeStatus("Ne mogu trenutno proveriti interni broj. Pokušaj ponovo ili sačuvaj pa će aplikacija proveriti.", "bad");
+    });
+  }, 350);
 }
 
 window.editAsset = async (id) => {
@@ -1512,6 +1581,7 @@ window.editAsset = async (id) => {
     document.querySelector("#assetReg").value = asset.registration || "";
     document.querySelector("#assetCapacity").value = asset.capacity || "";
     setAssetFormMode("edit");
+    checkAssetCodeAvailability(false).catch(() => {});
     toast("Sredstvo je otvoreno za izmenu.");
     const title = document.querySelector("#assetFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1530,6 +1600,13 @@ async function saveAssetForm() {
     const capacity = document.querySelector("#assetCapacity").value.trim();
 
     if (!name) throw new Error("Upiši naziv mašine/vozila.");
+
+    const duplicateAsset = await findDuplicateAssetCode(assetCode);
+    if (duplicateAsset) {
+      const assetName = duplicateAsset.name ? ` — ${duplicateAsset.name}` : "";
+      const reg = duplicateAsset.registration ? ` · registracija/oznaka: ${duplicateAsset.registration}` : "";
+      throw new Error(`Interni broj ${assetCode} već postoji u evidenciji${assetName}${reg}. Ne možeš dva puta koristiti isti interni broj sredstva. Izmeni postojeće sredstvo ili odredi drugi broj.`);
+    }
 
     const payload = {
       company_id: currentCompany.id,
@@ -1638,6 +1715,64 @@ function clearSiteForm() {
   if (location) location.value = "";
   editingSiteId = null;
   setSiteFormMode("add");
+  setSiteNameStatus("Naziv gradilišta mora biti jedinstven u ovoj firmi. Ne upisuj isto gradilište dva puta.", "info");
+}
+
+function setSiteNameStatus(message, type = "info") {
+  const el = $("#siteNameStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("code-ok", "code-bad", "code-info");
+  el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+}
+
+async function findDuplicateSiteName(rawName) {
+  if (!currentCompany) return null;
+  const wanted = normalizeUniqueKey(rawName);
+  if (!wanted) return null;
+
+  const { data, error } = await sb
+    .from("sites")
+    .select("id, name, location, active")
+    .eq("company_id", currentCompany.id);
+  if (error) throw error;
+
+  return (data || []).find(site => {
+    if (editingSiteId && String(site.id) === String(editingSiteId)) return false;
+    return normalizeUniqueKey(site.name) === wanted;
+  }) || null;
+}
+
+let siteNameCheckTimer = null;
+async function checkSiteNameAvailability(showFreeMessage = true) {
+  const input = $("#siteName");
+  if (!input) return true;
+  const name = input.value.trim();
+
+  if (!name) {
+    setSiteNameStatus("Naziv gradilišta mora biti jedinstven u ovoj firmi. Ne upisuj isto gradilište dva puta.", "info");
+    return true;
+  }
+
+  const duplicate = await findDuplicateSiteName(name);
+  if (duplicate) {
+    const location = duplicate.location ? ` · lokacija: ${duplicate.location}` : "";
+    setSiteNameStatus(`Gradilište sa ovim nazivom već postoji: ${duplicate.name}${location}. Ne pravi duplo gradilište — izmeni postojeće ili upiši drugačiji naziv.`, "bad");
+    return false;
+  }
+
+  if (showFreeMessage) setSiteNameStatus("Naziv gradilišta je slobodan. Možeš ga sačuvati u evidenciji firme.", "ok");
+  return true;
+}
+
+function scheduleSiteNameAvailabilityCheck() {
+  clearTimeout(siteNameCheckTimer);
+  siteNameCheckTimer = setTimeout(() => {
+    checkSiteNameAvailability(true).catch(err => {
+      console.warn("Provera naziva gradilišta nije uspela", err);
+      setSiteNameStatus("Ne mogu trenutno proveriti naziv gradilišta. Pokušaj ponovo ili sačuvaj pa će aplikacija proveriti.", "bad");
+    });
+  }, 350);
 }
 
 window.editSite = async (id) => {
@@ -1656,6 +1791,7 @@ window.editSite = async (id) => {
     $("#siteName").value = site.name || "";
     $("#siteLocation").value = site.location || "";
     setSiteFormMode("edit");
+    checkSiteNameAvailability(false).catch(() => {});
     toast("Gradilište je otvoreno za izmenu.");
     const title = $("#siteFormTitle");
     if (title) title.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1670,6 +1806,12 @@ async function saveSiteForm() {
     const name = $("#siteName").value.trim();
     const location = $("#siteLocation").value.trim();
     if (!name) throw new Error("Upiši naziv gradilišta.");
+
+    const duplicateSite = await findDuplicateSiteName(name);
+    if (duplicateSite) {
+      const duplicateLocation = duplicateSite.location ? ` · lokacija: ${duplicateSite.location}` : "";
+      throw new Error(`Gradilište sa ovim nazivom već postoji: ${duplicateSite.name}${duplicateLocation}. Ne možeš dva puta upisati isti naziv gradilišta. Izmeni postojeće gradilište ili odredi drugačiji naziv.`);
+    }
 
     const payload = { company_id: currentCompany.id, name, location, active: true };
 
@@ -8400,9 +8542,11 @@ function bindEvents() {
 
   $("#addSiteBtn").addEventListener("click", saveSiteForm);
   if ($("#cancelEditSiteBtn")) $("#cancelEditSiteBtn").addEventListener("click", clearSiteForm);
+  if ($("#siteName")) $("#siteName").addEventListener("input", scheduleSiteNameAvailabilityCheck);
 
   $("#addAssetBtn").addEventListener("click", saveAssetForm);
   if ($("#cancelEditAssetBtn")) $("#cancelEditAssetBtn").addEventListener("click", clearAssetForm);
+  if ($("#assetCode")) $("#assetCode").addEventListener("input", scheduleAssetCodeAvailabilityCheck);
 
 
   if ($("#directorSearchBtn")) $("#directorSearchBtn").addEventListener("click", () => runDirectorGlobalSearch(true));
