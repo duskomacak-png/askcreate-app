@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.30.3";
+const APP_VERSION = "1.30.4";
 
 
 let sb = null;
@@ -656,7 +656,7 @@ function renderAdminCompanyCard(c, compact = false) {
         <button class="secondary" onclick="adminCopyCompanyMessage('${c.id}','${messageType}')">📋 Poruka</button>
         <button class="secondary" onclick="adminOpenWhatsApp('${c.id}','${messageType}')">💬 WhatsApp</button>
         <button class="secondary" onclick="adminOpenEmail('${c.id}','${messageType}')">📧 Email</button>
-        ${compact ? "" : `<button class="secondary" onclick="adminSetApprovedStatus('${c.id}','active')">Aktiviraj</button><button class="secondary" onclick="adminSetApprovedStatus('${c.id}','blocked')">Blokiraj</button>`}
+        ${compact ? "" : `<button class="secondary" onclick="adminSetApprovedStatus('${c.id}','active')">Aktiviraj</button><button class="secondary" onclick="adminSetApprovedStatus('${c.id}','blocked')">Blokiraj</button><button class="delete-btn" onclick="adminDeleteCompanyEverything('approved_companies','${c.id}')">Trajno obriši firmu</button>`}
       </div>
     </div>`;
 }
@@ -787,6 +787,7 @@ async function loadCompanies() {
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','active')">Aktiviraj</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','expired')">Označi isteklo</button>
             <button class="secondary" onclick="adminSetCompanyStatus('${c.id}','blocked')">Blokiraj</button>
+            <button class="delete-btn" onclick="adminDeleteCompanyEverything('companies','${c.id}')">Trajno obriši firmu</button>
           </div>
         </div>`;
     }).join("") || `<p class="muted">Još nema registrovanih firmi.</p>`;
@@ -1122,6 +1123,56 @@ window.adminSetCompanyStatus = async (id, status) => {
   if (error) return toast(error.message, true);
   toast("Status firme promenjen.");
   loadCompanies();
+};
+
+
+window.adminDeleteCompanyEverything = async (table, id) => {
+  try {
+    const safeTable = table === "companies" ? "companies" : "approved_companies";
+    const source = safeTable === "companies"
+      ? adminRegisteredCompaniesCache.find(c => String(c.id) === String(id))
+      : adminApprovedCompaniesCache.find(c => String(c.id) === String(id));
+
+    if (!source) return toast("Firma nije pronađena u Admin listi.", true);
+
+    const companyCode = String(source.company_code || "").trim();
+    const companyName = source.company_name || source.name || "firma";
+    if (!companyCode) return toast("Ova firma nema šifru firme, ne mogu bezbedno da je obrišem.", true);
+
+    const firstConfirm = confirm(
+      "TRAJNO obrisati firmu i sve njene podatke?\n\n" +
+      "Firma: " + companyName + "\n" +
+      "Šifra firme: " + companyCode + "\n\n" +
+      "Briše se: Direkcija zapis, radnici, gradilišta, sredstva rada, materijali i izveštaji.\n" +
+      "Ovo koristi samo za test firme. Ova radnja se ne može vratiti."
+    );
+    if (!firstConfirm) return;
+
+    const typed = prompt(
+      "Za potvrdu trajnog brisanja upiši tačno šifru firme:\n\n" + companyCode
+    );
+    if (String(typed || "").trim() !== companyCode) {
+      return toast("Brisanje je otkazano. Šifra firme nije tačno upisana.", true);
+    }
+
+    const finalConfirm = confirm(
+      "POSLEDNJA PROVERA\n\n" +
+      "Ako klikneš OK, firma " + companyName + " i svi njeni podaci biće trajno obrisani iz baze.\n\n" +
+      "Nastaviti?"
+    );
+    if (!finalConfirm) return;
+
+    const { data, error } = await sb.rpc("admin_delete_company_everything", {
+      p_company_code: companyCode
+    });
+    if (error) throw error;
+
+    toast("Firma je trajno obrisana iz baze. Sada možeš napraviti novu čistu firmu sa istim emailom.");
+    await loadApprovedCompanies();
+    await loadCompanies();
+  } catch (e) {
+    toast((e && e.message ? e.message : e) || "Trajno brisanje firme nije uspelo. Proveri da li je SQL funkcija admin_delete_company_everything dodata u Supabase.", true);
+  }
 };
 
 async function loadDirectorCompany() {
