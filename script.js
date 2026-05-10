@@ -8,7 +8,10 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.31.2";
+// VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
+// Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
+const MECHANIC_VAPID_PUBLIC_KEY = "BNFB3Zs8op_mn7nUQgxcOQWCNco_jb7M7gdvTE__orfWVg8p5dGg6KWvJ4fM2Psg1eauWH0ybr5QnOLgjeMeQHs";
+const APP_VERSION = "1.31.5";
 
 
 let sb = null;
@@ -2678,6 +2681,9 @@ function defectHtml(r) {
       ${d.called_mechanic_by_phone ? `<span class="pill">Odgovorno lice mehanizacije pozvano: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
       <div class="report-kv">
+        <b>Status mehanizacije</b><span>${escapeHtml(d.mechanic_status || d.defect_status || "novo")}</span>
+        <b>Šef mehanizacije</b><span>${escapeHtml(d.mechanic_updated_by || "—")}</span>
+        <b>Napomena</b><span>${escapeHtml(d.mechanic_note || "—")}</span>
         <b>Primljeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_received_at))}</span>
         <b>Početak popravke</b><span>${escapeHtml(formatDateTimeLocal(d.defect_repair_started_at))}</span>
         <b>Rešeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_resolved_at))}</span>
@@ -8904,6 +8910,7 @@ async function sendDefectNow() {
 
     if (error) throw error;
 
+    sendMechanicPushAfterDefect(worker, urgentData);
     toast("Kvar je poslat odmah 🚨 Vide ga Uprava/Direkcija i Šef mehanizacije.");
   } catch(e) {
     toast(e.message, true);
@@ -9148,6 +9155,7 @@ function bindEvents() {
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
   if ($("#workerInstallBtn")) $("#workerInstallBtn").addEventListener("click", installWorkerApp);
   if ($("#refreshMechanicDefectsBtn")) $("#refreshMechanicDefectsBtn").addEventListener("click", () => loadMechanicBossDefects({ silent: false }));
+  if ($("#enableMechanicPushBtn")) $("#enableMechanicPushBtn").addEventListener("click", enableMechanicPushNotifications);
   if ($("#mechanicLogoutBtn")) $("#mechanicLogoutBtn").addEventListener("click", logoutMechanicBoss);
 
   $("#workerLogoutBtn").addEventListener("click", () => {
@@ -9232,6 +9240,115 @@ function stopMechanicBossWatcher() {
   mechanicBossTimer = null;
 }
 
+
+function mechanicPushSupported() {
+  return !!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window);
+}
+
+function mechanicVapidKeyReady() {
+  return !!(MECHANIC_VAPID_PUBLIC_KEY && !String(MECHANIC_VAPID_PUBLIC_KEY).includes("PASTE_") && String(MECHANIC_VAPID_PUBLIC_KEY).length > 30);
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function setMechanicPushUi(status, detail = "") {
+  const box = $("#mechanicPushStatus");
+  const btn = $("#enableMechanicPushBtn");
+  if (box) {
+    box.className = "mechanic-push-status " + (status || "idle");
+    const labels = {
+      ready: "✅ Obaveštenja su uključena na ovom telefonu.",
+      off: "🔕 Obaveštenja nisu uključena na ovom telefonu.",
+      missing: "⚠️ VAPID public key nije upisan u frontend.",
+      unsupported: "⚠️ Ovaj browser/telefon ne podržava Web Push za PWA.",
+      denied: "🚫 Obaveštenja su blokirana u podešavanjima browsera/telefona.",
+      error: "⚠️ Obaveštenja nisu sačuvana."
+    };
+    box.textContent = (labels[status] || "Status obaveštenja") + (detail ? " " + detail : "");
+  }
+  if (btn) btn.disabled = status === "ready" || status === "unsupported";
+}
+
+async function refreshMechanicPushUi() {
+  if (!isMechanicBossWorker(currentWorker)) return;
+  if (!mechanicPushSupported()) return setMechanicPushUi("unsupported");
+  if (!mechanicVapidKeyReady()) return setMechanicPushUi("missing", "Zalepi VAPID_PUBLIC_KEY u script.js pa uploaduj novu verziju.");
+  if (Notification.permission === "denied") return setMechanicPushUi("denied");
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    setMechanicPushUi(sub ? "ready" : "off");
+  } catch (e) {
+    setMechanicPushUi("error", e.message || "");
+  }
+}
+
+async function enableMechanicPushNotifications() {
+  try {
+    if (!currentWorker || !isMechanicBossWorker(currentWorker)) throw new Error("Obaveštenja može uključiti samo prijavljeni Šef mehanizacije.");
+    if (!mechanicPushSupported()) throw new Error("Ovaj telefon/browser ne podržava Web Push za PWA. Na Androidu koristi Chrome i instaliranu PWA prečicu.");
+    if (!mechanicVapidKeyReady()) throw new Error("Nedostaje VAPID_PUBLIC_KEY u script.js. To je javni ključ, nije tajna. Zalepi ga pa uploaduj novu verziju.");
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") throw new Error("Obaveštenja nisu dozvoljena. Uključi ih u podešavanjima browsera/telefona.");
+
+    const reg = await navigator.serviceWorker.register("./sw.js");
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(MECHANIC_VAPID_PUBLIC_KEY)
+      });
+    }
+
+    const { data, error } = await sb.rpc("save_mechanic_push_subscription", {
+      p_company_code: currentWorker.company_code,
+      p_access_code: currentWorker.access_code,
+      p_subscription: sub.toJSON(),
+      p_device_info: navigator.userAgent || "unknown"
+    });
+    if (error) throw error;
+    const row = readRpcSingleRow(data);
+    if (row && row.success === false) throw new Error(row.message || "Pretplata nije sačuvana.");
+
+    localStorage.setItem("swp_mechanic_push_enabled", "1");
+    setMechanicPushUi("ready");
+    toast("Obaveštenja za kvarove su uključena na ovom uređaju 🔔");
+  } catch (e) {
+    console.warn("Mechanic push enable failed:", e);
+    setMechanicPushUi("error", e.message || String(e));
+    toast(e.message || "Obaveštenja nisu uključena.", true);
+  }
+}
+
+async function sendMechanicPushAfterDefect(worker, defectPayload) {
+  try {
+    if (!sb?.functions?.invoke) return;
+    await sb.functions.invoke("send-mechanic-defect-push", {
+      body: {
+        company_code: worker.company_code,
+        access_code: worker.access_code,
+        defect: {
+          asset: defectPayload.defect_asset_name || defectPayload.defect_machine || defectPayload.machine || "Sredstvo u kvaru",
+          site: defectPayload.defect_site_name || defectPayload.site_name || "Lokacija nije upisana",
+          text: defectPayload.defect || "Novi kvar je prijavljen.",
+          urgency: defectPayload.defect_urgency || "",
+          reporter: defectPayload.created_by_worker || worker.full_name || "Zaposleni"
+        }
+      }
+    });
+  } catch (e) {
+    console.warn("Push za Šefa mehanizacije nije poslat. Kvar je ipak sačuvan:", e?.message || e);
+  }
+}
+
 function mechanicStatusRaw(report) {
   const d = report?.data || {};
   return String(d.defect_status || "novo").toLowerCase().trim();
@@ -9281,6 +9398,81 @@ function mechanicDefectText(report) {
 function mechanicDefectTime(report) {
   const d = report?.data || {};
   return d.defect_reported_at || report?.submitted_at || report?.created_at || report?.report_date || "";
+}
+
+function mechanicDefectUrgency(report) {
+  const d = report?.data || {};
+  return d.defect_urgency || d.urgency || "—";
+}
+
+function mechanicDefectImpact(report) {
+  const d = report?.data || {};
+  const v = d.defect_work_impact || d.defect_stops_work || "";
+  if (v === "zaustavlja_rad" || v === "da") return "Zaustavlja rad";
+  if (v === "moze_nastaviti" || v === "ne") return "Može nastaviti rad";
+  return v || "—";
+}
+
+function mechanicCalledPhoneLabel(report) {
+  const d = report?.data || {};
+  const v = d.called_mechanic_by_phone || d.defect_called_mechanic || "";
+  if (v === "da") return "Da";
+  if (v === "ne") return "Ne";
+  return v || "—";
+}
+
+function dedupeMechanicDefects(reports = []) {
+  const seen = new Set();
+  const out = [];
+  for (const r of Array.isArray(reports) ? reports : []) {
+    const d = r?.data || {};
+    const key = String(r?.id || [d.defect_reported_at, d.defect_asset_code, d.defect_asset_name, d.defect, d.defect_site_name].join("|"));
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+function mechanicActionButtonsHtml(r) {
+  const id = escapeHtml(r.id);
+  const group = mechanicStatusGroup(r);
+  const buttons = [];
+  if (group === "new") {
+    buttons.push(`<button class="secondary small-action" type="button" onclick="updateMechanicDefectStatus('${id}','preuzeto')">Preuzmi kvar</button>`);
+  } else if (mechanicStatusRaw(r).replace(/\s+/g, "_") === "preuzeto" || mechanicStatusRaw(r) === "primljeno") {
+    buttons.push(`<button class="secondary small-action" type="button" onclick="updateMechanicDefectStatus('${id}','u_radu')">U radu</button>`);
+  }
+  if (group !== "resolved") {
+    buttons.push(`<button class="primary small-action" type="button" onclick="updateMechanicDefectStatus('${id}','reseno')">Rešeno</button>`);
+  }
+  buttons.push(`<button class="secondary small-action" type="button" onclick="addMechanicDefectNote('${id}')">Napomena</button>`);
+  return `<div class="mechanic-actions">${buttons.join("")}</div>`;
+}
+
+function mechanicDefectCardHtml(r, compact = false) {
+  const d = r.data || {};
+  const group = mechanicStatusGroup(r);
+  const icon = group === "new" ? "🔴" : group === "active" ? "🟠" : "🟢";
+  const internal = d.defect_asset_code ? `<span><b>Interni broj:</b> ${escapeHtml(d.defect_asset_code)}</span>` : "";
+  const reg = d.defect_asset_registration ? `<span><b>Registracija:</b> ${escapeHtml(d.defect_asset_registration)}</span>` : "";
+  return `<article class="mechanic-card mechanic-${group} ${compact ? "mechanic-card-compact" : ""}">
+    <div class="mechanic-card-head"><strong>${icon} ${escapeHtml(mechanicStatusLabel(r))}</strong><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || "")}</span></div>
+    ${d.sent_immediately ? `<p class="mechanic-immediate-badge">🚨 Evidentirano odmah</p>` : ""}
+    <h4>${escapeHtml(mechanicDefectAssetName(r))}</h4>
+    <div class="mechanic-detail-grid">
+      ${internal}
+      ${reg}
+      <span><b>Gradilište/lokacija:</b> ${escapeHtml(mechanicDefectSiteName(r))}</span>
+      <span><b>Prijavio:</b> ${escapeHtml(mechanicDefectReporter(r))}</span>
+      <span><b>Hitnost:</b> ${escapeHtml(mechanicDefectUrgency(r))}</span>
+      <span><b>Uticaj:</b> ${escapeHtml(mechanicDefectImpact(r))}</span>
+      <span><b>Pozvan telefonom:</b> ${escapeHtml(mechanicCalledPhoneLabel(r))}</span>
+    </div>
+    <p><b>Problem:</b> ${escapeHtml(mechanicDefectText(r))}</p>
+    ${d.mechanic_note ? `<p class="mechanic-note"><b>Napomena šefa mehanizacije:</b> ${escapeHtml(d.mechanic_note)}</p>` : ""}
+    ${mechanicActionButtonsHtml(r)}
+  </article>`;
 }
 
 
@@ -9376,19 +9568,13 @@ function renderMechanicBossDefects() {
   setMechanicSectionCount("mechanicResolvedCountMini", countResolved);
   setMechanicSectionCount("mechanicAllCountMini", list.length, " ukupno");
 
-  const actionsHtml = (r) => `
-    <div class="mechanic-actions">
-      <button class="secondary small-action" type="button" onclick="updateMechanicDefectStatus('${escapeHtml(r.id)}','preuzeto')">Preuzmi kvar</button>
-      <button class="secondary small-action" type="button" onclick="updateMechanicDefectStatus('${escapeHtml(r.id)}','u_radu')">U radu</button>
-      <button class="primary small-action" type="button" onclick="updateMechanicDefectStatus('${escapeHtml(r.id)}','reseno')">Rešeno</button>
-      <button class="secondary small-action" type="button" onclick="addMechanicDefectNote('${escapeHtml(r.id)}')">Napomena</button>
-    </div>`;
+  const actionsHtml = (r) => mechanicActionButtonsHtml(r);
 
   const rowHtml = list.map(r => {
     const d = r.data || {};
     return `<tr class="mechanic-row mechanic-${mechanicStatusGroup(r)}">
       <td>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || mechanicDefectTime(r))}</td>
-      <td><b>${escapeHtml(mechanicDefectAssetName(r))}</b>${d.defect_asset_code ? `<small>Interni broj: ${escapeHtml(d.defect_asset_code)}</small>` : ""}</td>
+      <td><b>${escapeHtml(mechanicDefectAssetName(r))}</b>${d.defect_asset_code ? `<small>Interni broj: ${escapeHtml(d.defect_asset_code)}</small>` : ""}${d.defect_asset_registration ? `<small>Reg: ${escapeHtml(d.defect_asset_registration)}</small>` : ""}</td>
       <td>${escapeHtml(mechanicDefectSiteName(r))}</td>
       <td>${escapeHtml(mechanicDefectText(r))}${d.mechanic_note ? `<small>Napomena: ${escapeHtml(d.mechanic_note)}</small>` : ""}</td>
       <td>${escapeHtml(mechanicDefectReporter(r))}</td>
@@ -9399,27 +9585,13 @@ function renderMechanicBossDefects() {
 
   if (tableBody) tableBody.innerHTML = rowHtml || `<tr><td colspan="7" class="muted">Nema prijavljenih kvarova za ovu firmu.</td></tr>`;
 
-  const cardHtml = list.map(r => {
-    const d = r.data || {};
-    const group = mechanicStatusGroup(r);
-    const icon = group === "new" ? "🔴" : group === "active" ? "🟠" : "🟢";
-    return `<article class="mechanic-card mechanic-${group}">
-      <div class="mechanic-card-head"><strong>${icon} ${escapeHtml(mechanicStatusLabel(r))}</strong><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || "")}</span></div>
-      ${d.sent_immediately ? `<p class="mechanic-immediate-badge">🚨 Evidentirano odmah</p>` : ""}
-      <h4>${escapeHtml(mechanicDefectAssetName(r))}</h4>
-      <p><b>Gradilište:</b> ${escapeHtml(mechanicDefectSiteName(r))}</p>
-      <p><b>Problem:</b> ${escapeHtml(mechanicDefectText(r))}</p>
-      <p><b>Prijavio:</b> ${escapeHtml(mechanicDefectReporter(r))}</p>
-      ${d.mechanic_note ? `<p><b>Napomena:</b> ${escapeHtml(d.mechanic_note)}</p>` : ""}
-      ${actionsHtml(r)}
-    </article>`;
-  }).join("");
+  const cardHtml = list.map(r => mechanicDefectCardHtml(r)).join("");
   if (cards) cards.innerHTML = cardHtml || `<p class="muted">Nema prijavljenih kvarova.</p>`;
 
   const renderGroup = (box, group, empty) => {
     if (!box) return;
     const groupRows = list.filter(r => mechanicStatusGroup(r) === group);
-    box.innerHTML = groupRows.map(r => `<div class="mechanic-mini-line"><b>${escapeHtml(mechanicDefectAssetName(r))}</b><span>${escapeHtml(mechanicDefectSiteName(r))}</span><small>${escapeHtml(mechanicDefectText(r))}</small></div>`).join("") || `<p class="muted tiny">${empty}</p>`;
+    box.innerHTML = groupRows.map(r => mechanicDefectCardHtml(r, true)).join("") || `<p class="muted tiny">${empty}</p>`;
   };
   renderGroup(newBox, "new", "Nema novih kvarova.");
   renderGroup(activeBox, "active", "Nema aktivnih kvarova.");
@@ -9430,7 +9602,7 @@ async function loadMechanicBossDefects({ silent = false } = {}) {
   if (!currentWorker?.company_id || !sb) return;
   try {
     const defects = await mechanicListDefectsSafe();
-    mechanicBossReportsCache = await attachReportUsersFallback(defects);
+    mechanicBossReportsCache = dedupeMechanicDefects(await attachReportUsersFallback(defects));
     const newReports = mechanicBossReportsCache.filter(r => mechanicStatusGroup(r) === "new");
     const signature = newReports.map(r => r.id).join("|");
     if (signature && mechanicBossLastSignature && signature !== mechanicBossLastSignature && newReports.length >= mechanicBossLastNewCount) {
@@ -9481,6 +9653,7 @@ async function openMechanicBossPanel() {
   if (label) label.textContent = `${currentWorker?.company_name || "Firma"} · panel kvarova`;
   show("MechanicBossPanel");
   await loadMechanicBossDefects({ silent: true });
+  refreshMechanicPushUi();
   mechanicBossTimer = setInterval(() => loadMechanicBossDefects({ silent: true }), 30000);
 }
 

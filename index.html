@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1310" />
+  <link rel="stylesheet" href="style.css?v=1314" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -891,6 +891,15 @@
 
       <div id="mechanicNewSignal" class="mechanic-new-signal hidden">🔴 Novi kvar prijavljen</div>
 
+      <div class="card mechanic-push-card">
+        <div>
+          <h3>🔔 Obaveštenja za kvarove na telefonu</h3>
+          <p class="hint">Uključi ovo samo na telefonu Šefa mehanizacije. Kad radnik klikne “Evidentiraj kvar odmah”, telefon treba da dobije push notifikaciju i pokušaj oznake na PWA ikonici.</p>
+          <p id="mechanicPushStatus" class="mechanic-push-status off">🔕 Obaveštenja nisu uključena na ovom telefonu.</p>
+        </div>
+        <button id="enableMechanicPushBtn" class="primary" type="button">🔔 Uključi obaveštenja za kvarove</button>
+      </div>
+
       <div class="mechanic-summary-grid">
         <div class="card mechanic-summary-card mechanic-new mechanic-collapsible is-collapsed" data-mechanic-section="new">
           <button class="mechanic-section-toggle" type="button" onclick="toggleMechanicSection('mechanicNewDefects')" aria-controls="mechanicNewDefects" aria-expanded="false">
@@ -1242,6 +1251,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1310"></script>
+  <script src="script.js?v=1314"></script>
 </body>
 </html>

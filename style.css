@@ -5296,3 +5296,61 @@ body.mechanic-boss-mode #viewMechanicBossPanel .secondary {
 .mechanic-summary-card.is-collapsed { min-height: 96px; }
 .mechanic-summary-card:not(.is-collapsed) { min-height: 0; }
 body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color: #0f172a; }
+
+/* sw1313: Šef mehanizacije - čitljivije kartice i pametna dugmad po statusu */
+.mechanic-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 12px;
+  margin: 10px 0;
+}
+.mechanic-detail-grid span {
+  display: block;
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 23, 42, .08);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, .9);
+  color: #334155;
+  font-size: .92rem;
+}
+.mechanic-note {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+.mechanic-card-compact {
+  margin-top: 12px;
+}
+.mechanic-card-compact h4 {
+  margin-bottom: 8px;
+}
+.mechanic-card-compact .mechanic-actions {
+  margin-top: 12px;
+}
+@media (max-width: 640px) {
+  .mechanic-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .mechanic-card-compact {
+    padding: 14px;
+  }
+}
+
+
+/* v1.31.4 - Šef mehanizacije push obaveštenja */
+.mechanic-push-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  border:1px solid rgba(239,68,68,.28);
+  background:linear-gradient(135deg, rgba(127,29,29,.18), rgba(15,23,42,.92));
+}
+.mechanic-push-card h3{margin:0 0 6px;color:#fff;}
+.mechanic-push-status{margin:8px 0 0;padding:9px 10px;border-radius:12px;font-weight:800;border:1px solid rgba(255,255,255,.12);}
+.mechanic-push-status.ready{background:rgba(22,163,74,.16);color:#bbf7d0;border-color:rgba(34,197,94,.35);}
+.mechanic-push-status.off{background:rgba(234,179,8,.13);color:#fde68a;border-color:rgba(234,179,8,.28);}
+.mechanic-push-status.missing,.mechanic-push-status.error,.mechanic-push-status.denied{background:rgba(239,68,68,.15);color:#fecaca;border-color:rgba(239,68,68,.35);}
+.mechanic-push-status.unsupported{background:rgba(148,163,184,.14);color:#e2e8f0;border-color:rgba(148,163,184,.32);}
+@media(max-width:720px){.mechanic-push-card{display:block}.mechanic-push-card button{width:100%;margin-top:10px}}

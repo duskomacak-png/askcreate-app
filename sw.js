@@ -1,9 +1,9 @@
-const CACHE_NAME = "askcreate-app-v1312";
+const CACHE_NAME = "askcreate-app-v1314";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1312",
-  "./script.js?v=1312",
+  "./style.css?v=1314",
+  "./script.js?v=1314",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
@@ -34,5 +34,45 @@ self.addEventListener("fetch", (event) => {
     if (cached) return cached;
     try { return await fetch(event.request); }
     catch (e) { return caches.match("./index.html"); }
+  })());
+});
+
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (e) { payload = { title: "Novi kvar prijavljen", body: event.data ? event.data.text() : "Otvorite panel šefa mehanizacije." }; }
+  const title = payload.title || "🚨 Novi kvar prijavljen";
+  const options = {
+    body: payload.body || "Otvorite AskCreate panel šefa mehanizacije.",
+    icon: "./icons/icon-192.png",
+    badge: "./icons/icon-192.png",
+    tag: payload.tag || "askcreate-mechanic-defect",
+    renotify: true,
+    requireInteraction: true,
+    data: {
+      url: payload.url || "./?ulaz=mehanika",
+      badgeCount: payload.badgeCount || 1
+    }
+  };
+  event.waitUntil((async () => {
+    try { if (self.registration.setAppBadge) await self.registration.setAppBadge(options.data.badgeCount); } catch (e) {}
+    await self.registration.showNotification(title, options);
+  })());
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification?.data?.url || "./?ulaz=mehanika", self.location.origin).href;
+  event.waitUntil((async () => {
+    try { if (self.registration.clearAppBadge) await self.registration.clearAppBadge(); } catch (e) {}
+    const clientList = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of clientList) {
+      if (client.url && new URL(client.url).origin === self.location.origin) {
+        await client.focus();
+        client.postMessage?.({ type: "open-mechanic-panel" });
+        return;
+      }
+    }
+    await clients.openWindow(targetUrl);
   })());
 });
