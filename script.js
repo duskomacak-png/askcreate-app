@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = "https://kzwawwrewakjbfhgrbdt.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
-const APP_VERSION = "1.29.6";
+const APP_VERSION = "1.29.7";
 
 
 let sb = null;
@@ -4066,6 +4066,7 @@ async function loadWorkerAssets() {
   refreshMachineDatalists();
   refreshFieldTankerSelectors();
   refreshFuelMachineOptions();
+  refreshSiteLogTruckAssetSelectors();
 
   const machineCount = workerAssetOptions.filter(isMachineAsset).length;
   const vehicleCount = workerAssetOptions.filter(isVehicleAsset).length;
@@ -4451,6 +4452,36 @@ function buildWorkerMaterialOptionsHtml(selectedValue = "") {
   }).join("");
 }
 
+function fillUnitFromMaterialOption(selectEl, unitInputEl, force = false) {
+  if (!selectEl || !unitInputEl) return;
+  const option = selectEl.options ? selectEl.options[selectEl.selectedIndex] : null;
+  const unit = option?.dataset?.unit || "";
+  if (!unit) return;
+  if (force || !String(unitInputEl.value || "").trim()) {
+    unitInputEl.value = unit;
+    unitInputEl.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+}
+
+function fillMaterialEntryUnitFromSelect(entryEl, force = false) {
+  if (!entryEl) return;
+  const selectEl = entryEl.querySelector(".mat-select");
+  const unitSelect = entryEl.querySelector(".mat-unit");
+  const unitManual = entryEl.querySelector(".mat-unit-manual");
+  const option = selectEl?.options ? selectEl.options[selectEl.selectedIndex] : null;
+  const unit = option?.dataset?.unit || "";
+  if (!unit || !unitSelect) return;
+  const standardValues = Array.from(unitSelect.options || []).map(o => o.value);
+  if (standardValues.includes(unit)) {
+    if (force || !unitSelect.value || unitSelect.value === "ručno") unitSelect.value = unit;
+  } else {
+    unitSelect.value = "ručno";
+    if (unitManual && (force || !unitManual.value)) unitManual.value = unit;
+  }
+  updateMaterialUnitManualVisibility(entryEl);
+  updateMaterialCalculation(entryEl);
+}
+
 function refreshWorkerMaterialSelect(selectedValue = "") {
   const select = $("#wrMaterialSelect");
   if (!select) return;
@@ -4495,6 +4526,7 @@ async function loadWorkerMaterials(selectedValue = "") {
 
   refreshWorkerMaterialSelect(selectedValue);
   refreshMaterialEntrySelectors();
+  refreshSiteLogSelectors();
 }
 
 function refreshOneMaterialEntrySelect(entryEl) {
@@ -4657,7 +4689,7 @@ function addMaterialEntry(values = {}) {
   div.querySelector(".remove-entry").addEventListener("click", () => { div.remove(); renumberMaterialEntries(); });
   div.querySelector(".mat-unit")?.addEventListener("change", () => { updateMaterialUnitManualVisibility(div); updateMaterialCalculation(div); });
   div.querySelector(".mat-unit-manual")?.addEventListener("input", () => updateMaterialCalculation(div));
-  div.querySelector(".mat-select")?.addEventListener("change", () => updateMaterialCalculation(div));
+  div.querySelector(".mat-select")?.addEventListener("change", () => fillMaterialEntryUnitFromSelect(div, true));
   div.querySelector(".mat-tours")?.addEventListener("input", () => updateMaterialCalculation(div));
   div.querySelector(".mat-per-tour")?.addEventListener("input", () => updateMaterialCalculation(div));
   div.querySelector(".mat-qty")?.addEventListener("input", (ev) => { ev.currentTarget.dataset.autoMaterialQty = "0"; updateMaterialCalculation(div); });
@@ -4669,6 +4701,7 @@ function addMaterialEntry(values = {}) {
     const sel = div.querySelector(".mat-select");
     if (Array.from(sel.options).some(o => o.value === selectedMaterial)) sel.value = selectedMaterial;
   }
+  fillMaterialEntryUnitFromSelect(div);
   updateMaterialCalculation(div);
 }
 
@@ -6030,7 +6063,14 @@ function siteLogSelectSiteOptions(selectedValue = "") {
 function refreshSiteLogSelectors() {
   const site = $("#siteLogSite");
   if (site) { const old = site.value || ""; site.innerHTML = siteLogSelectSiteOptions(old); if (old && Array.from(site.options).some(o => o.value === old)) site.value = old; }
-  $$(".site-log-material-select").forEach(sel => { const old = sel.value || ""; sel.innerHTML = buildWorkerMaterialOptionsHtml(old); if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old; });
+  $$(".site-log-material-select").forEach(sel => {
+    const old = sel.value || "";
+    sel.innerHTML = buildWorkerMaterialOptionsHtml(old);
+    if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+    const card = sel.closest(".site-log-material-entry");
+    if (card) fillUnitFromMaterialOption(sel, card.querySelector(".sl-material-unit"));
+  });
+  refreshSiteLogTruckAssetSelectors();
 }
 function siteLogMaterialListId(kind) {
   return ({ material_in:"siteLogMaterialIn", material_out:"siteLogMaterialOut", materials_installed:"siteLogMaterialsInstalled", materials_stock_on_site:"siteLogMaterialsStock" })[kind] || "siteLogMaterialIn";
@@ -6077,11 +6117,70 @@ window.addSiteLogMaterialEntry = function(kind = "material_in", values = {}) {
       <button class="primary small-btn" type="button" onclick="addSiteLogMaterialEntry('${kind}'); renumberSiteLogEntries('#${siteLogMaterialListId(kind)}','.site-log-material-entry','${siteLogMaterialLabel(kind)}');">${addLabel}</button>
       <button class="secondary small-btn" type="button" onclick="this.closest('.site-log-material-entry').remove(); renumberSiteLogEntries('#${siteLogMaterialListId(kind)}','.site-log-material-entry','${siteLogMaterialLabel(kind)}');">${removeLabel}</button>
     </div>`;
+  div.querySelector(".sl-material-name")?.addEventListener("change", (ev) => fillUnitFromMaterialOption(ev.currentTarget, div.querySelector(".sl-material-unit"), true));
   list.appendChild(div);
+  fillUnitFromMaterialOption(div.querySelector(".sl-material-name"), div.querySelector(".sl-material-unit"));
   renumberSiteLogEntries(`#${siteLogMaterialListId(kind)}`, ".site-log-material-entry", siteLogMaterialLabel(kind));
 };
+function buildSiteLogTruckVehicleOptionsHtml(selectedValue = "", searchValue = "") {
+  const selected = String(selectedValue || "").trim();
+  let vehicles = (workerAssetOptions || [])
+    .filter(isVehicleAsset)
+    .filter(asset => getAssetCode(asset) || getAssetName(asset) || getAssetRegistration(asset));
+  vehicles = vehicles.filter(asset => vehicleMatchesSearch(asset, searchValue));
+  const exact = findAssetByExactCode(searchValue);
+  if (exact && !vehicles.some(v => String(v.id || "") === String(exact.id || ""))) vehicles = [exact, ...vehicles];
+  if (normalizeVehicleSearch(searchValue) && !vehicles.length) vehicles = findAssetsByUniversalSearch(searchValue);
+  if (!workerAssetOptions.length) return `<option value="">Nema sredstava iz Uprave</option>`;
+  if (!vehicles.length) return `<option value="">Nema vozila za taj broj/pretragu</option>`;
+  return `<option value="">Odaberi vozilo</option>` + vehicles.map(v => assetOptionHtml(v, selected, formatAssetLabel)).join("");
+}
+
+function updateSiteLogTruckAssetResult(card, asset, manualValue) {
+  const result = card?.querySelector(".sl-truck-picked");
+  if (!result) return;
+  if (asset) {
+    result.className = "asset-smart-result sl-truck-picked ok";
+    result.textContent = `Pronađeno vozilo iz Uprave: ${formatAssetLabel(asset)}`;
+    return;
+  }
+  const value = String(manualValue || "").trim();
+  if (value) {
+    result.className = "asset-smart-result sl-truck-picked warn";
+    result.textContent = `Nije pronađeno u evidenciji. Biće poslato kao dodatni unos: ${value}`;
+    return;
+  }
+  result.className = "asset-smart-result sl-truck-picked";
+  result.textContent = "Za naše kamione upiši interni broj, registraciju ili naziv iz Uprave.";
+}
+
+function refreshOneSiteLogTruckAssetSelect(card) {
+  if (!card) return;
+  const search = card.querySelector(".sl-truck-asset-search")?.value || "";
+  const select = card.querySelector(".sl-truck-asset-select");
+  const custom = card.querySelector(".sl-truck-asset-custom");
+  if (!select) return;
+  const asset = findVehicleAssetForSmartInput(search) || findFuelAssetForSmartInput(search, "vehicle");
+  const selectedValue = asset ? (getAssetName(asset) || getAssetCode(asset) || getAssetRegistration(asset)) : "";
+  select.innerHTML = buildSiteLogTruckVehicleOptionsHtml(selectedValue, search);
+  if (asset) {
+    const option = Array.from(select.options || []).find(o => String(o.dataset.assetId || "") === String(asset.id || ""))
+      || Array.from(select.options || []).find(o => o.value === getAssetName(asset));
+    if (option) select.value = option.value;
+    if (custom) custom.value = "";
+    updateSiteLogTruckAssetResult(card, asset, "");
+  } else {
+    if (custom) custom.value = String(search || "").trim();
+    updateSiteLogTruckAssetResult(card, null, search);
+  }
+}
+
+function refreshSiteLogTruckAssetSelectors() {
+  $$("#siteLogTrucks .site-log-truck-entry").forEach(card => refreshOneSiteLogTruckAssetSelect(card));
+}
+
 function siteLogTruckTypeText(type) {
-  return type === "izvoz" ? "Odvoz sa gradilišta" : "Dovoz na gradilište";
+  return type === "izvoz" ? "Izvoz sa gradilišta" : "Uvoz na gradilište";
 }
 function siteLogTransportText(source, supplier) {
   if (source === "dobavljac") return supplier ? `Spoljni dobavljač: ${supplier}` : "Spoljni dobavljač";
@@ -6102,10 +6201,10 @@ window.addSiteLogTruckEntry = function(values = {}) {
   div.innerHTML = `
     <h5>Tura ${idx}</h5>
     <div class="grid four">
-      <div><label>Vrsta transporta</label><select class="sl-truck-type"><option value="uvoz" ${typeVal === "uvoz" ? "selected" : ""}>Dovoz na gradilište</option><option value="izvoz" ${typeVal === "izvoz" ? "selected" : ""}>Odvoz sa gradilišta</option></select></div>
+      <div><label>Vrsta transporta</label><select class="sl-truck-type"><option value="uvoz" ${typeVal === "uvoz" ? "selected" : ""}>Uvoz na gradilište</option><option value="izvoz" ${typeVal === "izvoz" ? "selected" : ""}>Izvoz sa gradilišta</option></select></div>
       <div><label>Izvor prevoza</label><select class="sl-transport-source"><option value="nasi_kamioni" ${sourceVal !== "dobavljac" ? "selected" : ""}>Vozilo iz evidencije firme</option><option value="dobavljac" ${sourceVal === "dobavljac" ? "selected" : ""}>Spoljni dobavljač</option></select></div>
       <div class="sl-supplier-wrap"><label>Naziv dobavljača / prevoznika</label><input class="sl-partner-company" placeholder="naziv firme" value="${escapeHtml(values.partner_company || values.supplier_name || "")}" /></div>
-      <div><label>Registarske oznake vozila</label><input class="sl-truck-plate" placeholder="BG-123-AA" value="${escapeHtml(values.truck_plate || "")}" /></div>
+      <div><label>Vozilo / interni broj</label><input class="sl-truck-asset-search asset-code-search smart-asset-input" placeholder="upiši interni broj, registraciju ili naziv" value="${escapeHtml(values.truck_asset_code || values.asset_code || values.truck_vehicle || values.vehicle || values.truck_plate || "")}" /><div class="asset-smart-result sl-truck-picked">Za naše kamione upiši interni broj, registraciju ili naziv iz Uprave.</div><select class="sl-truck-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1"></select><input class="sl-truck-asset-custom hidden-asset-custom" type="hidden" value="" /></div>
       <div><label>Ime i prezime vozača</label><input class="sl-driver-name" placeholder="ime i prezime" value="${escapeHtml(values.driver_name || "")}" /></div>
       <div><label>Materijal</label><select class="site-log-material-select sl-truck-material">${buildWorkerMaterialOptionsHtml(values.material_name || "")}</select></div>
       <div><label>Broj izvršenih tura</label><input class="sl-truck-tours numeric-text" type="text" inputmode="decimal" placeholder="4" value="${escapeHtml(values.tours || "")}" /></div>
@@ -6118,7 +6217,10 @@ window.addSiteLogTruckEntry = function(values = {}) {
     </div>`;
   list.appendChild(div);
   div.querySelector(".sl-transport-source")?.addEventListener("change", () => updateSiteLogSupplierField(div));
+  div.querySelector(".sl-truck-asset-search")?.addEventListener("input", () => refreshOneSiteLogTruckAssetSelect(div));
+  div.querySelector(".sl-truck-material")?.addEventListener("change", () => {});
   updateSiteLogSupplierField(div);
+  refreshOneSiteLogTruckAssetSelect(div);
 };
 function renumberSiteLogEntries(listSel, itemSel, label) {
   $$(listSel + " " + itemSel).forEach((card, i) => { const h = card.querySelector("h5"); if (h) h.textContent = `${label} ${i + 1}`; });
@@ -6144,8 +6246,31 @@ function collectSiteLogTrucks() {
     const mat = el.querySelector(".sl-truck-material"); const opt = mat?.options ? mat.options[mat.selectedIndex] : null;
     const transport_source = el.querySelector(".sl-transport-source")?.value || "nasi_kamioni";
     const partner_company = transport_source === "dobavljac" ? (el.querySelector(".sl-partner-company")?.value.trim() || "") : "";
-    return { tour_type: el.querySelector(".sl-truck-type")?.value || "uvoz", transport_source, partner_company, supplier_name: partner_company, truck_plate: el.querySelector(".sl-truck-plate")?.value.trim() || "", driver_name: el.querySelector(".sl-driver-name")?.value.trim() || "", material_id: opt?.dataset?.materialId || "", material_name: mat?.value.trim() || "", tours: el.querySelector(".sl-truck-tours")?.value.trim() || "", m3: el.querySelector(".sl-truck-m3")?.value.trim() || "", note: el.querySelector(".sl-truck-note")?.value.trim() || "" };
-  }).filter(x => x.partner_company || x.truck_plate || x.driver_name || x.material_name || x.tours || x.m3 || x.note);
+    const assetSearch = el.querySelector(".sl-truck-asset-search")?.value.trim() || "";
+    const assetSelect = el.querySelector(".sl-truck-asset-select");
+    const assetOpt = assetSelect?.options ? assetSelect.options[assetSelect.selectedIndex] : null;
+    const manualAsset = el.querySelector(".sl-truck-asset-custom")?.value.trim() || "";
+    const asset = findVehicleAssetForSmartInput(assetSearch) || findFuelAssetForSmartInput(assetSearch, "vehicle");
+    const truckAssetCode = asset ? getAssetCode(asset) : "";
+    const truckAssetName = asset ? getAssetName(asset) : (manualAsset || assetSearch);
+    const truckPlate = asset ? (getAssetRegistration(asset) || truckAssetCode || truckAssetName) : (manualAsset || assetSearch);
+    return {
+      tour_type: el.querySelector(".sl-truck-type")?.value || "uvoz",
+      transport_source,
+      partner_company,
+      supplier_name: partner_company,
+      truck_asset_id: asset ? (asset.id || assetOpt?.dataset?.assetId || "") : "",
+      truck_asset_code: truckAssetCode || (assetOpt?.dataset?.assetCode || ""),
+      truck_vehicle_name: truckAssetName,
+      truck_plate: truckPlate,
+      driver_name: el.querySelector(".sl-driver-name")?.value.trim() || "",
+      material_id: opt?.dataset?.materialId || "",
+      material_name: mat?.value.trim() || "",
+      tours: el.querySelector(".sl-truck-tours")?.value.trim() || "",
+      m3: el.querySelector(".sl-truck-m3")?.value.trim() || "",
+      note: el.querySelector(".sl-truck-note")?.value.trim() || ""
+    };
+  }).filter(x => x.partner_company || x.truck_plate || x.truck_vehicle_name || x.driver_name || x.material_name || x.tours || x.m3 || x.note);
 }
 function collectSiteLogData() {
   const site = getSiteLogSite();
