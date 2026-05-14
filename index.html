@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1331" />
+  <link rel="stylesheet" href="style.css?v=1333" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -476,7 +476,6 @@
                 <h4>📋 Rubrike za terenski izveštaj</h4>
                 <p class="muted tiny">Ove stavke se stvarno pojavljuju zaposlenom/odgovornom licu u formi za unos i mogu ući u izveštaj.</p>
                 <label><input type="checkbox" class="perm" value="daily_work" /> Gradilište i datum izveštaja</label>
-                <label><input type="checkbox" class="perm" value="workers" /> Evidencija zaposlenih na gradilištu</label>
                 <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
                 <label><input type="checkbox" class="perm" value="vehicles" /> Rad vozila / kamiona</label>
                 <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
@@ -1173,7 +1172,7 @@
           <p class="hint">Uprava dodaje listu materijala. Za svaki unos bira se da li je ulaz, izlaz ili ugradnja materijala.</p>
           <div id="materialEntries" class="entry-list"></div>
           <button id="addWorkerMaterialEntryBtn" class="secondary" type="button" onclick="addMaterialEntry()">+ Dodaj materijal</button>
-          <p class="field-hint">Ako materijal nije u evidenciji, možeš upisati naziv materijala.</p>
+          <p class="field-hint">Materijal se nudi iz spiska Direkcije; ručni unos koristi samo ako materijal nije dodat u evidenciju.</p>
         </div>
 
 
@@ -1187,7 +1186,7 @@
             <button id="clearSignatureBtn" class="secondary" type="button">Obriši potpis</button>
           </div>
           <label>Ime i prezime potpisnika <span class="muted">(opciono)</span></label>
-          <input id="wrSignatureName" placeholder="npr. Duško Mačak / odgovorno lice gradilišta" />
+          <input id="wrSignatureName" list="workerPeopleDatalist" placeholder="npr. Duško Mačak / odgovorno lice gradilišta" />
         </div>
 
         <div id="secLeaveRequest" class="dyn-section">
@@ -1227,7 +1226,7 @@
             <option value="izlaz">Izlaz</option>
           </select>
           <label>Artikal</label>
-          <input id="wrWarehouseItem" />
+          <input id="wrWarehouseItem" list="workerMaterialDatalist" placeholder="počni kucati materijal iz Direkcije" />
           <label>Količina</label>
           <input id="wrWarehouseQty" />
         </div>
@@ -1237,7 +1236,7 @@
           <p class="hint">Ovo je važno da Odgovorno lice mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
           <label>Sredstvo u kvaru / interni broj</label>
-          <input id="wrDefectAssetName" class="asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili registraciju, npr. 1, CAT 330, BG3542RI" autocomplete="off" />
+          <input id="wrDefectAssetName" class="asset-code-search smart-asset-input" list="workerAssetDatalist" placeholder="upiši broj, naziv ili registraciju, npr. 1, CAT 330, BG3542RI" autocomplete="off" />
           <div id="wrDefectAssetPicked" class="asset-smart-result defect-picked">Upiši interni broj, naziv mašine/vozila/opreme ili registraciju.</div>
 
           <label>Gradilište / lokacija kvara</label>
@@ -1291,6 +1290,11 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1331"></script>
+  <datalist id="workerPeopleDatalist"></datalist>
+  <datalist id="workerPeopleFirstDatalist"></datalist>
+  <datalist id="workerPeopleLastDatalist"></datalist>
+  <datalist id="workerAssetDatalist"></datalist>
+  <datalist id="workerMaterialDatalist"></datalist>
+  <script src="script.js?v=1333"></script>
 </body>
 </html>

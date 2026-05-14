@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.1";
+const APP_VERSION = "1.33.3";
 
 
 let sb = null;
@@ -24,6 +24,7 @@ let currentWorker = null;
 let workerAssetOptions = [];
 let workerSiteOptions = [];
 let workerMaterialOptions = [];
+let workerPeopleOptions = [];
 let deferredPwaInstallPrompt = null;
 let directorAutoRefreshTimer = null;
 let directorAutoRefreshBusy = false;
@@ -31,6 +32,107 @@ let directorKnownReportIds = new Set();
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+function updateWorkerSmartDatalists() {
+  const peopleList = $("#workerPeopleDatalist");
+  if (peopleList) {
+    const seen = new Set();
+    const rows = (workerPeopleOptions || directorPeopleCache || []).filter(p => p && p.active !== false);
+    peopleList.innerHTML = rows.map(p => {
+      const full = personFullNameSafe(p);
+      if (!full) return "";
+      const key = normalizeSearch(full);
+      if (seen.has(key)) return "";
+      seen.add(key);
+      const label = [p.function_title, p.access_code ? `kod ${p.access_code}` : ""].filter(Boolean).join(" · ");
+      return `<option value="${escapeHtml(full)}"${label ? ` label="${escapeHtml(label)}"` : ""}></option>`;
+    }).join("");
+  }
+
+
+  const firstList = $("#workerPeopleFirstDatalist");
+  const lastList = $("#workerPeopleLastDatalist");
+  if (firstList || lastList) {
+    const rows = (workerPeopleOptions || directorPeopleCache || []).filter(p => p && p.active !== false);
+    if (firstList) firstList.innerHTML = [...new Set(rows.map(p => String(p.first_name || "").trim()).filter(Boolean))].map(v => `<option value="${escapeHtml(v)}"></option>`).join("");
+    if (lastList) lastList.innerHTML = [...new Set(rows.map(p => String(p.last_name || "").trim()).filter(Boolean))].map(v => `<option value="${escapeHtml(v)}"></option>`).join("");
+  }
+
+  const assetList = $("#workerAssetDatalist");
+  if (assetList) {
+    const options = [];
+    const seen = new Set();
+    (workerAssetOptions || directorAssetsCache || []).filter(a => a && a.active !== false).forEach(a => {
+      const label = formatAssetTitleWithCode(a) || formatAssetLabel(a) || getAssetName(a) || getAssetRegistration(a) || getAssetCode(a);
+      [getAssetCode(a), getAssetName(a), getAssetRegistration(a), label].filter(Boolean).forEach(v => {
+        const val = String(v || "").trim();
+        const key = normalizeSearch(val);
+        if (!val || seen.has(key)) return;
+        seen.add(key);
+        options.push(`<option value="${escapeHtml(val)}" label="${escapeHtml(label || val)}"></option>`);
+      });
+    });
+    assetList.innerHTML = options.join("");
+  }
+
+  const materialList = $("#workerMaterialDatalist");
+  if (materialList) {
+    const rows = normalizeWorkerMaterialList(workerMaterialOptions && workerMaterialOptions.length ? workerMaterialOptions : directorMaterialsCache || []);
+    const seen = new Set();
+    materialList.innerHTML = rows.map(m => {
+      const name = String(m.name || "").trim();
+      const key = normalizeSearch(name);
+      if (!name || seen.has(key)) return "";
+      seen.add(key);
+      const label = [m.unit, m.category].filter(Boolean).join(" · ");
+      return `<option value="${escapeHtml(name)}"${label ? ` label="${escapeHtml(label)}"` : ""}></option>`;
+    }).join("");
+  }
+}
+
+function personFullNameSafe(p) {
+  return String(p?.full_name || [p?.first_name, p?.last_name].filter(Boolean).join(" ") || "").trim();
+}
+
+function splitWorkerNameToFields(card, fullName) {
+  const value = String(fullName || "").trim();
+  if (!card || !value) return;
+  const firstEl = card.querySelector(".worker-first");
+  const lastEl = card.querySelector(".worker-last");
+  if (!firstEl || !lastEl) return;
+  const known = (workerPeopleOptions || directorPeopleCache || []).find(p => normalizeSearch(personFullNameSafe(p)) === normalizeSearch(value));
+  if (known) {
+    firstEl.value = known.first_name || personFullNameSafe(known).split(" ")[0] || "";
+    lastEl.value = known.last_name || personFullNameSafe(known).split(" ").slice(1).join(" ") || "";
+    return;
+  }
+  const parts = value.split(/\s+/).filter(Boolean);
+  firstEl.value = parts.shift() || "";
+  lastEl.value = parts.join(" ");
+}
+
+async function loadWorkerPeople() {
+  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+  workerPeopleOptions = [];
+  if (!worker?.company_id || !sb) {
+    updateWorkerSmartDatalists();
+    return;
+  }
+  try {
+    const { data, error } = await sb
+      .from("company_users")
+      .select("id,first_name,last_name,full_name,function_title,access_code,active")
+      .eq("company_id", worker.company_id)
+      .eq("active", true)
+      .order("first_name", { ascending: true });
+    if (error) throw error;
+    workerPeopleOptions = data || [];
+  } catch (e) {
+    console.warn("Lista zaposlenih za radnika nije učitana:", e);
+    workerPeopleOptions = currentWorker ? [currentWorker] : [];
+  }
+  updateWorkerSmartDatalists();
+}
 
 function initSupabase() {
   if (!SUPABASE_KEY || SUPABASE_KEY.includes("OVDE_NALEPI")) {
@@ -1375,7 +1477,6 @@ function schedulePersonCodeAvailabilityCheck() {
 
 const WORKER_PREVIEW_SECTIONS = [
   { key: "daily_work", group: "field", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Uprave"] },
-  { key: "workers", group: "field", title: "Evidencija zaposlenih na gradilištu", lines: ["Ime i prezime zaposlenog", "Sati rada", "+ Dodaj zaposlenog"] },
   { key: "machines", group: "field", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
   { key: "vehicles", group: "field", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
   { key: "lowloader", group: "field", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
@@ -1801,6 +1902,8 @@ async function loadPeople() {
   if (error) return toast(error.message, true);
 
   directorPeopleCache = data || [];
+  workerPeopleOptions = directorPeopleCache;
+  updateWorkerSmartDatalists();
   populateWorkOrderForm();
   updateSmartExportDatalists();
   businessUpdatePeopleCount(data || []);
@@ -1987,6 +2090,7 @@ async function loadAssets() {
   if (error) return toast(error.message, true);
 
   directorAssetsCache = data || [];
+  updateWorkerSmartDatalists();
   populateWorkOrderForm();
   updateSmartExportDatalists();
   const activeAssets = (data || []).filter(a => a.active !== false);
@@ -2022,6 +2126,7 @@ async function loadMaterials() {
   }
 
   directorMaterialsCache = data || [];
+  updateWorkerSmartDatalists();
   updateSmartExportDatalists();
   const activeMaterials = (data || []).filter(m => m.active !== false);
 
@@ -4308,6 +4413,7 @@ async function loadWorkerAssets() {
   refreshFieldTankerSelectors();
   refreshFuelMachineOptions();
   refreshSiteLogTruckAssetSelectors();
+  updateWorkerSmartDatalists();
 
   const machineCount = workerAssetOptions.filter(isMachineAsset).length;
   const vehicleCount = workerAssetOptions.filter(isVehicleAsset).length;
@@ -4499,7 +4605,7 @@ function addVehicleEntry(values = {}) {
     </div>
 
     <label>Vozilo / interni broj</label>
-    <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
+    <input class="v-search asset-code-search smart-asset-input" list="workerAssetDatalist" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
     <div class="asset-smart-result v-picked">Upiši broj vozila, tablice ili naziv ako nije na listi.</div>
     <div class="asset-memory-hint v-memory hidden"></div>
     <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Uprave</button>
@@ -4778,6 +4884,7 @@ async function loadWorkerMaterials(selectedValue = "") {
   refreshWorkerMaterialSelect(selectedValue);
   refreshMaterialEntrySelectors();
   refreshSiteLogSelectors();
+  updateWorkerSmartDatalists();
 }
 
 function refreshOneMaterialEntrySelect(entryEl) {
@@ -4907,7 +5014,7 @@ function addMaterialEntry(values = {}) {
     <select class="mat-select"></select>
 
     <label>Van evidencije ako nije u listi</label>
-    <input class="mat-manual" placeholder="npr. kamen 0-31, pesak, rizla..." value="${escapeHtml(manualMaterial)}" />
+    <input class="mat-manual" list="workerMaterialDatalist" placeholder="npr. kamen 0-31, pesak, rizla..." value="${escapeHtml(manualMaterial)}" />
 
     <div class="mini-grid">
       <div>
@@ -5046,14 +5153,16 @@ function addWorkerEntry(values = {}) {
   div.className = "entry-card worker-entry";
   div.innerHTML = `
     <h5>Zaposleni ${idx}</h5>
+    <label>Izaberi zaposlenog iz Direkcije</label>
+    <input class="worker-full-picker" list="workerPeopleDatalist" placeholder="počni kucati ime zaposlenog" value="${escapeHtml(values.full_name || values.name || [values.first_name || values.first, values.last_name || values.last].filter(Boolean).join(" "))}" />
     <div class="grid two">
       <div>
         <label>Ime</label>
-        <input class="worker-first" placeholder="Ime zaposlenog" value="${escapeHtml(values.first_name || values.first || "")}" />
+        <input class="worker-first" list="workerPeopleFirstDatalist" placeholder="Ime zaposlenog" value="${escapeHtml(values.first_name || values.first || "")}" />
       </div>
       <div>
         <label>Prezime</label>
-        <input class="worker-last" placeholder="Prezime zaposlenog" value="${escapeHtml(values.last_name || values.last || "")}" />
+        <input class="worker-last" list="workerPeopleLastDatalist" placeholder="Prezime zaposlenog" value="${escapeHtml(values.last_name || values.last || "")}" />
       </div>
     </div>
     <label>Sati rada tog dana</label>
@@ -5061,6 +5170,10 @@ function addWorkerEntry(values = {}) {
     <button class="secondary small-btn" type="button" onclick="this.closest('.worker-entry').remove(); renumberWorkerEntries();">Ukloni zaposlenog</button>
   `;
   list.appendChild(div);
+  const picker = div.querySelector(".worker-full-picker");
+  if (picker) picker.addEventListener("change", () => splitWorkerNameToFields(div, picker.value));
+  if (picker && picker.value) splitWorkerNameToFields(div, picker.value);
+  updateWorkerSmartDatalists();
 }
 
 function renumberWorkerEntries() {
@@ -5098,7 +5211,7 @@ function addMachineEntry(values = {}) {
     </div>
 
     <label>Mašina / interni broj</label>
-    <input class="m-search asset-code-search smart-asset-input" placeholder="upiši broj ili naziv mašine, npr. 1 ili CAT 330" value="${escapeHtml(initialSearch)}" />
+    <input class="m-search asset-code-search smart-asset-input" list="workerAssetDatalist" placeholder="upiši broj ili naziv mašine, npr. 1 ili CAT 330" value="${escapeHtml(initialSearch)}" />
     <div class="asset-smart-result m-picked">Upiši broj mašine iz Uprave ili naziv ako nije na listi.</div>
     <div class="asset-memory-hint m-memory hidden"></div>
     <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Uprave</button>
@@ -5211,7 +5324,7 @@ function addLowloaderEntry(values = {}) {
     </div>
 
     <label>Broj tablica labudice</label>
-    <input class="ll-plates" placeholder="npr. BG-123-AA" value="${escapeHtml(values.plates || values.registration || "")}" />
+    <input class="ll-plates" list="workerAssetDatalist" placeholder="npr. BG-123-AA" value="${escapeHtml(values.plates || values.registration || "")}" />
 
     <div class="grid two">
       <div>
@@ -5415,7 +5528,7 @@ function addFieldTankerEntry(values = {}) {
     </select>
 
     <label>Sredstvo / interni broj</label>
-    <input class="ft-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}" />
+    <input class="ft-asset-search asset-code-search smart-asset-input" list="workerAssetDatalist" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}" />
     <div class="asset-smart-result ft-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
     <select class="ft-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}</select>
     <input class="ft-asset-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualAsset)}" />
@@ -5431,7 +5544,7 @@ function addFieldTankerEntry(values = {}) {
     <input class="ft-liters numeric-text" type="text" inputmode="decimal" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
 
     <label>Primio gorivo</label>
-    <input class="ft-receiver" placeholder="ime i prezime vozača / rukovaoca" value="${escapeHtml(values.receiver || values.received_by || "")}" />
+    <input class="ft-receiver" list="workerPeopleDatalist" placeholder="ime i prezime vozača / rukovaoca" value="${escapeHtml(values.receiver || values.received_by || "")}" />
   `;
   div.querySelector(".remove-entry").addEventListener("click", () => {
     div.remove();
@@ -6337,7 +6450,7 @@ window.addSiteLogWorkerEntry = function(values = {}) {
   div.innerHTML = `
     <h5>Zaposleni ${idx}</h5>
     <div class="grid three">
-      <div><label>Ime i prezime</label><input class="sl-worker-name" placeholder="Ime i prezime" value="${escapeHtml(values.full_name || values.name || "")}" /></div>
+      <div><label>Ime i prezime</label><input class="sl-worker-name" list="workerPeopleDatalist" placeholder="Ime i prezime" value="${escapeHtml(values.full_name || values.name || "")}" /></div>
       <div><label>Sati</label><input class="sl-worker-hours numeric-text" type="text" inputmode="decimal" placeholder="8" value="${escapeHtml(values.hours || "")}" /></div>
       <div><label>Napomena</label><input class="sl-worker-note" placeholder="npr. iskop, nivelacija" value="${escapeHtml(values.note || "")}" /></div>
     </div>
@@ -6455,8 +6568,8 @@ window.addSiteLogTruckEntry = function(values = {}) {
       <div><label>Vrsta transporta</label><select class="sl-truck-type"><option value="uvoz" ${typeVal === "uvoz" ? "selected" : ""}>Uvoz na gradilište</option><option value="izvoz" ${typeVal === "izvoz" ? "selected" : ""}>Izvoz sa gradilišta</option></select></div>
       <div><label>Izvor prevoza</label><select class="sl-transport-source"><option value="nasi_kamioni" ${sourceVal !== "dobavljac" ? "selected" : ""}>Vozilo iz evidencije firme</option><option value="dobavljac" ${sourceVal === "dobavljac" ? "selected" : ""}>Spoljni dobavljač</option></select></div>
       <div class="sl-supplier-wrap"><label>Naziv dobavljača / prevoznika</label><input class="sl-partner-company" placeholder="naziv firme" value="${escapeHtml(values.partner_company || values.supplier_name || "")}" /></div>
-      <div><label>Vozilo / interni broj</label><input class="sl-truck-asset-search asset-code-search smart-asset-input" placeholder="upiši interni broj, registraciju ili naziv" value="${escapeHtml(values.truck_asset_code || values.asset_code || values.truck_vehicle || values.vehicle || values.truck_plate || "")}" /><div class="asset-smart-result sl-truck-picked">Za naše kamione upiši interni broj, registraciju ili naziv iz Uprave.</div><select class="sl-truck-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1"></select><input class="sl-truck-asset-custom hidden-asset-custom" type="hidden" value="" /></div>
-      <div><label>Ime i prezime vozača</label><input class="sl-driver-name" placeholder="ime i prezime" value="${escapeHtml(values.driver_name || "")}" /></div>
+      <div><label>Vozilo / interni broj</label><input class="sl-truck-asset-search asset-code-search smart-asset-input" list="workerAssetDatalist" placeholder="upiši interni broj, registraciju ili naziv" value="${escapeHtml(values.truck_asset_code || values.asset_code || values.truck_vehicle || values.vehicle || values.truck_plate || "")}" /><div class="asset-smart-result sl-truck-picked">Za naše kamione upiši interni broj, registraciju ili naziv iz Uprave.</div><select class="sl-truck-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1"></select><input class="sl-truck-asset-custom hidden-asset-custom" type="hidden" value="" /></div>
+      <div><label>Ime i prezime vozača</label><input class="sl-driver-name" list="workerPeopleDatalist" placeholder="ime i prezime" value="${escapeHtml(values.driver_name || "")}" /></div>
       <div><label>Materijal</label><select class="site-log-material-select sl-truck-material">${buildWorkerMaterialOptionsHtml(values.material_name || "")}</select></div>
       <div><label>Broj izvršenih tura</label><input class="sl-truck-tours numeric-text" type="text" inputmode="decimal" placeholder="4" value="${escapeHtml(values.tours || "")}" /></div>
       <div><label>m³</label><input class="sl-truck-m3 numeric-text" type="text" inputmode="decimal" placeholder="32" value="${escapeHtml(values.m3 || "")}" /></div>
@@ -9581,7 +9694,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1331", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1333", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -10144,7 +10257,7 @@ async function openWorkerForm() {
     workerLogout.setAttribute("aria-hidden", "false");
   }
   show("WorkerForm");
-  await Promise.all([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
+  await Promise.all([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials(), loadWorkerPeople()]);
   const perms = currentWorker.permissions || {};
   if (perms.site_daily_log) {
     initSiteLogPanel();
