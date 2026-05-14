@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.3";
+const APP_VERSION = "1.33.4";
 
 
 let sb = null;
@@ -1482,8 +1482,6 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "lowloader", group: "field", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
   { key: "fuel", group: "field", title: "Gorivo koje radnik prima", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
   { key: "field_tanker", group: "field", title: "Cisterna / pumpa - izdavanje goriva", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
-  { key: "materials", group: "field", title: "Evidencija materijala", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
-  { key: "signature", group: "field", title: "Potpis zaposlenog", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime i prezime potpisnika opciono"] },
   { key: "leave_request", group: "field", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
   { key: "warehouse", group: "field", title: "Magacin", lines: ["Ulaz / izlaz", "Materijal", "Količina"] },
   { key: "defects", group: "field", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
@@ -3830,10 +3828,13 @@ function collectPermissions() {
   const obj = {};
   $$(".perm").forEach(ch => obj[ch.value] = ch.checked);
 
-  // v1.11.9: posebna prava po materijalu.
-  // Ovo ne ruši stari login: ako nema izabranih materijala, zaposleni i dalje ima/ili nema osnovnu rubriku "Materijal" preko obj.materials.
-  obj.allowed_material_ids = $$(".material-perm:checked").map(ch => ch.value);
-  obj.allowed_material_names = $$(".material-perm:checked").map(ch => ch.dataset.name || "").filter(Boolean);
+  // v1.33.4: ove dve rubrike više se ne dodeljuju običnom radniku.
+  // Materijali + potpis pripadaju Dnevniku gradilišta / Šefu gradilišta.
+  obj.workers = false;
+  obj.materials = false;
+  obj.signature = false;
+  obj.allowed_material_ids = [];
+  obj.allowed_material_names = [];
   return obj;
 }
 
@@ -5124,15 +5125,20 @@ function workerSetSections(perms) {
   const siteSection = $("#secWorkerSite");
   if (siteSection) siteSection.classList.toggle("active", dailyAllowed);
 
+  const obsoleteWorkerSections = ["#secWorkers", "#secMaterials", "#secSignature"];
+  obsoleteWorkerSections.forEach(sel => {
+    const el = $(sel);
+    if (el) el.classList.remove("active");
+  });
+
   const map = {
-    workers: "#secWorkers",
     machines: "#secMachines",
     vehicles: "#secVehicles",
     lowloader: "#secLowloader",
     fuel: "#secFuel",
     field_tanker: "#secFieldTanker",
-    materials: "#secMaterials",
-    signature: "#secSignature",
+    // v1.33.4: Materijali i potpis više nisu obične radničke dozvole.
+    // Pripadaju Dnevniku gradilišta / Šefu gradilišta, da Direkcija ne duplira rubrike.
     leave_request: "#secLeaveRequest",
     warehouse: "#secWarehouse",
     defects: "#secDefects"
@@ -6986,9 +6992,11 @@ function collectWorkerData() {
   const fuelEntries = perms.fuel ? getFuelEntries() : [];
   const selectedSite = getSelectedWorkerSite();
   const canDaily = !!(perms.daily_work || perms.daily_work_site);
-  const canWorkers = !!perms.workers;
-  const canMaterials = !!perms.materials;
-  const canSignature = !!perms.signature;
+  // v1.33.4: Ove rubrike su uklonjene iz običnog radničkog štikliranja.
+  // Evidencija zaposlenih, materijali i potpis se vode kroz Dnevnik gradilišta / Šefa gradilišta.
+  const canWorkers = false;
+  const canMaterials = false;
+  const canSignature = false;
   const canLeaveRequest = !!perms.leave_request;
   const canWarehouse = !!perms.warehouse;
   const canDefects = !!perms.defects;
@@ -7134,13 +7142,13 @@ function ensureWorkerDefaultEntries() {
   // Ne pozivati ovu funkciju samu iz sebe. To je pravilo ranije pravilo
   // beskonačnu petlju posle slanja izveštaja i zaposleni je dobijao grešku
   // iako je RPC slanje možda već prošlo.
-  if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
+  // v1.33.4: Ne dodaj automatski običnu evidenciju zaposlenih; to sada vodi Dnevnik gradilišta.
   if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
   if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
   if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
   if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
   if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
-  if (perms.materials && $("#materialEntries") && !$("#materialEntries").children.length) addMaterialEntry();
+  // v1.33.4: Ne dodaj automatski običnu radničku evidenciju materijala; to sada vodi Dnevnik gradilišta.
 
   refreshMachineDatalists();
   refreshVehicleSelects();
@@ -7487,14 +7495,14 @@ let lastWorkerUiAuditText = "";
 
 const WORKER_UI_PERMISSION_MAP = {
   daily_work: { label: "Gradilište i datum izveštaja", window: "Osnovno: gradilište i datum", worker: true },
-  workers: { label: "Evidencija zaposlenih na gradilištu", window: "Evidencija zaposlenih na gradilištu", worker: true },
+  workers: { label: "Uklonjeno: Evidencija zaposlenih na gradilištu", window: "Duplirano sa Dnevnikom gradilišta", worker: false },
   machines: { label: "Rad sa mašinom", window: "Evidencija rada mašine", worker: true },
   vehicles: { label: "Rad vozila / kamiona", window: "Vozilo / ture / m³", worker: true },
   lowloader: { label: "Transport mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
   fuel: { label: "Gorivo koje radnik prima", window: "Sipanje goriva", worker: true },
   field_tanker: { label: "Cisterna / pumpa - izdavanje goriva", window: "Evidencija goriva – cisterna", worker: true },
-  materials: { label: "Materijal", window: "Materijal", worker: true },
-  signature: { label: "Potpis zaposlenog", window: "Potpis na dnevnom izveštaju", worker: true },
+  materials: { label: "Uklonjeno: Evidencija materijala", window: "Duplirano sa Dnevnikom gradilišta", worker: false },
+  signature: { label: "Uklonjeno: Potpis zaposlenog", window: "Duplirano sa Dnevnikom gradilišta", worker: false },
   leave_request: { label: "Zahtev za odsustvo / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
   warehouse: { label: "Magacin", window: "Magacin", worker: true },
   defects: { label: "Evidencija kvara", window: "Evidencija kvara", worker: true },
@@ -9694,7 +9702,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1333", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1334", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -10272,7 +10280,7 @@ async function openWorkerForm() {
   if (useDesktopPanel && !perms.site_daily_log) {
     setInternalHeader("Terenski radni unos - laptop prikaz", `${currentWorker?.full_name || "Zaposleni"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   }
-  if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
+  // v1.33.4: Ne dodaj automatski običnu evidenciju zaposlenih; to sada vodi Dnevnik gradilišta.
   if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
   if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
   if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();

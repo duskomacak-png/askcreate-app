@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1333" />
+  <link rel="stylesheet" href="style.css?v=1334" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -481,8 +481,6 @@
                 <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
                 <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
                 <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
-                <label><input type="checkbox" class="perm" value="materials" /> Evidencija materijala</label>
-                <label><input type="checkbox" class="perm" value="signature" /> Potpis zaposlenog</label>
                 <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za odsustvo / godišnji odmor</label>
                 <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
                 <label><input type="checkbox" class="perm" value="defects" /> Prijava kvara</label>
@@ -503,9 +501,9 @@
                 <p class="muted tiny">Sklonjeno iz radničkog profila: Direkcija/Uprava se ne dodeljuje ovde, nego kroz poseban ulaz firme.</p>
               </div>
 
-              <div class="material-permission-box">
+              <div class="material-permission-box hidden" aria-hidden="true">
                 <h4>Evidencija materijala dostupna zaposlenom</h4>
-                <p class="muted tiny">Za osnovni rad dovoljno je štiklirati “Evidencija materijala”. Tada zaposleni koristi aktivne materijale iz evidencije firme. Pojedinačno štikliranje koristi se samo ako kasnije želite ograničiti materijale po zaposlenom.</p>
+                <p class="muted tiny">Sklonjeno iz radničkih dozvola: materijali i potpis pripadaju Dnevniku gradilišta / Šefu gradilišta.</p>
                 <div id="personMaterialPermissions" class="dynamic-check-list"></div>
               </div>
             </div>
@@ -1295,6 +1293,6 @@
   <datalist id="workerPeopleLastDatalist"></datalist>
   <datalist id="workerAssetDatalist"></datalist>
   <datalist id="workerMaterialDatalist"></datalist>
-  <script src="script.js?v=1333"></script>
+  <script src="script.js?v=1334"></script>
 </body>
 </html>
