@@ -1,9 +1,9 @@
-const CACHE_NAME = "askcreate-app-v1321";
+const CACHE_NAME = "askcreate-app-v1330";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1321",
-  "./script.js?v=1321",
+  "./style.css?v=1330",
+  "./script.js?v=1330",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
@@ -68,17 +68,17 @@ self.addEventListener("push", (event) => {
     };
   }
 
-  const title = data.title || "🚨 Novi kvar prijavljen";
-  const targetUrl = data.url || "./?ulaz=mehanika";
+  const title = data.title || "🔔 AskCreate obaveštenje";
+  const targetUrl = data.url || "./?ulaz=radnik";
   const badgeCount = Number(data.badgeCount || 1);
 
   const options = {
-    body: data.body || "Otvorite AskCreate panel šefa mehanizacije.",
+    body: data.body || "Otvorite AskCreate.app.",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
 
     // Ne koristimo stalno isti tag, da Android ne zameni staru notifikaciju bez nove vizuelne značke.
-    tag: data.tag || ("askcreate-mechanic-defect-" + Date.now()),
+    tag: data.tag || ("askcreate-notification-" + Date.now()),
 
     renotify: true,
     requireInteraction: true,
@@ -87,7 +87,7 @@ self.addEventListener("push", (event) => {
     timestamp: Date.now(),
 
     actions: [
-      { action: "open", title: "Otvori kvar" }
+      { action: "open", title: data.actionTitle || "Otvori" }
     ],
 
     data: {
@@ -116,7 +116,7 @@ self.addEventListener("notificationclick", (event) => {
   const targetUrl = new URL(
     event.notification && event.notification.data && event.notification.data.url
       ? event.notification.data.url
-      : "./?ulaz=mehanika",
+      : "./?ulaz=radnik",
     self.location.origin
   ).href;
 
@@ -139,7 +139,7 @@ self.addEventListener("notificationclick", (event) => {
         await client.focus();
         if (client.postMessage) {
           client.postMessage({
-            type: "ASKCREATE_OPEN_MECHANIC_DEFECTS",
+            type: data.type || "ASKCREATE_OPEN_NOTIFICATION",
             url: targetUrl
           });
         }

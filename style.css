@@ -5354,3 +5354,19 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
 .mechanic-push-status.missing,.mechanic-push-status.error,.mechanic-push-status.denied{background:rgba(239,68,68,.15);color:#fecaca;border-color:rgba(239,68,68,.35);}
 .mechanic-push-status.unsupported{background:rgba(148,163,184,.14);color:#e2e8f0;border-color:rgba(148,163,184,.32);}
 @media(max-width:720px){.mechanic-push-card{display:block}.mechanic-push-card button{width:100%;margin-top:10px}}
+
+
+/* v1.33.0 - Radni nalozi + MTČ/KM memory */
+.workorder-grid { align-items: start; }
+.workorder-check-list { max-height: 220px; overflow: auto; border: 1px solid rgba(15,118,110,.18); border-radius: 14px; padding: 10px; background: rgba(255,255,255,.72); }
+.workorder-check-list label { display: flex; gap: 8px; align-items: flex-start; padding: 7px 4px; border-bottom: 1px solid rgba(15,23,42,.06); }
+.workorder-check-list label:last-child { border-bottom: 0; }
+.workorder-card, .worker-order-card, .asset-memory-hint { border: 1px solid rgba(15,118,110,.20); border-radius: 16px; padding: 12px; background: rgba(255,255,255,.78); margin: 10px 0; }
+.workorder-card h4, .worker-order-card h4 { margin: 0 0 6px; }
+.workorder-meta { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0; }
+.asset-memory-hint { font-size: 13px; background: rgba(240,253,244,.95); color: #14532d; }
+.asset-memory-hint.warn { background: rgba(255,247,237,.96); color:#9a3412; border-color: rgba(249,115,22,.32); }
+.asset-memory-hint.bad { background: rgba(254,242,242,.96); color:#991b1b; border-color: rgba(220,38,38,.32); }
+.worker-workorders-panel { border-left: 4px solid #0f766e; }
+.worker-workorders-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+@media (max-width: 720px){ .worker-workorders-head { flex-direction:column; } }

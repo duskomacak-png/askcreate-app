@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.32.1";
+const APP_VERSION = "1.33.0";
 
 
 let sb = null;
@@ -1243,6 +1243,7 @@ async function loadDirectorCompany() {
   showDirectorPackageNotice(approvedSource || currentCompany);
   showCurrentCompanyLoginInfo();
   await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
+  await loadWorkOrders().catch(e => console.warn("Radni nalozi nisu učitani:", e));
   startDirectorAutoRefresh();
   return data;
 }
@@ -1387,6 +1388,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "defects", group: "field", title: "Prijava kvara", lines: ["Mašina / vozilo", "Lokacija", "Opis kvara", "Hitnost"] },
   { key: "desktop_panel", group: "layout", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
   { key: "site_daily_log", group: "layout", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
+  { key: "site_manager", group: "layout", title: "Šef gradilišta / radni nalozi", lines: ["Prima radne naloge iz Direkcije", "Vidi radnike i mašine za gradilište", "Može uključiti obaveštenja na telefonu"] },
   { key: "mechanic_boss", group: "layout", title: "Šef mehanizacije", lines: ["Poseban panel za kvarove", "Novi / aktivni / rešeni kvarovi", "Preuzmi, U radu, Rešeno, napomena"] },
   { key: "view_reports", group: "office", title: "Pregled izveštaja", lines: ["Kancelarijsko ovlašćenje - nije polje u terenskom izveštaju"] },
   { key: "approve_reports", group: "office", title: "Odobravanje izveštaja", lines: ["Kancelarijsko ovlašćenje - odobravanje ili vraćanje izveštaja"] },
@@ -1804,6 +1806,7 @@ async function loadPeople() {
   if (error) return toast(error.message, true);
 
   directorPeopleCache = data || [];
+  populateWorkOrderForm();
   updateSmartExportDatalists();
   businessUpdatePeopleCount(data || []);
   const list = $("#peopleList");
@@ -1823,6 +1826,7 @@ async function loadSites() {
   if (error) return toast(error.message, true);
 
   directorSitesCache = data || [];
+  populateWorkOrderForm();
   updateSmartExportDatalists();
   businessUpdateSitesCount(data || []);
   $("#sitesList").innerHTML = (data || []).map(s => `
@@ -1988,6 +1992,7 @@ async function loadAssets() {
   if (error) return toast(error.message, true);
 
   directorAssetsCache = data || [];
+  populateWorkOrderForm();
   updateSmartExportDatalists();
   const activeAssets = (data || []).filter(a => a.active !== false);
   $("#assetsList").innerHTML = activeAssets.map(a => `
@@ -4501,6 +4506,7 @@ function addVehicleEntry(values = {}) {
     <label>Vozilo / interni broj</label>
     <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
     <div class="asset-smart-result v-picked">Upiši broj vozila, tablice ili naziv ako nije na listi.</div>
+    <div class="asset-memory-hint v-memory hidden"></div>
     <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Uprave</button>
 
     <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
@@ -4540,10 +4546,12 @@ function addVehicleEntry(values = {}) {
   div.querySelector(".v-search").addEventListener("input", () => {
     refreshOneVehicleSelect(div);
     updateVehicleCubic(div);
+    applyAssetMemoryToVehicleEntry(div).catch(() => {});
   });
   div.querySelector(".v-name").addEventListener("change", () => {
     updateVehicleCubic(div);
     refreshFuelMachineOptions();
+    applyAssetMemoryToVehicleEntry(div).catch(() => {});
   });
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
   div.querySelector(".v-tours").addEventListener("input", () => updateVehicleCubic(div));
@@ -4565,6 +4573,7 @@ function addVehicleEntry(values = {}) {
   preventNumberInputScrollChanges(div);
   refreshOneVehicleSelect(div);
   updateVehicleCubic(div);
+  applyAssetMemoryToVehicleEntry(div).catch(() => {});
   refreshFuelMachineOptions();
 }
 
@@ -5096,6 +5105,7 @@ function addMachineEntry(values = {}) {
     <label>Mašina / interni broj</label>
     <input class="m-search asset-code-search smart-asset-input" placeholder="upiši broj ili naziv mašine, npr. 1 ili CAT 330" value="${escapeHtml(initialSearch)}" />
     <div class="asset-smart-result m-picked">Upiši broj mašine iz Uprave ili naziv ako nije na listi.</div>
+    <div class="asset-memory-hint m-memory hidden"></div>
     <button class="secondary small-btn refresh-machine-assets" type="button">Osveži mašine iz Uprave</button>
 
     <select class="m-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildMachineOptionsHtml(values.name || "")}</select>
@@ -5142,8 +5152,8 @@ function addMachineEntry(values = {}) {
   const machineSearch = div.querySelector(".m-search");
   const machineSelect = div.querySelector(".m-name");
   const machineCustom = div.querySelector(".m-custom");
-  if (machineSearch) machineSearch.addEventListener("input", () => refreshOneMachineSelect(div));
-  if (machineSelect) machineSelect.addEventListener("change", refreshFuelMachineOptions);
+  if (machineSearch) machineSearch.addEventListener("input", () => { refreshOneMachineSelect(div); applyAssetMemoryToMachineEntry(div).catch(() => {}); });
+  if (machineSelect) machineSelect.addEventListener("change", () => { refreshFuelMachineOptions(); applyAssetMemoryToMachineEntry(div).catch(() => {}); });
   if (machineCustom) machineCustom.addEventListener("input", refreshFuelMachineOptions);
   const refreshMachinesBtn = div.querySelector(".refresh-machine-assets");
   if (refreshMachinesBtn) refreshMachinesBtn.addEventListener("click", async () => {
@@ -5161,6 +5171,7 @@ function addMachineEntry(values = {}) {
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
   refreshOneMachineSelect(div);
+  applyAssetMemoryToMachineEntry(div).catch(() => {});
   refreshFuelMachineOptions();
 }
 
@@ -7136,6 +7147,145 @@ function getFirstFieldTankerValidationIssue() {
   return null;
 }
 
+
+function assetMemoryLocalKey(companyId, assetId, readingType) {
+  return `swp_asset_memory_${companyId || "no_company"}_${assetId || "no_asset"}_${readingType || "reading"}`;
+}
+
+function parsePositiveReading(value) {
+  const cleaned = String(value ?? "").trim().replace(",", ".");
+  if (!cleaned) return null;
+  const n = Number.parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function getSelectedOptionDataset(select) {
+  if (!select || !select.options || select.selectedIndex < 0) return {};
+  return select.options[select.selectedIndex]?.dataset || {};
+}
+
+async function getAssetReadingMemory(assetId, readingType) {
+  if (!assetId || !currentWorker?.company_id) return null;
+  try {
+    const { data, error } = await sb
+      .from("asset_reading_memory")
+      .select("*")
+      .eq("company_id", currentWorker.company_id)
+      .eq("asset_id", assetId)
+      .eq("reading_type", readingType)
+      .maybeSingle();
+    if (!error && data) return data;
+    if (error) console.warn("asset_reading_memory nije dostupna, koristim lokalnu memoriju:", error.message);
+  } catch (e) {
+    console.warn("asset_reading_memory fallback:", e?.message || e);
+  }
+  try {
+    return JSON.parse(localStorage.getItem(assetMemoryLocalKey(currentWorker.company_id, assetId, readingType)) || "null");
+  } catch (_) {
+    return null;
+  }
+}
+
+function renderAssetMemoryHint(box, memory, label) {
+  if (!box) return;
+  if (!memory || memory.last_value === undefined || memory.last_value === null || memory.last_value === "") {
+    box.classList.add("hidden");
+    box.textContent = "";
+    return;
+  }
+  const status = memory.status === "approved" ? "odobrenog izveštaja" : "neodobrenog izveštaja";
+  box.classList.remove("hidden", "warn", "bad");
+  if (memory.status !== "approved") box.classList.add("warn");
+  const from = [memory.last_worker_name, memory.last_report_date].filter(Boolean).join(" · ");
+  box.textContent = `Zapamćeno poslednje stanje za ${label}: ${memory.last_value} (${status}${from ? " · " + from : ""}).`;
+}
+
+async function applyAssetMemoryToMachineEntry(entryEl) {
+  const select = entryEl?.querySelector(".m-name");
+  const startEl = entryEl?.querySelector(".m-start");
+  const box = entryEl?.querySelector(".m-memory");
+  const ds = getSelectedOptionDataset(select);
+  const assetId = ds.assetId || "";
+  if (!assetId || !startEl || (startEl.value || "").trim()) return renderAssetMemoryHint(box, null, "MTČ");
+  const memory = await getAssetReadingMemory(assetId, "mtc");
+  if (memory?.last_value !== undefined && memory?.last_value !== null && memory?.last_value !== "") {
+    startEl.value = String(memory.last_value);
+    startEl.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  renderAssetMemoryHint(box, memory, "MTČ");
+}
+
+async function applyAssetMemoryToVehicleEntry(entryEl) {
+  const select = entryEl?.querySelector(".v-name");
+  const startEl = entryEl?.querySelector(".v-km-start");
+  const box = entryEl?.querySelector(".v-memory");
+  const ds = getSelectedOptionDataset(select);
+  const assetId = ds.assetId || "";
+  if (!assetId || !startEl || (startEl.value || "").trim()) return renderAssetMemoryHint(box, null, "KM");
+  const memory = await getAssetReadingMemory(assetId, "km");
+  if (memory?.last_value !== undefined && memory?.last_value !== null && memory?.last_value !== "") {
+    startEl.value = String(memory.last_value);
+    startEl.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  renderAssetMemoryHint(box, memory, "KM");
+}
+
+function validateAssetReadingRules() {
+  for (const el of $$("#machineEntries .machine-entry")) {
+    const start = parsePositiveReading(el.querySelector(".m-start")?.value);
+    const end = parsePositiveReading(el.querySelector(".m-end")?.value);
+    if (start !== null && end !== null) {
+      if (end < start) return { section: "#secMachines", field: el.querySelector(".m-end"), message: "Završni MTČ ne sme biti manji od početnog MTČ." };
+      if ((end - start) > 16 && !confirm(`Velika razlika MTČ: ${end - start}. Da li je ovo tačno?`)) return { section: "#secMachines", field: el.querySelector(".m-end"), message: "Proveri MTČ razliku pre slanja izveštaja." };
+    }
+  }
+  for (const el of $$("#vehicleEntries .vehicle-entry")) {
+    const start = parsePositiveReading(el.querySelector(".v-km-start")?.value);
+    const end = parsePositiveReading(el.querySelector(".v-km-end")?.value);
+    if (start !== null && end !== null) {
+      if (end < start) return { section: "#secVehicles", field: el.querySelector(".v-km-end"), message: "Završna kilometraža ne sme biti manja od početne kilometraže." };
+      if ((end - start) > 800 && !confirm(`Velika razlika kilometraže: ${end - start} km. Da li je ovo tačno?`)) return { section: "#secVehicles", field: el.querySelector(".v-km-end"), message: "Proveri kilometražu pre slanja izveštaja." };
+    }
+  }
+  return null;
+}
+
+async function saveOneAssetReadingMemory(row) {
+  if (!row?.company_id || !row?.asset_id || !row?.reading_type || row.last_value === null || row.last_value === undefined || row.last_value === "") return;
+  localStorage.setItem(assetMemoryLocalKey(row.company_id, row.asset_id, row.reading_type), JSON.stringify(row));
+  try {
+    const { error } = await sb.from("asset_reading_memory").upsert(row, { onConflict: "company_id,asset_id,reading_type" });
+    if (error) console.warn("MTČ/KM memorija nije upisana u bazu. Pokreni SQL za asset_reading_memory:", error.message);
+  } catch (e) {
+    console.warn("MTČ/KM memorija lokalno sačuvana, baza nije dostupna:", e?.message || e);
+  }
+}
+
+async function saveAssetReadingMemoryFromReport(worker, data, reportDate) {
+  const companyId = worker?.company_id;
+  if (!companyId || !data) return;
+  const now = new Date().toISOString();
+  const common = {
+    company_id: companyId,
+    last_report_id: null,
+    last_report_date: reportDate || today(),
+    last_worker_id: worker?.id || null,
+    last_worker_name: worker?.full_name || "",
+    status: "pending",
+    updated_at: now
+  };
+  const jobs = [];
+  for (const m of data.machines || []) {
+    const value = parsePositiveReading(m.end);
+    if (m.asset_id && value !== null) jobs.push(saveOneAssetReadingMemory({ ...common, asset_id: m.asset_id, reading_type: "mtc", last_value: value, asset_name: m.name || m.machine || "" }));
+  }
+  for (const v of data.vehicles || []) {
+    const value = parsePositiveReading(v.km_end);
+    if (v.asset_id && value !== null) jobs.push(saveOneAssetReadingMemory({ ...common, asset_id: v.asset_id, reading_type: "km", last_value: value, asset_name: v.name || v.vehicle || "" }));
+  }
+  await Promise.allSettled(jobs);
+}
+
 function validateWorkerReportBeforeSubmit(data) {
   const siteSection = $("#secWorkerSite");
   if (siteSection?.classList.contains("active") && !($("#wrSiteName")?.value || "").trim()) {
@@ -7151,6 +7301,9 @@ function validateWorkerReportBeforeSubmit(data) {
     tankerIssue.message = `Izveštaj nije poslat. ${tankerIssue.message}`;
     return tankerIssue;
   }
+
+  const assetReadingIssue = validateAssetReadingRules();
+  if (assetReadingIssue) return assetReadingIssue;
 
   const signatureSection = $("#secSignature");
   if (signatureSection?.classList.contains("active") && !data.signature_data_url) {
@@ -8980,6 +9133,188 @@ function installNavigationFallback() {
   });
 }
 
+
+let directorWorkOrdersCache = [];
+
+function isSiteManagerWorker(worker = currentWorker) {
+  const p = worker?.permissions || {};
+  return !!(p.site_manager || p.site_daily_log || p.desktop_panel);
+}
+
+function personFullName(p) {
+  return `${p?.first_name || ""} ${p?.last_name || ""}`.trim() || p?.full_name || "Zaposleni";
+}
+
+function formatWorkOrderAsset(a) {
+  return [getAssetCode(a), getAssetName(a), getAssetRegistration(a)].filter(Boolean).join(" · ") || "Sredstvo";
+}
+
+function populateWorkOrderForm() {
+  const date = $("#woDate");
+  if (date && !date.value) date.value = today();
+  const site = $("#woSite");
+  if (site) site.innerHTML = `<option value="">Odaberi gradilište</option>` + (directorSitesCache || []).filter(s => s.active !== false).map(s => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.name || "Gradilište")}</option>`).join("");
+  const recipient = $("#woRecipient");
+  if (recipient) {
+    const people = (directorPeopleCache || []).filter(p => p.active !== false);
+    recipient.innerHTML = `<option value="">Odaberi primaoca</option>` + people.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(personFullName(p))} — ${escapeHtml(p.function_title || "")}</option>`).join("");
+  }
+  const workers = $("#woWorkers");
+  if (workers) {
+    const people = (directorPeopleCache || []).filter(p => p.active !== false);
+    workers.innerHTML = people.map(p => `<label><input type="checkbox" value="${escapeHtml(p.id)}" /> <span>${escapeHtml(personFullName(p))}<small> · ${escapeHtml(p.function_title || "")}</small></span></label>`).join("") || `<p class="muted tiny">Prvo dodaj zaposlene.</p>`;
+  }
+  const assets = $("#woAssets");
+  if (assets) {
+    const list = (directorAssetsCache || []).filter(a => a.active !== false);
+    assets.innerHTML = list.map(a => `<label><input type="checkbox" value="${escapeHtml(a.id)}" /> <span>${escapeHtml(formatWorkOrderAsset(a))}<small> · ${escapeHtml(a.asset_type || "")}</small></span></label>`).join("") || `<p class="muted tiny">Prvo dodaj mašine/vozila/opremu.</p>`;
+  }
+}
+
+function selectedCheckedValues(rootSel) {
+  return $$(`${rootSel} input[type="checkbox"]:checked`).map(x => x.value).filter(Boolean);
+}
+
+function selectedWorkOrderDetails(ids, source, formatter) {
+  const set = new Set((ids || []).map(String));
+  return (source || []).filter(x => set.has(String(x.id))).map(formatter);
+}
+
+async function createWorkOrder() {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const date = $("#woDate")?.value || today();
+    const siteId = $("#woSite")?.value || null;
+    const recipientId = $("#woRecipient")?.value || null;
+    const note = ($("#woNote")?.value || "").trim();
+    const workerIds = selectedCheckedValues("#woWorkers");
+    const assetIds = selectedCheckedValues("#woAssets");
+    const site = (directorSitesCache || []).find(s => String(s.id) === String(siteId));
+    const recipient = (directorPeopleCache || []).find(p => String(p.id) === String(recipientId));
+    if (!date) throw new Error("Upiši datum radnog naloga.");
+    if (!siteId) throw new Error("Odaberi gradilište za radni nalog.");
+    if (!recipientId) throw new Error("Odaberi primaoca / odgovorno lice.");
+    if (!workerIds.length) throw new Error("Dodaj bar jednog radnika koji dolazi na gradilište.");
+    if (!note) throw new Error("Upiši napomenu / plan rada da šef zna šta treba da se radi.");
+
+    const payload = {
+      company_id: currentCompany.id,
+      order_date: date,
+      site_id: siteId,
+      site_name: site?.name || "",
+      recipient_user_id: recipientId,
+      recipient_name: personFullName(recipient),
+      assigned_worker_ids: workerIds,
+      assigned_asset_ids: assetIds,
+      worker_names: selectedWorkOrderDetails(workerIds, directorPeopleCache, personFullName),
+      asset_names: selectedWorkOrderDetails(assetIds, directorAssetsCache, formatWorkOrderAsset),
+      note,
+      status: "novo"
+    };
+    const { data, error } = await sb.from("work_orders").insert(payload).select("*").single();
+    if (error) throw error;
+    await sendSiteManagerWorkOrderPush(data || payload).catch(e => console.warn("Work order push nije poslat:", e));
+    if ($("#woNote")) $("#woNote").value = "";
+    $$("#woWorkers input,#woAssets input").forEach(x => x.checked = false);
+    toast("Radni nalog je poslat. ✅");
+    await loadWorkOrders();
+  } catch (e) {
+    toast(e.message || String(e), true);
+  }
+}
+
+function workOrderCardHtml(o, workerView = false) {
+  const workers = Array.isArray(o.worker_names) ? o.worker_names : [];
+  const assets = Array.isArray(o.asset_names) ? o.asset_names : [];
+  return `<article class="${workerView ? "worker-order-card" : "workorder-card"}">
+    <h4>🗂️ ${escapeHtml(o.site_name || "Gradilište")} — ${escapeHtml(o.order_date || "")}</h4>
+    <div class="workorder-meta">
+      <span class="pill">Primalac: ${escapeHtml(o.recipient_name || "—")}</span>
+      <span class="pill">Status: ${escapeHtml(o.status || "novo")}</span>
+      ${workerView ? "" : `<button class="secondary small-action" type="button" onclick="archiveWorkOrder('${escapeHtml(o.id)}')">Arhiviraj</button>`}
+    </div>
+    <p><b>Plan:</b> ${escapeHtml(o.note || "—")}</p>
+    <p><b>Radnici:</b> ${escapeHtml(workers.join(", ") || "—")}</p>
+    <p><b>Mašine/vozila/oprema:</b> ${escapeHtml(assets.join(", ") || "—")}</p>
+  </article>`;
+}
+
+async function loadWorkOrders() {
+  if (!currentCompany) return;
+  populateWorkOrderForm();
+  const box = $("#workOrdersList");
+  try {
+    const { data, error } = await sb.from("work_orders").select("*").eq("company_id", currentCompany.id).neq("status", "archived").order("order_date", { ascending: false }).limit(50);
+    if (error) throw error;
+    directorWorkOrdersCache = data || [];
+    if (box) box.innerHTML = directorWorkOrdersCache.map(o => workOrderCardHtml(o, false)).join("") || `<p class="muted">Nema poslatih radnih naloga.</p>`;
+  } catch (e) {
+    if (box) box.innerHTML = `<p class="muted">Radni nalozi se ne mogu učitati. Pokreni SQL za tabelu work_orders. Greška: ${escapeHtml(e.message || e)}</p>`;
+  }
+}
+
+window.archiveWorkOrder = async function(id) {
+  try {
+    const { error } = await sb.from("work_orders").update({ status: "archived" }).eq("id", id).eq("company_id", currentCompany.id);
+    if (error) throw error;
+    toast("Radni nalog je arhiviran.");
+    await loadWorkOrders();
+  } catch (e) { toast(e.message || String(e), true); }
+};
+
+async function loadWorkerWorkOrders() {
+  const panel = $("#workerWorkOrders");
+  const list = $("#workerWorkOrdersList");
+  if (!panel || !list || !currentWorker?.company_id) return;
+  panel.classList.add("hidden");
+  list.innerHTML = "";
+  try {
+    const { data, error } = await sb.from("work_orders").select("*").eq("company_id", currentWorker.company_id).neq("status", "archived").gte("order_date", today()).order("order_date", { ascending: true }).limit(50);
+    if (error) throw error;
+    const myId = String(currentWorker.id || "");
+    const mine = (data || []).filter(o => String(o.recipient_user_id || "") === myId || (Array.isArray(o.assigned_worker_ids) && o.assigned_worker_ids.map(String).includes(myId)));
+    if (!mine.length) return;
+    panel.classList.remove("hidden");
+    list.innerHTML = mine.map(o => workOrderCardHtml(o, true)).join("");
+  } catch (e) {
+    console.warn("Radni nalozi nisu učitani:", e?.message || e);
+  }
+}
+
+async function enableSiteManagerPushNotifications() {
+  try {
+    if (!currentWorker) throw new Error("Zaposleni nije prijavljen.");
+    if (!isSiteManagerWorker(currentWorker)) throw new Error("Obaveštenja za radne naloge uključi na telefonu Šefa gradilišta / odgovornog lica.");
+    if (!mechanicPushSupported()) throw new Error("Ovaj browser ne podržava Web Push. Na Androidu koristi Chrome i instaliranu PWA prečicu.");
+    if (!mechanicVapidKeyReady()) throw new Error("Nedostaje VAPID public key u script.js.");
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") throw new Error("Obaveštenja nisu dozvoljena u browseru.");
+    const reg = await registerAskCreateServiceWorker(true);
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(MECHANIC_VAPID_PUBLIC_KEY) });
+    const { error } = await sb.rpc("save_site_manager_push_subscription", {
+      p_company_code: currentWorker.company_code,
+      p_access_code: currentWorker.access_code,
+      p_subscription: sub.toJSON(),
+      p_device_info: navigator.userAgent || "unknown"
+    });
+    if (error) throw error;
+    localStorage.setItem("swp_site_manager_push_enabled", "1");
+    toast("Obaveštenja za radne naloge su uključena 🔔");
+  } catch (e) { toast(e.message || String(e), true); }
+}
+
+async function sendSiteManagerWorkOrderPush(order) {
+  if (!order?.recipient_user_id) return;
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-site-work-order-push`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` },
+    body: JSON.stringify({ company_id: currentCompany.id, order_id: order.id, recipient_user_id: order.recipient_user_id })
+  });
+  let json = null; try { json = await res.json(); } catch (_) {}
+  if (!res.ok || json?.ok === false) throw new Error(json?.error || `HTTP ${res.status}`);
+}
+
 function bindEvents() {
   preventNumberInputScrollChanges(document);
 
@@ -9079,6 +9414,8 @@ function bindEvents() {
   if ($("#directorManualRefreshBtn")) $("#directorManualRefreshBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
+  if ($("#sendWorkOrderBtn")) $("#sendWorkOrderBtn").addEventListener("click", createWorkOrder);
+  if ($("#refreshWorkOrdersBtn")) $("#refreshWorkOrdersBtn").addEventListener("click", loadWorkOrders);
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
@@ -9157,6 +9494,7 @@ function bindEvents() {
   if ($("#refreshMechanicDefectsBtn")) $("#refreshMechanicDefectsBtn").addEventListener("click", () => loadMechanicBossDefects({ silent: false }));
   if ($("#enableMechanicPushBtn")) $("#enableMechanicPushBtn").addEventListener("click", enableMechanicPushNotifications);
   if ($("#mechanicLogoutBtn")) $("#mechanicLogoutBtn").addEventListener("click", logoutMechanicBoss);
+  if ($("#enableSiteManagerPushBtn")) $("#enableSiteManagerPushBtn").addEventListener("click", enableSiteManagerPushNotifications);
 
   $("#workerLogoutBtn").addEventListener("click", () => {
     stopMechanicBossWatcher();
@@ -9212,6 +9550,7 @@ function bindEvents() {
       });
       if (error) throw error;
       await verifyRecentlySubmittedReport(worker, reportDate);
+      await saveAssetReadingMemoryFromReport(worker, data, reportDate);
       try {
         await prepareWorkerFormForNextReport();
         toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
@@ -9243,7 +9582,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1321", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1330", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -9815,6 +10154,7 @@ async function openWorkerForm() {
     loadDraft();
   }
   loadWorkerReturnedReports();
+  loadWorkerWorkOrders().catch(e => console.warn("Radni nalozi nisu učitani:", e));
   const useDesktopPanel = !!(perms.desktop_panel || perms.laptop_view || perms.desktop_worker_panel);
   document.body.classList.toggle("worker-desktop-panel", useDesktopPanel);
   if (useDesktopPanel && !perms.site_daily_log) {

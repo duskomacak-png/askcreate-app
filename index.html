@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1321" />
+  <link rel="stylesheet" href="style.css?v=1330" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -385,6 +385,7 @@
           <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
           <button class="tab" data-tab="materials">📦 Materijali</button>
           <button class="tab" data-tab="reports">📄 Izveštaji</button>
+          <button class="tab" data-tab="workorders">🗂️ Radni nalozi</button>
           <button class="tab" data-tab="support">⚙️ Podešavanja</button>
           <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
           <button class="tab workspace-hidden-tab" data-tab="export" type="button">📊 Izvoz u Excel</button>
@@ -493,6 +494,7 @@
                 <p class="muted tiny">Ove stavke menjaju način prikaza. Same po sebi ne dodaju novu poslovnu rubriku u običan radnički izveštaj.</p>
                 <label><input type="checkbox" class="perm" value="desktop_panel" /> Laptop prikaz</label>
                 <label><input type="checkbox" class="perm" value="site_daily_log" /> Dnevnik gradilišta</label>
+                <label><input type="checkbox" class="perm" value="site_manager" /> Šef gradilišta / radni nalozi</label>
                 <label><input type="checkbox" class="perm" value="mechanic_boss" /> Šef mehanizacije</label>
                 <p class="muted tiny permission-note">Dnevnik gradilišta otvara poseban A4 modul za odgovorno lice. Šef mehanizacije otvara poseban panel samo za kvarove/mehanizaciju.</p>
               </div>
@@ -797,6 +799,37 @@
         </div>
       </div>
 
+
+      <div id="tabWorkorders" class="tab-panel">
+        <div class="grid two workorder-grid">
+          <div class="card workorder-form-card">
+            <h3>🗂️ Novi radni nalog</h3>
+            <p class="muted tiny">Direkcija šalje raspored rada. Nalog mora imati datum, gradilište, primaoca, više radnika/mašina po potrebi i napomenu.</p>
+            <label>Datum naloga</label>
+            <input id="woDate" type="date" />
+            <label>Gradilište</label>
+            <select id="woSite"></select>
+            <label>Primalac / odgovorno lice</label>
+            <select id="woRecipient"></select>
+            <label>Radnici koji dolaze na gradilište</label>
+            <div id="woWorkers" class="dynamic-check-list workorder-check-list"></div>
+            <label>Mašine / vozila / oprema</label>
+            <div id="woAssets" class="dynamic-check-list workorder-check-list"></div>
+            <label>Napomena / plan rada</label>
+            <textarea id="woNote" rows="5" placeholder="npr. Sutra iskop kod objekta B, dolaze 2 kamiona, bager CAT 330 i valjak..."></textarea>
+            <div class="row">
+              <button id="sendWorkOrderBtn" class="primary" type="button">Pošalji radni nalog</button>
+              <button id="refreshWorkOrdersBtn" class="secondary" type="button">Osveži</button>
+            </div>
+            <p class="hint">Za pravu push notifikaciju na telefon Šefa gradilišta potrebno je pokrenuti SQL i Edge Function iz poruke uz ZIP.</p>
+          </div>
+          <div class="card workorder-list-card">
+            <h3>Poslati radni nalozi</h3>
+            <div id="workOrdersList" class="list"><p class="muted">Nalozi će se prikazati posle učitavanja.</p></div>
+          </div>
+        </div>
+      </div>
+
       <div id="tabSupport" class="tab-panel">
         <div class="card support-panel-card">
           <div class="support-head">
@@ -961,6 +994,18 @@
           <p id="workerCompanyLabel">Terenski obrazac</p>
         </div>
         <button id="workerLogoutBtn" class="secondary hidden" type="button" aria-hidden="true">Odjavi uređaj</button>
+      </div>
+
+
+      <div id="workerWorkOrders" class="card worker-workorders-panel hidden">
+        <div class="worker-workorders-head">
+          <div>
+            <h3>🗂️ Radni nalozi / raspored rada</h3>
+            <p class="hint">Ovde se prikazuju radni nalozi koje je Direkcija poslala za tebe ili tvoje gradilište.</p>
+          </div>
+          <button id="enableSiteManagerPushBtn" class="secondary small-action" type="button">🔔 Uključi obaveštenja</button>
+        </div>
+        <div id="workerWorkOrdersList" class="list"></div>
       </div>
 
       <div id="workerReturnedReports" class="returned-panel returned-panel-top hidden">
@@ -1251,6 +1296,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1321"></script>
+  <script src="script.js?v=1330"></script>
 </body>
 </html>
