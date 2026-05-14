@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.4";
+const APP_VERSION = "1.33.5";
 
 
 let sb = null;
@@ -25,6 +25,7 @@ let workerAssetOptions = [];
 let workerSiteOptions = [];
 let workerMaterialOptions = [];
 let workerPeopleOptions = [];
+let workerReturnedReportsCache = [];
 let deferredPwaInstallPrompt = null;
 let directorAutoRefreshTimer = null;
 let directorAutoRefreshBusy = false;
@@ -6150,12 +6151,7 @@ async function loadWorkerReturnedReports() {
   panel.classList.add("hidden");
 
   try {
-    const { data, error } = await sb.rpc("worker_list_returned_reports", {
-      p_company_code: currentWorker.company_code,
-      p_access_code: currentWorker.access_code
-    });
-
-    if (error) throw error;
+    const data = await fetchReturnedReportsForCurrentWorker();
     if (!data || !data.length) return;
 
     panel.classList.remove("hidden");
@@ -6184,12 +6180,81 @@ async function loadWorkerReturnedReports() {
 
 async function getReturnedReportForWorker(reportId) {
   if (!currentWorker) throw new Error("Zaposleni nije prijavljen.");
+  const rows = await fetchReturnedReportsForCurrentWorker();
+  return (rows || []).find(r => String(r.id) === String(reportId)) || null;
+}
+
+async function fetchReturnedReportsForCurrentWorker() {
+  if (!currentWorker) return [];
   const { data, error } = await sb.rpc("worker_list_returned_reports", {
     p_company_code: currentWorker.company_code,
     p_access_code: currentWorker.access_code
   });
   if (error) throw error;
-  return (data || []).find(r => r.id === reportId) || null;
+  workerReturnedReportsCache = Array.isArray(data) ? data : [];
+  return workerReturnedReportsCache;
+}
+
+function returnedReportEditType(report) {
+  const d = report?.data || {};
+  return d.report_type === "site_daily_log" ? "site_daily_log" : "worker_report";
+}
+
+function returnedReportBusinessDate(report) {
+  return report?.report_date || report?.data?.report_date || report?.data?.report_date_manual || today();
+}
+
+function setReturnedReportContext(reportId, report) {
+  try {
+    localStorage.setItem("swp_returned_report_id", String(reportId));
+    localStorage.setItem("swp_returned_report_type", returnedReportEditType(report));
+    localStorage.setItem("swp_returned_report_date", returnedReportBusinessDate(report));
+    if (report?.created_at) localStorage.setItem("swp_returned_report_created_at", String(report.created_at));
+  } catch {}
+}
+
+function enrichCorrectionPayload(data, returnedReport) {
+  const originalDate = returnedReportBusinessDate(returnedReport);
+  return {
+    ...(data || {}),
+    correction_of_report_id: returnedReport?.id || localStorage.getItem("swp_returned_report_id") || "",
+    correction_original_report_date: originalDate,
+    correction_original_created_at: returnedReport?.created_at || localStorage.getItem("swp_returned_report_created_at") || "",
+    correction_resubmitted_at: new Date().toISOString(),
+    correction_note: "Ispravka vraćenog izveštaja. Poslovni datum izveštaja ostaje originalni datum rada."
+  };
+}
+
+async function enforceReturnedCorrectionGate(targetType) {
+  let rows = [];
+  try { rows = await fetchReturnedReportsForCurrentWorker(); }
+  catch (e) { rows = workerReturnedReportsCache || []; }
+
+  const activeReturnedId = localStorage.getItem("swp_returned_report_id");
+  if (!rows.length) {
+    clearReturnedReportContext();
+    return null;
+  }
+
+  if (activeReturnedId) {
+    const active = rows.find(r => String(r.id) === String(activeReturnedId));
+    if (!active) {
+      clearReturnedReportContext();
+    } else {
+      const activeType = returnedReportEditType(active);
+      if (targetType && activeType !== targetType) {
+        const label = activeType === "site_daily_log" ? "Dnevnik gradilišta" : "radnički izveštaj";
+        throw new Error(`Prvo završite vraćenu ispravku: ${label}. Novi unos nije dozvoljen dok postoji otvorena ispravka.`);
+      }
+      return active;
+    }
+  }
+
+  const first = rows[0];
+  const d = first?.data || {};
+  const title = d.report_type === "site_daily_log" ? "Dnevnik gradilišta" : (d.report_type === "defect_record" || d.report_type === "defect_alert" ? "Evidencija kvara" : "radni izveštaj");
+  const date = returnedReportBusinessDate(first);
+  throw new Error(`Imate izveštaj vraćen na ispravku (${title}, ${date}). Prvo kliknite „Otvori za ispravku“, ispravite i pošaljite taj isti izveštaj. Novi izveštaj je blokiran dok se ispravka ne završi.`);
 }
 
 window.loadReturnedReportIntoForm = async (reportId) => {
@@ -6202,7 +6267,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     const d = r.data || {};
     if (d.report_type === "site_daily_log") {
       loadSiteLogDataIntoForm(d, r);
-      localStorage.setItem("swp_returned_report_id", reportId);
+      setReturnedReportContext(reportId, r);
       toast("Dnevnik gradilišta je otvoren za ispravku. Ispravi ga i pošalji ponovo Upravi firme.");
       const panel = $("#siteLogPanel");
       if (panel) panel.scrollIntoView({ behavior:"smooth", block:"start" });
@@ -6252,8 +6317,8 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       if (el) el.value = d[key] || "";
     });
 
-    localStorage.setItem("swp_returned_report_id", reportId);
-    toast("Izveštaj je otvoren. Ispravi ga i pošalji ponovo Upravi.");
+    setReturnedReportContext(reportId, r);
+    toast("Izveštaj je otvoren za ispravku. Originalni datum rada ostaje zapamćen; ispravi grešku i pošalji ponovo Upravi.");
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch(e) {
     toast(e.message, true);
@@ -6930,6 +6995,8 @@ function clearReturnedReportContext() {
   try {
     localStorage.removeItem("swp_returned_report_id");
     localStorage.removeItem("swp_returned_report_type");
+    localStorage.removeItem("swp_returned_report_date");
+    localStorage.removeItem("swp_returned_report_created_at");
   } catch {}
 }
 
@@ -6937,11 +7004,12 @@ async function submitSiteLogToDirector() {
   try {
     if (!navigator.onLine) { saveSiteLogDraft(); throw new Error("Nema interneta. Nacrt dnevnika je sačuvan na ovom uređaju."); }
     const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null"); if (!worker) throw new Error("Zaposleni nije prijavljen.");
+    const activeReturnedCorrection = await enforceReturnedCorrectionGate("site_daily_log");
     const data = collectSiteLogData();
     if (!data.site_name) throw new Error("Odaberi gradilište iz liste Uprave firme.");
     if (!hasSiteLogAnyContent(data)) throw new Error("Popuni bar jedan deo dnevnika pre slanja.");
     if (!data.site_log_signature_data_url && !data.signed_file) throw new Error("Dodaj potpis u aplikaciji ili učitaj potpisan dokument pre slanja Upravi firme.");
-    const reportDate = data.report_date_manual || today();
+    const reportDate = activeReturnedCorrection ? returnedReportBusinessDate(activeReturnedCorrection) : (data.report_date_manual || today());
     const returnedId = localStorage.getItem("swp_returned_report_id");
     if (returnedId) {
       let returnedStillExists = null;
@@ -6957,7 +7025,7 @@ async function submitSiteLogToDirector() {
           p_report_id: returnedId,
           p_report_date: reportDate,
           p_site_id: data.site_id || null,
-          p_data: data
+          p_data: enrichCorrectionPayload(data, returnedStillExists)
         });
         if (error) {
           if (isStaleReturnedReportError(error)) {
@@ -9129,6 +9197,7 @@ async function sendDefectNow() {
 
     const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
     if (!worker) throw new Error("Zaposleni nije prijavljen.");
+    await enforceReturnedCorrectionGate("worker_report");
 
     const defectText = $("#wrDefect")?.value.trim() || "";
     const defectAsset = getDefectAssetPayload();
@@ -9649,6 +9718,7 @@ function bindEvents() {
       }
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Zaposleni nije prijavljen.");
+      await enforceReturnedCorrectionGate("worker_report");
       const data = collectWorkerData();
       const validationIssue = validateWorkerReportBeforeSubmit(data);
       if (validationIssue) {
@@ -10354,13 +10424,14 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
     return false;
   }
 
+  const originalReportDate = returnedReportBusinessDate(returnedStillExists);
   const { error } = await sb.rpc("worker_resubmit_returned_report", {
     p_company_code: currentWorker.company_code,
     p_access_code: currentWorker.access_code,
     p_report_id: returnedId,
-    p_report_date: $("#wrDate").value || today(),
+    p_report_date: originalReportDate,
     p_site_id: reportData.site_id || null,
-    p_data: reportData
+    p_data: enrichCorrectionPayload(reportData, returnedStillExists)
   });
 
   if (error) {
