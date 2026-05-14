@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.0";
+const APP_VERSION = "1.33.1";
 
 
 let sb = null;
@@ -1379,8 +1379,8 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "machines", group: "field", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
   { key: "vehicles", group: "field", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
   { key: "lowloader", group: "field", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
-  { key: "fuel", group: "field", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
-  { key: "field_tanker", group: "field", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
+  { key: "fuel", group: "field", title: "Gorivo koje radnik prima", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
+  { key: "field_tanker", group: "field", title: "Cisterna / pumpa - izdavanje goriva", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
   { key: "materials", group: "field", title: "Evidencija materijala", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
   { key: "signature", group: "field", title: "Potpis zaposlenog", lines: ["Potpis prstom na telefonu ili mišem na laptopu", "Ime i prezime potpisnika opciono"] },
   { key: "leave_request", group: "field", title: "Zahtev za odsustvo / godišnji odmor", lines: ["Slobodan dan: jedan datum", "Godišnji odmor: datum od - do", "Napomena / razlog"] },
@@ -1390,11 +1390,6 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "site_daily_log", group: "layout", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
   { key: "site_manager", group: "layout", title: "Šef gradilišta / radni nalozi", lines: ["Prima radne naloge iz Direkcije", "Vidi radnike i mašine za gradilište", "Može uključiti obaveštenja na telefonu"] },
   { key: "mechanic_boss", group: "layout", title: "Šef mehanizacije", lines: ["Poseban panel za kvarove", "Novi / aktivni / rešeni kvarovi", "Preuzmi, U radu, Rešeno, napomena"] },
-  { key: "view_reports", group: "office", title: "Pregled izveštaja", lines: ["Kancelarijsko ovlašćenje - nije polje u terenskom izveštaju"] },
-  { key: "approve_reports", group: "office", title: "Odobravanje izveštaja", lines: ["Kancelarijsko ovlašćenje - odobravanje ili vraćanje izveštaja"] },
-  { key: "excel_export", group: "office", title: "Izvoz u Excel", lines: ["Kancelarijsko ovlašćenje - priprema i preuzimanje Excel/CSV izvoza"] },
-  { key: "manage_people", group: "office", title: "Upravljanje korisnicima", lines: ["Kancelarijsko ovlašćenje - dodavanje i izmena ljudi u firmi"] },
-  { key: "settings", group: "office", title: "Podešavanja firme", lines: ["Kancelarijsko ovlašćenje - osnovna podešavanja firme"] }
 ];
 
 function getPersonPreviewData() {
@@ -7383,13 +7378,17 @@ const WORKER_UI_PERMISSION_MAP = {
   machines: { label: "Rad sa mašinom", window: "Evidencija rada mašine", worker: true },
   vehicles: { label: "Rad vozila / kamiona", window: "Vozilo / ture / m³", worker: true },
   lowloader: { label: "Transport mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
-  fuel: { label: "Evidencija goriva – korisnik", window: "Sipanje goriva", worker: true },
-  field_tanker: { label: "Evidencija goriva – cisterna", window: "Evidencija goriva – cisterna", worker: true },
+  fuel: { label: "Gorivo koje radnik prima", window: "Sipanje goriva", worker: true },
+  field_tanker: { label: "Cisterna / pumpa - izdavanje goriva", window: "Evidencija goriva – cisterna", worker: true },
   materials: { label: "Materijal", window: "Materijal", worker: true },
   signature: { label: "Potpis zaposlenog", window: "Potpis na dnevnom izveštaju", worker: true },
   leave_request: { label: "Zahtev za odsustvo / godišnji odmor", window: "Slobodan dan / godišnji", worker: true },
   warehouse: { label: "Magacin", window: "Magacin", worker: true },
   defects: { label: "Evidencija kvara", window: "Evidencija kvara", worker: true },
+  desktop_panel: { label: "Laptop prikaz", window: "Širi prikaz za laptop", worker: true },
+  site_daily_log: { label: "Dnevnik gradilišta", window: "A4 dnevnik gradilišta", worker: true },
+  site_manager: { label: "Šef gradilišta / radni nalozi", window: "Radni nalozi i obaveštenja", worker: true },
+  mechanic_boss: { label: "Šef mehanizacije", window: "Panel kvarova", worker: true },
 
   // Upravljačka prava nisu radnički prozori. Ako ih ima običan zaposleni, audit ih označava kao upozorenje.
   view_reports: { label: "Pregled izveštaja", window: "Uprava: pregled izveštaja", worker: false },
@@ -9582,7 +9581,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1330", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1331", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
