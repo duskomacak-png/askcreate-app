@@ -5439,3 +5439,17 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
 @media (max-width: 720px) {
   .role-preset-grid { grid-template-columns: 1fr; }
 }
+
+
+/* v1.32.4 - MTČ/KM memory helper */
+.asset-reading-memory-hint{
+  border:1px solid rgba(220,38,38,.35);
+  border-radius:10px;
+  padding:8px 10px;
+  background:rgba(220,38,38,.06);
+}
+.asset-reading-memory-hint.warn{
+  background:rgba(245,158,11,.10);
+  border-color:rgba(245,158,11,.45);
+}
+.asset-reading-memory-hint.hidden{display:none;}

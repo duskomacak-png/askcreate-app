@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.32.3";
+const APP_VERSION = "1.32.5";
 
 
 let sb = null;
@@ -938,7 +938,7 @@ function renderAdminWorkerPreview(c) {
           <label>Datum / godina</label>
           <div class="fake-input">${escapeHtml(today())}</div>
           <label>Ime gradilišta</label>
-          <div class="fake-input">Gradilište iz liste Uprave</div>
+          <div class="fake-input">Gradilište iz liste Direkcije</div>
         </div>
         <div class="preview-worker-section"><b>👷 Evidencija zaposlenih na gradilištu</b><small>zaposleni vidi samo ono što mu Uprava uključi</small></div>
         <div class="preview-worker-section"><b>⛽ Sipanje goriva</b><small>mašina/vozilo, litri, MTČ/km, primalac</small></div>
@@ -1446,7 +1446,7 @@ function clearDirectorRolePresets() {
 }
 
 const WORKER_PREVIEW_SECTIONS = [
-  { key: "daily_work", group: "field", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Uprave"] },
+  { key: "daily_work", group: "field", title: "Gradilište i datum izveštaja", lines: ["Datum / godina", "Gradilište iz liste Direkcije"] },
   { key: "workers", group: "field", title: "Evidencija zaposlenih na gradilištu", lines: ["Ime i prezime zaposlenog", "Sati rada", "+ Dodaj zaposlenog"] },
   { key: "machines", group: "field", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
   { key: "vehicles", group: "field", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
@@ -4187,6 +4187,7 @@ function refreshOneMachineSelect(entryEl) {
     if (custom) custom.value = String(search || "").trim();
     updateMachineSmartResult(entryEl, null, search);
   }
+  applyMachineReadingMemory(entryEl);
   refreshFuelMachineOptions();
 }
 
@@ -4229,8 +4230,8 @@ function buildLowloaderSiteDatalistOptionsHtml() {
 function buildLowloaderSiteOptionsHtml(selectedValue = "") {
   const selected = String(selectedValue || "").trim();
   const sites = Array.isArray(workerSiteOptions) ? workerSiteOptions : [];
-  if (!sites.length) return `<option value="">Nema gradilišta iz Uprave</option>`;
-  const options = [`<option value="">Odaberi gradilište iz Uprave</option>`];
+  if (!sites.length) return `<option value="">Nema gradilišta iz Direkcije</option>`;
+  const options = [`<option value="">Odaberi gradilište iz Direkcije</option>`];
   let hasSelected = false;
   sites.forEach(site => {
     const name = site.name || site.site_name || site.title || "";
@@ -4532,6 +4533,7 @@ function refreshOneVehicleSelect(entryEl) {
     if (custom) custom.value = String(search || "").trim();
     updateVehicleSmartResult(entryEl, null, search);
   }
+  applyVehicleReadingMemory(entryEl);
   refreshFuelMachineOptions();
 }
 
@@ -4577,6 +4579,190 @@ function updateVehicleCubic(entryEl) {
       ? `Automatski: ${selected.capacity || 0} m³ × ${tours || 0} tura = ${auto} m³`
       : "Ako vozilo ima kapacitet i upišeš broj tura, aplikacija računa m³ automatski.";
   }
+}
+
+
+
+/* v1.32.4: Lokalno pamćenje poslednjeg MTČ/KM po mašini/vozilu.
+   Ne menja bazu i ne dira RPC: radi na telefonu/računaru radnika preko localStorage.
+   Prvi poslati izveštaj postavlja početno stanje za sledeći unos. */
+function getAssetReadingMemoryKey() {
+  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+  const companyPart = worker?.company_id || worker?.company_code || "company";
+  return `swp_asset_reading_memory_${companyPart}`;
+}
+
+function loadAssetReadingMemory() {
+  try {
+    const raw = localStorage.getItem(getAssetReadingMemoryKey());
+    const data = JSON.parse(raw || "{}");
+    return data && typeof data === "object" ? data : {};
+  } catch { return {}; }
+}
+
+function saveAssetReadingMemory(memory) {
+  try { localStorage.setItem(getAssetReadingMemoryKey(), JSON.stringify(memory || {})); } catch {}
+}
+
+function normalizeAssetMemoryPart(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getAssetMemoryKey(kind, item = {}) {
+  const k = kind === "vehicle" ? "vehicle" : "machine";
+  if (item.asset_id) return `${k}:id:${item.asset_id}`;
+  const code = normalizeAssetMemoryPart(item.asset_code || item.machine_code || item.vehicle_code || item.code);
+  if (code) return `${k}:code:${code}`;
+  const name = normalizeAssetMemoryPart(item.name || item.machine || item.vehicle || item.registration || item.custom || item.machine_custom || item.vehicle_custom);
+  if (name) return `${k}:name:${name}`;
+  return "";
+}
+
+function selectedMachineMemoryItem(entryEl) {
+  const select = entryEl?.querySelector(".m-name");
+  const option = select?.options ? select.options[select.selectedIndex] : null;
+  const custom = entryEl?.querySelector(".m-custom")?.value.trim() || "";
+  return {
+    asset_id: custom ? null : (option?.dataset?.assetId || null),
+    asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
+    name: custom || (select?.value || entryEl?.querySelector(".m-search")?.value || ""),
+    custom
+  };
+}
+
+function selectedVehicleMemoryItem(entryEl) {
+  const selected = getSelectedVehicleFromEntry(entryEl);
+  return {
+    asset_id: selected.asset_id,
+    asset_code: selected.asset_code,
+    name: selected.name,
+    registration: selected.registration,
+    custom: entryEl?.querySelector(".v-custom")?.value.trim() || ""
+  };
+}
+
+function showAssetMemoryHint(entryEl, text, warn = false) {
+  if (!entryEl) return;
+  let hint = entryEl.querySelector(".asset-reading-memory-hint");
+  if (!hint) {
+    hint = document.createElement("p");
+    hint.className = "field-hint asset-reading-memory-hint";
+    const grid = entryEl.querySelector(".mini-grid");
+    if (grid && grid.parentNode) grid.insertAdjacentElement("afterend", hint);
+    else entryEl.appendChild(hint);
+  }
+  hint.textContent = text || "";
+  hint.classList.toggle("warn", !!warn);
+  hint.classList.toggle("hidden", !text);
+}
+
+function formatReadingMemoryValue(value) {
+  const n = Number.parseFloat(String(value ?? "").replace(",", "."));
+  if (!Number.isFinite(n)) return String(value ?? "").trim();
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+}
+
+function applyMachineReadingMemory(entryEl, force = false) {
+  const startEl = entryEl?.querySelector(".m-start");
+  if (!startEl) return;
+  if (!force && String(startEl.value || "").trim()) return;
+  const item = selectedMachineMemoryItem(entryEl);
+  const key = getAssetMemoryKey("machine", item);
+  const memory = key ? loadAssetReadingMemory()[key] : null;
+  if (!memory?.value) {
+    showAssetMemoryHint(entryEl, "Prvi izveštaj za ovu mašinu će zapamtiti završni MTČ kao sledeći početni MTČ.");
+    return;
+  }
+  startEl.value = formatReadingMemoryValue(memory.value);
+  showAssetMemoryHint(entryEl, `Početni MTČ je popunjen iz poslednjeg izveštaja: ${formatReadingMemoryValue(memory.value)}${memory.report_date ? ` · ${memory.report_date}` : ""}`);
+  const endEl = entryEl.querySelector(".m-end");
+  if (endEl) endEl.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function applyVehicleReadingMemory(entryEl, force = false) {
+  const startEl = entryEl?.querySelector(".v-km-start");
+  if (!startEl) return;
+  if (!force && String(startEl.value || "").trim()) return;
+  const item = selectedVehicleMemoryItem(entryEl);
+  const key = getAssetMemoryKey("vehicle", item);
+  const memory = key ? loadAssetReadingMemory()[key] : null;
+  if (!memory?.value) {
+    showAssetMemoryHint(entryEl, "Prvi izveštaj za ovo vozilo će zapamtiti završnu kilometražu kao sledeću početnu kilometražu.");
+    return;
+  }
+  startEl.value = formatReadingMemoryValue(memory.value);
+  showAssetMemoryHint(entryEl, `Početna kilometraža je popunjena iz poslednjeg izveštaja: ${formatReadingMemoryValue(memory.value)}${memory.report_date ? ` · ${memory.report_date}` : ""}`);
+}
+
+function updateAssetReadingMemoryFromReport(reportData = {}, reportDate = today()) {
+  const memory = loadAssetReadingMemory();
+  const workerName = currentWorker?.full_name || "";
+  (reportData.machines || []).forEach(m => {
+    const end = String(m.end || "").trim();
+    if (!end) return;
+    const key = getAssetMemoryKey("machine", m);
+    if (!key) return;
+    memory[key] = {
+      kind: "machine",
+      value: formatReadingMemoryValue(end),
+      asset_id: m.asset_id || null,
+      asset_code: m.asset_code || m.machine_code || "",
+      name: m.name || "",
+      report_date: reportDate,
+      worker: workerName,
+      source: "unapproved_worker_report",
+      saved_at: new Date().toISOString()
+    };
+  });
+  (reportData.vehicles || []).forEach(v => {
+    const end = String(v.km_end || "").trim();
+    if (!end) return;
+    const key = getAssetMemoryKey("vehicle", v);
+    if (!key) return;
+    memory[key] = {
+      kind: "vehicle",
+      value: formatReadingMemoryValue(end),
+      asset_id: v.asset_id || null,
+      asset_code: v.asset_code || v.vehicle_code || "",
+      name: v.name || v.vehicle || "",
+      registration: v.registration || "",
+      report_date: reportDate,
+      worker: workerName,
+      source: "unapproved_worker_report",
+      saved_at: new Date().toISOString()
+    };
+  });
+  saveAssetReadingMemory(memory);
+}
+
+function getAssetReadingValidationIssue(data = {}) {
+  const machines = Array.isArray(data.machines) ? data.machines : [];
+  for (const m of machines) {
+    const startRaw = String(m.start || "").trim();
+    const endRaw = String(m.end || "").trim();
+    if (!startRaw || !endRaw) continue;
+    const start = parseDecimalInput(startRaw);
+    const end = parseDecimalInput(endRaw);
+    if (end < start) return { section: "#secMachines", message: `Mašina ${m.name || ""}: završni MTČ ne sme biti manji od početnog MTČ.` };
+    const diff = end - start;
+    if (diff > 24 && !confirm(`Mašina ${m.name || ""}: razlika MTČ je ${formatReadingMemoryValue(diff)} sati. Da li je to stvarno tačno?`)) {
+      return { section: "#secMachines", message: "Proveri početni i završni MTČ pre slanja." };
+    }
+  }
+  const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
+  for (const v of vehicles) {
+    const startRaw = String(v.km_start || "").trim();
+    const endRaw = String(v.km_end || "").trim();
+    if (!startRaw || !endRaw) continue;
+    const start = parseDecimalInput(startRaw);
+    const end = parseDecimalInput(endRaw);
+    if (end < start) return { section: "#secVehicles", message: `Vozilo ${v.name || v.vehicle || ""}: završna kilometraža ne sme biti manja od početne.` };
+    const diff = end - start;
+    if (diff > 1000 && !confirm(`Vozilo ${v.name || v.vehicle || ""}: razlika je ${formatReadingMemoryValue(diff)} km. Da li je to stvarno tačno?`)) {
+      return { section: "#secVehicles", message: "Proveri početnu i završnu kilometražu pre slanja." };
+    }
+  }
+  return null;
 }
 
 function addVehicleEntry(values = {}) {
@@ -4691,6 +4877,42 @@ function getVehicleEntries() {
   }).filter(v => v.name || v.km_start || v.km_end || v.route || v.tours || v.cubic_m3);
 }
 
+function normalizeWorkerSiteRows(rows = []) {
+  const seen = new Set();
+  return (Array.isArray(rows) ? rows : [])
+    .map(site => ({
+      id: site?.id || site?.site_id || "",
+      name: site?.name || site?.site_name || site?.title || "",
+      location: site?.location || site?.address || site?.description || "",
+      active: site?.active !== false
+    }))
+    .filter(site => {
+      const key = String(site.id || site.name).trim().toLowerCase();
+      if (!site.name || seen.has(key) || !site.active) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), "sr"));
+}
+
+function renderWorkerSiteSelectOptions(select, selectedName = "") {
+  const sites = normalizeWorkerSiteRows(workerSiteOptions);
+  if (!select) return;
+  if (!sites.length) {
+    select.innerHTML = `<option value="">Nema aktivnih gradilišta iz Direkcije</option>`;
+    return;
+  }
+  select.innerHTML = `<option value="">Odaberi gradilište iz Direkcije</option>` + sites.map(site => {
+    const loc = site.location ? ` · ${site.location}` : "";
+    return `<option value="${escapeHtml(site.name)}" data-site-id="${escapeHtml(site.id || "")}">${escapeHtml(site.name + loc)}</option>`;
+  }).join("");
+  const wanted = String(selectedName || "").trim().toLowerCase();
+  if (wanted) {
+    const match = Array.from(select.options).find(o => String(o.value || "").trim().toLowerCase() === wanted);
+    if (match) select.value = match.value;
+  }
+}
+
 async function loadWorkerSites(selectedName = "") {
   const select = $("#wrSiteName");
   const hint = $("#workerSiteHint");
@@ -4702,50 +4924,56 @@ async function loadWorkerSites(selectedName = "") {
     return;
   }
 
-  select.innerHTML = `<option value="">Učitavam gradilišta...</option>`;
-  if (hint) hint.textContent = "Gradilišta se učitavaju iz Uprave.";
+  select.innerHTML = `<option value="">Učitavam gradilišta iz Direkcije...</option>`;
+  if (hint) hint.textContent = "Gradilišta se učitavaju iz liste koju je dodala Direkcija.";
+
+  let sites = [];
+  let rpcError = null;
+  let directError = null;
 
   try {
     const { data, error } = await sb.rpc("worker_list_sites", {
       p_company_code: worker.company_code,
       p_access_code: worker.access_code
     });
-
     if (error) throw error;
-
-    const sites = Array.isArray(data) ? data : [];
-    workerSiteOptions = sites;
-    if (!sites.length) {
-      select.innerHTML = `<option value="">Nema aktivnih gradilišta</option>`;
-      if (hint) hint.textContent = "Uprava još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
-      refreshFieldTankerSelectors();
-      refreshDefectSiteDatalist();
-      return;
-    }
-
-    select.innerHTML = `<option value="">Odaberi gradilište</option>` + sites.map(site => {
-      const name = site.name || "Gradilište";
-      const loc = site.location ? ` · ${site.location}` : "";
-      return `<option value="${escapeHtml(name)}" data-site-id="${escapeHtml(site.id || "")}">${escapeHtml(name + loc)}</option>`;
-    }).join("");
-
-    if (selectedName) {
-      const wanted = String(selectedName).trim().toLowerCase();
-      const match = Array.from(select.options).find(o => String(o.value || "").trim().toLowerCase() === wanted);
-      if (match) select.value = match.value;
-    }
-    refreshFieldTankerSelectors();
-    refreshDefectSiteDatalist();
-
-    if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Uprava.";
+    sites = normalizeWorkerSiteRows(data || []);
   } catch (e) {
-    select.innerHTML = `<option value="">Gradilišta nisu učitana</option>`;
-    if (hint) hint.textContent = "Pokreni Supabase SQL za v1.12.1: worker_list_sites. Detalj: " + (e.message || e);
-    workerSiteOptions = [];
-    refreshFieldTankerSelectors();
-    refreshDefectSiteDatalist();
-    toast("Gradilišta za zaposlenog nisu učitana: " + (e.message || e), true);
+    rpcError = e;
   }
+
+  // Bezbedan fallback: ako je RPC star ili ne vrati ništa, uzmi aktivna gradilišta po company_id.
+  // Time sva polja za gradilište i dalje rade iz Direkcijine liste, bez ručnog kucanja u terenskim modulima.
+  if (!sites.length && worker.company_id) {
+    try {
+      const { data, error } = await sb
+        .from("sites")
+        .select("id,name,location,active")
+        .eq("company_id", worker.company_id)
+        .eq("active", true)
+        .order("name", { ascending: true });
+      if (error) throw error;
+      sites = normalizeWorkerSiteRows(data || []);
+    } catch (e) {
+      directError = e;
+    }
+  }
+
+  workerSiteOptions = sites;
+  renderWorkerSiteSelectOptions(select, selectedName);
+  refreshFieldTankerSelectors();
+  refreshDefectSiteDatalist();
+  refreshLowloaderSiteSelectors();
+  refreshSiteLogSelectors();
+
+  if (!sites.length) {
+    if (hint) hint.textContent = "Nema aktivnih gradilišta iz Direkcije. Direkcija prvo mora dodati gradilište u svoju listu.";
+    const detail = (directError && directError.message) || (rpcError && rpcError.message) || "nema podataka";
+    console.warn("AskCreate.app: gradilišta nisu učitana za zaposlenog", { rpcError, directError, detail });
+    return;
+  }
+
+  if (hint) hint.textContent = "Odaberi aktivno gradilište iz liste koju je dodala Direkcija.";
 }
 
 
@@ -5095,7 +5323,7 @@ function getMaterialEntries() {
 
 function workerSetSections(perms) {
   // v1.16.5 pravilo:
-  // "Gradilište i datum izveštaja" kod zaposlenog prikazuje samo Datum/godinu + Gradilište iz liste Uprave.
+  // "Gradilište i datum izveštaja" kod zaposlenog prikazuje samo Datum/godinu + Gradilište iz liste Direkcije.
   // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
   const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
 
@@ -5393,8 +5621,8 @@ function getLowloaderEntries() {
 
 function buildFieldTankerSiteOptionsHtml(selectedValue = "") {
   const selected = String(selectedValue || "").trim().toLowerCase();
-  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Uprave</option>`;
-  return `<option value="">Odaberi gradilište</option>` + workerSiteOptions.map(site => {
+  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Direkcije</option>`;
+  return `<option value="">Odaberi gradilište iz Direkcije</option>` + workerSiteOptions.map(site => {
     const name = site.name || "Gradilište";
     const loc = site.location ? ` · ${site.location}` : "";
     const isSelected = selected && String(name).trim().toLowerCase() === selected ? "selected" : "";
@@ -5489,12 +5717,10 @@ function addFieldTankerEntry(values = {}) {
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <label>Gradilište iz Uprave</label>
+    <label>Gradilište iz Direkcije</label>
     <select class="ft-site-select">${buildFieldTankerSiteOptionsHtml(selectedSite)}</select>
-    <p class="field-hint">Ako gradilište nije u evidenciji, upiši naziv ispod.</p>
-
-    <label>Upiši naziv gradilište ako nije u listi</label>
-    <input class="ft-site-custom" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_custom || values.manual_site || "")}" />
+    <p class="field-hint">Za cisternu goriva gradilište se bira samo iz liste Direkcije. Ako ga nema, Direkcija prvo mora dodati aktivno gradilište.</p>
+    <input class="ft-site-custom hidden" type="hidden" value="" />
 
     <label>Vrsta sredstva</label>
     <select class="ft-asset-kind">
@@ -5571,8 +5797,8 @@ function getFieldTankerEntries() {
   return $$("#fieldTankerEntries .field-tanker-entry").map((el, i) => {
     const siteSelect = el.querySelector(".ft-site-select");
     const siteOption = siteSelect?.options ? siteSelect.options[siteSelect.selectedIndex] : null;
-    const manualSite = el.querySelector(".ft-site-custom")?.value.trim() || "";
-    const site = manualSite || (siteSelect?.value || "").trim();
+    const manualSite = "";
+    const site = (siteSelect?.value || "").trim();
     const kind = el.querySelector(".ft-asset-kind")?.value || "machine";
     const assetSelect = el.querySelector(".ft-asset-select");
     const assetOption = assetSelect?.options ? assetSelect.options[assetSelect.selectedIndex] : null;
@@ -5682,7 +5908,7 @@ function normalizeStoredFieldTankerEntry(entry = {}, index = 0) {
 }
 
 function validateFieldTankerEntryForMemory(entry) {
-  if (!entry.site_name) return "Cisterna goriva: izaberi ili upiši gradilište/lokaciju za svako sipanje.";
+  if (!entry.site_name || !entry.site_id) return "Cisterna goriva: izaberi gradilište iz liste Direkcije za svako sipanje.";
   if (!entry.asset_name) return "Cisterna goriva: upiši interni broj, naziv ili tablice sredstva koje je tankovano.";
   const kmValue = String(entry.km || entry.current_km || "").trim();
   const mtcValue = String(entry.mtc || entry.current_mtc || "").trim();
@@ -6461,8 +6687,8 @@ function getSiteLogSignatureData() {
 }
 function siteLogSelectSiteOptions(selectedValue = "") {
   const selected = String(selectedValue || "").trim().toLowerCase();
-  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Uprave</option>`;
-  return `<option value="">Odaberi gradilište</option>` + workerSiteOptions.map(site => {
+  if (!workerSiteOptions.length) return `<option value="">Nema gradilišta iz Direkcije</option>`;
+  return `<option value="">Odaberi gradilište iz Direkcije</option>` + workerSiteOptions.map(site => {
     const name = site.name || "Gradilište"; const loc = site.location ? ` · ${site.location}` : "";
     const isSelected = selected && String(name).trim().toLowerCase() === selected ? "selected" : "";
     return `<option value="${escapeHtml(name)}" data-site-id="${escapeHtml(site.id || "")}" ${isSelected}>${escapeHtml(name + loc)}</option>`;
@@ -6976,7 +7202,7 @@ async function submitSiteLogToDirector() {
     if (!navigator.onLine) { saveSiteLogDraft(); throw new Error("Nema interneta. Nacrt dnevnika je sačuvan na ovom uređaju."); }
     const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null"); if (!worker) throw new Error("Zaposleni nije prijavljen.");
     const data = collectSiteLogData();
-    if (!data.site_name) throw new Error("Odaberi gradilište iz liste Uprave firme.");
+    if (!data.site_name) throw new Error("Odaberi gradilište iz liste Direkcije.");
     if (!hasSiteLogAnyContent(data)) throw new Error("Popuni bar jedan deo dnevnika pre slanja.");
     if (!data.site_log_signature_data_url && !data.signed_file) throw new Error("Dodaj potpis u aplikaciji ili učitaj potpisan dokument pre slanja Upravi firme.");
     const reportDate = data.report_date_manual || today();
@@ -7286,9 +7512,9 @@ function getFirstFieldTankerValidationIssue() {
     const mtc = card.querySelector(".ft-mtc");
     const liters = card.querySelector(".ft-liters");
     const receiver = card.querySelector(".ft-receiver");
-    const siteValue = (siteCustom?.value || "").trim() || (siteSelect?.value || "").trim();
+    const siteValue = (siteSelect?.value || "").trim();
     const assetValue = (assetSearch?.value || "").trim();
-    if (!siteValue) return { section: "#secFieldTanker", entry: card, field: siteSelect || siteCustom, message: `Cisterna goriva ${n}: izaberi ili upiši gradilište/lokaciju.` };
+    if (!siteValue) return { section: "#secFieldTanker", entry: card, field: siteSelect, message: `Cisterna goriva ${n}: izaberi gradilište iz liste Direkcije.` };
     if (!assetValue) return { section: "#secFieldTanker", entry: card, field: assetSearch, message: `Cisterna goriva ${n}: upiši interni broj, naziv ili tablice sredstva koje je tankovano.` };
     const kmValue = (km?.value || "").trim();
     const mtcValue = (mtc?.value || "").trim();
@@ -7305,7 +7531,7 @@ function validateWorkerReportBeforeSubmit(data) {
     return {
       section: "#secWorkerSite",
       field: $("#wrSiteName"),
-      message: "Izveštaj nije poslat. Prvo izaberi gradilište iz liste Uprave firme. Označio sam rubriku koju treba popuniti."
+      message: "Izveštaj nije poslat. Prvo izaberi gradilište iz liste Direkcije. Označio sam rubriku koju treba popuniti."
     };
   }
 
@@ -7314,6 +7540,9 @@ function validateWorkerReportBeforeSubmit(data) {
     tankerIssue.message = `Izveštaj nije poslat. ${tankerIssue.message}`;
     return tankerIssue;
   }
+
+  const readingIssue = getAssetReadingValidationIssue(data);
+  if (readingIssue) return readingIssue;
 
   const signatureSection = $("#secSignature");
   if (signatureSection?.classList.contains("active") && !data.signature_data_url) {
@@ -9362,7 +9591,7 @@ function bindEvents() {
       }
       const mainSiteSection = $("#secWorkerSite");
       if (mainSiteSection?.classList.contains("active") && !data.site_name) {
-        throw new Error("Odaberi gradilište iz liste. Gradilište prvo dodaje Uprava.");
+        throw new Error("Odaberi gradilište iz liste Direkcije. Ako ga nema, Direkcija prvo mora dodati aktivno gradilište.");
       }
       if (await submitReturnedCorrectionIfNeeded(data)) return;
       const reportDate = $("#wrDate").value || today();
@@ -9375,6 +9604,7 @@ function bindEvents() {
       });
       if (error) throw error;
       await verifyRecentlySubmittedReport(worker, reportDate);
+      updateAssetReadingMemoryFromReport(data, reportDate);
       try {
         await prepareWorkerFormForNextReport();
         toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
@@ -9406,7 +9636,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1321", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1325", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -10114,6 +10344,7 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
   }
 
   clearReturnedReportContext();
+  updateAssetReadingMemoryFromReport(reportData, $("#wrDate")?.value || today());
   try {
     await prepareWorkerFormForNextReport();
   } catch (resetError) {
