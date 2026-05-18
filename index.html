@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1335" />
+  <link rel="stylesheet" href="style.css?v=1321" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -385,7 +385,6 @@
           <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
           <button class="tab" data-tab="materials">📦 Materijali</button>
           <button class="tab" data-tab="reports">📄 Izveštaji</button>
-          <button class="tab" data-tab="workorders">🗂️ Radni nalozi</button>
           <button class="tab" data-tab="support">⚙️ Podešavanja</button>
           <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
           <button class="tab workspace-hidden-tab" data-tab="export" type="button">📊 Izvoz u Excel</button>
@@ -468,6 +467,25 @@
             <label>Pristupni kod zaposlenog</label>
             <input id="personCode" placeholder="npr. zor1234" />
             <div id="personCodeStatus" class="person-code-status muted tiny">Kod mora biti jedinstven u celoj aplikaciji. Crveno znači zauzeto/neispravno, zeleno znači da može.</div>
+
+            <div class="role-preset-box">
+              <h4>👷 Kome ova osoba pripada?</h4>
+              <p class="muted tiny">Brzi izbor automatski štiklira rubrike koje ta uloga treba da vidi. Jedna osoba može imati više uloga.</p>
+              <div class="role-preset-grid">
+                <label><input type="checkbox" class="role-preset" value="bagerista" /> Bagerista / rukovalac</label>
+                <label><input type="checkbox" class="role-preset" value="vozac" /> Vozač kipera / kamiona</label>
+                <label><input type="checkbox" class="role-preset" value="labudica" /> Vozač labudice</label>
+                <label><input type="checkbox" class="role-preset" value="cisterna_voda" /> Vozač cisterne za vodu</label>
+                <label><input type="checkbox" class="role-preset" value="sipac_goriva" /> Sipač goriva / cisterna goriva</label>
+                <label><input type="checkbox" class="role-preset" value="sef_mehanizacije" /> Šef mehanizacije</label>
+                <label><input type="checkbox" class="role-preset" value="sef_gradilista" /> Šef gradilišta</label>
+                <label><input type="checkbox" class="role-preset" value="direkcija" /> Direkcija / kancelarija</label>
+              </div>
+              <div class="role-preset-actions">
+                <button id="clearRolePresetsBtn" type="button" class="secondary small-action">Očisti uloge</button>
+                <span id="rolePresetHint" class="muted tiny">Posle brzog izbora možeš ručno dodati ili skinuti svaku rubriku ispod.</span>
+              </div>
+            </div>
             <div class="permission-box">
               <h4>Dodeljene radne rubrike i ovlašćenja</h4>
               <p class="muted tiny">Rubrike su razdvojene da se ne mešaju polja koja ulaze u terenski izveštaj i kancelarijska ovlašćenja.</p>
@@ -476,11 +494,14 @@
                 <h4>📋 Rubrike za terenski izveštaj</h4>
                 <p class="muted tiny">Ove stavke se stvarno pojavljuju zaposlenom/odgovornom licu u formi za unos i mogu ući u izveštaj.</p>
                 <label><input type="checkbox" class="perm" value="daily_work" /> Gradilište i datum izveštaja</label>
+                <label><input type="checkbox" class="perm" value="workers" /> Evidencija zaposlenih na gradilištu</label>
                 <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
                 <label><input type="checkbox" class="perm" value="vehicles" /> Rad vozila / kamiona</label>
                 <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
                 <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
                 <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
+                <label><input type="checkbox" class="perm" value="materials" /> Evidencija materijala</label>
+                <label><input type="checkbox" class="perm" value="signature" /> Potpis zaposlenog</label>
                 <label><input type="checkbox" class="perm" value="leave_request" /> Zahtev za odsustvo / godišnji odmor</label>
                 <label><input type="checkbox" class="perm" value="warehouse" /> Magacin</label>
                 <label><input type="checkbox" class="perm" value="defects" /> Prijava kvara</label>
@@ -491,19 +512,23 @@
                 <p class="muted tiny">Ove stavke menjaju način prikaza. Same po sebi ne dodaju novu poslovnu rubriku u običan radnički izveštaj.</p>
                 <label><input type="checkbox" class="perm" value="desktop_panel" /> Laptop prikaz</label>
                 <label><input type="checkbox" class="perm" value="site_daily_log" /> Dnevnik gradilišta</label>
-                <label><input type="checkbox" class="perm" value="site_manager" /> Šef gradilišta / radni nalozi</label>
                 <label><input type="checkbox" class="perm" value="mechanic_boss" /> Šef mehanizacije</label>
                 <p class="muted tiny permission-note">Dnevnik gradilišta otvara poseban A4 modul za odgovorno lice. Šef mehanizacije otvara poseban panel samo za kvarove/mehanizaciju.</p>
               </div>
 
-              <div class="permission-group permission-group-office hidden" aria-hidden="true">
+              <div class="permission-group permission-group-office">
                 <h4>🏢 Kancelarijska ovlašćenja</h4>
-                <p class="muted tiny">Sklonjeno iz radničkog profila: Direkcija/Uprava se ne dodeljuje ovde, nego kroz poseban ulaz firme.</p>
+                <p class="muted tiny">Ove stavke se ne pojavljuju kao polja u terenskom izveštaju. One samo daju pristup pregledima, odobravanjima ili podešavanjima.</p>
+                <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
+                <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje izveštaja</label>
+                <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
+                <label><input type="checkbox" class="perm" value="manage_people" /> Upravljanje korisnicima</label>
+                <label><input type="checkbox" class="perm" value="settings" /> Podešavanja firme</label>
               </div>
 
-              <div class="material-permission-box hidden" aria-hidden="true">
+              <div class="material-permission-box">
                 <h4>Evidencija materijala dostupna zaposlenom</h4>
-                <p class="muted tiny">Sklonjeno iz radničkih dozvola: materijali i potpis pripadaju Dnevniku gradilišta / Šefu gradilišta.</p>
+                <p class="muted tiny">Za osnovni rad dovoljno je štiklirati “Evidencija materijala”. Tada zaposleni koristi aktivne materijale iz evidencije firme. Pojedinačno štikliranje koristi se samo ako kasnije želite ograničiti materijale po zaposlenom.</p>
                 <div id="personMaterialPermissions" class="dynamic-check-list"></div>
               </div>
             </div>
@@ -791,37 +816,6 @@
         </div>
       </div>
 
-
-      <div id="tabWorkorders" class="tab-panel">
-        <div class="grid two workorder-grid">
-          <div class="card workorder-form-card">
-            <h3>🗂️ Novi radni nalog</h3>
-            <p class="muted tiny">Direkcija šalje raspored rada. Nalog mora imati datum, gradilište, primaoca, više radnika/mašina po potrebi i napomenu.</p>
-            <label>Datum naloga</label>
-            <input id="woDate" type="date" />
-            <label>Gradilište</label>
-            <select id="woSite"></select>
-            <label>Primalac / odgovorno lice</label>
-            <select id="woRecipient"></select>
-            <label>Radnici koji dolaze na gradilište</label>
-            <div id="woWorkers" class="dynamic-check-list workorder-check-list"></div>
-            <label>Mašine / vozila / oprema</label>
-            <div id="woAssets" class="dynamic-check-list workorder-check-list"></div>
-            <label>Napomena / plan rada</label>
-            <textarea id="woNote" rows="5" placeholder="npr. Sutra iskop kod objekta B, dolaze 2 kamiona, bager CAT 330 i valjak..."></textarea>
-            <div class="row">
-              <button id="sendWorkOrderBtn" class="primary" type="button">Pošalji radni nalog</button>
-              <button id="refreshWorkOrdersBtn" class="secondary" type="button">Osveži</button>
-            </div>
-            <p class="hint">Za pravu push notifikaciju na telefon Šefa gradilišta potrebno je pokrenuti SQL i Edge Function iz poruke uz ZIP.</p>
-          </div>
-          <div class="card workorder-list-card">
-            <h3>Poslati radni nalozi</h3>
-            <div id="workOrdersList" class="list"><p class="muted">Nalozi će se prikazati posle učitavanja.</p></div>
-          </div>
-        </div>
-      </div>
-
       <div id="tabSupport" class="tab-panel">
         <div class="card support-panel-card">
           <div class="support-head">
@@ -988,17 +982,7 @@
         <button id="workerLogoutBtn" class="secondary hidden" type="button" aria-hidden="true">Odjavi uređaj</button>
       </div>
 
-
-      <div id="workerWorkOrders" class="card worker-workorders-panel hidden">
-        <div class="worker-workorders-head">
-          <div>
-            <h3>🗂️ Radni nalozi / raspored rada</h3>
-            <p class="hint">Ovde se prikazuju radni nalozi koje je Direkcija poslala za tebe ili tvoje gradilište.</p>
-          </div>
-          <button id="enableSiteManagerPushBtn" class="secondary small-action" type="button">🔔 Uključi obaveštenja</button>
-        </div>
-        <div id="workerWorkOrdersList" class="list"></div>
-      </div>
+      <div id="workerRoleSummary" class="worker-role-summary hidden"></div>
 
       <div id="workerReturnedReports" class="returned-panel returned-panel-top hidden">
         <h3>⚠️ Izveštaji vraćeni na ispravku</h3>
@@ -1154,14 +1138,14 @@
 
           <div class="fuel-memory-panel">
             <h5>Memoriši sipanje goriva</h5>
-            <p class="hint">Za operatera goriva: svako sipanje može se sačuvati lokalno na telefonu, a na kraju dana poslati Upravi kao jedan dnevni izveštaj.</p>
+            <p class="hint">Za sipača goriva: svako sipanje se memoriše na telefonu, grupiše po gradilištu i šalje Direkciji čim završiš to gradilište.</p>
             <div class="row compact-row">
               <button id="memorizeFieldTankerBtn" class="secondary" type="button">💾 Memoriši trenutna sipanja</button>
-              <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji sva memorišana</button>
+              <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji ako je jedno gradilište</button>
               <button id="clearStoredFieldTankerBtn" class="danger-btn" type="button">Obriši memoriju</button>
             </div>
             <div id="storedFieldTankerList" class="stored-fuel-list"></div>
-            <p class="hint">Memorisana sipanja se ne brišu dok Supabase ne potvrdi uspešno slanje.</p>
+            <p class="hint">Kad pošalješ jedno gradilište, brišu se samo sipanja tog gradilišta. Ostala gradilišta ostaju sačuvana dok ih posebno ne pošalješ.</p>
           </div>
         </div>
 
@@ -1170,7 +1154,7 @@
           <p class="hint">Uprava dodaje listu materijala. Za svaki unos bira se da li je ulaz, izlaz ili ugradnja materijala.</p>
           <div id="materialEntries" class="entry-list"></div>
           <button id="addWorkerMaterialEntryBtn" class="secondary" type="button" onclick="addMaterialEntry()">+ Dodaj materijal</button>
-          <p class="field-hint">Materijal se nudi iz spiska Direkcije; ručni unos koristi samo ako materijal nije dodat u evidenciju.</p>
+          <p class="field-hint">Ako materijal nije u evidenciji, možeš upisati naziv materijala.</p>
         </div>
 
 
@@ -1184,7 +1168,7 @@
             <button id="clearSignatureBtn" class="secondary" type="button">Obriši potpis</button>
           </div>
           <label>Ime i prezime potpisnika <span class="muted">(opciono)</span></label>
-          <input id="wrSignatureName" list="workerPeopleDatalist" placeholder="npr. Duško Mačak / odgovorno lice gradilišta" />
+          <input id="wrSignatureName" placeholder="npr. Duško Mačak / odgovorno lice gradilišta" />
         </div>
 
         <div id="secLeaveRequest" class="dyn-section">
@@ -1224,7 +1208,7 @@
             <option value="izlaz">Izlaz</option>
           </select>
           <label>Artikal</label>
-          <input id="wrWarehouseItem" list="workerMaterialDatalist" placeholder="počni kucati materijal iz Direkcije" />
+          <input id="wrWarehouseItem" />
           <label>Količina</label>
           <input id="wrWarehouseQty" />
         </div>
@@ -1234,7 +1218,7 @@
           <p class="hint">Ovo je važno da Odgovorno lice mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
           <label>Sredstvo u kvaru / interni broj</label>
-          <input id="wrDefectAssetName" class="asset-code-search smart-asset-input" list="workerAssetDatalist" placeholder="upiši broj, naziv ili registraciju, npr. 1, CAT 330, BG3542RI" autocomplete="off" />
+          <input id="wrDefectAssetName" class="asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili registraciju, npr. 1, CAT 330, BG3542RI" autocomplete="off" />
           <div id="wrDefectAssetPicked" class="asset-smart-result defect-picked">Upiši interni broj, naziv mašine/vozila/opreme ili registraciju.</div>
 
           <label>Gradilište / lokacija kvara</label>
@@ -1288,11 +1272,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <datalist id="workerPeopleDatalist"></datalist>
-  <datalist id="workerPeopleFirstDatalist"></datalist>
-  <datalist id="workerPeopleLastDatalist"></datalist>
-  <datalist id="workerAssetDatalist"></datalist>
-  <datalist id="workerMaterialDatalist"></datalist>
-  <script src="script.js?v=1335"></script>
+  <script src="script.js?v=1321"></script>
 </body>
 </html>

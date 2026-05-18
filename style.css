@@ -5355,18 +5355,87 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
 .mechanic-push-status.unsupported{background:rgba(148,163,184,.14);color:#e2e8f0;border-color:rgba(148,163,184,.32);}
 @media(max-width:720px){.mechanic-push-card{display:block}.mechanic-push-card button{width:100%;margin-top:10px}}
 
+/* v1.32.2 - Sipač goriva: memorija i slanje po gradilištu */
+.stored-fuel-site-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(180, 36, 36, .24);
+  border-radius: 16px;
+  background: rgba(255,255,255,.62);
+}
+.stored-fuel-site-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.stored-fuel-site-head div,
+.stored-fuel-site-entries {
+  display: grid;
+  gap: 6px;
+}
+.stored-fuel-send-site {
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .stored-fuel-site-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .stored-fuel-send-site {
+    width: 100%;
+  }
+}
 
-/* v1.33.0 - Radni nalozi + MTČ/KM memory */
-.workorder-grid { align-items: start; }
-.workorder-check-list { max-height: 220px; overflow: auto; border: 1px solid rgba(15,118,110,.18); border-radius: 14px; padding: 10px; background: rgba(255,255,255,.72); }
-.workorder-check-list label { display: flex; gap: 8px; align-items: flex-start; padding: 7px 4px; border-bottom: 1px solid rgba(15,23,42,.06); }
-.workorder-check-list label:last-child { border-bottom: 0; }
-.workorder-card, .worker-order-card, .asset-memory-hint { border: 1px solid rgba(15,118,110,.20); border-radius: 16px; padding: 12px; background: rgba(255,255,255,.78); margin: 10px 0; }
-.workorder-card h4, .worker-order-card h4 { margin: 0 0 6px; }
-.workorder-meta { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0; }
-.asset-memory-hint { font-size: 13px; background: rgba(240,253,244,.95); color: #14532d; }
-.asset-memory-hint.warn { background: rgba(255,247,237,.96); color:#9a3412; border-color: rgba(249,115,22,.32); }
-.asset-memory-hint.bad { background: rgba(254,242,242,.96); color:#991b1b; border-color: rgba(220,38,38,.32); }
-.worker-workorders-panel { border-left: 4px solid #0f766e; }
-.worker-workorders-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-@media (max-width: 720px){ .worker-workorders-head { flex-direction:column; } }
+/* v1.32.3 — Direkcija: brze uloge i pregled šta radnik vidi */
+.role-preset-box {
+  border: 1px solid rgba(220, 38, 38, .38);
+  background: rgba(127, 29, 29, .08);
+  border-radius: 18px;
+  padding: 14px;
+  margin: 14px 0;
+}
+.role-preset-box h4 { margin: 0 0 6px; }
+.role-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.role-preset-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(220, 38, 38, .32);
+  border-radius: 12px;
+  padding: 9px 10px;
+  background: rgba(255,255,255,.04);
+  font-size: .92rem;
+}
+.role-preset-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.worker-preview-roles {
+  border-color: rgba(220, 38, 38, .34) !important;
+}
+.worker-role-summary {
+  margin: 0 0 12px;
+}
+.worker-role-card {
+  border: 1px solid rgba(220, 38, 38, .36);
+  background: rgba(15, 23, 42, .72);
+  color: #f8fafc;
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, .18);
+}
+@media (max-width: 720px) {
+  .role-preset-grid { grid-template-columns: 1fr; }
+}
