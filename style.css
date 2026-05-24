@@ -5595,51 +5595,54 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
 }
 
 
-/* v1.32.7 - početna slika telefona: prikaži CELU sliku, bez sečenja */
+/* v1.32.8 - početna slika telefona: cela slika bez sečenja */
 .home-phone-visual{
-  background-position:center!important;
-  background-size:cover!important;
-  background-repeat:no-repeat!important;
-  background-color:#0d1712!important;
-  overflow:hidden!important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background-position:center;
+  background-size:cover;
+  background-repeat:no-repeat;
+  overflow:hidden;
 }
 .home-phone-visual::before{
   content:"";
   position:absolute;
-  inset:-18px;
+  inset:0;
   background-image:inherit;
   background-position:center;
   background-size:cover;
   background-repeat:no-repeat;
-  filter:blur(16px);
+  filter:blur(18px);
   transform:scale(1.08);
-  opacity:.68;
-  z-index:1;
+  opacity:.55;
 }
 .home-phone-visual::after{
   content:"";
   position:absolute;
   inset:0;
-  background:rgba(0,0,0,.08);
-  z-index:1;
+  background:linear-gradient(180deg, rgba(11,20,17,.12) 0%, rgba(11,20,17,.04) 35%, rgba(11,20,17,.18) 100%);
 }
 .home-phone-visual img{
-  position:absolute!important;
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  object-fit:contain!important;
-  object-position:center!important;
-  display:block!important;
-  z-index:2!important;
+  position:relative;
+  z-index:2;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+  display:block;
+}
+.ask-phone-screen.with-custom-visual{
+  background:#0f1d17;
 }
 .ask-phone-screen.with-custom-visual .phone-content-overlay{
-  pointer-events:none;
-  background:linear-gradient(180deg, rgba(8,17,12,0) 0%, rgba(8,17,12,.05) 48%, rgba(8,17,12,.46) 100%)!important;
+  justify-content:flex-end;
+  padding-bottom:18px;
+  background:linear-gradient(180deg, rgba(8,17,12,0) 0%, rgba(8,17,12,0) 58%, rgba(8,17,12,.62) 100%);
 }
 .admin-home-preview-screen{
-  background-size:contain!important;
-  background-repeat:no-repeat!important;
-  background-position:center!important;
-  background-color:#101c15!important;
+  background-size:contain;
+  background-position:center;
+  background-repeat:no-repeat;
+  background-color:#d8e7db;
 }
