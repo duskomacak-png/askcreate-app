@@ -5664,3 +5664,29 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
   object-fit:contain;
   object-position:center center;
 }
+
+
+/* v1.33.0 - početna: bez gornje mutne linije i bez donjeg teksta u telefonu */
+.home-phone-visual::before{
+  display:none !important;
+  background-image:none !important;
+}
+.ask-phone-screen.with-custom-visual .phone-content-overlay{
+  display:none !important;
+}
+.ask-phone-screen.with-custom-visual{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#0f1d17;
+}
+.home-phone-visual{
+  inset:0;
+}
+.home-phone-visual img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center center;
+  display:block;
+}
