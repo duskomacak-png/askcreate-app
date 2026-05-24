@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1325" />
+  <link rel="stylesheet" href="style.css?v=1322" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -467,25 +467,6 @@
             <label>Pristupni kod zaposlenog</label>
             <input id="personCode" placeholder="npr. zor1234" />
             <div id="personCodeStatus" class="person-code-status muted tiny">Kod mora biti jedinstven u celoj aplikaciji. Crveno znači zauzeto/neispravno, zeleno znači da može.</div>
-
-            <div class="role-preset-box">
-              <h4>👷 Kome ova osoba pripada?</h4>
-              <p class="muted tiny">Brzi izbor automatski štiklira rubrike koje ta uloga treba da vidi. Jedna osoba može imati više uloga.</p>
-              <div class="role-preset-grid">
-                <label><input type="checkbox" class="role-preset" value="bagerista" /> Bagerista / rukovalac</label>
-                <label><input type="checkbox" class="role-preset" value="vozac" /> Vozač kipera / kamiona</label>
-                <label><input type="checkbox" class="role-preset" value="labudica" /> Vozač labudice</label>
-                <label><input type="checkbox" class="role-preset" value="cisterna_voda" /> Vozač cisterne za vodu</label>
-                <label><input type="checkbox" class="role-preset" value="sipac_goriva" /> Sipač goriva / cisterna goriva</label>
-                <label><input type="checkbox" class="role-preset" value="sef_mehanizacije" /> Šef mehanizacije</label>
-                <label><input type="checkbox" class="role-preset" value="sef_gradilista" /> Šef gradilišta</label>
-                <label><input type="checkbox" class="role-preset" value="direkcija" /> Direkcija / kancelarija</label>
-              </div>
-              <div class="role-preset-actions">
-                <button id="clearRolePresetsBtn" type="button" class="secondary small-action">Očisti uloge</button>
-                <span id="rolePresetHint" class="muted tiny">Posle brzog izbora možeš ručno dodati ili skinuti svaku rubriku ispod.</span>
-              </div>
-            </div>
             <div class="permission-box">
               <h4>Dodeljene radne rubrike i ovlašćenja</h4>
               <p class="muted tiny">Rubrike su razdvojene da se ne mešaju polja koja ulaze u terenski izveštaj i kancelarijska ovlašćenja.</p>
@@ -733,7 +714,7 @@
                   <input id="smartExportTo" type="date" />
                 </label>
                 <label>Gradilište
-                  <input id="smartExportSite" list="smartExportSiteList" placeholder="Izaberi gradilište iz Direkcije ili ostavi prazno za sva" />
+                  <input id="smartExportSite" list="smartExportSiteList" placeholder="Izaberi gradilište iz Uprave ili ostavi prazno za sva" />
                 </label>
                 <label id="smartExportWorkerWrap"><span id="smartExportWorkerLabel">Zaposleni</span>
                   <input id="smartExportWorker" list="smartExportWorkerList" placeholder="npr. Marko ili prazno za sve" />
@@ -982,8 +963,6 @@
         <button id="workerLogoutBtn" class="secondary hidden" type="button" aria-hidden="true">Odjavi uređaj</button>
       </div>
 
-      <div id="workerRoleSummary" class="worker-role-summary hidden"></div>
-
       <div id="workerReturnedReports" class="returned-panel returned-panel-top hidden">
         <h3>⚠️ Izveštaji vraćeni na ispravku</h3>
         <p class="hint">Uprava je vratila ove izveštaje. Otvori izveštaj, ispravi podatke i pošalji ponovo.</p>
@@ -1069,7 +1048,7 @@
 
       <div id="normalWorkerFormCard" class="card">
         <h3>Terenski radni unos</h3>
-        <p class="hint">Ako ti Uprava uključi rubriku Gradilište i datum izveštaja, popunjavaš samo datum/godinu i biraš gradilište iz liste Direkcije. Ostale rubrike vidiš samo ako su posebno uključene.</p>
+        <p class="hint">Ako ti Uprava uključi rubriku Gradilište i datum izveštaja, popunjavaš samo datum/godinu i biraš gradilište iz liste Uprave. Ostale rubrike vidiš samo ako su posebno uključene.</p>
         <label>Datum / godina</label>
         <input id="wrDate" type="date" />
 
@@ -1083,7 +1062,7 @@
 
         <div id="secDailyWork" class="dyn-section hidden-by-rule" aria-hidden="true">
           <!-- v1.16.3: Gradilište i datum izveštaja više ne prikazuje opis rada ni sate.
-               Pravilo: samo Datum / godina + Gradilište iz liste Direkcije.
+               Pravilo: samo Datum / godina + Gradilište iz liste Uprave.
                Ovaj blok ostaje u HTML-u zbog kompatibilnosti, ali se ne aktivira. -->
           <h4>Šta je rađeno danas</h4>
           <label>Opis rada</label>
@@ -1138,14 +1117,14 @@
 
           <div class="fuel-memory-panel">
             <h5>Memoriši sipanje goriva</h5>
-            <p class="hint">Za sipača goriva: svako sipanje se memoriše na telefonu, grupiše po gradilištu i šalje Direkciji čim završiš to gradilište.</p>
+            <p class="hint">Za operatera goriva: svako sipanje može se sačuvati lokalno na telefonu, a na kraju dana poslati Upravi kao jedan dnevni izveštaj.</p>
             <div class="row compact-row">
               <button id="memorizeFieldTankerBtn" class="secondary" type="button">💾 Memoriši trenutna sipanja</button>
-              <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji ako je jedno gradilište</button>
+              <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji sva memorišana</button>
               <button id="clearStoredFieldTankerBtn" class="danger-btn" type="button">Obriši memoriju</button>
             </div>
             <div id="storedFieldTankerList" class="stored-fuel-list"></div>
-            <p class="hint">Kad pošalješ jedno gradilište, brišu se samo sipanja tog gradilišta. Ostala gradilišta ostaju sačuvana dok ih posebno ne pošalješ.</p>
+            <p class="hint">Memorisana sipanja se ne brišu dok Supabase ne potvrdi uspešno slanje.</p>
           </div>
         </div>
 
@@ -1223,7 +1202,7 @@
 
           <label>Gradilište / lokacija kvara</label>
           <select id="wrDefectSiteName">
-            <option value="">Učitavam gradilišta iz Direkcije...</option>
+            <option value="">Učitavam gradilišta iz Uprave...</option>
           </select>
           <label>Druga lokacija / ručni unos</label>
           <input id="wrDefectSiteManual" placeholder="npr. put, baza, servis, druga lokacija" />
@@ -1272,6 +1251,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1325"></script>
+  <script src="script.js?v=1322"></script>
 </body>
 </html>
