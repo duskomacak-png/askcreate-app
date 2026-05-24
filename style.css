@@ -5831,3 +5831,75 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
   border-top:1px solid var(--border);
   background:#fff;
 }
+
+
+/* v1.33.7 - tanki svetlo-plavi obrubi za bolju preglednost */
+:root{
+  --soft-blue-outline:#8fd3ff;
+  --soft-blue-outline-strong:#4fb6f3;
+  --soft-blue-glow:rgba(79,182,243,.18);
+}
+.card,
+.dashboard-head,
+.item,
+.notice,
+.admin-director-bridge,
+.business-kpi-card,
+.support-contact-card,
+.report-card,
+.management-card,
+.company-qr-dialog,
+.admin-preview-dialog{
+  border-color:rgba(143,211,255,.72) !important;
+  box-shadow:0 12px 30px rgba(31,45,35,.08), 0 0 0 1px rgba(143,211,255,.14) inset;
+}
+input:not(.code-ok-input):not(.code-bad-input),
+select,
+textarea{
+  border-color:rgba(143,211,255,.92) !important;
+}
+input:not(.code-ok-input):not(.code-bad-input):focus,
+select:focus,
+textarea:focus{
+  border-color:var(--soft-blue-outline-strong) !important;
+  box-shadow:0 0 0 3px var(--soft-blue-glow), inset 0 1px 0 rgba(255,255,255,.75) !important;
+}
+button,
+.primary,
+.secondary,
+.ghost,
+.back,
+.big-btn,
+.small-btn,
+.edit-btn,
+.delete-btn,
+.danger-btn,
+.danger-small,
+.archive-btn,
+.archive-report-btn,
+.hard-delete-report-btn,
+.btn-warning,
+.remove-entry,
+a.primary,
+a.secondary{
+  outline:1px solid rgba(143,211,255,.55);
+  outline-offset:0;
+}
+button:hover,
+.primary:hover,
+.secondary:hover,
+.ghost:hover,
+.back:hover,
+.big-btn:hover,
+.small-btn:hover,
+.edit-btn:hover{
+  box-shadow:0 0 0 3px rgba(143,211,255,.16);
+}
+#acCompanyCode.code-ok-input{
+  border-color:#22c55e !important;
+  box-shadow:0 0 0 3px rgba(34,197,94,.18) !important;
+}
+#acCompanyCode.code-bad-input{
+  border-color:#ef4444 !important;
+  box-shadow:0 0 0 3px rgba(239,68,68,.18) !important;
+}
