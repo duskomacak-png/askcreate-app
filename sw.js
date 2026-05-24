@@ -1,12 +1,15 @@
-const CACHE_NAME = "askcreate-app-v1333";
+const CACHE_NAME = "askcreate-app-v1334";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1333",
-  "./script.js?v=1333",
-  "./manifest.json",
+  "./style.css?v=1334",
+  "./script.js?v=1334",
+  "./manifest.json?v=1334",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./icons/apple-touch-icon.png",
+  "./icons/favicon-32.png",
+  "./icons/favicon-16.png"
 ];
 
 self.addEventListener("install", (event) => {

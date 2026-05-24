@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.3";
+const APP_VERSION = "1.33.4";
 
 
 let sb = null;
@@ -25,6 +25,7 @@ let workerAssetOptions = [];
 let workerSiteOptions = [];
 let workerMaterialOptions = [];
 let deferredPwaInstallPrompt = null;
+let pwaInstallPromptReadyAt = 0;
 let directorAutoRefreshTimer = null;
 let directorAutoRefreshBusy = false;
 let directorKnownReportIds = new Set();
@@ -637,31 +638,114 @@ function updateWorkerInstallBox() {
   }
 }
 
+function waitForPwaInstallPrompt(timeoutMs = 2200) {
+  if (deferredPwaInstallPrompt) return Promise.resolve(deferredPwaInstallPrompt);
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (deferredPwaInstallPrompt || Date.now() - started >= timeoutMs) {
+        clearInterval(timer);
+        resolve(deferredPwaInstallPrompt || null);
+      }
+    }, 120);
+  });
+}
+
+async function ensurePwaInstallReady() {
+  if (!window.isSecureContext && location.hostname !== "localhost") {
+    throw new Error("PWA instalacija radi samo preko HTTPS veze. Proveri da li je adresa https://askcreate.app.");
+  }
+  if ("serviceWorker" in navigator) {
+    try {
+      const reg = await registerAskCreateServiceWorker(true);
+      try { await navigator.serviceWorker.ready; } catch {}
+      return reg;
+    } catch (e) {
+      console.warn("AskCreate PWA SW register failed", e);
+    }
+  }
+  return null;
+}
+
+function showInstallFallbackInstructions() {
+  const ua = navigator.userAgent || "";
+  const isIos = /iphone|ipad|ipod/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+
+  if (isAppInstalledMode()) {
+    alert("AskCreate.app je već otvoren kao instalirana aplikacija / prečica. Ako želiš novu ikonicu, obriši staru prečicu pa instaliraj ponovo.");
+    return;
+  }
+
+  if (isIos) {
+    alert(`iPhone/iPad ne dozvoljava automatsko instaliranje iz dugmeta.
+
+Uradi ovako:
+1. Otvori askcreate.app u Safari browseru.
+2. Dodirni Share / Podeli.
+3. Izaberi Add to Home Screen / Dodaj na početni ekran.
+4. Potvrdi Add / Dodaj.
+
+Posle toga se pojavljuje AskCreate ikonica na telefonu.`);
+    return;
+  }
+
+  if (isAndroid) {
+    alert(`Ako se prozor za instalaciju nije otvorio automatski:
+
+1. U Chrome-u dodirni meni ⋮ gore desno.
+2. Izaberi Install app / Instaliraj aplikaciju ili Add to Home screen.
+3. Potvrdi Install / Dodaj.
+
+Ako ne vidiš tu opciju, osveži stranicu pa opet klikni Preuzmi app.`);
+    return;
+  }
+
+  alert(`Ako se instalacija nije otvorila automatski na laptopu:
+
+CHROME / EDGE:
+1. Klikni meni ⋮ gore desno.
+2. Izaberi Cast, save and share / Sačuvaj i deli.
+3. Klikni Install AskCreate.app / Instaliraj AskCreate.app.
+
+Ako nema Install:
+1. Klikni meni ⋮.
+2. More tools / Još alatki.
+3. Create shortcut / Napravi prečicu.
+4. Uključi Open as window / Otvori kao prozor.
+5. Klikni Create / Napravi.`);
+}
+
+
 async function installWorkerApp() {
   try {
-    if (deferredPwaInstallPrompt) {
-      deferredPwaInstallPrompt.prompt();
-      const choice = await deferredPwaInstallPrompt.userChoice;
+    toast("Pripremam instalaciju aplikacije...");
+    await ensurePwaInstallReady();
+
+    const prompt = deferredPwaInstallPrompt || await waitForPwaInstallPrompt(2400);
+    if (prompt) {
+      prompt.prompt();
+      const choice = await prompt.userChoice;
       deferredPwaInstallPrompt = null;
       updateWorkerInstallBox();
-      if (choice?.outcome === "accepted") return toast("Radnička app prečica je dodata na telefon.");
-      return toast("Instalacija nije završena. Možeš probati ponovo iz menija browsera.");
+      if (choice?.outcome === "accepted") return toast("AskCreate.app prečica je dodata.");
+      return toast("Instalacija nije završena. Možeš probati ponovo iz menija browsera.", true);
     }
-    const ua = navigator.userAgent || "";
-    if (/iphone|ipad|ipod/i.test(ua)) {
-      return alert("Za iPhone/iPad:\n\n1. Otvori ovaj link u Safari browseru.\n2. Dodirni Share / Podeli.\n3. Izaberi Add to Home Screen / Dodaj na početni ekran.\n\nPosle toga zaposleni otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
-    }
-    alert("Ako se instalacija ne otvori automatski:\n\n1. Otvori meni browsera ⋮\n2. Izaberi Install app ili Add to Home screen\n3. Potvrdi dodavanje prečice.\n\nPosle toga zaposleni otvara ikonicu app-a i vidi samo polje: Unesite svoj kod.");
+
+    showInstallFallbackInstructions();
   } catch (e) {
     toast("Instalacija nije uspela: " + (e?.message || e), true);
+    showInstallFallbackInstructions();
   }
 }
+
 
 window.installWorkerApp = installWorkerApp;
 
 window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   deferredPwaInstallPrompt = event;
+  pwaInstallPromptReadyAt = Date.now();
   updateWorkerInstallBox();
 });
 
@@ -9427,7 +9511,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1321", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1334", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }

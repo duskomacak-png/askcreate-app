@@ -2,9 +2,11 @@
   "name": "AskCreate.app",
   "short_name": "AskCreate",
   "description": "Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel.",
-  "start_url": "./",
+  "id": "./",
+  "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#eef5ef",
   "theme_color": "#39b54a",
   "icons": [
