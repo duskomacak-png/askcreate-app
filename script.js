@@ -446,12 +446,18 @@ function setWorkerLoginModeLocked(isLocked) {
 
 function updateWorkerInstallBox() {
   const box = document.getElementById("workerInstallBox");
+  const hint = document.getElementById("workerInstallHint");
   if (!box) return;
   const lockedToCompany = !!(getWorkerCompanyCodeFromUrl() || getSavedWorkerCompanyCode() || document.body.classList.contains("worker-company-locked"));
-  // Radnički QR/PWA ulaz treba da ostane čist:
-  // pre unosa koda može da stoji samo dugme za instalaciju app-a i polje za kod.
-  if (lockedToCompany && !isAppInstalledMode()) {
+  // Svaki radnik na početku vidi "Preuzmi app", a ako je firma već učitana preko QR koda,
+  // poruka se prilagođava toj firmi. Ako je app već instalirana kao PWA, nema potrebe da box stoji.
+  if (!isAppInstalledMode()) {
     box.classList.remove("hidden");
+    if (hint) {
+      hint.textContent = lockedToCompany
+        ? "Posle dodavanja na telefon, zaposleni otvara ikonicu i vidi samo unos svog koda."
+        : "Preporuka je da svaki radnik preuzme app na svoj telefon radi bržeg ulaza u posao.";
+    }
   } else {
     box.classList.add("hidden");
   }
@@ -2446,22 +2452,13 @@ function isDefectOnlyReport(r) {
 
 function hasDefectData(r) {
   const d = r?.data || {};
-  const hasActualDefectContent = !!(
-    d.defect ||
-    d.defect_status ||
-    d.mechanic_status ||
-    d.defect_urgency ||
-    d.defect_asset_name ||
-    d.defect_asset_code ||
-    d.defect_asset_registration ||
-    d.defect_machine ||
-    d.defect_manual_asset_name
-  );
-
-  // v1.32.2: starije verzije su mogle da pošalju defect_exists="da" samo zato što
-  // je radniku uključena rubrika Kvarovi. Kvarovi panel sme da prikazuje samo izveštaje
-  // koji stvarno imaju podatak o kvaru ili su poslati kao hitan kvar.
-  return isDefectOnlyReport(r) || hasActualDefectContent;
+  return isDefectOnlyReport(r) ||
+    d.defect_exists === "da" ||
+    !!d.defect ||
+    !!d.defect_status ||
+    !!d.defect_urgency ||
+    !!d.defect_asset_name ||
+    !!d.defect_machine;
 }
 
 function hasDailyReportData(r) {
@@ -6902,16 +6899,6 @@ function collectWorkerData() {
     defect_stops_work: "",
     defect_can_continue: ""
   };
-  const hasDefectEntry = !!(
-    canDefects && (
-      ($("#wrDefect")?.value || "").trim() ||
-      ($("#wrDefectAssetName")?.value || "").trim() ||
-      defectAssetPayload.defect_asset_name ||
-      defectAssetPayload.defect_asset_code ||
-      defectAssetPayload.defect_asset_registration ||
-      ($("#wrDefectUrgency")?.value || "").trim()
-    )
-  );
 
   // v1.17.4: Labudica ne mora imati glavno gradilište iz osnovne rubrike.
   // Ako zaposleni popunjava samo prevoz mašine labudicom, izveštaj dobija radni naziv
@@ -6939,7 +6926,7 @@ function collectWorkerData() {
     signature: !!(canSignature && getSignatureData().signature_data_url),
     leave_request: !!(canLeaveRequest && hasLeaveRequestData(leaveRequest)),
     warehouse: !!(canWarehouse && (($("#wrWarehouseItem")?.value || "").trim() || ($("#wrWarehouseQty")?.value || "").trim())),
-    defects: hasDefectEntry
+    defects: !!(canDefects && (($("#wrDefect")?.value || "").trim() || ($("#wrDefectAssetName")?.value || "").trim()))
   };
 
   return {
@@ -7001,7 +6988,7 @@ function collectWorkerData() {
     ...defectAssetPayload,
     defect_machine: canDefects ? (defectAssetPayload.defect_asset_name || "") : "",
     defect_site_name: canDefects ? ($("#wrDefectSiteName")?.value.trim() || selectedSite.site_name || "") : "",
-    defect_exists: hasDefectEntry ? "da" : "ne",
+    defect_exists: canDefects ? "da" : "ne",
     defect: canDefects ? $("#wrDefect").value.trim() : "",
     ...defectImpactPayload,
     defect_urgency: canDefects ? $("#wrDefectUrgency").value : "",
@@ -7451,7 +7438,7 @@ function runLocalAppCheck() {
   );
 
   const versionText = typeof APP_VERSION !== "undefined" ? APP_VERSION : "nepoznato";
-  addCheck("ok", "Verzija aplikacije", `Učitana verzija: ${versionText}. Test link za ovu verziju: ?v=1323&t=1`);
+  addCheck("ok", "Verzija aplikacije", `Učitana verzija: ${versionText}. Test link za ovu verziju: ?v=1235&t=1`);
 
   const now = new Date();
   addCheck("ok", "Vreme provere", now.toLocaleString("sr-RS"));
@@ -9173,6 +9160,7 @@ function bindEvents() {
 
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
   if ($("#workerInstallBtn")) $("#workerInstallBtn").addEventListener("click", installWorkerApp);
+  if ($("#homeInstallBtn")) $("#homeInstallBtn").addEventListener("click", installWorkerApp);
   if ($("#refreshMechanicDefectsBtn")) $("#refreshMechanicDefectsBtn").addEventListener("click", () => loadMechanicBossDefects({ silent: false }));
   if ($("#enableMechanicPushBtn")) $("#enableMechanicPushBtn").addEventListener("click", enableMechanicPushNotifications);
   if ($("#mechanicLogoutBtn")) $("#mechanicLogoutBtn").addEventListener("click", logoutMechanicBoss);
@@ -9262,7 +9250,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1323", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1321", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -9855,13 +9843,28 @@ async function boot() {
   bindEvents();
   initSupabase();
   $("#wrDate").value = today();
+
+  const params = new URLSearchParams(window.location.search || "");
+  const clearWorkerSession = params.get("clearWorker") === "1" || params.get("resetWorker") === "1" || params.get("ulaz") === "pocetna";
+  if (clearWorkerSession) {
+    localStorage.removeItem("swp_worker");
+    localStorage.removeItem("swp_worker_company_code");
+    localStorage.removeItem("swp_worker_entry_mode");
+    localStorage.removeItem("swp_mechanic_keep_login");
+  }
+
   const qrCompanyCode = getWorkerCompanyCodeFromUrl();
   const storedCompanyCode = getSavedWorkerCompanyCode();
   const stored = localStorage.getItem("swp_worker");
+  const isStandalonePwa = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+  const isIosStandalone = window.navigator && window.navigator.standalone === true;
+  const isInstalledWorkerShortcut = !!storedCompanyCode && (isStandalonePwa || isIosStandalone);
 
-  // QR/PWA radnički režim: telefon pamti firmu, ali ne otvara Upravu firme i ne prikazuje javni meni.
-  // Zaposleni uvek vidi samo unos svog radničkog koda, pa tek onda ulazi u svoje štiklirane rubrike.
-  if (qrCompanyCode || storedCompanyCode) {
+  // QR/PWA radnički režim:
+  // - Ako URL nosi ?ulaz=radnik&firma=..., otvara se zaključani radnički ulaz za tu firmu.
+  // - Ako je aplikacija instalirana kao PWA za radnika, prečica i dalje otvara radnički ulaz.
+  // - Ako korisnik ručno ukuca askcreate.app u običnom browser tabu, sačuvana radnička firma više ne sme da zaključa Upravu.
+  if (!clearWorkerSession && (qrCompanyCode || isInstalledWorkerShortcut)) {
     if (qrCompanyCode) localStorage.setItem("swp_worker_company_code", qrCompanyCode);
     const keepMechanic = localStorage.getItem("swp_mechanic_keep_login") === "1";
     if (stored && keepMechanic) {
@@ -9883,13 +9886,16 @@ async function boot() {
     return;
   }
 
-  if (stored) {
+  if (!clearWorkerSession && stored && !storedCompanyCode) {
     try {
       currentWorker = JSON.parse(stored);
       openWorkerForm();
       return;
     } catch {}
   }
+
+  currentWorker = null;
+  show("Home");
   if ("serviceWorker" in navigator) {
     registerAskCreateServiceWorker(true).catch(() => {});
   }
