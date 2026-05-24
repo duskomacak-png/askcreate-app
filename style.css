@@ -5593,3 +5593,53 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
 @media (max-width:640px){
   .ask-phone-screen{min-height:500px;}
 }
+
+
+/* v1.32.7 - početna slika telefona: prikaži CELU sliku, bez sečenja */
+.home-phone-visual{
+  background-position:center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+  background-color:#0d1712!important;
+  overflow:hidden!important;
+}
+.home-phone-visual::before{
+  content:"";
+  position:absolute;
+  inset:-18px;
+  background-image:inherit;
+  background-position:center;
+  background-size:cover;
+  background-repeat:no-repeat;
+  filter:blur(16px);
+  transform:scale(1.08);
+  opacity:.68;
+  z-index:1;
+}
+.home-phone-visual::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.08);
+  z-index:1;
+}
+.home-phone-visual img{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  display:block!important;
+  z-index:2!important;
+}
+.ask-phone-screen.with-custom-visual .phone-content-overlay{
+  pointer-events:none;
+  background:linear-gradient(180deg, rgba(8,17,12,0) 0%, rgba(8,17,12,.05) 48%, rgba(8,17,12,.46) 100%)!important;
+}
+.admin-home-preview-screen{
+  background-size:contain!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-color:#101c15!important;
+}
