@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.32.4";
+const APP_VERSION = "1.32.5";
 
 
 let sb = null;
@@ -299,11 +299,165 @@ async function loadAdmin() {
   await ensureAdmin();
   setInternalHeader("Admin soba", "Odobravanje izveštaja firmi", true);
   show("AdminDashboard");
-  await Promise.all([loadApprovedCompanies(), loadCompanies()]);
+  await Promise.all([loadApprovedCompanies(), loadCompanies(), loadPublicHomeVisualSettings()]);
 }
 
 let adminApprovedCompaniesCache = [];
 let adminRegisteredCompaniesCache = [];
+let publicHomeVisualSettings = { hero_image_data_url: "" };
+let pendingAdminHomeVisualDataUrl = "";
+
+async function loadPublicHomeVisualSettings() {
+  try {
+    if (!initSupabase()) {
+      applyPublicHomeVisualSettings();
+      renderAdminHomeVisualPreview();
+      return;
+    }
+    const { data, error } = await sb.from("public_home_settings").select("*").eq("id", 1).maybeSingle();
+    if (error) throw error;
+    publicHomeVisualSettings = data || { hero_image_data_url: "" };
+  } catch (e) {
+    console.warn("AskCreate.app: public_home_settings nije učitan", e?.message || e);
+    publicHomeVisualSettings = publicHomeVisualSettings || { hero_image_data_url: "" };
+  }
+  pendingAdminHomeVisualDataUrl = "";
+  applyPublicHomeVisualSettings();
+  renderAdminHomeVisualPreview();
+}
+
+function applyPublicHomeVisualSettings() {
+  const screen = document.getElementById("homePhoneDisplay");
+  const visual = document.getElementById("homePhoneVisual");
+  const overlay = document.getElementById("homePhoneOverlay");
+  const face = document.getElementById("homePhoneDefaultFace");
+  const title = document.getElementById("homePhoneDefaultTitle");
+  const subtitle = document.getElementById("homePhoneDefaultSubtitle");
+  const badge = document.getElementById("homePhoneAppBadge");
+  if (!screen || !visual) return;
+  const url = String(publicHomeVisualSettings?.hero_image_data_url || "").trim();
+  if (url) {
+    visual.style.backgroundImage = `url(${url})`;
+    visual.classList.remove("hidden");
+    screen.classList.add("with-custom-visual");
+    if (overlay) overlay.classList.add("compact-overlay");
+    if (face) face.classList.add("hidden");
+    if (title) title.textContent = "AskCreate.app";
+    if (subtitle) subtitle.textContent = "Ulaz za teren i kancelariju";
+    if (badge) badge.classList.remove("hidden");
+  } else {
+    visual.style.backgroundImage = "";
+    visual.classList.add("hidden");
+    screen.classList.remove("with-custom-visual");
+    if (overlay) overlay.classList.remove("compact-overlay");
+    if (face) face.classList.remove("hidden");
+    if (title) title.textContent = "AskCreate.app";
+    if (subtitle) subtitle.textContent = "Digitalni ulaz za teren i kancelariju";
+    if (badge) badge.classList.remove("hidden");
+  }
+}
+
+function renderAdminHomeVisualPreview(url) {
+  const preview = document.getElementById("adminHomeVisualPreview");
+  const placeholder = document.getElementById("adminHomeVisualPlaceholder");
+  const status = document.getElementById("adminHomeVisualStatus");
+  if (!preview) return;
+  const effective = String(url || pendingAdminHomeVisualDataUrl || publicHomeVisualSettings?.hero_image_data_url || "").trim();
+  preview.style.backgroundImage = effective ? `url(${effective})` : "";
+  preview.classList.toggle("has-image", !!effective);
+  if (placeholder) placeholder.classList.toggle("hidden", !!effective);
+  if (status) status.textContent = effective ? "Nova početna slika je spremna. Klikni Sačuvaj sliku da postane javna." : "Ako ne dodaš sliku, na početnoj ostaje namigujući smajli.";
+}
+
+async function resizeImageFileToDataUrl(file, maxWidth = 900, quality = 0.82) {
+  if (!file) return "";
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = img.width > maxWidth ? maxWidth / img.width : 1;
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * ratio));
+        canvas.height = Math.max(1, Math.round(img.height * ratio));
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("Slika nije ispravna."));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Čitanje slike nije uspelo."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleAdminHomeVisualFileChange(e) {
+  try {
+    const file = e?.target?.files?.[0];
+    if (!file) {
+      pendingAdminHomeVisualDataUrl = "";
+      renderAdminHomeVisualPreview();
+      return;
+    }
+    if (!String(file.type || "").startsWith("image/")) throw new Error("Dodaj sliku u JPG, PNG ili WEBP formatu.");
+    if (file.size > 6 * 1024 * 1024) throw new Error("Slika je prevelika. Maksimum je oko 6 MB pre obrade.");
+    pendingAdminHomeVisualDataUrl = await resizeImageFileToDataUrl(file, 900, 0.82);
+    renderAdminHomeVisualPreview(pendingAdminHomeVisualDataUrl);
+    toast("Slika je učitana. Klikni Sačuvaj sliku.");
+  } catch (e2) {
+    pendingAdminHomeVisualDataUrl = "";
+    renderAdminHomeVisualPreview();
+    toast(e2.message || e2, true);
+  }
+}
+
+async function saveAdminHomeVisualSettings() {
+  try {
+    await ensureAdmin();
+    const payloadUrl = String(pendingAdminHomeVisualDataUrl || publicHomeVisualSettings?.hero_image_data_url || "").trim();
+    if (!pendingAdminHomeVisualDataUrl && !payloadUrl) throw new Error("Prvo dodaj sliku za početnu stranu.");
+    const payload = { id: 1, hero_image_data_url: payloadUrl, updated_at: new Date().toISOString() };
+    const { error } = await sb.from("public_home_settings").upsert(payload, { onConflict: "id" });
+    if (error) throw error;
+    publicHomeVisualSettings = { hero_image_data_url: payloadUrl };
+    pendingAdminHomeVisualDataUrl = "";
+    applyPublicHomeVisualSettings();
+    renderAdminHomeVisualPreview();
+    const fileInput = document.getElementById("adminHomeVisualFile");
+    if (fileInput) fileInput.value = "";
+    toast("Početna slika telefona je sačuvana.");
+  } catch (e) {
+    const msg = String(e?.message || e || "");
+    if (/public_home_settings/i.test(msg) || /relation/i.test(msg) || /does not exist/i.test(msg)) {
+      toast("Treba prvo dodati SQL tabelu public_home_settings u Supabase. Poslaću ti SQL u poruci.", true);
+    } else {
+      toast(msg, true);
+    }
+  }
+}
+
+async function removeAdminHomeVisualSettings() {
+  try {
+    await ensureAdmin();
+    const { error } = await sb.from("public_home_settings").upsert({ id: 1, hero_image_data_url: "", updated_at: new Date().toISOString() }, { onConflict: "id" });
+    if (error) throw error;
+    publicHomeVisualSettings = { hero_image_data_url: "" };
+    pendingAdminHomeVisualDataUrl = "";
+    applyPublicHomeVisualSettings();
+    renderAdminHomeVisualPreview();
+    const fileInput = document.getElementById("adminHomeVisualFile");
+    if (fileInput) fileInput.value = "";
+    toast("Početna slika je uklonjena. Vraćen je smajli prikaz.");
+  } catch (e) {
+    const msg = String(e?.message || e || "");
+    if (/public_home_settings/i.test(msg) || /relation/i.test(msg) || /does not exist/i.test(msg)) {
+      toast("Treba prvo dodati SQL tabelu public_home_settings u Supabase. Poslaću ti SQL u poruci.", true);
+    } else {
+      toast(msg, true);
+    }
+  }
+}
 
 function todayDateOnly() {
   const d = new Date();
@@ -9013,6 +9167,9 @@ function bindEvents() {
     } catch(e) { toast(e.message, true); }
   });
   $("#refreshAdminBtn").addEventListener("click", loadAdmin);
+  if ($("#adminHomeVisualFile")) $("#adminHomeVisualFile").addEventListener("change", handleAdminHomeVisualFileChange);
+  if ($("#saveAdminHomeVisualBtn")) $("#saveAdminHomeVisualBtn").addEventListener("click", saveAdminHomeVisualSettings);
+  if ($("#removeAdminHomeVisualBtn")) $("#removeAdminHomeVisualBtn").addEventListener("click", removeAdminHomeVisualSettings);
   if ($("#adminCompanySearch")) {
     $("#adminCompanySearch").addEventListener("input", e => renderAdminCompanies(e.target.value));
     $("#adminCompanySearch").addEventListener("keydown", e => { if (e.key === "Enter") renderAdminCompanies(e.target.value); });
@@ -9842,6 +9999,7 @@ async function boot() {
   installNavigationFallback();
   bindEvents();
   initSupabase();
+  loadPublicHomeVisualSettings().catch(() => {});
   $("#wrDate").value = today();
 
   const params = new URLSearchParams(window.location.search || "");

@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#2f7d46" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=1324" />
+  <link rel="stylesheet" href="style.css?v=1325" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -36,20 +36,25 @@
   <main class="shell">
     <section id="viewHome" class="view active">
       <div class="home-minimal-wrap">
-        <div class="home-phone-stage">
-          <div class="ask-phone-mockup" aria-label="AskCreate telefon prikaz">
-            <div class="ask-phone-top"></div>
-            <div class="ask-phone-screen">
-              <div class="phone-app-badge">AskCreate.app</div>
-              <div class="phone-wink-face" aria-hidden="true">😉</div>
-              <div class="phone-screen-title">Preuzmi app</div>
-              <div class="phone-screen-subtitle">Brži ulaz za radnike preko telefona</div>
-              <button id="homeInstallBtn" type="button" class="primary phone-install-btn">⬇️ Preuzmi app</button>
+        <div class="home-phone-stack">
+          <div class="home-phone-stage">
+            <div class="ask-phone-mockup" aria-label="AskCreate telefon prikaz">
+              <div class="ask-phone-top"></div>
+              <div id="homePhoneDisplay" class="ask-phone-screen">
+                <div id="homePhoneVisual" class="home-phone-visual hidden" aria-hidden="true"></div>
+                <div id="homePhoneOverlay" class="phone-content-overlay">
+                  <div id="homePhoneAppBadge" class="phone-app-badge">AskCreate.app</div>
+                  <div id="homePhoneDefaultFace" class="phone-wink-face" aria-hidden="true">😉</div>
+                  <div id="homePhoneDefaultTitle" class="phone-screen-title">AskCreate.app</div>
+                  <div id="homePhoneDefaultSubtitle" class="phone-screen-subtitle">Digitalni ulaz za teren i kancelariju</div>
+                </div>
+              </div>
             </div>
           </div>
+          <button id="homeInstallBtn" type="button" class="primary home-install-below-btn">⬇️ Preuzmi app</button>
         </div>
 
-        <div class="home-access-stack">
+        <div class="home-access-stack narrow-phone-width">
           <button class="home-director-btn" data-goto="DirectorLogin" type="button">
             <span class="home-access-icon">🏢</span>
             <span class="home-access-text">
@@ -64,7 +69,7 @@
           </button>
         </div>
 
-        <section class="public-legal-panel card home-terms-card" aria-label="Uslovi korišćenja i odgovornost korisnika">
+        <section class="public-legal-panel card home-terms-card narrow-phone-width" aria-label="Uslovi korišćenja i odgovornost korisnika">
           <div class="public-info-head home-terms-head">
             <h2>Uslovi korišćenja</h2>
             <p>Ako koristiš AskCreate.app, prihvataš odgovorno unošenje podataka i pravila rada firme.</p>
@@ -138,6 +143,35 @@
           <span>Firma / paket / boja</span>
           <b>→</b>
           <span>Radni prostor Direkcije</span>
+        </div>
+      </div>
+
+      <div class="card admin-home-visual-card">
+        <div class="card-title-row">
+          <div>
+            <h3>Početna slika telefona</h3>
+            <p class="muted">Admin ovde bira sliku koja se prikazuje na početnoj strani, preko celog displeja telefona.</p>
+          </div>
+        </div>
+        <div class="grid two compact-grid admin-home-visual-grid">
+          <div>
+            <div class="admin-home-preview-phone">
+              <div class="admin-home-preview-notch"></div>
+              <div id="adminHomeVisualPreview" class="admin-home-preview-screen">
+                <span id="adminHomeVisualPlaceholder" class="admin-home-preview-placeholder">Pregled početne slike</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label>Dodaj sliku za početnu stranu</label>
+            <input id="adminHomeVisualFile" type="file" accept="image/*" />
+            <p class="hint">Preporuka: uspravna slika. Sistem će je smanjiti i sačuvati za prikaz u telefonu.</p>
+            <div class="row">
+              <button id="saveAdminHomeVisualBtn" class="primary" type="button">Sačuvaj sliku</button>
+              <button id="removeAdminHomeVisualBtn" class="secondary" type="button">Ukloni sliku</button>
+            </div>
+            <p id="adminHomeVisualStatus" class="muted tiny">Ako ne dodaš sliku, na početnoj ostaje namigujući smajli.</p>
+          </div>
         </div>
       </div>
 
@@ -1213,6 +1247,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1324"></script>
+  <script src="script.js?v=1325"></script>
 </body>
 </html>
