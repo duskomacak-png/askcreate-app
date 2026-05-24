@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.4";
+const APP_VERSION = "1.33.5";
 
 
 let sb = null;
@@ -722,18 +722,37 @@ async function installWorkerApp() {
     toast("Pripremam instalaciju aplikacije...");
     await ensurePwaInstallReady();
 
-    const prompt = deferredPwaInstallPrompt || await waitForPwaInstallPrompt(2400);
+    // Browser ne dozvoljava sajtu da sam napravi prečicu bez install prompt-a.
+    // Zato ovde maksimalno čekamo pravi Chrome/Edge PWA prompt pre fallback poruke.
+    const prompt = deferredPwaInstallPrompt || await waitForPwaInstallPrompt(8500);
     if (prompt) {
       prompt.prompt();
       const choice = await prompt.userChoice;
       deferredPwaInstallPrompt = null;
+      localStorage.removeItem("askcreate_install_retry_done");
       updateWorkerInstallBox();
       if (choice?.outcome === "accepted") return toast("AskCreate.app prečica je dodata.");
-      return toast("Instalacija nije završena. Možeš probati ponovo iz menija browsera.", true);
+      return toast("Instalacija nije završena. Možeš probati ponovo.", true);
     }
 
+    // Ako prompt nije stigao, jednom automatski osvežavamo stranicu u install modu.
+    // Često Chrome tek posle registracije Service Worker-a pusti beforeinstallprompt.
+    const alreadyRetried = localStorage.getItem("askcreate_install_retry_done") === "1";
+    if (!alreadyRetried && !isAppInstalledMode()) {
+      localStorage.setItem("askcreate_install_retry_done", "1");
+      toast("Osvežavam instalacioni režim...");
+      const url = new URL(window.location.href);
+      url.searchParams.set("install", "1");
+      url.searchParams.set("v", "1335");
+      url.searchParams.set("t", Date.now().toString());
+      setTimeout(() => { window.location.href = url.toString(); }, 650);
+      return;
+    }
+
+    localStorage.removeItem("askcreate_install_retry_done");
     showInstallFallbackInstructions();
   } catch (e) {
+    localStorage.removeItem("askcreate_install_retry_done");
     toast("Instalacija nije uspela: " + (e?.message || e), true);
     showInstallFallbackInstructions();
   }
@@ -9511,7 +9530,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1334", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1335", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -10160,6 +10179,10 @@ async function boot() {
   show("Home");
   if ("serviceWorker" in navigator) {
     registerAskCreateServiceWorker(true).catch(() => {});
+  }
+  const installMode = new URLSearchParams(window.location.search || "").get("install") === "1";
+  if (installMode && !isAppInstalledMode()) {
+    setTimeout(() => installWorkerApp().catch(() => {}), 1200);
   }
 }
 
