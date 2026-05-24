@@ -5789,3 +5789,45 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
   .ask-phone-mockup{ width:100%; }
   .ask-phone-screen{ min-height:500px; }
 }
+
+/* v1.33.6 - jedinstvena šifra firme + čistiji Uprava login */
+#acCompanyCode.code-ok-input{
+  border-color:#16a34a!important;
+  background:#f0fdf4!important;
+  box-shadow:0 0 0 3px rgba(22,163,74,.14)!important;
+}
+#acCompanyCode.code-bad-input{
+  border-color:#ef4444!important;
+  background:#fff1f2!important;
+  box-shadow:0 0 0 3px rgba(239,68,68,.14)!important;
+}
+#acCompanyCode.code-info-input{
+  border-color:#cbd5e1!important;
+}
+.director-login-card .director-activation-panel{
+  margin-top:20px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:#f7fbf8;
+  overflow:hidden;
+}
+.director-login-card .director-activation-panel summary{
+  cursor:pointer;
+  padding:14px 16px;
+  font-weight:900;
+  color:#173d28;
+  list-style:none;
+}
+.director-login-card .director-activation-panel summary::-webkit-details-marker{display:none;}
+.director-login-card .director-activation-panel summary::after{
+  content:"＋";
+  float:right;
+  color:var(--green);
+  font-weight:950;
+}
+.director-login-card .director-activation-panel[open] summary::after{content:"−";}
+.director-login-card .director-activation-body{
+  padding:0 16px 16px;
+  border-top:1px solid var(--border);
+  background:#fff;
+}

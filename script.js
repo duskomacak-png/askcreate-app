@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.5";
+const APP_VERSION = "1.33.6";
 
 
 let sb = null;
@@ -311,6 +311,7 @@ async function loadAdmin() {
 
 let adminApprovedCompaniesCache = [];
 let adminRegisteredCompaniesCache = [];
+let adminCompanyCodeCheckTimer = null;
 let publicHomeVisualSettings = { hero_image_data_url: "" };
 let pendingAdminHomeVisualDataUrl = "";
 
@@ -478,6 +479,96 @@ async function removeAdminHomeVisualSettings() {
       toast(msg, true);
     }
   }
+}
+
+
+function setAdminCompanyCodeStatus(message, type = "info") {
+  const el = $("#adminCompanyCodeStatus");
+  const input = $("#acCompanyCode");
+  if (el) {
+    el.textContent = message || "";
+    el.classList.remove("code-ok", "code-bad", "code-info");
+    el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+  }
+  if (input) {
+    input.classList.remove("code-ok-input", "code-bad-input", "code-info-input");
+    input.classList.add(type === "ok" ? "code-ok-input" : type === "bad" ? "code-bad-input" : "code-info-input");
+  }
+}
+
+async function findDuplicateCompanyCode(rawCode) {
+  const normalized = normalizeLoginCode(rawCode);
+  if (!normalized) return null;
+  if (!initSupabase()) return null;
+
+  const [approvedRes, companiesRes] = await Promise.all([
+    sb.from("approved_companies").select("id, company_name, approved_email, company_code").limit(5000),
+    sb.from("companies").select("id, name, owner_email, company_code").limit(5000)
+  ]);
+
+  if (approvedRes.error) throw approvedRes.error;
+  if (companiesRes.error) throw companiesRes.error;
+
+  const approved = (approvedRes.data || []).find(c => normalizeLoginCode(c.company_code) === normalized);
+  if (approved) {
+    return {
+      table: "approved_companies",
+      id: approved.id,
+      company_code: approved.company_code,
+      name: approved.company_name || approved.approved_email || "firma u Admin CRM"
+    };
+  }
+
+  const company = (companiesRes.data || []).find(c => normalizeLoginCode(c.company_code) === normalized);
+  if (company) {
+    return {
+      table: "companies",
+      id: company.id,
+      company_code: company.company_code,
+      name: company.name || company.owner_email || "registrovana firma"
+    };
+  }
+
+  return null;
+}
+
+async function checkAdminCompanyCodeAvailability(showOk = true) {
+  const input = $("#acCompanyCode");
+  if (!input) return false;
+  const raw = input.value || "";
+  const normalized = normalizeLoginCode(raw);
+  if (!normalized) {
+    setAdminCompanyCodeStatus("Upiši šifru firme. Mora biti jedinstvena u celoj aplikaciji.", "info");
+    return false;
+  }
+  if (normalized.length < 3) {
+    setAdminCompanyCodeStatus("Šifra firme je prekratka. Koristi najmanje 3 karaktera.", "bad");
+    return false;
+  }
+
+  try {
+    setAdminCompanyCodeStatus("Proveravam da li je šifra firme slobodna...", "info");
+    const duplicate = await findDuplicateCompanyCode(raw);
+    if (duplicate) {
+      setAdminCompanyCodeStatus(`Zauzeto: šifra već pripada firmi "${duplicate.name}". Unesi drugi kod.`, "bad");
+      return false;
+    }
+    if (showOk) setAdminCompanyCodeStatus("Zeleno: šifra firme je slobodna i može se koristiti.", "ok");
+    return true;
+  } catch (e) {
+    setAdminCompanyCodeStatus("Ne mogu proveriti šifru firme. Proveri vezu/Supabase pa pokušaj ponovo.", "bad");
+    return false;
+  }
+}
+
+function scheduleAdminCompanyCodeAvailabilityCheck() {
+  clearTimeout(adminCompanyCodeCheckTimer);
+  setAdminCompanyCodeStatus("Proveravam šifru firme...", "info");
+  adminCompanyCodeCheckTimer = setTimeout(() => {
+    checkAdminCompanyCodeAvailability(true).catch(() => {
+      setAdminCompanyCodeStatus("Provera šifre firme nije uspela.", "bad");
+    });
+  }, 450);
 }
 
 function todayDateOnly() {
@@ -9299,13 +9390,18 @@ function bindEvents() {
   }
   if ($("#adminCompanySearchBtn")) $("#adminCompanySearchBtn").addEventListener("click", () => renderAdminCompanies($("#adminCompanySearch")?.value || ""));
   if ($("#adminCompanyClearSearchBtn")) $("#adminCompanyClearSearchBtn").addEventListener("click", () => { if ($("#adminCompanySearch")) $("#adminCompanySearch").value = ""; renderAdminCompanies(""); });
+  if ($("#acCompanyCode")) {
+    $("#acCompanyCode").addEventListener("input", scheduleAdminCompanyCodeAvailabilityCheck);
+    $("#acCompanyCode").addEventListener("blur", () => checkAdminCompanyCodeAvailability(true).catch(() => {}));
+  }
   $("#addApprovedCompanyBtn").addEventListener("click", async () => {
     try {
       const paidUntil = $("#acPaidUntil")?.value || null;
+      const companyCode = normalizeLoginCode($("#acCompanyCode").value);
       const payload = {
         company_name: $("#acCompanyName").value.trim(),
         approved_email: $("#acEmail").value.trim(),
-        company_code: $("#acCompanyCode").value.trim(),
+        company_code: companyCode,
         invite_code: $("#acInviteCode").value.trim(),
         contact_name: $("#acContactName")?.value.trim() || null,
         contact_phone: $("#acContactPhone")?.value.trim() || null,
@@ -9318,9 +9414,20 @@ function bindEvents() {
         note: $("#acNote").value.trim()
       };
       if (!payload.company_name || !payload.approved_email || !payload.company_code || !payload.invite_code) throw new Error("Popuni naziv, email, šifru firme i aktivacioni kod.");
+      const codeFree = await checkAdminCompanyCodeAvailability(false);
+      if (!codeFree) {
+        const codeInput = $("#acCompanyCode");
+        if (codeInput) codeInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        throw new Error("Šifra firme nije slobodna. Unesi jedinstvenu šifru da se firme ne mogu mešati.");
+      }
       const { error } = await sb.from("approved_companies").insert(payload);
       if (error) {
-        if (String(error.message || "").toLowerCase().includes("column")) {
+        const msg = String(error.message || "").toLowerCase();
+        if (msg.includes("duplicate") || msg.includes("unique")) {
+          setAdminCompanyCodeStatus("Crveno: ova šifra firme već postoji u bazi. Unesi drugi kod.", "bad");
+          throw new Error("Ova šifra firme već postoji. Firma ne može biti sačuvana sa duplim kodom.");
+        }
+        if (msg.includes("column")) {
           throw new Error("Bazi fale nove kolone za Admin CRM. Prvo pokreni SQL koji sam ti dao u poruci, pa ponovo sačuvaj firmu.");
         }
         throw error;
@@ -9328,6 +9435,7 @@ function bindEvents() {
       ["acCompanyName","acEmail","acContactName","acContactPhone","acCompanyCode","acInviteCode","acPaidFrom","acPaidUntil","acNote"].forEach(id => { const el = $("#"+id); if (el) el.value = ""; });
       if ($("#acPlan")) $("#acPlan").value = "trial";
       if ($("#acBrandColor")) $("#acBrandColor").value = "green";
+      setAdminCompanyCodeStatus("Šifra firme mora biti jedinstvena. Crveno znači zauzeto, zeleno znači slobodno.", "info");
       toast("Firma je sačuvana u Admin CRM.");
       loadApprovedCompanies();
     } catch(e) { toast(e.message, true); }

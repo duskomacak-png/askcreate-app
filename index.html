@@ -6,11 +6,11 @@
   <title>AskCreate.app</title>
   <meta name="theme-color" content="#39b54a" />
   <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
-  <link rel="manifest" href="manifest.json?v=1335" />
+  <link rel="manifest" href="manifest.json?v=1336" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1335" />
+  <link rel="stylesheet" href="style.css?v=1336" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -210,7 +210,8 @@
           <div class="grid two compact-grid">
             <div>
               <label>Šifra firme</label>
-              <input id="acCompanyCode" placeholder="npr. MAKI26" />
+              <input id="acCompanyCode" placeholder="npr. MAKI26" autocomplete="off" />
+              <p id="adminCompanyCodeStatus" class="person-code-status code-info">Šifra firme mora biti jedinstvena. Crveno znači zauzeto, zeleno znači slobodno.</p>
             </div>
             <div>
               <label>Jednokratni aktivacioni kod</label>
@@ -347,10 +348,11 @@
     </div>
 
     <section id="viewDirectorLogin" class="view">
-      <div class="card narrow">
+      <div class="card narrow director-login-card">
         <button class="back" data-goto="Home">← Nazad</button>
         <h2>Uprava</h2>
-        <p class="muted">Uprava se može aktivirati samo ako je firma prethodno odobrena u administratorskom panelu.</p>
+        <p class="muted">Za firmu koja je već aktivirana: prijava ide samo preko emaila i lozinke Uprave.</p>
+
         <label>Email</label>
         <input id="directorEmail" type="email" placeholder="office@firma.rs" />
         <label>Lozinka</label>
@@ -359,13 +361,18 @@
           <button id="directorLoginBtn" class="primary">Prijavi se</button>
           <button id="directorSignupBtn" class="secondary">Registruj email</button>
         </div>
-        <hr/>
-        <h3>Aktivacija firme</h3>
-        <label>Šifra firme</label>
-        <input id="directorCompanyCode" placeholder="npr. MAKI26" />
-        <label>Pozivni kod</label>
-        <input id="directorInviteCode" placeholder="npr. AC-8F42K" />
-        <button id="activateCompanyBtn" class="primary">Aktiviraj firmu</button>
+
+        <details class="director-activation-panel">
+          <summary>Prva aktivacija firme?</summary>
+          <div class="director-activation-body">
+            <p class="muted">Ovo se koristi samo prvi put, kada Admin odobri firmu i pošalje šifru firme + pozivni kod.</p>
+            <label>Šifra firme</label>
+            <input id="directorCompanyCode" placeholder="npr. MAKI26" />
+            <label>Pozivni kod</label>
+            <input id="directorInviteCode" placeholder="npr. AC-8F42K" />
+            <button id="activateCompanyBtn" class="primary">Aktiviraj firmu</button>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -1250,6 +1257,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1335"></script>
+  <script src="script.js?v=1336"></script>
 </body>
 </html>
