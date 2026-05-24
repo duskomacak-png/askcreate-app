@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.32.8";
+const APP_VERSION = "1.32.9";
 
 
 let sb = null;
@@ -351,7 +351,8 @@ function applyPublicHomeVisualSettings() {
   if (!screen || !visual) return;
   const url = String(publicHomeVisualSettings?.hero_image_data_url || localStorage.getItem("askcreate_public_home_visual") || "").trim();
   if (url) {
-    visual.style.backgroundImage = `url(${url})`;
+    visual.style.setProperty("--home-visual-url", `url("${url}")`);
+    visual.style.backgroundImage = "none";
     if (visualImg) visualImg.src = url;
     visual.classList.remove("hidden");
     screen.classList.add("with-custom-visual");
@@ -361,7 +362,8 @@ function applyPublicHomeVisualSettings() {
     if (subtitle) subtitle.textContent = "Ulaz za teren i kancelariju";
     if (badge) badge.classList.remove("hidden");
   } else {
-    visual.style.backgroundImage = "";
+    visual.style.removeProperty("--home-visual-url");
+    visual.style.backgroundImage = "none";
     if (visualImg) visualImg.removeAttribute("src");
     visual.classList.add("hidden");
     screen.classList.remove("with-custom-visual");
