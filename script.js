@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.32.5";
+const APP_VERSION = "1.32.6";
 
 
 let sb = null;
@@ -244,6 +244,12 @@ function show(view) {
   const el = $("#view" + view);
   if (el) el.classList.add("active");
   if (view === "WorkerLogin") setTimeout(applyWorkerCompanyContextFromUrlOrStorage, 0);
+  if (view === "Home") {
+    setTimeout(() => {
+      applyPublicHomeVisualSettings();
+      loadPublicHomeVisualSettings().catch(() => applyPublicHomeVisualSettings());
+    }, 0);
+  }
 
   // Koristimo samo jedno dugme za odjavu: ono na zelenoj traci (#internalLogoutBtn).
   // Staro dugme iz javnog topbara ostaje skriveno da ne pravi duplikat.
@@ -308,18 +314,25 @@ let publicHomeVisualSettings = { hero_image_data_url: "" };
 let pendingAdminHomeVisualDataUrl = "";
 
 async function loadPublicHomeVisualSettings() {
+  const cachedUrl = String(localStorage.getItem("askcreate_public_home_visual") || "").trim();
+  if (cachedUrl && !String(publicHomeVisualSettings?.hero_image_data_url || "").trim()) {
+    publicHomeVisualSettings = { hero_image_data_url: cachedUrl };
+    applyPublicHomeVisualSettings();
+  }
   try {
     if (!initSupabase()) {
-      applyPublicHomeVisualSettings();
       renderAdminHomeVisualPreview();
       return;
     }
     const { data, error } = await sb.from("public_home_settings").select("*").eq("id", 1).maybeSingle();
     if (error) throw error;
-    publicHomeVisualSettings = data || { hero_image_data_url: "" };
+    publicHomeVisualSettings = data || { hero_image_data_url: cachedUrl };
+    const dbUrl = String(publicHomeVisualSettings?.hero_image_data_url || "").trim();
+    if (dbUrl) localStorage.setItem("askcreate_public_home_visual", dbUrl);
+    else localStorage.removeItem("askcreate_public_home_visual");
   } catch (e) {
     console.warn("AskCreate.app: public_home_settings nije učitan", e?.message || e);
-    publicHomeVisualSettings = publicHomeVisualSettings || { hero_image_data_url: "" };
+    publicHomeVisualSettings = { hero_image_data_url: cachedUrl };
   }
   pendingAdminHomeVisualDataUrl = "";
   applyPublicHomeVisualSettings();
@@ -329,15 +342,17 @@ async function loadPublicHomeVisualSettings() {
 function applyPublicHomeVisualSettings() {
   const screen = document.getElementById("homePhoneDisplay");
   const visual = document.getElementById("homePhoneVisual");
+  const visualImg = document.getElementById("homePhoneVisualImg");
   const overlay = document.getElementById("homePhoneOverlay");
   const face = document.getElementById("homePhoneDefaultFace");
   const title = document.getElementById("homePhoneDefaultTitle");
   const subtitle = document.getElementById("homePhoneDefaultSubtitle");
   const badge = document.getElementById("homePhoneAppBadge");
   if (!screen || !visual) return;
-  const url = String(publicHomeVisualSettings?.hero_image_data_url || "").trim();
+  const url = String(publicHomeVisualSettings?.hero_image_data_url || localStorage.getItem("askcreate_public_home_visual") || "").trim();
   if (url) {
     visual.style.backgroundImage = `url(${url})`;
+    if (visualImg) visualImg.src = url;
     visual.classList.remove("hidden");
     screen.classList.add("with-custom-visual");
     if (overlay) overlay.classList.add("compact-overlay");
@@ -347,6 +362,7 @@ function applyPublicHomeVisualSettings() {
     if (badge) badge.classList.remove("hidden");
   } else {
     visual.style.backgroundImage = "";
+    if (visualImg) visualImg.removeAttribute("src");
     visual.classList.add("hidden");
     screen.classList.remove("with-custom-visual");
     if (overlay) overlay.classList.remove("compact-overlay");
@@ -421,6 +437,7 @@ async function saveAdminHomeVisualSettings() {
     const { error } = await sb.from("public_home_settings").upsert(payload, { onConflict: "id" });
     if (error) throw error;
     publicHomeVisualSettings = { hero_image_data_url: payloadUrl };
+    localStorage.setItem("askcreate_public_home_visual", payloadUrl);
     pendingAdminHomeVisualDataUrl = "";
     applyPublicHomeVisualSettings();
     renderAdminHomeVisualPreview();
@@ -443,6 +460,7 @@ async function removeAdminHomeVisualSettings() {
     const { error } = await sb.from("public_home_settings").upsert({ id: 1, hero_image_data_url: "", updated_at: new Date().toISOString() }, { onConflict: "id" });
     if (error) throw error;
     publicHomeVisualSettings = { hero_image_data_url: "" };
+    localStorage.removeItem("askcreate_public_home_visual");
     pendingAdminHomeVisualDataUrl = "";
     applyPublicHomeVisualSettings();
     renderAdminHomeVisualPreview();

@@ -5562,3 +5562,34 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
   .phone-wink-face{width:136px;height:136px;font-size:4.4rem;}
   .home-director-btn{padding:16px 18px;}
 }
+
+
+/* v1.32.6 - sigurniji prikaz početne slike telefona */
+.narrow-phone-width{width:min(340px,100%);margin:0 auto;}
+.home-phone-stack{width:min(340px,100%);margin:0 auto;display:grid;gap:14px;}
+.home-phone-stage{display:flex;justify-content:center;}
+.home-install-below-btn{width:100%;min-height:52px;font-size:1rem;}
+.ask-phone-screen{position:relative;overflow:hidden;min-height:540px;padding:20px 18px 22px;justify-content:flex-end;}
+.home-phone-visual{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;z-index:1;}
+.home-phone-visual img{width:100%;height:100%;object-fit:cover;display:block;}
+.phone-content-overlay{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:100%;width:100%;padding:14px 8px;background:linear-gradient(180deg, rgba(238,248,240,.14) 0%, rgba(238,248,240,.42) 38%, rgba(238,248,240,.95) 100%);}
+.ask-phone-screen.with-custom-visual{justify-content:flex-end;background:#d8e7db;}
+.ask-phone-screen.with-custom-visual .phone-content-overlay{justify-content:flex-end;padding-bottom:18px;background:linear-gradient(180deg, rgba(8,17,12,.08) 0%, rgba(8,17,12,.10) 45%, rgba(8,17,12,.58) 100%);}
+.ask-phone-screen.with-custom-visual .phone-app-badge{background:rgba(255,255,255,.92);}
+.ask-phone-screen.with-custom-visual .phone-screen-title,
+.ask-phone-screen.with-custom-visual .phone-screen-subtitle{color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.35);}
+.phone-content-overlay.compact-overlay .phone-screen-title{font-size:1.05rem;margin-bottom:4px;}
+.phone-content-overlay.compact-overlay .phone-screen-subtitle{font-size:.82rem;max-width:200px;margin-bottom:0;}
+.phone-content-overlay .hidden{display:none!important;}
+.home-access-stack.narrow-phone-width{gap:12px;}
+.home-director-btn,.home-admin-btn{width:min(340px,100%);margin:0 auto;}
+.admin-home-visual-card{margin-bottom:18px;}
+.admin-home-visual-grid{align-items:center;}
+.admin-home-preview-phone{width:min(240px,100%);margin:0 auto;background:#111;border-radius:28px;padding:10px;box-shadow:0 16px 36px rgba(22,34,25,.18);}
+.admin-home-preview-notch{width:82px;height:12px;background:#232323;border-radius:0 0 10px 10px;margin:0 auto 8px;}
+.admin-home-preview-screen{min-height:320px;border-radius:20px;background:linear-gradient(180deg,#eef8f0 0%, #ddf0e2 48%, #d0e8d7 100%);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;text-align:center;padding:16px;overflow:hidden;}
+.admin-home-preview-screen.has-image{background-color:#d8e7db;}
+.admin-home-preview-placeholder{color:#5e6f66;font-weight:800;line-height:1.35;}
+@media (max-width:640px){
+  .ask-phone-screen{min-height:500px;}
+}
