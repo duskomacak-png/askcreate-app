@@ -5401,3 +5401,164 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-section-toggle { color:
   .home-wink-emoji{margin:0 auto;}
   .home-install-btn{width:100%;}
 }
+
+
+/* v1.32.4 - minimalna početna: telefon + Direkcija + Admin */
+.home-minimal-wrap{
+  width:min(760px,100%);
+  margin:0 auto;
+  display:grid;
+  gap:20px;
+}
+.home-phone-stage{
+  display:flex;
+  justify-content:center;
+}
+.ask-phone-mockup{
+  width:min(340px,100%);
+  background:#111;
+  border-radius:38px;
+  padding:14px;
+  box-shadow:0 24px 60px rgba(22,34,25,.26);
+  border:1px solid rgba(255,255,255,.08);
+}
+.ask-phone-top{
+  width:110px;
+  height:16px;
+  background:#242424;
+  border-radius:0 0 14px 14px;
+  margin:0 auto 10px;
+}
+.ask-phone-screen{
+  min-height:510px;
+  border-radius:28px;
+  background:linear-gradient(180deg,#eef8f0 0%, #ddf0e2 48%, #d0e8d7 100%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:28px 24px 30px;
+}
+.phone-app-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 14px;
+  border-radius:999px;
+  background:rgba(255,255,255,.86);
+  color:#173d28;
+  font-size:.88rem;
+  font-weight:900;
+  border:1px solid rgba(47,125,70,.16);
+  margin-bottom:20px;
+}
+.phone-wink-face{
+  width:156px;
+  height:156px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:5rem;
+  background:#fff9d8;
+  box-shadow:0 18px 34px rgba(47,125,70,.14);
+  border:1px solid rgba(245,185,66,.38);
+  margin-bottom:22px;
+}
+.phone-screen-title{
+  font-size:1.45rem;
+  font-weight:950;
+  color:#173d28;
+  margin-bottom:6px;
+}
+.phone-screen-subtitle{
+  color:#51655a;
+  max-width:230px;
+  font-size:.96rem;
+  line-height:1.45;
+  margin-bottom:18px;
+}
+.phone-install-btn{
+  min-width:190px;
+}
+.home-access-stack{
+  display:grid;
+  gap:12px;
+}
+.home-director-btn,
+.home-admin-btn{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:var(--shadow);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  text-align:left;
+}
+.home-director-btn{
+  min-height:86px;
+  padding:18px 22px;
+}
+.home-admin-btn{
+  min-height:58px;
+  padding:12px 18px;
+  background:#f7fbf8;
+}
+.home-director-btn:hover,
+.home-admin-btn:hover{
+  border-color:var(--green-2);
+  background:#f8fcf9;
+}
+.home-access-icon{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#eaf5ed;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.45rem;
+  flex:0 0 auto;
+}
+.home-access-text{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.home-access-text strong,
+.home-admin-btn strong{
+  color:#173d28;
+  font-size:1.05rem;
+}
+.home-access-text small{
+  color:#617167;
+  font-size:.9rem;
+}
+.home-terms-card{
+  margin-top:2px;
+}
+.home-terms-head h2{
+  margin-bottom:6px;
+}
+.home-terms-head p{
+  margin-bottom:0;
+  color:var(--muted);
+}
+/* stari javni blokovi ostaju u kodu samo radi bezbednosti, ali nisu više prikazani na početnoj */
+.home-mvp-notice,
+.public-info-panel,
+.public-contact-panel,
+.home-hero .home-entry-grid,
+.home-hero .home-intro,
+.home-hero h2,
+.home-hero .home-wink-install{display:none!important;}
+@media (max-width:640px){
+  .ask-phone-mockup{width:min(320px,100%);}
+  .ask-phone-screen{min-height:470px;padding:24px 20px 26px;}
+  .phone-wink-face{width:136px;height:136px;font-size:4.4rem;}
+  .home-director-btn{padding:16px 18px;}
+}
