@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.7";
+const APP_VERSION = "1.33.8_DIRECTOR_STARTWORK_PANEL";
 
 
 let sb = null;
@@ -3019,6 +3019,7 @@ async function loadReports(options = {}) {
   renderDefectsList();
   renderDirectorDefectNoticeInReports();
   renderExportPanel();
+  renderDirectorStartWorkDashboard(dailyReports);
 }
 
 
@@ -4000,42 +4001,181 @@ window.exportSingleReportToExcel = function(id) {
   toast("Excel fajl za ovaj izveštaj je preuzet.");
 };
 
-function reportHtml(r) {
+function directorReportPrimaryAsset(d = {}) {
+  const machineEntry = Array.isArray(d.machines) ? d.machines.find(x => x && Object.values(x).some(Boolean)) : null;
+  const vehicleEntry = Array.isArray(d.vehicles) ? d.vehicles.find(x => x && Object.values(x).some(Boolean)) : null;
+  const asset = machineEntry || vehicleEntry || {};
+  return asset.asset_name || asset.machine_name || asset.vehicle_name || asset.name || d.machine || d.vehicle || d.asset_name || "—";
+}
+
+function directorReportFuelText(d = {}) {
+  const liters = businessCollectFuelLiters(d);
+  if (!liters) return "—";
+  const clean = Number.isInteger(liters) ? String(liters) : String(Math.round(liters * 100) / 100);
+  return `${clean} L`;
+}
+
+function directorReportMaterialText(d = {}) {
+  const entries = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : []);
+  const first = entries.find(x => x && Object.values(x).some(Boolean));
+  if (first) {
+    const name = first.material_name || first.name || first.material || "Materijal";
+    const qty = first.quantity || first.qty || first.amount || first.tours || "";
+    const unit = first.unit || "";
+    return `${name}${qty ? " · " + qty : ""}${unit ? " " + unit : ""}`;
+  }
+  if (d.material || d.quantity) return `${d.material || "Materijal"}${d.quantity ? " · " + d.quantity : ""}${d.unit ? " " + d.unit : ""}`;
+  return "—";
+}
+
+function directorReportWorkTime(d = {}) {
+  const from = d.work_start || d.start_time || d.time_from || d.from || "—";
+  const to = d.work_end || d.end_time || d.time_to || d.to || "—";
+  const total = d.total_hours || d.hours || d.work_hours || "—";
+  return { from, to, total };
+}
+
+function directorStatusClass(status) {
+  const key = String(status || "new").toLowerCase();
+  if (["approved", "odobreno", "exported", "izvezeno"].includes(key)) return "approved";
+  if (["returned", "vraceno", "vraćeno"].includes(key)) return "returned";
+  if (["archived", "arhivirano"].includes(key)) return "archived";
+  return "new";
+}
+
+function renderDirectorStartWorkDashboard(dailyReports = []) {
+  updateDirectorStartWorkDate();
+  updateDirectorStartWorkKpis(directorReportsCache || []);
+  const selectedId = document.body.dataset.directorSelectedReportId;
+  const selected = dailyReports.find(r => String(r.id) === String(selectedId)) || dailyReports[0] || null;
+  renderDirectorReportPreview(selected);
+  renderDirectorDefectMiniList();
+}
+
+function updateDirectorStartWorkDate() {
+  const dateEl = document.getElementById("directorTodayLabel");
+  const weekdayEl = document.getElementById("directorTodayWeekday");
+  if (!dateEl && !weekdayEl) return;
+  const now = new Date();
+  if (dateEl) dateEl.textContent = now.toLocaleDateString("sr-RS", { day:"2-digit", month:"short", year:"numeric" });
+  if (weekdayEl) weekdayEl.textContent = now.toLocaleDateString("sr-RS", { weekday:"long" });
+}
+
+function updateDirectorStartWorkKpis(reports = []) {
+  const all = Array.isArray(reports) ? reports : [];
+  const daily = all.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
+  const defects = all.filter(hasDefectData);
+  const newCount = daily.filter(r => ["new","novo","sent","submitted","pending"].includes(String(r.status || "new").toLowerCase())).length;
+  const returnedCount = daily.filter(r => ["returned","vraceno","vraćeno"].includes(String(r.status || "").toLowerCase())).length;
+  const approvedCount = daily.filter(r => ["approved","odobreno"].includes(String(r.status || "").toLowerCase())).length;
+  const bell = document.getElementById("directorBellCount");
+  if (bell) bell.textContent = String(newCount + defects.length);
+  const metricPending = document.getElementById("directorMetricPendingReports");
+  if (metricPending) metricPending.textContent = String(newCount);
+  const metricFuel = document.getElementById("directorMetricFuel");
+  if (metricFuel) metricFuel.textContent = String(defects.length);
+  const kpiCards = Array.from(document.querySelectorAll("#viewDirectorDashboard .business-kpi-card"));
+  const labels = [
+    ["Novi izveštaji", newCount],
+    ["Vraćeni na dopunu", returnedCount],
+    ["Odobreni danas", approvedCount],
+    ["Aktivni kvarovi", defects.length]
+  ];
+  labels.forEach((item, i) => {
+    const card = kpiCards[i];
+    if (!card) return;
+    const strong = card.querySelector("strong");
+    const span = card.querySelector("span");
+    if (strong) strong.textContent = String(item[1]);
+    if (span) span.textContent = item[0];
+  });
+}
+
+function renderDirectorReportPreview(r) {
+  const box = document.getElementById("directorReportPreview");
+  if (!box) return;
+  if (!r) {
+    box.innerHTML = `<div class="startwork-detail-empty"><button type="button" class="startwork-detail-close" aria-label="Zatvori">×</button><h3>Detalji izveštaja</h3><p class="muted">Trenutno nema dnevnih izveštaja za prikaz.</p></div>`;
+    return;
+  }
   const d = r.data || {};
   const person = reportDocumentPerson(r);
   const title = reportDocumentTitle(r);
+  const work = directorReportWorkTime(d);
+  const status = reportStatusLabel(r.status || "new");
+  document.body.dataset.directorSelectedReportId = String(r.id || "");
+  box.innerHTML = `
+    <button type="button" class="startwork-detail-close" aria-label="Zatvori">×</button>
+    <div class="startwork-detail-title"><h3>Detalji izveštaja</h3><span class="status-chip startwork-status-${directorStatusClass(r.status)}">${escapeHtml(status)}</span></div>
+    <div class="startwork-id-pill">ID: ${escapeHtml(String(r.id || "").slice(0, 18) || "—")}</div>
+    <div class="startwork-detail-block"><b>👥 Radnik</b><strong>${escapeHtml(person)}</strong><small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small></div>
+    <div class="startwork-detail-block"><b>▥ Gradilište</b><strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong><small>${escapeHtml(d.site_location || d.location || "")}</small></div>
+    <div class="startwork-detail-block"><b>▱ Mašina / Vozilo</b><strong>${escapeHtml(directorReportPrimaryAsset(d))}</strong><small>${escapeHtml(d.asset_reg || d.vehicle_reg || d.machine_reg || "")}</small></div>
+    <div class="startwork-detail-block startwork-inline-details"><b>◴ Radno vreme</b><span>Od: ${escapeHtml(work.from)}</span><span>Do: ${escapeHtml(work.to)}</span><span>Ukupno: ${escapeHtml(work.total)}</span></div>
+    <div class="startwork-detail-block"><b>⛽ Gorivo</b><strong>${escapeHtml(directorReportFuelText(d))}</strong></div>
+    <div class="startwork-detail-block"><b>▦ Materijal / ture</b><strong>${escapeHtml(directorReportMaterialText(d))}</strong></div>
+    <div class="startwork-detail-block"><b>💬 Napomena radnika</b><p>${escapeHtml(d.note || d.description || d.work_description || "Nema napomene.")}</p></div>
+    ${r.returned_reason ? `<div class="report-card-warning">Vraćeno na ispravku: ${escapeHtml(r.returned_reason)}</div>` : ""}
+    <div class="startwork-detail-actions">
+      <button class="secondary danger-soft" type="button" onclick="returnReport('${escapeHtml(r.id)}')">⟳ Vrati na dopunu</button>
+      <button class="primary" type="button" onclick="setReportStatus('${escapeHtml(r.id)}','approved')">✓ Odobri</button>
+      <button class="secondary" type="button" onclick="openReportDocumentCenter('${escapeHtml(r.id)}')">Otvori dokument</button>
+    </div>`;
+  document.querySelectorAll(".report-row-item.is-selected").forEach(el => el.classList.remove("is-selected"));
+  const row = document.querySelector(`.report-row-item[data-report-id="${CSS.escape(String(r.id || ""))}"]`);
+  if (row) row.classList.add("is-selected");
+}
+
+window.selectDirectorReportPreview = function(id) {
+  const r = (directorReportsCache || []).find(x => String(x.id) === String(id));
+  if (!r) return toast("Izveštaj nije pronađen.", true);
+  renderDirectorReportPreview(r);
+};
+
+function renderDirectorDefectMiniList() {
+  const box = document.getElementById("directorDefectMiniList");
+  if (!box) return;
+  const defects = (directorReportsCache || []).filter(hasDefectData).slice(0, 3);
+  if (!defects.length) {
+    box.innerHTML = `<p class="muted">Nema aktivnih kvarova.</p>`;
+    return;
+  }
+  box.innerHTML = defects.map(r => {
+    const d = r.data || {};
+    const asset = [d.defect_asset_code, d.defect_asset_name || d.defect_machine || d.defect_vehicle].filter(Boolean).join(" · ") || "Sredstvo nije upisano";
+    const status = d.defect_status || "Otvoren";
+    return `<div class="startwork-defect-row"><strong>${escapeHtml(asset)}</strong><span>${escapeHtml(d.defect || d.defect_description || d.defect_problem || "Prijavljen kvar")}</span><em>${escapeHtml(status)}</em></div>`;
+  }).join("");
+}
+
+function reportHtml(r) {
+  const d = r.data || {};
+  const person = reportDocumentPerson(r);
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
-  const sections = getReportFilledSections(d);
-  const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
   const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
-  const statusText = r.status || "novo";
+  const statusText = r.status || "new";
   const statusLabel = reportStatusLabel(statusText);
+  const rowClass = String(document.body.dataset.directorSelectedReportId || "") === String(r.id || "") ? " is-selected" : "";
 
   return `
-    <article class="report-row-item report-document-card">
-      <div class="report-list-grid">
-        <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export">
-          <input type="checkbox" class="report-export-check" data-report-id="${escapeHtml(r.id)}" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
+    <article class="report-row-item report-document-card startwork-report-row${rowClass}" data-report-id="${escapeHtml(r.id)}" onclick="selectDirectorReportPreview('${escapeHtml(r.id)}')">
+      <div class="report-list-grid startwork-report-grid">
+        <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export" onclick="event.stopPropagation()">
+          <input type="checkbox" class="report-export-check" data-report-id="${escapeHtml(r.id)}" ${checked} onchange="toggleReportExportSelection('${escapeHtml(r.id)}', this.checked)" />
         </label>
-        <div class="report-list-date">
-          <strong>${escapeHtml(r.report_date || "")}</strong>
-          <small>${escapeHtml(submitted || "")}</small>
+        <div class="report-list-date"><strong>${escapeHtml(r.report_date || "")}</strong><small>${escapeHtml(submitted || "")}</small></div>
+        <div class="report-list-worker"><strong>${escapeHtml(person)}</strong><small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small></div>
+        <div class="report-list-site"><strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong><small>${escapeHtml(d.site_location || d.location || "")}</small></div>
+        <div class="report-list-asset"><strong>${escapeHtml(directorReportPrimaryAsset(d))}</strong></div>
+        <div class="report-list-fuel"><strong>${escapeHtml(directorReportFuelText(d))}</strong></div>
+        <div class="report-list-material"><strong>${escapeHtml(directorReportMaterialText(d))}</strong></div>
+        <div class="report-list-status"><span class="status-chip startwork-status-${directorStatusClass(statusText)}">${escapeHtml(statusLabel)}</span></div>
+        <div class="report-card-actions no-print report-row-single-action" onclick="event.stopPropagation()">
+          <button class="secondary compact-doc-btn" type="button" onclick="selectDirectorReportPreview('${escapeHtml(r.id)}')">👁</button>
+          <button class="primary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${escapeHtml(r.id)}')">⋮</button>
         </div>
-        <div class="report-list-site">
-          <strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong>
-          <small>${escapeHtml(title)}</small>
-        </div>
-        <div class="report-list-worker">
-          <strong>${escapeHtml(person)}</strong>
-          <small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small>
-        </div>
-        <div class="report-list-sections">${sectionsHtml}</div>
-        <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusLabel)}</span></div>
       </div>
       ${r.returned_reason ? `<div class="report-card-warning">Vraćeno na ispravku: ${escapeHtml(r.returned_reason)}</div>` : ""}
-      <div class="report-card-actions no-print report-row-single-action">
-        <button class="primary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori</button>
-      </div>
     </article>`;
 }
 
