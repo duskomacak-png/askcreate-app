@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.36.8";
+const APP_VERSION = "1.36.9";
 
 
 let sb = null;
@@ -3503,9 +3503,8 @@ function fuelReportHtml(r) {
           <small>${escapeHtml(reportStatusLabel(r.status))}</small>
         </div>
       </div>
-      <div class="report-card-actions no-print report-row-actions">
+      <div class="report-card-actions no-print report-row-actions fuel-row-actions">
         <button class="secondary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori</button>
-        <button class="archive-report-btn compact-doc-btn" type="button" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
       </div>
     </article>`;
 }

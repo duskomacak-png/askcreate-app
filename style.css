@@ -6215,3 +6215,88 @@ button:hover,
 }
 .fuel-list-summary strong{font-size:15px;font-weight:900;color:#14532d;}
 .fuel-list-summary span{font-size:13px;font-weight:800;color:#166534;}
+
+
+/* v1.36.9 — Gorivo danas: uredne kartice izveštaja cisterne, bez arhive na samoj listi */
+#fuelReportsList{
+  border:1px solid var(--office-line)!important;
+  border-radius:12px!important;
+  overflow:hidden!important;
+  background:#fff!important;
+}
+#fuelReportsList .fuel-list-summary{
+  margin:0!important;
+  border:0!important;
+  border-bottom:1px solid #dfeee4!important;
+  border-radius:0!important;
+  background:#f4fbf6!important;
+}
+#fuelReportsList .fuel-report-card{
+  margin:0!important;
+  border:0!important;
+  border-bottom:1px solid #e7eee9!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background:#fff!important;
+}
+#fuelReportsList .fuel-report-card:nth-child(even){background:#fbfdfb!important;}
+#fuelReportsList .fuel-report-card:last-child{border-bottom:0!important;}
+#fuelReportsList .fuel-report-card .report-list-grid{
+  display:grid!important;
+  grid-template-columns:120px minmax(220px,1.6fr) minmax(170px,1.1fr) 120px!important;
+  gap:0!important;
+  align-items:stretch!important;
+  background:#fff!important;
+  border-bottom:1px solid #edf3ee!important;
+}
+#fuelReportsList .fuel-report-card .report-list-grid > div{
+  padding:12px 14px!important;
+  min-width:0!important;
+  border-right:1px solid #edf3ee!important;
+}
+#fuelReportsList .fuel-report-card .report-list-grid > div:last-child{border-right:0!important;}
+#fuelReportsList .fuel-report-card .report-list-date strong,
+#fuelReportsList .fuel-report-card .report-list-site strong,
+#fuelReportsList .fuel-report-card .report-list-worker strong{
+  display:block!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  font-size:13px!important;
+  color:#10231c!important;
+}
+#fuelReportsList .fuel-report-card .report-list-date small,
+#fuelReportsList .fuel-report-card .report-list-site small,
+#fuelReportsList .fuel-report-card .report-list-worker small{
+  display:block!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  font-size:11px!important;
+  color:#6a776f!important;
+}
+#fuelReportsList .fuel-report-card .report-list-status{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+}
+#fuelReportsList .fuel-row-actions{
+  display:flex!important;
+  justify-content:flex-end!important;
+  padding:8px 12px!important;
+  background:#fcfefc!important;
+}
+#fuelReportsList .fuel-row-actions .compact-doc-btn{
+  min-height:28px!important;
+  height:28px!important;
+  padding:4px 12px!important;
+  font-size:11.5px!important;
+  border-radius:8px!important;
+}
+@media(max-width:900px){
+  #fuelReportsList .fuel-report-card .report-list-grid{grid-template-columns:1fr!important;}
+  #fuelReportsList .fuel-report-card .report-list-grid > div{border-right:0!important;border-bottom:1px solid #edf3ee!important;}
+  #fuelReportsList .fuel-report-card .report-list-grid > div:last-child{border-bottom:0!important;}
+}
