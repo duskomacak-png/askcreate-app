@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.36.7";
+const APP_VERSION = "1.36.8";
 
 
 let sb = null;
@@ -210,16 +210,48 @@ function businessCollectFuelLiters(data) {
   return parseDecimalInput(d.fuel_liters) + parseDecimalInput(d.field_tanker_liters) + parseDecimalInput(d.tanker_liters);
 }
 
+function fuelReportCountLabel(count) {
+  const n = Number(count || 0);
+  if (n === 1) return "1 izveštaj";
+  return `${n} izveštaja`;
+}
+
+function fuelReportDateKey(r) {
+  return String(r?.report_date || r?.submitted_at || r?.created_at || "").slice(0, 10);
+}
+
+function getTodayFuelDashboardReports(reports) {
+  const todayIso = today();
+  return (Array.isArray(reports) ? reports : []).filter(r => {
+    if (isArchivedReport(r)) return false;
+    if (fuelReportDateKey(r) !== todayIso) return false;
+    const d = r?.data || {};
+    const perms = r?.company_users?.permissions || {};
+
+    // Gorivo danas je kontrolna lista izveštaja cisterne.
+    // Zato u listu ulazi izveštaj ako je radnik imao rubriku cisterna,
+    // ili ako sam dokument nosi podatke/rubriku cisterne.
+    return !!(
+      hasFieldTankerFuelData(r) ||
+      perms.field_tanker ||
+      d.report_sections_sent?.field_tanker === true ||
+      d.report_type === "field_tanker_daily_batch" ||
+      d.source === "field_tanker_memory"
+    );
+  });
+}
+
 function businessUpdateReportsMetrics(list) {
   const reports = Array.isArray(list) ? list : [];
   const pending = reports.filter(isPendingDirectorReport).length;
   businessSetText("directorMetricPendingReports", String(pending));
+  const fuelReports = getTodayFuelDashboardReports(reports);
+  const fuel = Math.round(fuelReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
   const todayIso = today();
-  const todayReports = reports.filter(r => String(r.report_date || "").slice(0, 10) === todayIso);
-  const fuel = Math.round(todayReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
   const todayDefects = reports.filter(r => String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
   const archived = reports.filter(isArchivedReport).length;
-  businessSetText("directorMetricFuel", fuel > 0 ? `${fuel} L` : "— L");
+  businessSetText("directorMetricFuel", fuelReportCountLabel(fuelReports.length));
+  businessSetText("directorMetricFuelLabel", fuel > 0 ? `Gorivo danas · ${fuel} L` : "Gorivo danas");
   businessSetText("directorMetricDefectsToday", String(todayDefects));
   businessSetText("directorMetricArchive", String(archived));
 }
@@ -3481,13 +3513,12 @@ function fuelReportHtml(r) {
 function renderFuelReportsList() {
   const box = $("#fuelReportsList");
   if (!box) return;
-  const todayIso = today();
-  const fuelReports = directorReportsCache.filter(r =>
-    !isArchivedReport(r) &&
-    hasFieldTankerFuelData(r) &&
-    String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso
-  );
-  box.innerHTML = fuelReports.map(fuelReportHtml).join("") || `<p class="muted">Danas nema izveštaja od cisterne za gorivo.</p>`;
+  const fuelReports = getTodayFuelDashboardReports(directorReportsCache);
+  const totalLiters = Math.round(fuelReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
+  const header = fuelReports.length
+    ? `<div class="fuel-list-summary"><strong>${escapeHtml(fuelReportCountLabel(fuelReports.length))}</strong><span>${escapeHtml(totalLiters ? `${totalLiters} L goriva danas` : "Gorivo danas")}</span></div>`
+    : "";
+  box.innerHTML = header + (fuelReports.map(fuelReportHtml).join("") || `<p class="muted">Danas nema izveštaja od cisterne za gorivo.</p>`);
 }
 
 function archiveReportHtml(r) {

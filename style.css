@@ -6199,3 +6199,19 @@ button:hover,
 #fuelReportsList{border:1px solid var(--office-line);border-radius:12px;overflow:hidden;background:#fff;}
 #fuelReportsList .report-row-item:hover{background:#f6fbf7!important;}
 .fuel-report-card .status-chip{background:#ecfdf5;color:#166534;border-color:#bbf7d0;}
+
+
+/* v1.36.8 — Goriva danas prikazuje broj izveštaja cisterne i otvara njihovu listu */
+.fuel-list-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  margin:0 0 10px;
+  border:1px solid rgba(34,197,94,.18);
+  background:rgba(34,197,94,.06);
+  border-radius:14px;
+}
+.fuel-list-summary strong{font-size:15px;font-weight:900;color:#14532d;}
+.fuel-list-summary span{font-size:13px;font-weight:800;color:#166534;}
