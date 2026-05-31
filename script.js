@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.8";
+const APP_VERSION = "1.33.9";
 
 
 let sb = null;
@@ -3766,7 +3766,7 @@ window.downloadReportA4 = function(id) {
 <html lang="sr">
 <head>
 <meta charset="utf-8" />
-<title>${escapeHtml(title)}</title>
+<title> </title>
 <style>
   @page{size:A4;margin:12mm;}
   *{box-sizing:border-box;}
@@ -4000,13 +4000,74 @@ window.printReportDocument = function(id) {
   w.document.open();
   w.document.write(html);
   w.document.close();
+  toast("Za direktnu štampu u Chrome opcijama isključi Headers and footers/Zaglavlja i podnožja. PDF dugme pravi čist dokument automatski.");
   setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 350);
 };
 
-window.saveReportDocumentAsPdf = function(id) {
-  // Najstabilnije u browseru/PWA: isti čist A4 prozor, korisnik bira Save as PDF.
-  printReportDocument(id);
-  toast("U prozoru za štampu izaberi: Destination/Odredište → Save as PDF.");
+function loadHtml2PdfForReports() {
+  if (window.html2pdf) return Promise.resolve(window.html2pdf);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-report-html2pdf="1"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.html2pdf));
+      existing.addEventListener("error", reject);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+    script.async = true;
+    script.dataset.reportHtml2pdf = "1";
+    script.onload = () => window.html2pdf ? resolve(window.html2pdf) : reject(new Error("PDF alat nije učitan."));
+    script.onerror = () => reject(new Error("PDF alat nije mogao da se učita. Proveri internet vezu."));
+    document.head.appendChild(script);
+  });
+}
+
+window.saveReportDocumentAsPdf = async function(id) {
+  const r = directorReportsCache.find(x => String(x.id) === String(id));
+  if (!r) return toast("Izveštaj nije pronađen.", true);
+  try {
+    toast("Pripremam čist A4 PDF bez Chrome datuma i naslova...");
+    const html2pdf = await loadHtml2PdfForReports();
+    const holder = document.createElement("div");
+    holder.className = "report-pdf-export-holder";
+    holder.style.position = "fixed";
+    holder.style.left = "0";
+    holder.style.top = "0";
+    holder.style.width = "210mm";
+    holder.style.background = "#ffffff";
+    holder.style.zIndex = "-1";
+    holder.style.opacity = "0";
+    holder.style.pointerEvents = "none";
+    holder.innerHTML = buildReportPaperHtml(r, "pdf-paper");
+    document.body.appendChild(holder);
+    const paper = holder.querySelector(".report-paper-view");
+    if (!paper) throw new Error("A4 dokument nije pronađen za PDF.");
+    paper.style.width = "210mm";
+    paper.style.maxWidth = "210mm";
+    paper.style.minHeight = "297mm";
+    paper.style.margin = "0";
+    paper.style.boxShadow = "none";
+    paper.style.border = "0";
+    paper.style.background = "#ffffff";
+    const name = safeFilePart(`${reportDocumentTitle(r)}_${r.report_date || today()}_${(r.data || {}).site_name || "izvestaj"}`) + ".pdf";
+    await html2pdf()
+      .set({
+        margin: 0,
+        filename: name,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", logging: false, scrollX: 0, scrollY: 0 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+        pagebreak: { mode: ["css", "legacy"], avoid: [".paper-machine-card", ".report-section", "tr"] }
+      })
+      .from(paper)
+      .save();
+    holder.remove();
+    toast("Čist A4 PDF je preuzet bez datuma i duplog naslova.");
+  } catch (e) {
+    document.querySelectorAll(".report-pdf-export-holder").forEach(x => x.remove());
+    toast(e.message || "PDF preuzimanje nije uspelo.", true);
+  }
 };
 
 function loadHtml2CanvasForReports() {
