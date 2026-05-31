@@ -5990,3 +5990,17 @@ button:hover,
   .paper-machine-grid{grid-template-columns:28mm 1fr 28mm 1fr 28mm 1fr!important;}
   .paper-machine-grid .paper-machine-work{grid-column:2 / -1!important;}
 }
+
+/* v1.34.5 — Direkcija: filter sredstava rada po kategoriji */
+.asset-category-filter{
+  margin-bottom: 6px;
+}
+.asset-list-card-v1345[data-asset-type="machine"]{
+  border-left: 4px solid rgba(34,197,94,.45);
+}
+.asset-list-card-v1345[data-asset-type="vehicle"]{
+  border-left: 4px solid rgba(59,130,246,.45);
+}
+.asset-list-card-v1345[data-asset-type="other"]{
+  border-left: 4px solid rgba(148,163,184,.55);
+}

@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1344" />
+  <link rel="stylesheet" href="style.css?v=1345" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -585,6 +585,14 @@
           </div>
           <div class="card">
             <h3>Evidencija sredstava rada</h3>
+            <label>Prikaži kategoriju</label>
+            <select id="assetListFilter" class="asset-category-filter">
+              <option value="all">Sve kategorije</option>
+              <option value="machine">Mašine</option>
+              <option value="vehicle">Vozila</option>
+              <option value="other">Ostalo / oprema</option>
+            </select>
+            <p id="assetListFilterInfo" class="muted tiny">Prikazuju se sva aktivna sredstva rada.</p>
             <div id="assetsList" class="list"></div>
           </div>
         </div>
@@ -1257,6 +1265,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1344"></script>
+  <script src="script.js?v=1345"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.34.4";
+const APP_VERSION = "1.34.5";
 
 
 let sb = null;
@@ -2040,6 +2040,31 @@ async function findDuplicateAssetCode(rawCode) {
 }
 
 let assetCodeCheckTimer = null;
+let directorAssetListFilter = "all";
+
+function normalizeAssetType(value) {
+  const v = String(value || "").toLowerCase().trim();
+  if (["machine", "masina", "mašina"].includes(v)) return "machine";
+  if (["vehicle", "vozilo", "truck", "kamion"].includes(v)) return "vehicle";
+  if (["other", "ostalo", "oprema"].includes(v)) return "other";
+  return v || "other";
+}
+
+function assetTypeLabel(value) {
+  const v = normalizeAssetType(value);
+  if (v === "machine") return "Mašina";
+  if (v === "vehicle") return "Vozilo";
+  return "Ostalo / oprema";
+}
+
+function assetFilterLabel(value) {
+  const v = String(value || "all");
+  if (v === "machine") return "mašine";
+  if (v === "vehicle") return "vozila";
+  if (v === "other") return "ostalo / oprema";
+  return "sva aktivna sredstva rada";
+}
+
 async function checkAssetCodeAvailability(showFreeMessage = true) {
   const input = $("#assetCode");
   if (!input) return true;
@@ -2363,11 +2388,35 @@ async function loadAssets() {
 
   directorAssetsCache = data || [];
   updateSmartExportDatalists();
-  const activeAssets = (data || []).filter(a => a.active !== false);
-  $("#assetsList").innerHTML = activeAssets.map(a => `
-    <div class="director-table-row management-item">
+  renderAssetsList();
+}
+
+function renderAssetsList() {
+  const list = $("#assetsList");
+  if (!list) return;
+
+  const filterSelect = $("#assetListFilter");
+  if (filterSelect && filterSelect.value !== directorAssetListFilter) filterSelect.value = directorAssetListFilter;
+
+  const activeAssets = (directorAssetsCache || []).filter(a => a.active !== false);
+  const selected = normalizeAssetType(directorAssetListFilter || "all");
+  const filteredAssets = selected === "all"
+    ? activeAssets
+    : activeAssets.filter(a => normalizeAssetType(a.asset_type) === selected);
+
+  const info = $("#assetListFilterInfo");
+  if (info) {
+    const total = activeAssets.length;
+    const shown = filteredAssets.length;
+    info.textContent = selected === "all"
+      ? `Prikazuju se sva aktivna sredstva rada (${total}).`
+      : `Prikaz: ${assetFilterLabel(selected)} (${shown}/${total}).`;
+  }
+
+  list.innerHTML = filteredAssets.map(a => `
+    <div class="director-table-row management-item asset-list-card-v1345" data-asset-type="${escapeHtml(normalizeAssetType(a.asset_type))}">
       <div class="dt-cell dt-name"><strong>${escapeHtml(formatAssetTitleWithCode(a))}</strong><small>Interni broj / naziv</small></div>
-      <div class="dt-cell"><span>${escapeHtml(a.asset_type || "—")}</span><small>Tip sredstva</small></div>
+      <div class="dt-cell"><span>${escapeHtml(assetTypeLabel(a.asset_type))}</span><small>Kategorija</small></div>
       <div class="dt-cell"><span>${escapeHtml(a.registration || "—")}</span><small>Reg. oznaka</small></div>
       <div class="dt-cell"><span>${escapeHtml(formatCapacityM3(a.capacity))}</span><small>Kapacitet</small></div>
       <div class="dt-actions management-actions asset-actions-v1117">
@@ -2375,7 +2424,12 @@ async function loadAssets() {
         <button class="delete-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">Skloni</button>
       </div>
     </div>
-  `).join("") || `<p class="muted">Nema mašina/vozila.</p>`;
+  `).join("") || `<p class="muted">Nema aktivnih sredstava u izabranoj kategoriji: ${escapeHtml(assetFilterLabel(selected))}.</p>`;
+}
+
+function handleAssetListFilterChange(value) {
+  directorAssetListFilter = value || "all";
+  renderAssetsList();
 }
 
 
@@ -10117,6 +10171,7 @@ function bindEvents() {
   $("#addAssetBtn").addEventListener("click", saveAssetForm);
   if ($("#cancelEditAssetBtn")) $("#cancelEditAssetBtn").addEventListener("click", clearAssetForm);
   if ($("#assetCode")) $("#assetCode").addEventListener("input", scheduleAssetCodeAvailabilityCheck);
+  if ($("#assetListFilter")) $("#assetListFilter").addEventListener("change", (e) => handleAssetListFilterChange(e.target.value));
 
 
   if ($("#directorSearchBtn")) $("#directorSearchBtn").addEventListener("click", () => runDirectorGlobalSearch(true));
