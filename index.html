@@ -378,51 +378,40 @@
 
     <section id="viewDirectorDashboard" class="view director-business-page">
       <aside class="director-sidebar" aria-label="Uprava navigacija">
-        <div class="director-logo-box startwork-logo-box">
-          <div class="director-logo-mark startwork-logo-mark">▥</div>
+        <div class="director-logo-box">
+          <div class="director-logo-mark">A</div>
           <div>
-            <strong>Start Work PRO</strong>
-            <span>AskCreate.app</span>
+            <strong>Radni prostor</strong>
+            <span>uprava firme</span>
           </div>
         </div>
         <div class="tabs director-nav-tabs director-basic-menu">
-          <button class="tab active" data-tab="people">⌂ Kontrolna tabla</button>
-          <button class="tab" data-tab="reports">▤ Prijavljeni izveštaji</button>
-          <button class="tab workspace-hidden-tab" data-tab="defects" type="button">⚠ Kvarovi</button>
-          <button class="tab" data-tab="people">👥 Korisnici</button>
-          <button class="tab" data-tab="sites">▥ Gradilišta</button>
-          <button class="tab" data-tab="assets">▱ Mašine i vozila</button>
-          <button class="tab" data-tab="materials">▦ Materijali</button>
-          <button class="tab workspace-hidden-tab" data-tab="export" type="button">▣ Excel izvoz</button>
-          <button class="tab" data-tab="support">⚙ Podešavanja</button>
+          <button class="tab active" data-tab="people">🏠 Početna / Ljudi</button>
+          <button class="tab" data-tab="sites">🏗️ Gradilišta</button>
+          <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
+          <button class="tab" data-tab="materials">📦 Materijali</button>
+          <button class="tab" data-tab="reports">📄 Izveštaji</button>
+          <button class="tab" data-tab="support">⚙️ Podešavanja</button>
+          <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
+          <button class="tab workspace-hidden-tab" data-tab="export" type="button">📊 Izvoz u Excel</button>
         </div>
       </aside>
 
       <div class="director-workspace">
-        <div class="director-business-topline startwork-topbar">
-          <div class="company-switch-pill startwork-company-pill">▥ <span id="directorBusinessCompanyName">Firma</span><small>Direkcija</small></div>
-          <div class="startwork-top-date"><span>📅</span><b id="directorTodayLabel">Danas</b><small id="directorTodayWeekday">—</small></div>
-          <div class="director-searchbar business-searchbar startwork-global-search">
-            <div class="search-input-wrap">
-              <span class="search-icon">⌕</span>
-              <input id="directorGlobalSearch" type="search" placeholder="Pretraži izveštaje, radnike, mašine, gradilišta..." />
-            </div>
-            <button id="directorSearchBtn" class="secondary small-action" type="button">Traži</button>
-            <button id="directorClearSearchBtn" class="secondary small-action" type="button">Očisti</button>
-          </div>
-          <div class="startwork-bell">🔔<span id="directorBellCount">0</span></div>
-          <div class="director-user-pill startwork-user-pill"><b>D</b><span>Direkcija</span></div>
+        <div class="director-business-topline">
+          <div class="company-switch-pill">🏢 <span id="directorBusinessCompanyName">Firma</span></div>
+          <div class="director-user-pill">👤 <span>Uprava firme</span></div>
         </div>
 
-        <div class="dashboard-head director-business-hero startwork-hero-hidden">
+        <div class="dashboard-head director-business-hero">
           <div>
             <p class="business-eyebrow">Kontrolni panel</p>
             <h2>Kontrolni pregled firme</h2>
             <p id="directorCompanyLabel">Firma</p><p class="director-layout-note">Kancelarijski pregled: evidencije, izveštaji, odobravanje i Excel na jednom mestu.</p>
           </div>
           <div class="director-hero-actions">
-            <button class="secondary" type="button" onclick="directorShowWorkerQr()">📲 QR za radnike</button>
-            <button class="secondary" type="button" onclick="directorShowMechanicQr()">🔧 QR za šefa mehanizacije</button>
+            <button id="directorShowWorkerQrBtn" class="secondary" type="button">📲 QR za radnike</button>
+            <button id="directorShowMechanicQrBtn" class="secondary" type="button">🔧 QR za šefa mehanizacije</button>
             <div class="hero-date-pill">📅 Danas</div>
           </div>
         </div>
@@ -452,6 +441,14 @@
           </div>
         </div>
 
+        <div class="director-searchbar business-searchbar">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔎</span>
+            <input id="directorGlobalSearch" type="search" placeholder="Pretraži bazu: zaposleni, mašina, vozilo, gradilište, materijal, izveštaj..." />
+          </div>
+          <button id="directorSearchBtn" class="secondary small-action" type="button">Traži</button>
+          <button id="directorClearSearchBtn" class="secondary small-action" type="button">Očisti</button>
+        </div>
         <div id="directorSearchResults" class="card director-search-results hidden">
           <h3>Rezultati pretrage</h3>
           <div id="directorSearchResultsList" class="list"></div>
@@ -621,75 +618,32 @@
       </div>
 
       <div id="tabReports" class="tab-panel">
-        <div class="startwork-reports-layout">
-          <section class="startwork-report-table-card card reports-workspace-card">
-            <div class="startwork-section-head">
-              <div>
-                <h3>Prijavljeni izveštaji</h3>
-                <p class="muted">Dnevni izveštaji su prikazani u tabeli. Klik na red otvara brzi pregled desno, a dugme “Otvori” otvara kompletan dokument.</p>
-              </div>
-              <div class="startwork-toolbar">
-                <button id="directorManualRefreshBtn" class="secondary small-action" type="button">⟳ Osveži</button>
-                <button id="goExportBtn" class="primary small-action" type="button">▣ Izvezi Excel</button>
-              </div>
+        <div class="card reports-workspace-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Radni prostor</p>
+              <h3>Izveštaji</h3>
+              <p class="muted">Ovde su dnevni izveštaji, kvarovi i Excel izvoz. Sve je na jednom mestu, bez dodatne desne kolone.</p>
             </div>
-
-            <div class="startwork-filter-row" aria-label="Filteri izveštaja">
-              <button class="startwork-filter-chip active" type="button">Danas</button>
-              <button class="startwork-filter-chip" type="button">Ove nedelje</button>
-              <button class="startwork-filter-chip" type="button">Svi</button>
-              <label>Gradilište<select disabled><option>Sve</option></select></label>
-              <label>Status<select disabled><option>Sve</option></select></label>
-              <label>Radnik<select disabled><option>Sve</option></select></label>
-              <label>Mašina/Vozilo<select disabled><option>Sve</option></select></label>
+            <div class="workspace-subnav">
+              <button class="secondary small-action" type="button" data-business-tab="reports">Dnevni izveštaji</button>
+              <button class="secondary small-action" type="button" data-business-tab="defects">Kvarovi</button>
+              <button class="primary small-action" type="button" data-business-tab="export">Excel izvoz</button>
             </div>
-
-            <div class="director-live-refresh-line startwork-live-line">
-              <span class="live-dot"></span>
-              <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</span>
-            </div>
-
-            <div class="row report-export-toolbar startwork-selection-toolbar">
-              <button id="selectAllReportsBtn" class="secondary" type="button">✅ Označi sve</button>
-              <button id="clearReportsBtn" class="secondary" type="button">❌ Poništi sve</button>
-            </div>
-
-            <div class="startwork-table-head" aria-hidden="true">
-              <span>Izbor</span><span>Datum</span><span>Radnik</span><span>Gradilište</span><span>Mašina/Vozilo</span><span>Gorivo</span><span>Materijal / ture</span><span>Status</span><span>Akcije</span>
-            </div>
-            <div id="reportsList" class="list startwork-reports-list"></div>
-          </section>
-
-          <aside class="startwork-report-detail card" id="directorReportPreview">
-            <div class="startwork-detail-empty">
-              <button type="button" class="startwork-detail-close" aria-label="Zatvori">×</button>
-              <h3>Detalji izveštaja</h3>
-              <p class="muted">Izaberi izveštaj iz tabele za brzi pregled.</p>
-            </div>
-          </aside>
-        </div>
-
-        <div class="startwork-bottom-grid">
-          <section class="card startwork-defect-mini">
-            <div class="startwork-mini-head"><h3>⚠ Aktivni kvarovi</h3><button class="secondary small-action" type="button" data-business-tab="defects">Prikaži sve kvarove ›</button></div>
-            <div id="directorDefectMiniList" class="startwork-mini-list"><p class="muted">Kvarovi će se prikazati posle učitavanja izveštaja.</p></div>
-          </section>
-          <section class="card startwork-quick-actions">
-            <div class="startwork-mini-head"><h3>⚡ Brze radnje</h3></div>
-            <div class="startwork-quick-grid">
-              <button class="quick-action" type="button" data-business-tab="people">👥 Dodaj korisnika</button>
-              <button class="quick-action" type="button" data-business-tab="sites">▥ Dodaj gradilište</button>
-              <button class="quick-action" type="button" data-business-tab="assets">▱ Dodaj vozilo</button>
-              <button class="quick-action" type="button" data-business-tab="export">▣ Otvori Excel izvoz</button>
-              <button id="directorShowWorkerQrBtn" class="quick-action" type="button">📲 QR radnici</button>
-              <button id="directorShowMechanicQrBtn" class="quick-action" type="button">🔧 QR mehanizacija</button>
-            </div>
-            <div class="startwork-sync-box">
-              <span>⟳</span>
-              <div><strong>Sinhronizacija sa terena</strong><small data-auto-refresh-status>Automatsko osvežavanje uključeno.</small></div>
-              <b>Uspostavljena ✓</b>
-            </div>
-          </section>
+          </div>
+          <h3>Inbox izveštaja</h3>
+          <p class="muted">Štikliraj dnevne izveštaje koje želiš da prebaciš u izvoz za Excel.</p>
+          <div class="director-live-refresh-line">
+            <span class="live-dot"></span>
+            <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</span>
+            <button id="directorManualRefreshBtn" class="secondary small-action" type="button">Osveži odmah</button>
+          </div>
+          <div class="row report-export-toolbar">
+            <button id="selectAllReportsBtn" class="secondary" type="button">✅ Označi sve</button>
+            <button id="clearReportsBtn" class="secondary" type="button">❌ Poništi sve</button>
+            <button id="goExportBtn" class="primary" type="button">📊 Izvezi označene u Excel</button>
+          </div>
+          <div id="reportsList" class="list"></div>
         </div>
       </div>
 

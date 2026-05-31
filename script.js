@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.8_DIRECTOR_STARTWORK_PANEL";
+const APP_VERSION = "1.33.8";
 
 
 let sb = null;
@@ -2875,6 +2875,35 @@ function formatDateTimeLocal(value) {
   }
 }
 
+function formatDateOnlyLocal(value) {
+  if (!value) return "—";
+  try {
+    const raw = String(value || "").trim();
+    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[3]}.${iso[2]}.${iso[1]}.`;
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return raw || "—";
+    return dt.toLocaleDateString("sr-RS", { day:"2-digit", month:"2-digit", year:"numeric" });
+  } catch(e) {
+    return String(value || "—");
+  }
+}
+
+function decimalDiffText(start, end) {
+  const s = parseFloat(String(start || "").replace(",", "."));
+  const e = parseFloat(String(end || "").replace(",", "."));
+  if (Number.isNaN(s) || Number.isNaN(e) || e < s) return "";
+  const v = Math.round((e - s) * 100) / 100;
+  return Number.isInteger(v) ? String(v) : String(v).replace(".", ",");
+}
+
+function machineKmStart(m = {}) { return m.km_start || m.machine_km_start || ""; }
+function machineKmEnd(m = {}) { return m.km_end || m.machine_km_end || ""; }
+function machineKmTotal(m = {}) { return m.km_total || m.machine_km_total || decimalDiffText(machineKmStart(m), machineKmEnd(m)); }
+function machineMtcStart(m = {}) { return m.mtc_start || m.machine_mtc_start || m.start || ""; }
+function machineMtcEnd(m = {}) { return m.mtc_end || m.machine_mtc_end || m.end || ""; }
+function machineMtcTotal(m = {}) { return m.mtc_total || m.machine_mtc_total || m.hours || decimalDiffText(machineMtcStart(m), machineMtcEnd(m)); }
+
 function reportStatusLabel(status) {
   const key = String(status || "novo").toLowerCase();
   const map = {
@@ -3019,7 +3048,6 @@ async function loadReports(options = {}) {
   renderDefectsList();
   renderDirectorDefectNoticeInReports();
   renderExportPanel();
-  renderDirectorStartWorkDashboard(dailyReports);
 }
 
 
@@ -3229,9 +3257,12 @@ function renderReportReadableDetails(d = {}, options = {}) {
     const row = `Mašina ${i + 1}`;
     addPreview("Evidencija rada mašine", row, "Broj", m.asset_code || m.machine_code);
     addPreview("Evidencija rada mašine", row, "Mašina", m.name);
-    addPreview("Evidencija rada mašine", row, "MTČ/KM početak", m.start);
-    addPreview("Evidencija rada mašine", row, "MTČ/KM kraj", m.end);
-    addPreview("Evidencija rada mašine", row, "Ukupno sati", m.hours);
+    addPreview("Evidencija rada mašine", row, "KM početak", machineKmStart(m));
+    addPreview("Evidencija rada mašine", row, "KM kraj", machineKmEnd(m));
+    addPreview("Evidencija rada mašine", row, "Ukupno KM", machineKmTotal(m));
+    addPreview("Evidencija rada mašine", row, "MTČ početak", machineMtcStart(m));
+    addPreview("Evidencija rada mašine", row, "MTČ kraj", machineMtcEnd(m));
+    addPreview("Evidencija rada mašine", row, "Ukupno MTČ", machineMtcTotal(m));
     addPreview("Evidencija rada mašine", row, "Opis rada", m.work);
   });
 
@@ -3342,32 +3373,22 @@ function renderReportReadableDetails(d = {}, options = {}) {
     </table>` : `<p class="report-empty">Nema dodatih zaposlenog u ekipi.</p>`;
 
   const machineTable = machines.length ? `
-    <table class="report-mini-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Broj</th>
-          <th>Mašina</th>
-          <th>MTČ/KM početak</th>
-          <th>MTČ/KM kraj</th>
-          <th>Ukupno sati</th>
-          <th>Rad</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${machines.map((m, i) => `
-          <tr>
-            <td>${i + 1}</td>
-            <td>${val(m.asset_code || m.machine_code)}</td>
-            <td>${val(m.name)}</td>
-            <td>${val(m.start)}</td>
-            <td>${val(m.end)}</td>
-            <td>${val(m.hours)}</td>
-            <td>${val(m.work)}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>` : `<p class="report-empty">Nema unetih mašina.</p>`;
+    <div class="paper-machine-list">
+      ${machines.map((m, i) => `
+        <div class="paper-machine-card">
+          <div class="paper-machine-title"><b>${i + 1}. ${val(m.name)}</b><span>Broj: ${val(m.asset_code || m.machine_code)}</span></div>
+          <div class="paper-machine-grid">
+            <b>KM početak</b><span>${val(machineKmStart(m))}</span>
+            <b>KM kraj</b><span>${val(machineKmEnd(m))}</span>
+            <b>Ukupno KM</b><span>${val(machineKmTotal(m))}</span>
+            <b>MTČ početak</b><span>${val(machineMtcStart(m))}</span>
+            <b>MTČ kraj</b><span>${val(machineMtcEnd(m))}</span>
+            <b>Ukupno MTČ</b><span>${val(machineMtcTotal(m))}</span>
+            <b>Rad</b><span class="paper-machine-work">${val(m.work)}</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>` : `<p class="report-empty">Nema unetih mašina.</p>`;
 
   const vehicleTable = vehicles.length ? `
     <table class="report-mini-table">
@@ -3848,7 +3869,7 @@ function buildReportPaperHtml(r, paperIdPrefix = "paper") {
 
       <table class="paper-meta-table">
         <tbody>
-          <tr><th>Datum izveštaja</th><td>${escapeHtml(r.report_date || d.report_date_manual || d.report_date || "—")}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
+          <tr><th>Datum izveštaja</th><td>${escapeHtml(formatDateOnlyLocal(r.report_date || d.report_date_manual || d.report_date || ""))}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
           <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
           <tr><th>Zaposleni / odgovorno lice</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
           <tr><th>Firma</th><td>${escapeHtml(currentCompany?.company_name || currentCompany?.name || "—")}</td><th>Broj dokumenta</th><td>${escapeHtml(reportDocumentNumber(r))}</td></tr>
@@ -3897,6 +3918,18 @@ function buildStandaloneReportPrintHtml(r) {
   .paper-signature-box img{max-height:80px;max-width:220px;border:1px solid #d1d5db;background:#fff;}
   .paper-signature-line{margin-top:40px;border-top:1px solid #111827;width:70mm;padding-top:5px;color:#111827;}
   .signed-file-note{border:1px solid #9ca3af;padding:7px;background:#f9fafb;}
+  .paper-machine-list{display:grid;gap:8px;margin:4px 0 0;}
+  .paper-machine-card{border:1px solid #9ca3af;background:#fff;break-inside:avoid;page-break-inside:avoid;}
+  .paper-machine-title{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 8px;background:#eef2f0;border-bottom:1px solid #9ca3af;font-size:12px;}
+  .paper-machine-title b{font-weight:800;}
+  .paper-machine-title span{font-size:11px;color:#374151;}
+  .paper-machine-grid{display:grid;grid-template-columns:28mm 1fr 28mm 1fr 28mm 1fr;}
+  .paper-machine-grid b,.paper-machine-grid span{border-right:1px solid #d1d5db;border-bottom:1px solid #d1d5db;padding:5px 6px;min-height:25px;font-size:11px;}
+  .paper-machine-grid b{background:#f8fafc;font-weight:800;}
+  .paper-machine-grid .paper-machine-work{grid-column:2 / -1;}
+  .report-mini-table{min-width:0!important;width:100%;table-layout:auto;}
+  .report-mini-table th,.report-mini-table td{white-space:normal!important;overflow-wrap:anywhere!important;}
+
 </style>
 </head>
 <body>${paper}</body>
@@ -3930,6 +3963,7 @@ window.openReportDocumentCenter = function(id) {
 
       <div class="report-doc-actions no-print">
         <button class="primary" type="button" onclick="saveReportDocumentAsPdf('${r.id}')">Sačuvaj kao PDF</button>
+        <button class="secondary" type="button" onclick="saveReportDocumentAsPng('${r.id}')">Preuzmi PNG</button>
         <button class="secondary" type="button" onclick="printReportDocument('${r.id}')">Štampaj dokument</button>
         <button class="secondary" type="button" onclick="exportSingleReportToExcel('${r.id}')">Izvezi dokument u Excel</button>
         <button class="secondary" type="button" onclick="setReportStatus('${r.id}','approved')">Odobri izveštaj</button>
@@ -3975,6 +4009,51 @@ window.saveReportDocumentAsPdf = function(id) {
   toast("U prozoru za štampu izaberi: Destination/Odredište → Save as PDF.");
 };
 
+function loadHtml2CanvasForReports() {
+  if (window.html2canvas) return Promise.resolve(window.html2canvas);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-report-html2canvas="1"]');
+    if (existing) {
+      existing.addEventListener("load", () => resolve(window.html2canvas));
+      existing.addEventListener("error", reject);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+    script.async = true;
+    script.dataset.reportHtml2canvas = "1";
+    script.onload = () => window.html2canvas ? resolve(window.html2canvas) : reject(new Error("PNG alat nije učitan."));
+    script.onerror = () => reject(new Error("PNG alat nije mogao da se učita. Proveri internet vezu."));
+    document.head.appendChild(script);
+  });
+}
+
+window.saveReportDocumentAsPng = async function(id) {
+  const r = directorReportsCache.find(x => String(x.id) === String(id));
+  const el = document.getElementById(`doc-paper-${id}`) || document.getElementById(`paper-${id}`);
+  if (!r || !el) return toast("Ne mogu da pronađem A4 dokument za PNG.", true);
+  try {
+    toast("Pripremam A4 PNG...");
+    const html2canvas = await loadHtml2CanvasForReports();
+    const canvas = await html2canvas(el, {
+      backgroundColor: "#ffffff",
+      scale: Math.min(2.2, Math.max(1.5, window.devicePixelRatio || 1.5)),
+      useCORS: true,
+      logging: false,
+      scrollX: 0,
+      scrollY: 0
+    });
+    canvas.toBlob(blob => {
+      if (!blob) return toast("PNG nije mogao da se napravi.", true);
+      const name = safeFilePart(`${reportDocumentTitle(r)}_${r.report_date || today()}_${(r.data || {}).site_name || "izvestaj"}`) + ".png";
+      downloadBlob(blob, name);
+      toast("A4 PNG dokument je preuzet.");
+    }, "image/png", 1);
+  } catch (e) {
+    toast(e.message || "PNG preuzimanje nije uspelo.", true);
+  }
+};
+
 window.addReportToExcelSelection = function(id) {
   toggleReportExportSelection(id, true);
   const cb = Array.from(document.querySelectorAll(".report-export-check")).find(x => String(x.dataset.reportId || "") === String(id));
@@ -4001,181 +4080,42 @@ window.exportSingleReportToExcel = function(id) {
   toast("Excel fajl za ovaj izveštaj je preuzet.");
 };
 
-function directorReportPrimaryAsset(d = {}) {
-  const machineEntry = Array.isArray(d.machines) ? d.machines.find(x => x && Object.values(x).some(Boolean)) : null;
-  const vehicleEntry = Array.isArray(d.vehicles) ? d.vehicles.find(x => x && Object.values(x).some(Boolean)) : null;
-  const asset = machineEntry || vehicleEntry || {};
-  return asset.asset_name || asset.machine_name || asset.vehicle_name || asset.name || d.machine || d.vehicle || d.asset_name || "—";
-}
-
-function directorReportFuelText(d = {}) {
-  const liters = businessCollectFuelLiters(d);
-  if (!liters) return "—";
-  const clean = Number.isInteger(liters) ? String(liters) : String(Math.round(liters * 100) / 100);
-  return `${clean} L`;
-}
-
-function directorReportMaterialText(d = {}) {
-  const entries = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : []);
-  const first = entries.find(x => x && Object.values(x).some(Boolean));
-  if (first) {
-    const name = first.material_name || first.name || first.material || "Materijal";
-    const qty = first.quantity || first.qty || first.amount || first.tours || "";
-    const unit = first.unit || "";
-    return `${name}${qty ? " · " + qty : ""}${unit ? " " + unit : ""}`;
-  }
-  if (d.material || d.quantity) return `${d.material || "Materijal"}${d.quantity ? " · " + d.quantity : ""}${d.unit ? " " + d.unit : ""}`;
-  return "—";
-}
-
-function directorReportWorkTime(d = {}) {
-  const from = d.work_start || d.start_time || d.time_from || d.from || "—";
-  const to = d.work_end || d.end_time || d.time_to || d.to || "—";
-  const total = d.total_hours || d.hours || d.work_hours || "—";
-  return { from, to, total };
-}
-
-function directorStatusClass(status) {
-  const key = String(status || "new").toLowerCase();
-  if (["approved", "odobreno", "exported", "izvezeno"].includes(key)) return "approved";
-  if (["returned", "vraceno", "vraćeno"].includes(key)) return "returned";
-  if (["archived", "arhivirano"].includes(key)) return "archived";
-  return "new";
-}
-
-function renderDirectorStartWorkDashboard(dailyReports = []) {
-  updateDirectorStartWorkDate();
-  updateDirectorStartWorkKpis(directorReportsCache || []);
-  const selectedId = document.body.dataset.directorSelectedReportId;
-  const selected = dailyReports.find(r => String(r.id) === String(selectedId)) || dailyReports[0] || null;
-  renderDirectorReportPreview(selected);
-  renderDirectorDefectMiniList();
-}
-
-function updateDirectorStartWorkDate() {
-  const dateEl = document.getElementById("directorTodayLabel");
-  const weekdayEl = document.getElementById("directorTodayWeekday");
-  if (!dateEl && !weekdayEl) return;
-  const now = new Date();
-  if (dateEl) dateEl.textContent = now.toLocaleDateString("sr-RS", { day:"2-digit", month:"short", year:"numeric" });
-  if (weekdayEl) weekdayEl.textContent = now.toLocaleDateString("sr-RS", { weekday:"long" });
-}
-
-function updateDirectorStartWorkKpis(reports = []) {
-  const all = Array.isArray(reports) ? reports : [];
-  const daily = all.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
-  const defects = all.filter(hasDefectData);
-  const newCount = daily.filter(r => ["new","novo","sent","submitted","pending"].includes(String(r.status || "new").toLowerCase())).length;
-  const returnedCount = daily.filter(r => ["returned","vraceno","vraćeno"].includes(String(r.status || "").toLowerCase())).length;
-  const approvedCount = daily.filter(r => ["approved","odobreno"].includes(String(r.status || "").toLowerCase())).length;
-  const bell = document.getElementById("directorBellCount");
-  if (bell) bell.textContent = String(newCount + defects.length);
-  const metricPending = document.getElementById("directorMetricPendingReports");
-  if (metricPending) metricPending.textContent = String(newCount);
-  const metricFuel = document.getElementById("directorMetricFuel");
-  if (metricFuel) metricFuel.textContent = String(defects.length);
-  const kpiCards = Array.from(document.querySelectorAll("#viewDirectorDashboard .business-kpi-card"));
-  const labels = [
-    ["Novi izveštaji", newCount],
-    ["Vraćeni na dopunu", returnedCount],
-    ["Odobreni danas", approvedCount],
-    ["Aktivni kvarovi", defects.length]
-  ];
-  labels.forEach((item, i) => {
-    const card = kpiCards[i];
-    if (!card) return;
-    const strong = card.querySelector("strong");
-    const span = card.querySelector("span");
-    if (strong) strong.textContent = String(item[1]);
-    if (span) span.textContent = item[0];
-  });
-}
-
-function renderDirectorReportPreview(r) {
-  const box = document.getElementById("directorReportPreview");
-  if (!box) return;
-  if (!r) {
-    box.innerHTML = `<div class="startwork-detail-empty"><button type="button" class="startwork-detail-close" aria-label="Zatvori">×</button><h3>Detalji izveštaja</h3><p class="muted">Trenutno nema dnevnih izveštaja za prikaz.</p></div>`;
-    return;
-  }
-  const d = r.data || {};
-  const person = reportDocumentPerson(r);
-  const title = reportDocumentTitle(r);
-  const work = directorReportWorkTime(d);
-  const status = reportStatusLabel(r.status || "new");
-  document.body.dataset.directorSelectedReportId = String(r.id || "");
-  box.innerHTML = `
-    <button type="button" class="startwork-detail-close" aria-label="Zatvori">×</button>
-    <div class="startwork-detail-title"><h3>Detalji izveštaja</h3><span class="status-chip startwork-status-${directorStatusClass(r.status)}">${escapeHtml(status)}</span></div>
-    <div class="startwork-id-pill">ID: ${escapeHtml(String(r.id || "").slice(0, 18) || "—")}</div>
-    <div class="startwork-detail-block"><b>👥 Radnik</b><strong>${escapeHtml(person)}</strong><small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small></div>
-    <div class="startwork-detail-block"><b>▥ Gradilište</b><strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong><small>${escapeHtml(d.site_location || d.location || "")}</small></div>
-    <div class="startwork-detail-block"><b>▱ Mašina / Vozilo</b><strong>${escapeHtml(directorReportPrimaryAsset(d))}</strong><small>${escapeHtml(d.asset_reg || d.vehicle_reg || d.machine_reg || "")}</small></div>
-    <div class="startwork-detail-block startwork-inline-details"><b>◴ Radno vreme</b><span>Od: ${escapeHtml(work.from)}</span><span>Do: ${escapeHtml(work.to)}</span><span>Ukupno: ${escapeHtml(work.total)}</span></div>
-    <div class="startwork-detail-block"><b>⛽ Gorivo</b><strong>${escapeHtml(directorReportFuelText(d))}</strong></div>
-    <div class="startwork-detail-block"><b>▦ Materijal / ture</b><strong>${escapeHtml(directorReportMaterialText(d))}</strong></div>
-    <div class="startwork-detail-block"><b>💬 Napomena radnika</b><p>${escapeHtml(d.note || d.description || d.work_description || "Nema napomene.")}</p></div>
-    ${r.returned_reason ? `<div class="report-card-warning">Vraćeno na ispravku: ${escapeHtml(r.returned_reason)}</div>` : ""}
-    <div class="startwork-detail-actions">
-      <button class="secondary danger-soft" type="button" onclick="returnReport('${escapeHtml(r.id)}')">⟳ Vrati na dopunu</button>
-      <button class="primary" type="button" onclick="setReportStatus('${escapeHtml(r.id)}','approved')">✓ Odobri</button>
-      <button class="secondary" type="button" onclick="openReportDocumentCenter('${escapeHtml(r.id)}')">Otvori dokument</button>
-    </div>`;
-  document.querySelectorAll(".report-row-item.is-selected").forEach(el => el.classList.remove("is-selected"));
-  const row = document.querySelector(`.report-row-item[data-report-id="${CSS.escape(String(r.id || ""))}"]`);
-  if (row) row.classList.add("is-selected");
-}
-
-window.selectDirectorReportPreview = function(id) {
-  const r = (directorReportsCache || []).find(x => String(x.id) === String(id));
-  if (!r) return toast("Izveštaj nije pronađen.", true);
-  renderDirectorReportPreview(r);
-};
-
-function renderDirectorDefectMiniList() {
-  const box = document.getElementById("directorDefectMiniList");
-  if (!box) return;
-  const defects = (directorReportsCache || []).filter(hasDefectData).slice(0, 3);
-  if (!defects.length) {
-    box.innerHTML = `<p class="muted">Nema aktivnih kvarova.</p>`;
-    return;
-  }
-  box.innerHTML = defects.map(r => {
-    const d = r.data || {};
-    const asset = [d.defect_asset_code, d.defect_asset_name || d.defect_machine || d.defect_vehicle].filter(Boolean).join(" · ") || "Sredstvo nije upisano";
-    const status = d.defect_status || "Otvoren";
-    return `<div class="startwork-defect-row"><strong>${escapeHtml(asset)}</strong><span>${escapeHtml(d.defect || d.defect_description || d.defect_problem || "Prijavljen kvar")}</span><em>${escapeHtml(status)}</em></div>`;
-  }).join("");
-}
-
 function reportHtml(r) {
   const d = r.data || {};
   const person = reportDocumentPerson(r);
+  const title = reportDocumentTitle(r);
   const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
+  const sections = getReportFilledSections(d);
+  const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
   const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
-  const statusText = r.status || "new";
+  const statusText = r.status || "novo";
   const statusLabel = reportStatusLabel(statusText);
-  const rowClass = String(document.body.dataset.directorSelectedReportId || "") === String(r.id || "") ? " is-selected" : "";
 
   return `
-    <article class="report-row-item report-document-card startwork-report-row${rowClass}" data-report-id="${escapeHtml(r.id)}" onclick="selectDirectorReportPreview('${escapeHtml(r.id)}')">
-      <div class="report-list-grid startwork-report-grid">
-        <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export" onclick="event.stopPropagation()">
-          <input type="checkbox" class="report-export-check" data-report-id="${escapeHtml(r.id)}" ${checked} onchange="toggleReportExportSelection('${escapeHtml(r.id)}', this.checked)" />
+    <article class="report-row-item report-document-card">
+      <div class="report-list-grid">
+        <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export">
+          <input type="checkbox" class="report-export-check" data-report-id="${escapeHtml(r.id)}" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
         </label>
-        <div class="report-list-date"><strong>${escapeHtml(r.report_date || "")}</strong><small>${escapeHtml(submitted || "")}</small></div>
-        <div class="report-list-worker"><strong>${escapeHtml(person)}</strong><small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small></div>
-        <div class="report-list-site"><strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong><small>${escapeHtml(d.site_location || d.location || "")}</small></div>
-        <div class="report-list-asset"><strong>${escapeHtml(directorReportPrimaryAsset(d))}</strong></div>
-        <div class="report-list-fuel"><strong>${escapeHtml(directorReportFuelText(d))}</strong></div>
-        <div class="report-list-material"><strong>${escapeHtml(directorReportMaterialText(d))}</strong></div>
-        <div class="report-list-status"><span class="status-chip startwork-status-${directorStatusClass(statusText)}">${escapeHtml(statusLabel)}</span></div>
-        <div class="report-card-actions no-print report-row-single-action" onclick="event.stopPropagation()">
-          <button class="secondary compact-doc-btn" type="button" onclick="selectDirectorReportPreview('${escapeHtml(r.id)}')">👁</button>
-          <button class="primary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${escapeHtml(r.id)}')">⋮</button>
+        <div class="report-list-date">
+          <strong>${escapeHtml(r.report_date || "")}</strong>
+          <small>${escapeHtml(submitted || "")}</small>
         </div>
+        <div class="report-list-site">
+          <strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong>
+          <small>${escapeHtml(title)}</small>
+        </div>
+        <div class="report-list-worker">
+          <strong>${escapeHtml(person)}</strong>
+          <small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small>
+        </div>
+        <div class="report-list-sections">${sectionsHtml}</div>
+        <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusLabel)}</span></div>
       </div>
       ${r.returned_reason ? `<div class="report-card-warning">Vraćeno na ispravku: ${escapeHtml(r.returned_reason)}</div>` : ""}
+      <div class="report-card-actions no-print report-row-single-action">
+        <button class="primary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori</button>
+      </div>
     </article>`;
 }
 
@@ -5615,36 +5555,67 @@ function addMachineEntry(values = {}) {
     <select class="m-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildMachineOptionsHtml(values.name || "")}</select>
     <input class="m-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
 
-    <div class="mini-grid">
-      <div>
-        <label>Početni sati / MTČ</label>
-        <input class="m-start numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(values.start || "")}" />
+    <div class="machine-meter-grid">
+      <div class="meter-box meter-box-km">
+        <strong>KM / dolazak i odlazak</strong>
+        <p class="field-hint">Za dizalicu na točkovima, kamion ili sredstvo koje se obračunava po pređenom kilometru.</p>
+        <div class="mini-grid">
+          <div>
+            <label>KM početak</label>
+            <input class="m-km-start numeric-text" type="text" inputmode="decimal" placeholder="npr. 12400" value="${escapeHtml(values.km_start || values.machine_km_start || "")}" />
+          </div>
+          <div>
+            <label>KM kraj</label>
+            <input class="m-km-end numeric-text" type="text" inputmode="decimal" placeholder="npr. 12435" value="${escapeHtml(values.km_end || values.machine_km_end || "")}" />
+          </div>
+        </div>
+        <label>Ukupno KM</label>
+        <input class="m-km-total numeric-text" type="text" inputmode="decimal" placeholder="automatski ili upiši" value="${escapeHtml(values.km_total || values.machine_km_total || "")}" />
       </div>
-      <div>
-        <label>Završni sati / MTČ</label>
-        <input class="m-end numeric-text" type="text" inputmode="decimal" placeholder="npr. 1258.5" value="${escapeHtml(values.end || "")}" />
+
+      <div class="meter-box meter-box-mtc">
+        <strong>MTČ / rad na gradilištu</strong>
+        <p class="field-hint">Za stvarni rad mašine na gradilištu. Ovo ne mešamo sa kilometrima.</p>
+        <div class="mini-grid">
+          <div>
+            <label>MTČ početak</label>
+            <input class="m-mtc-start m-start numeric-text" type="text" inputmode="decimal" placeholder="npr. 1250.5" value="${escapeHtml(values.mtc_start || values.machine_mtc_start || values.start || "")}" />
+          </div>
+          <div>
+            <label>MTČ kraj</label>
+            <input class="m-mtc-end m-end numeric-text" type="text" inputmode="decimal" placeholder="npr. 1258.5" value="${escapeHtml(values.mtc_end || values.machine_mtc_end || values.end || "")}" />
+          </div>
+        </div>
+        <label>Ukupno MTČ / sati rada</label>
+        <input class="m-mtc-total m-hours numeric-text" type="text" inputmode="decimal" placeholder="automatski ili upiši" value="${escapeHtml(values.mtc_total || values.machine_mtc_total || values.hours || "")}" />
       </div>
     </div>
-
-    <label>Ukupno sati rada</label>
-    <input class="m-hours numeric-text" type="text" inputmode="decimal" placeholder="automatski ili upiši" value="${escapeHtml(values.hours || "")}" />
 
     <label>Opis rada za ovu mašinu</label>
     <input class="m-work" placeholder="iskop, utovar, ravnanje..." value="${escapeHtml(values.work || "")}" />
   `;
 
+  const kmStartEl = div.querySelector(".m-km-start");
+  const kmEndEl = div.querySelector(".m-km-end");
+  const kmTotalEl = div.querySelector(".m-km-total");
   const startEl = div.querySelector(".m-start");
   const endEl = div.querySelector(".m-end");
   const hoursEl = div.querySelector(".m-hours");
 
-  function calcHours() {
-    const s = parseFloat(String(startEl.value || "").replace(",", "."));
-    const e = parseFloat(String(endEl.value || "").replace(",", "."));
-    if (!Number.isNaN(s) && !Number.isNaN(e) && e >= s) {
-      hoursEl.value = (Math.round((e - s) * 10) / 10).toString();
+  function calcPair(startInput, endInput, totalInput, decimals = 1) {
+    const s = parseFloat(String(startInput?.value || "").replace(",", "."));
+    const e = parseFloat(String(endInput?.value || "").replace(",", "."));
+    if (!Number.isNaN(s) && !Number.isNaN(e) && e >= s && totalInput) {
+      const pow = Math.pow(10, decimals);
+      const v = Math.round((e - s) * pow) / pow;
+      totalInput.value = Number.isInteger(v) ? String(v) : String(v);
     }
   }
+  const calcKm = () => calcPair(kmStartEl, kmEndEl, kmTotalEl, 1);
+  const calcHours = () => calcPair(startEl, endEl, hoursEl, 1);
 
+  if (kmStartEl) kmStartEl.addEventListener("input", calcKm);
+  if (kmEndEl) kmEndEl.addEventListener("input", calcKm);
   startEl.addEventListener("input", calcHours);
   endEl.addEventListener("input", calcHours);
 
@@ -5684,6 +5655,12 @@ function getMachineEntries() {
     const selected = select?.value.trim() || "";
     const option = select?.options ? select.options[select.selectedIndex] : null;
     const custom = el.querySelector(".m-custom")?.value.trim() || "";
+    const kmStart = el.querySelector(".m-km-start")?.value || "";
+    const kmEnd = el.querySelector(".m-km-end")?.value || "";
+    const kmTotal = el.querySelector(".m-km-total")?.value || "";
+    const mtcStart = el.querySelector(".m-start")?.value || "";
+    const mtcEnd = el.querySelector(".m-end")?.value || "";
+    const mtcTotal = el.querySelector(".m-hours")?.value || "";
     return {
       no: i + 1,
       asset_id: custom ? null : (option?.dataset?.assetId || null),
@@ -5691,12 +5668,19 @@ function getMachineEntries() {
       machine_code: custom ? "" : (option?.dataset?.assetCode || ""),
       name: custom || selected,
       machine_custom: custom,
-      start: el.querySelector(".m-start")?.value || "",
-      end: el.querySelector(".m-end")?.value || "",
-      hours: el.querySelector(".m-hours")?.value || "",
+      km_start: kmStart,
+      km_end: kmEnd,
+      km_total: kmTotal,
+      mtc_start: mtcStart,
+      mtc_end: mtcEnd,
+      mtc_total: mtcTotal,
+      // Backward compatibility: stari delovi aplikacije i stari izveštaji čitaju start/end/hours kao MTČ.
+      start: mtcStart,
+      end: mtcEnd,
+      hours: mtcTotal,
       work: el.querySelector(".m-work")?.value.trim() || ""
     };
-  }).filter(m => m.name || m.start || m.end || m.hours || m.work);
+  }).filter(m => m.name || m.km_start || m.km_end || m.km_total || m.mtc_start || m.mtc_end || m.mtc_total || m.start || m.end || m.hours || m.work);
 }
 
 
@@ -7458,9 +7442,12 @@ function collectWorkerData() {
 
     // Summary fields for older report/CSV display
     machine: machines.map(m => m.name).filter(Boolean).join(" | "),
-    mtc_start: machines.map(m => m.start).filter(Boolean).join(" | "),
-    mtc_end: machines.map(m => m.end).filter(Boolean).join(" | "),
-    machine_hours: machines.map(m => m.hours).filter(Boolean).join(" | "),
+    machine_km_start: machines.map(m => machineKmStart(m)).filter(Boolean).join(" | "),
+    machine_km_end: machines.map(m => machineKmEnd(m)).filter(Boolean).join(" | "),
+    machine_km_total: machines.map(m => machineKmTotal(m)).filter(Boolean).join(" | "),
+    mtc_start: machines.map(m => machineMtcStart(m)).filter(Boolean).join(" | "),
+    mtc_end: machines.map(m => machineMtcEnd(m)).filter(Boolean).join(" | "),
+    machine_hours: machines.map(m => machineMtcTotal(m)).filter(Boolean).join(" | "),
     fuel_liters: fuelEntries.reduce((sum, f) => sum + parseDecimalInput(f.liters), 0) || "",
     fuel_km: fuelEntries.map(f => f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "")).filter(Boolean).join(" | "),
     fuel_mtc: fuelEntries.map(f => f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "")).filter(Boolean).join(" | "),
@@ -8042,9 +8029,12 @@ const EXPORT_COLUMNS = [
   { key:"crew_hours", label:"Sati tog zaposlenog" },
   { key:"machine_code", label:"Broj mašine" },
   { key:"machine", label:"Mašina" },
-  { key:"machine_start", label:"Početno stanje MTČ/KM" },
-  { key:"machine_end", label:"Krajnje stanje MTČ/KM" },
-  { key:"machine_hours", label:"Ukupno sati mašine" },
+  { key:"machine_km_start", label:"KM početak mašine" },
+  { key:"machine_km_end", label:"KM kraj mašine" },
+  { key:"machine_km_total", label:"Ukupno KM mašine" },
+  { key:"machine_start", label:"MTČ početak mašine" },
+  { key:"machine_end", label:"MTČ kraj mašine" },
+  { key:"machine_hours", label:"Ukupno MTČ / sati mašine" },
   { key:"machine_work", label:"Šta je mašina radila" },
   { key:"vehicle_code", label:"Broj vozila" },
   { key:"vehicle", label:"Vozilo / kamion" },
@@ -8348,9 +8338,12 @@ function flattenReportRowsForExport(r) {
   machines.forEach(m => pushRow({
     machine_code: m.asset_code || m.machine_code || "",
     machine: m.name || "",
-    machine_start: m.start || "",
-    machine_end: m.end || "",
-    machine_hours: m.hours || "",
+    machine_km_start: machineKmStart(m),
+    machine_km_end: machineKmEnd(m),
+    machine_km_total: machineKmTotal(m),
+    machine_start: machineMtcStart(m),
+    machine_end: machineMtcEnd(m),
+    machine_hours: machineMtcTotal(m),
     machine_work: m.work || ""
   }));
 
@@ -8823,9 +8816,12 @@ function smartRowsForReport(r, type) {
       ...base,
       machine_code: m.asset_code || m.machine_code || "",
       machine: m.name || d.machine || "",
-      machine_start: m.start || d.mtc_start || "",
-      machine_end: m.end || d.mtc_end || "",
-      machine_hours: m.hours || d.machine_hours || "",
+      machine_km_start: machineKmStart(m) || d.machine_km_start || "",
+      machine_km_end: machineKmEnd(m) || d.machine_km_end || "",
+      machine_km_total: machineKmTotal(m) || d.machine_km_total || "",
+      machine_start: machineMtcStart(m) || d.mtc_start || "",
+      machine_end: machineMtcEnd(m) || d.mtc_end || "",
+      machine_hours: machineMtcTotal(m) || d.machine_hours || "",
       machine_work: m.work || ""
     }));
   }
