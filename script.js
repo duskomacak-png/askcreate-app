@@ -1637,6 +1637,7 @@ const PERSON_FUNCTION_OPTIONS = [
   "Šef gradilišta inženjer",
   "Mehaničar",
   "Vozač",
+  "Magacioner",
   "Rukovaoc građevinskom mehanizacijom",
   "Fizički radnik",
   "Ostalo"
@@ -1663,6 +1664,7 @@ function canonicalPersonFunction(value = "") {
   if (n.includes("gradil") && (n.includes("sef") || n.includes("inzenjer"))) return "Šef gradilišta inženjer";
   if (n.includes("mehanicar") || n.includes("mehanicar")) return "Mehaničar";
   if (n.includes("vozac") || n === "vozac") return "Vozač";
+  if (n.includes("magacioner") || n.includes("magacin") || n.includes("skladistar") || n.includes("skladiste")) return "Magacioner";
   if (n.includes("rukovaoc") || n.includes("rukovalac") || n.includes("masin") || n.includes("gradjevinsk")) return "Rukovaoc građevinskom mehanizacijom";
   if (n.includes("fizicki") || n.includes("fizicki radnik") || n.includes("radnik")) return "Fizički radnik";
   return "Ostalo";
