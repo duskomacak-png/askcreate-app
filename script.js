@@ -2393,7 +2393,6 @@ function buildPeopleRegisterPrintHtml() {
     <thead><tr><th class="row-col">R. br.</th><th class="num-col">Evidencioni broj radnika</th><th class="name-col">Ime i prezime</th><th class="role-col">Radno mesto</th><th class="signature-col">Potpis radnika</th></tr></thead>
     <tbody>${rows.map(r => `<tr><td>${escapeHtml(r.index)}</td><td>${escapeHtml(r.employeeNumber)}</td><td>${escapeHtml(r.fullName)}</td><td>${escapeHtml(r.functionTitle)}</td><td class="sig-cell"><span class="sig-line"></span></td></tr>`).join("")}</tbody>
   </table>
-  <div class="note"><b>Napomena:</b> Spisak prikazuje redni broj stavke, evidencioni broj pod kojim se radnik vodi u firmi, ime i prezime, radno mesto i prostor za potpis radnika.</div>
   <div class="sign"><div></div><div class="line">Direkcija / Uprava firme</div></div>
   <script>window.onload=function(){setTimeout(function(){window.print();},250)};<\/script>
 </body>
