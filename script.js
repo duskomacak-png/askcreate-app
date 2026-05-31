@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.34.9";
+const APP_VERSION = "1.35.0";
 
 
 let sb = null;
@@ -3181,6 +3181,15 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const fuelKmValue = (entry = {}) => firstValue(entry.km, entry.current_km, entry.asset_kind === "vehicle" ? firstValue(entry.reading, entry.mtc_km) : "");
   const fuelMtcValue = (entry = {}) => firstValue(entry.mtc, entry.current_mtc, entry.asset_kind === "machine" ? firstValue(entry.reading, entry.mtc_km) : "");
   const assetDisplayName = (entry = {}) => firstValue(entry.asset_name, entry.machine, entry.vehicle, entry.other, entry.manual_asset_name, entry.asset_custom, entry.machine_custom, entry.vehicle_custom, entry.other_custom);
+  const assetKindKey = (entry = {}) => {
+    const raw = String(entry.asset_kind || entry.kind || entry.type || "").toLowerCase();
+    if (raw.includes("vehicle") || raw.includes("voz")) return "vehicle";
+    if (raw.includes("other") || raw.includes("ostalo") || raw.includes("oprema") || raw.includes("alat")) return "other";
+    if (reportHasValue(entry.vehicle) || reportHasValue(entry.vehicle_custom)) return "vehicle";
+    if (reportHasValue(entry.other) || reportHasValue(entry.other_custom)) return "other";
+    return "machine";
+  };
+  const assetNameForKind = (entry = {}, kind) => assetKindKey(entry) === kind ? val(assetDisplayName(entry)) : "";
 
   const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
@@ -3570,9 +3579,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
       <thead>
         <tr>
           <th>#</th>
-          <th>Rubrika</th>
           <th>Broj</th>
-          <th>Mašina / vozilo / ostalo koje je sipano</th>
+          <th>Mašina</th>
+          <th>Vozilo</th>
+          <th>Ostalo</th>
           <th>KM</th>
           <th>MTČ</th>
           <th>Litara</th>
@@ -3583,9 +3593,10 @@ function renderReportReadableDetails(d = {}, options = {}) {
         ${fieldTankers.map((ft, i) => `
           <tr>
             <td>${i + 1}</td>
-            <td>${val(assetKindLabel(ft.asset_kind))}</td>
             <td>${val(ft.asset_code)}</td>
-            <td>${val(assetDisplayName(ft))}</td>
+            <td>${assetNameForKind(ft, "machine")}</td>
+            <td>${assetNameForKind(ft, "vehicle")}</td>
+            <td>${assetNameForKind(ft, "other")}</td>
             <td>${val(fuelKmValue(ft))}</td>
             <td>${val(fuelMtcValue(ft))}</td>
             <td>${val(ft.liters)}</td>
@@ -8721,9 +8732,8 @@ const EXPORT_COLUMNS = [
   { key:"field_tanker_vehicle_code", label:"Broj cisterne" },
   { key:"field_tanker_vehicle", label:"Cisterna koja je sipala gorivo" },
   { key:"field_tanker_vehicle_registration", label:"Tablice cisterne koja je sipala gorivo" },
-  { key:"field_tanker_type", label:"Rubrika primaoca goriva" },
-  { key:"field_tanker_asset_code", label:"Broj primaoca" },
-  { key:"field_tanker_asset", label:"Mašina / vozilo / ostalo koje prima gorivo" },
+    { key:"field_tanker_asset_code", label:"Broj primaoca" },
+  { key:"field_tanker_asset", label:"Sredstvo koje prima gorivo" },
   { key:"field_tanker_registration", label:"Registracija" },
   { key:"field_tanker_km", label:"KM pri tankovanju cisternom" },
   { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
