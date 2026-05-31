@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.35.4";
+const APP_VERSION = "1.36.2";
 
 
 let sb = null;
@@ -221,7 +221,8 @@ function businessUpdateReportsMetrics(list) {
   const todayReports = reports.filter(r => String(r.report_date || "").slice(0, 10) === todayIso);
   const fuel = Math.round(todayReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
   const todayDefects = reports.filter(r => String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
-  businessSetText("directorMetricFuel", String(todayDefects));
+  businessSetText("directorMetricFuel", fuel > 0 ? `${fuel} L` : "— L");
+  businessSetText("directorMetricDefectsToday", String(todayDefects));
 }
 
 function show(view) {
