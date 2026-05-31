@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.35.2";
+const APP_VERSION = "1.35.3";
 
 
 let sb = null;
@@ -2255,6 +2255,98 @@ async function loadPeople() {
   if (!list) return;
   list.innerHTML = (data || []).map(renderPersonItem).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
 }
+
+function sortedDirectorPeopleForRegister() {
+  return [...(directorPeopleCache || [])].sort((a, b) => {
+    const an = getPersonEmployeeNumber(a);
+    const bn = getPersonEmployeeNumber(b);
+    const ai = Number.parseInt(an, 10);
+    const bi = Number.parseInt(bn, 10);
+    if (Number.isFinite(ai) && Number.isFinite(bi) && ai !== bi) return ai - bi;
+    return String(an || `${a.first_name || ""} ${a.last_name || ""}`).localeCompare(String(bn || `${b.first_name || ""} ${b.last_name || ""}`), "sr");
+  });
+}
+
+function peopleRegisterRows() {
+  return sortedDirectorPeopleForRegister().map((p, index) => {
+    const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim() || "—";
+    const permissionCount = Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length;
+    return {
+      index: index + 1,
+      employeeNumber: getPersonEmployeeNumber(p) || "—",
+      fullName,
+      functionTitle: p.function_title || "—",
+      accessCode: p.access_code || "—",
+      status: p.active === false ? "Neaktivan" : "Aktivan",
+      permissionCount
+    };
+  });
+}
+
+function downloadPeopleRegister() {
+  try {
+    const rows = peopleRegisterRows();
+    if (!rows.length) throw new Error("Nema zaposlenih za spisak.");
+    const header = ["Br.", "Broj radnika", "Ime i prezime", "Radno mesto", "Pristupni kod", "Status", "Broj rubrika"];
+    const body = rows.map(r => [r.index, r.employeeNumber, r.fullName, r.functionTitle, r.accessCode, r.status, r.permissionCount]);
+    const csv = "\ufeff" + [header, ...body].map(row => row.map(v => csvEscape(excelCleanCell(v))).join(";")).join("\r\n");
+    const companyCode = safeFilePart(currentCompany?.code || currentCompany?.company_code || "firma");
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), `spisak_zaposlenih_${companyCode}_${today()}.csv`);
+    toast("Spisak zaposlenih je preuzet.");
+  } catch (e) {
+    toast(e.message || "Spisak zaposlenih nije preuzet.", true);
+  }
+}
+
+function buildPeopleRegisterPrintHtml() {
+  const rows = peopleRegisterRows();
+  const companyName = currentCompanyExportName();
+  const companyCode = currentCompany?.code || currentCompany?.company_code || "—";
+  const dateText = formatDateOnlyLocal(today());
+  return `<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<title>Spisak zaposlenih</title>
+<style>
+  *{box-sizing:border-box} body{font-family:Arial,Helvetica,sans-serif;margin:28px;color:#17231b;background:#fff} h1{margin:0 0 8px;font-size:22px;letter-spacing:.02em} .meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:12px 0 18px;font-size:13px} .meta b{display:inline-block;min-width:118px;color:#405347} table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #cfd8d2;padding:8px 7px;text-align:left;vertical-align:top} th{background:#edf6ef;font-weight:800} tbody tr:nth-child(even){background:#fafcfb}.note{margin-top:18px;padding:10px 12px;border:1px solid #e3dcc7;background:#fff8dc;font-size:12px}.sign{display:flex;justify-content:space-between;margin-top:42px;font-size:12px}.line{border-top:1px solid #333;width:220px;text-align:center;padding-top:6px}@media print{body{margin:16mm}.no-print{display:none}}
+</style>
+</head>
+<body>
+  <h1>SPISAK ZAPOSLENIH</h1>
+  <div class="meta">
+    <div><b>Firma:</b> ${escapeHtml(companyName)}</div>
+    <div><b>Šifra firme:</b> ${escapeHtml(companyCode)}</div>
+    <div><b>Datum štampe:</b> ${escapeHtml(dateText)}</div>
+    <div><b>Ukupno zaposlenih:</b> ${rows.length}</div>
+  </div>
+  <table>
+    <thead><tr><th>Br.</th><th>Broj radnika</th><th>Ime i prezime</th><th>Radno mesto</th><th>Pristupni kod</th><th>Status</th><th>Broj rubrika</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${r.index}</td><td>${escapeHtml(r.employeeNumber)}</td><td>${escapeHtml(r.fullName)}</td><td>${escapeHtml(r.functionTitle)}</td><td>${escapeHtml(r.accessCode)}</td><td>${escapeHtml(r.status)}</td><td>${escapeHtml(r.permissionCount)}</td></tr>`).join("")}</tbody>
+  </table>
+  <div class="note"><b>Napomena:</b> Pristupni kod služi samo za prijavu zaposlenog u aplikaciju. Broj radnika je evidencioni broj firme.</div>
+  <div class="sign"><div></div><div class="line">Direkcija / Uprava firme</div></div>
+  <script>window.onload=function(){setTimeout(function(){window.print();},250)};<\/script>
+</body>
+</html>`;
+}
+
+function printPeopleRegister() {
+  try {
+    const rows = peopleRegisterRows();
+    if (!rows.length) throw new Error("Nema zaposlenih za štampu.");
+    const win = window.open("", "_blank", "width=1100,height=800");
+    if (!win) throw new Error("Pregledač je blokirao prozor za štampu. Dozvoli popup za askcreate.app.");
+    win.document.open();
+    win.document.write(buildPeopleRegisterPrintHtml());
+    win.document.close();
+  } catch (e) {
+    toast(e.message || "Štampa spiska nije pokrenuta.", true);
+  }
+}
+
+window.downloadPeopleRegister = downloadPeopleRegister;
+window.printPeopleRegister = printPeopleRegister;
 
 async function loadSites() {
   if (!currentCompany) return;

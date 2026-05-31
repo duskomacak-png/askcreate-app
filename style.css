@@ -6022,3 +6022,42 @@ button:hover,
 .report-mini-table-tanker-clean th:nth-child(6),.report-mini-table-tanker-clean td:nth-child(6),
 .report-mini-table-tanker-clean th:nth-child(7),.report-mini-table-tanker-clean td:nth-child(7){width:58px;text-align:center;}
 .report-mini-table-tanker-clean th:nth-child(8),.report-mini-table-tanker-clean td:nth-child(8){width:105px;}
+
+/* v1.35.3 — Spisak zaposlenih: preuzimanje i štampa */
+#viewDirectorDashboard .people-register-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:-22px -22px 18px!important;
+  padding:14px 18px!important;
+  border-bottom:1px solid var(--pro-border);
+  background:var(--pro-soft-green);
+  border-radius:16px 16px 0 0;
+}
+#viewDirectorDashboard .people-register-head h3{
+  margin:0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  display:block!important;
+}
+#viewDirectorDashboard .people-register-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+#viewDirectorDashboard .people-register-actions .small-action{
+  min-height:32px!important;
+  padding:6px 10px!important;
+  font-size:12px!important;
+  border-radius:9px!important;
+  white-space:nowrap;
+}
+@media(max-width:760px){
+  #viewDirectorDashboard .people-register-head{align-items:flex-start;flex-direction:column}
+  #viewDirectorDashboard .people-register-actions{width:100%;justify-content:stretch}
+  #viewDirectorDashboard .people-register-actions .small-action{flex:1 1 145px!important}
+}

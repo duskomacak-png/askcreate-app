@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1352" />
+  <link rel="stylesheet" href="style.css?v=1353" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -534,8 +534,14 @@
               </div>
               <div id="workerPreviewBody" class="worker-preview-body"></div>
             </div>
-            <div class="card">
-              <h3>Evidencija zaposlenih</h3>
+            <div class="card people-register-card">
+              <div class="people-register-head">
+                <h3>Evidencija zaposlenih</h3>
+                <div class="people-register-actions">
+                  <button class="secondary small-action" type="button" onclick="downloadPeopleRegister()">Preuzmi spisak</button>
+                  <button class="secondary small-action" type="button" onclick="printPeopleRegister()">Štampaj spisak</button>
+                </div>
+              </div>
               <div id="peopleList" class="list"></div>
             </div>
           </div>
@@ -1275,6 +1281,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1352"></script>
+  <script src="script.js?v=1353"></script>
 </body>
 </html>
