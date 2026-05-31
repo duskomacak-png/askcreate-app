@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.36.5";
+const APP_VERSION = "1.36.6";
 
 
 let sb = null;
@@ -218,8 +218,10 @@ function businessUpdateReportsMetrics(list) {
   const todayReports = reports.filter(r => String(r.report_date || "").slice(0, 10) === todayIso);
   const fuel = Math.round(todayReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
   const todayDefects = reports.filter(r => String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
+  const archived = reports.filter(isArchivedReport).length;
   businessSetText("directorMetricFuel", fuel > 0 ? `${fuel} L` : "— L");
   businessSetText("directorMetricDefectsToday", String(todayDefects));
+  businessSetText("directorMetricArchive", String(archived));
 }
 
 function show(view) {
@@ -2072,7 +2074,8 @@ async function savePersonForm() {
 window.deleteReportPermanently = async (id) => {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
-    if (!confirm("TRAJNO obrisati ovaj izveštaj iz baze?\n\nOvo se ne može vratiti.")) return;
+    const warning = "Ako izbrišete ovaj izveštaj, on više neće postojati u aplikaciji ni u bazi podataka.\n\nOvu radnju nije moguće vratiti.\n\nPotvrditi trajno brisanje?";
+    if (!confirm(warning)) return;
 
     const { error } = await sb
       .from("reports")
@@ -2082,7 +2085,8 @@ window.deleteReportPermanently = async (id) => {
     if (error) throw error;
 
     toast("Izveštaj je trajno obrisan iz baze.");
-    loadReports();
+    closeReportDocumentCenter?.();
+    await loadReports();
     if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
   } catch (e) {
     toast(e.message, true);
@@ -3052,6 +3056,30 @@ async function directorRpcListReports() {
   return Array.isArray(data) ? data : [];
 }
 
+async function directorDirectListArchivedReports() {
+  if (!currentCompany?.id) return [];
+  const { data, error } = await sb
+    .from("reports")
+    .select("*")
+    .eq("company_id", currentCompany.id)
+    .in("status", ["archived", "arhivirano"])
+    .order("updated_at", { ascending: false })
+    .limit(500);
+  if (error) {
+    console.warn("AskCreate.app: arhiva nije učitana direktno, oslanjam se na RPC listu:", error.message);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+function mergeReportsById(primary = [], extra = []) {
+  const map = new Map();
+  [...primary, ...extra].forEach(r => {
+    if (r?.id) map.set(String(r.id), r);
+  });
+  return Array.from(map.values());
+}
+
 async function directorRpcApproveReport(reportId) {
   if (!currentCompany?.id) throw new Error("Firma nije učitana.");
   const { error } = await sb.rpc("director_approve_report", {
@@ -3115,6 +3143,11 @@ function isFuelDashboardOnlyReport(r) {
     d.source === "field_tanker_memory" ||
     d.report_sections_sent?.field_tanker === true
   );
+}
+
+function isArchivedReport(r) {
+  const status = String(r?.status || "").toLowerCase();
+  return status === "archived" || status === "arhivirano";
 }
 
 function isPendingDirectorReport(r) {
@@ -3327,7 +3360,9 @@ async function loadReports(options = {}) {
 
   let data = [];
   try {
-    data = await directorRpcListReports();
+    const activeReports = await directorRpcListReports();
+    const archivedReports = await directorDirectListArchivedReports();
+    data = mergeReportsById(activeReports, archivedReports);
   } catch (error) {
     if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
     else toast(error.message, true);
@@ -3342,6 +3377,7 @@ async function loadReports(options = {}) {
   const dailyReports = directorReportsCache.filter(isPendingDirectorReport);
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
   renderDefectsList();
+  renderArchiveList();
   renderExportPanel();
 }
 
@@ -3402,6 +3438,47 @@ function renderDefectsList() {
   if (!box) return;
   const defects = directorReportsCache.filter(hasDefectData);
   box.innerHTML = defects.map(defectHtml).join("") || `<p class="muted">Nema prijavljenih kvarova.</p>`;
+}
+
+function archiveReportHtml(r) {
+  const d = r.data || {};
+  const person = reportDocumentPerson(r);
+  const title = reportDocumentTitle(r);
+  const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
+  const archivedAt = formatDateTimeLocal(r.updated_at || r.submitted_at || r.created_at);
+  return `
+    <article class="report-row-item report-document-card archive-report-card">
+      <div class="report-list-grid archive-list-grid">
+        <div class="report-list-date">
+          <strong>${escapeHtml(r.report_date || "")}</strong>
+          <small>${escapeHtml(submitted || "")}</small>
+        </div>
+        <div class="report-list-site">
+          <strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong>
+          <small>${escapeHtml(title)}</small>
+        </div>
+        <div class="report-list-worker">
+          <strong>${escapeHtml(person)}</strong>
+          <small>${escapeHtml([reportEmployeeNumber(r) ? `broj ${reportEmployeeNumber(r)}` : "", r.company_users?.function_title || d.function_title || ""].filter(Boolean).join(" · "))}</small>
+        </div>
+        <div class="report-list-status">
+          <span class="status-chip status-archived">Arhivirano</span>
+          <small>${escapeHtml(archivedAt || "")}</small>
+        </div>
+      </div>
+      <div class="report-card-actions no-print report-row-actions">
+        <button class="secondary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori</button>
+        <button class="secondary compact-doc-btn" type="button" onclick="printReportDocument('${r.id}')">Štampaj</button>
+        <button class="delete-btn compact-doc-btn" type="button" onclick="deleteReportPermanently('${r.id}')">Obriši trajno</button>
+      </div>
+    </article>`;
+}
+
+function renderArchiveList() {
+  const box = $("#archiveReportsList");
+  if (!box) return;
+  const archived = directorReportsCache.filter(isArchivedReport);
+  box.innerHTML = archived.map(archiveReportHtml).join("") || `<p class="muted">Arhiva je prazna. Kada arhiviraš izveštaj, pojaviće se ovde.</p>`;
 }
 
 
@@ -10624,6 +10701,7 @@ function bindEvents() {
   });
   if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
   if ($("#directorManualRefreshBtn")) $("#directorManualRefreshBtn").addEventListener("click", manualDirectorRefresh);
+  if ($("#refreshArchiveBtn")) $("#refreshArchiveBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
 
@@ -10634,6 +10712,7 @@ function bindEvents() {
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
+    if (btn.dataset.tab === "archive") renderArchiveList();
   }));
 
   $$('[data-business-tab]').forEach(btn => btn.addEventListener('click', () => {

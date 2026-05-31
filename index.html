@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1365" />
+  <link rel="stylesheet" href="style.css?v=1366" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -391,6 +391,7 @@
           <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
           <button class="tab" data-tab="materials">📦 Materijali</button>
           <button class="tab" data-tab="reports">📄 Izveštaji</button>
+          <button class="tab" data-tab="archive">🗄️ Arhiva</button>
           <button class="tab" data-tab="support">⚙️ Podešavanja</button>
           <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
           <button class="tab workspace-hidden-tab" data-tab="export" type="button">📊 Izvoz u Excel</button>
@@ -443,6 +444,11 @@
             <div class="kpi-icon orange">🛠️</div>
             <div><strong id="directorMetricDefectsToday">—</strong><span>Kvarovi danas</span></div>
             <button type="button" data-business-tab="defects">Vidi detalje ›</button>
+          </div>
+          <div class="business-kpi-card">
+            <div class="kpi-icon green">🗄️</div>
+            <div><strong id="directorMetricArchive">—</strong><span>Arhiva</span></div>
+            <button type="button" data-business-tab="archive">Vidi detalje ›</button>
           </div>
         </div>
 
@@ -676,6 +682,21 @@
             <button id="directorManualRefreshBtn" class="secondary small-action" type="button">Osveži odmah</button>
           </div>
           <div id="reportsList" class="list"></div>
+        </div>
+      </div>
+
+
+      <div id="tabArchive" class="tab-panel">
+        <div class="card reports-workspace-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Arhiva</p>
+              <h3>Arhivirani izveštaji</h3>
+              <p class="muted">Ovde stoje izveštaji koje je Direkcija sklonila iz aktivne obrade. Iz arhive možeš otvoriti, štampati ili trajno obrisati izveštaj iz baze.</p>
+            </div>
+            <button id="refreshArchiveBtn" class="secondary small-action" type="button">Osveži arhivu</button>
+          </div>
+          <div id="archiveReportsList" class="list"></div>
         </div>
       </div>
 
@@ -1297,6 +1318,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1365"></script>
+  <script src="script.js?v=1366"></script>
 </body>
 </html>
