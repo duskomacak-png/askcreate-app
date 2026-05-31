@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.36.4";
+const APP_VERSION = "1.36.5";
 
 
 let sb = null;
@@ -212,10 +212,7 @@ function businessCollectFuelLiters(data) {
 
 function businessUpdateReportsMetrics(list) {
   const reports = Array.isArray(list) ? list : [];
-  const pending = reports.filter(r => {
-    const status = String(r.status || "").toLowerCase();
-    return status && !["approved", "odobreno", "archived", "arhivirano"].includes(status);
-  }).length;
+  const pending = reports.filter(isPendingDirectorReport).length;
   businessSetText("directorMetricPendingReports", String(pending));
   const todayIso = today();
   const todayReports = reports.filter(r => String(r.report_date || "").slice(0, 10) === todayIso);
@@ -3099,6 +3096,35 @@ function hasDefectData(r) {
     !!d.defect_machine;
 }
 
+function hasFieldTankerFuelData(r) {
+  const d = r?.data || {};
+  const fieldTankers = Array.isArray(d.field_tanker_entries)
+    ? d.field_tanker_entries
+    : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+  return String(d.report_type || "") === "field_tanker_daily_batch" ||
+    String(d.source || "") === "field_tanker_memory" ||
+    fieldTankers.some(item => item && Object.values(item).some(Boolean));
+}
+
+function isFuelDashboardOnlyReport(r) {
+  const d = r?.data || {};
+  const perms = r?.company_users?.permissions || {};
+  return hasFieldTankerFuelData(r) && !!(
+    perms.field_tanker ||
+    d.report_type === "field_tanker_daily_batch" ||
+    d.source === "field_tanker_memory" ||
+    d.report_sections_sent?.field_tanker === true
+  );
+}
+
+function isPendingDirectorReport(r) {
+  const status = String(r?.status || "").toLowerCase();
+  if (!status || ["approved", "odobreno", "archived", "arhivirano"].includes(status)) return false;
+  if (isDefectOnlyReport(r)) return false;
+  if (isFuelDashboardOnlyReport(r)) return false;
+  return hasDailyReportData(r);
+}
+
 function hasDailyReportData(r) {
   // v1.18.5: Uprava ne sme da izgubi prikaz izveštaja zato što filter
   // ne prepoznaje novu rubriku. Sve što nije poseban kvar i nije arhivirano
@@ -3223,7 +3249,7 @@ async function enrichReportsWithUsers(reports = []) {
   try {
     const { data: users, error } = await sb
       .from("company_users")
-      .select("id, first_name, last_name, function_title")
+      .select("id, first_name, last_name, function_title, permissions")
       .in("id", ids);
 
     if (error) throw error;
@@ -3313,7 +3339,7 @@ async function loadReports(options = {}) {
   updateDirectorKnownReports(directorReportsCache, silent);
   updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
   businessUpdateReportsMetrics(directorReportsCache);
-  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r) && !["approved", "odobreno", "archived", "arhivirano"].includes(String(r.status || "").toLowerCase()));
+  const dailyReports = directorReportsCache.filter(isPendingDirectorReport);
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
   renderDefectsList();
   renderExportPanel();
