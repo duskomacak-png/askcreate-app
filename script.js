@@ -2353,8 +2353,8 @@ function downloadPeopleRegister() {
   try {
     const rows = peopleRegisterRows();
     if (!rows.length) throw new Error(`Nema zaposlenih za spisak: ${peopleRegisterRoleLabel()}.`);
-    const header = ["Broj radnika", "Ime i prezime", "Radno mesto", "Potpis radnika"];
-    const body = rows.map(r => [r.employeeNumber, r.fullName, r.functionTitle, ""]);
+    const header = ["R. br.", "Evidencioni broj radnika", "Ime i prezime", "Radno mesto", "Potpis radnika"];
+    const body = rows.map(r => [r.index, r.employeeNumber, r.fullName, r.functionTitle, ""]);
     const csv = "\ufeff" + [header, ...body].map(row => row.map(v => csvEscape(excelCleanCell(v))).join(";")).join("\r\n");
     const companyCode = safeFilePart(currentCompany?.code || currentCompany?.company_code || "firma");
     const rolePart = selectedPeopleRegisterRole() ? `_${safeRoleFilePart(selectedPeopleRegisterRole())}` : "";
@@ -2377,7 +2377,7 @@ function buildPeopleRegisterPrintHtml() {
 <meta charset="utf-8">
 <title>Spisak zaposlenih</title>
 <style>
-  *{box-sizing:border-box} @page{size:A4 landscape;margin:12mm} body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#17231b;background:#fff} h1{margin:0 0 8px;font-size:22px;letter-spacing:.02em}.meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 24px;margin:12px 0 18px;font-size:13px}.meta b{display:inline-block;min-width:112px;color:#405347} table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #cfd8d2;padding:8px 7px;text-align:left;vertical-align:middle} th{background:#edf6ef;font-weight:800} tbody tr:nth-child(even){background:#fafcfb}.num-col{width:90px}.name-col{width:30%}.role-col{width:30%}.signature-col{width:28%}.sig-cell{height:42px}.sig-line{display:block;border-bottom:1px solid #222;height:26px;width:100%}.note{margin-top:18px;padding:10px 12px;border:1px solid #e3dcc7;background:#fff8dc;font-size:12px}.sign{display:flex;justify-content:space-between;margin-top:34px;font-size:12px}.line{border-top:1px solid #333;width:220px;text-align:center;padding-top:6px}@media print{body{margin:0}.no-print{display:none}}
+  *{box-sizing:border-box} @page{size:A4 landscape;margin:12mm} body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#17231b;background:#fff} h1{margin:0 0 8px;font-size:22px;letter-spacing:.02em}.meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 24px;margin:12px 0 18px;font-size:13px}.meta b{display:inline-block;min-width:112px;color:#405347} table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #cfd8d2;padding:8px 7px;text-align:left;vertical-align:middle} th{background:#edf6ef;font-weight:800} tbody tr:nth-child(even){background:#fafcfb}.row-col{width:58px}.num-col{width:130px}.name-col{width:28%}.role-col{width:28%}.signature-col{width:28%}.sig-cell{height:42px}.sig-line{display:block;border-bottom:1px solid #222;height:26px;width:100%}.note{margin-top:18px;padding:10px 12px;border:1px solid #e3dcc7;background:#fff8dc;font-size:12px}.sign{display:flex;justify-content:space-between;margin-top:34px;font-size:12px}.line{border-top:1px solid #333;width:220px;text-align:center;padding-top:6px}@media print{body{margin:0}.no-print{display:none}}
 </style>
 </head>
 <body>
@@ -2390,10 +2390,10 @@ function buildPeopleRegisterPrintHtml() {
     <div><b>Ukupno zaposlenih:</b> ${rows.length}</div>
   </div>
   <table>
-    <thead><tr><th class="num-col">Broj radnika</th><th class="name-col">Ime i prezime</th><th class="role-col">Radno mesto</th><th class="signature-col">Potpis radnika</th></tr></thead>
-    <tbody>${rows.map(r => `<tr><td>${escapeHtml(r.employeeNumber)}</td><td>${escapeHtml(r.fullName)}</td><td>${escapeHtml(r.functionTitle)}</td><td class="sig-cell"><span class="sig-line"></span></td></tr>`).join("")}</tbody>
+    <thead><tr><th class="row-col">R. br.</th><th class="num-col">Evidencioni broj radnika</th><th class="name-col">Ime i prezime</th><th class="role-col">Radno mesto</th><th class="signature-col">Potpis radnika</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${escapeHtml(r.index)}</td><td>${escapeHtml(r.employeeNumber)}</td><td>${escapeHtml(r.fullName)}</td><td>${escapeHtml(r.functionTitle)}</td><td class="sig-cell"><span class="sig-line"></span></td></tr>`).join("")}</tbody>
   </table>
-  <div class="note"><b>Napomena:</b> Spisak prikazuje evidencioni broj, ime i prezime, radno mesto i prostor za potpis svakog radnika.</div>
+  <div class="note"><b>Napomena:</b> Spisak prikazuje redni broj stavke, evidencioni broj pod kojim se radnik vodi u firmi, ime i prezime, radno mesto i prostor za potpis radnika.</div>
   <div class="sign"><div></div><div class="line">Direkcija / Uprava firme</div></div>
   <script>window.onload=function(){setTimeout(function(){window.print();},250)};<\/script>
 </body>
