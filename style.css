@@ -6023,7 +6023,7 @@ button:hover,
 .report-mini-table-tanker-clean th:nth-child(7),.report-mini-table-tanker-clean td:nth-child(7){width:58px;text-align:center;}
 .report-mini-table-tanker-clean th:nth-child(8),.report-mini-table-tanker-clean td:nth-child(8){width:105px;}
 
-/* v1.35.3 — Spisak zaposlenih: preuzimanje i štampa */
+/* v1.35.4 — Radna mesta dropdown + spisak zaposlenih po radnom mestu */
 #viewDirectorDashboard .people-register-head{
   display:flex;
   align-items:center;
@@ -6060,4 +6060,30 @@ button:hover,
   #viewDirectorDashboard .people-register-head{align-items:flex-start;flex-direction:column}
   #viewDirectorDashboard .people-register-actions{width:100%;justify-content:stretch}
   #viewDirectorDashboard .people-register-actions .small-action{flex:1 1 145px!important}
+}
+
+
+/* v1.35.4 — Spisak zaposlenih po radnom mestu */
+.people-register-actions-filtered{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:flex-end;
+}
+.people-register-filter{
+  min-width:220px;
+  max-width:100%;
+  height:38px;
+  border:1px solid var(--border, #dbe6dc);
+  border-radius:12px;
+  padding:0 12px;
+  background:#fff;
+  color:var(--text, #1e2d24);
+  font-weight:700;
+}
+@media (max-width: 760px){
+  .people-register-actions-filtered{justify-content:stretch; width:100%;}
+  .people-register-filter,
+  .people-register-actions-filtered .small-action{width:100%;}
 }
