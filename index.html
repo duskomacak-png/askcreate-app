@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1360" />
+  <link rel="stylesheet" href="style.css?v=1361" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -435,9 +435,9 @@
             <button type="button" data-business-tab="reports">Vidi detalje ›</button>
           </div>
           <div class="business-kpi-card">
-            <div class="kpi-icon green">⛽</div>
-            <div><strong id="directorMetricFuel">—</strong><span>Goriva danas</span></div>
-            <button type="button" data-business-tab="reports">Vidi detalje ›</button>
+            <div class="kpi-icon orange">🛠️</div>
+            <div><strong id="directorMetricFuel">—</strong><span>Kvarovi danas</span></div>
+            <button type="button" data-business-tab="defects">Vidi detalje ›</button>
           </div>
         </div>
 
@@ -474,6 +474,7 @@
               <option value="Mehaničar">Mehaničar</option>
               <option value="Vozač">Vozač</option>
               <option value="Rukovaoc građevinskom mehanizacijom">Rukovaoc građevinskom mehanizacijom</option>
+              <option value="Magacioner">Magacioner</option>
               <option value="Fizički radnik">Fizički radnik</option>
               <option value="Ostalo">Ostalo</option>
             </select>
@@ -554,7 +555,8 @@
                     <option value="Mehaničar">Mehaničar</option>
                     <option value="Vozač">Vozač</option>
                     <option value="Rukovaoc građevinskom mehanizacijom">Rukovaoc građevinskom mehanizacijom</option>
-                    <option value="Fizički radnik">Fizički radnik</option>
+                    <option value="Magacioner">Magacioner</option>
+              <option value="Fizički radnik">Fizički radnik</option>
                     <option value="Ostalo">Ostalo</option>
                   </select>
                   <button class="secondary small-action" type="button" onclick="downloadPeopleRegister()">Preuzmi spisak</button>
@@ -658,16 +660,11 @@
             <div>
               <p class="business-eyebrow">Radni prostor</p>
               <h3>Izveštaji</h3>
-              <p class="muted">Ovde su dnevni izveštaji, kvarovi i Excel izvoz. Sve je na jednom mestu, bez dodatne desne kolone.</p>
-            </div>
-            <div class="workspace-subnav">
-              <button class="secondary small-action" type="button" data-business-tab="reports">Dnevni izveštaji</button>
-              <button class="secondary small-action" type="button" data-business-tab="defects">Kvarovi</button>
-              <button class="primary small-action" type="button" data-business-tab="export">Excel izvoz</button>
+              <p class="muted">Ovde se prikazuju samo dnevni izveštaji koji čekaju pregled, odobrenje ili izvoz.</p>
             </div>
           </div>
-          <h3>Inbox izveštaja</h3>
-          <p class="muted">Štikliraj dnevne izveštaje koje želiš da prebaciš u izvoz za Excel.</p>
+          <h3>Izveštaji koji čekaju odobrenje</h3>
+          <p class="muted">Klikni na konkretan izveštaj da otvoriš detalje i postojeća dugmad za dalji rad.</p>
           <div class="director-live-refresh-line">
             <span class="live-dot"></span>
             <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</span>
@@ -1300,6 +1297,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1360"></script>
+  <script src="script.js?v=1361"></script>
 </body>
 </html>

@@ -220,7 +220,8 @@ function businessUpdateReportsMetrics(list) {
   const todayIso = today();
   const todayReports = reports.filter(r => String(r.report_date || "").slice(0, 10) === todayIso);
   const fuel = Math.round(todayReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
-  businessSetText("directorMetricFuel", fuel > 0 ? `${fuel} L` : "— L");
+  const todayDefects = reports.filter(r => String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
+  businessSetText("directorMetricFuel", String(todayDefects));
 }
 
 function show(view) {
@@ -3311,10 +3312,9 @@ async function loadReports(options = {}) {
   updateDirectorKnownReports(directorReportsCache, silent);
   updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
   businessUpdateReportsMetrics(directorReportsCache);
-  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
-  $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja. Ako je zaposleni poslao kvar, pogledaj tab Kvarovi.</p>`;
+  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r) && !["approved", "odobreno", "archived", "arhivirano"].includes(String(r.status || "").toLowerCase()));
+  $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
   renderDefectsList();
-  renderDirectorDefectNoticeInReports();
   renderExportPanel();
 }
 
