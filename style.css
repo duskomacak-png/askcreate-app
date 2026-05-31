@@ -6091,3 +6091,50 @@ button:hover,
 /* v1.35.6 — Filter radnog mesta sada filtrira i prikazanu evidenciju zaposlenih, ne samo CSV/štampu. */
 
 /* v1.35.8 — Spisak zaposlenih: dodat R. br. i stručni naziv Evidencioni broj radnika. */
+
+/* v1.36.3 — Direkcija KPI kartice u jednom redu: manje kartice, 5 komada u jednoj liniji na laptopu */
+#viewDirectorDashboard .business-kpi-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:8px!important;
+  align-items:stretch!important;
+}
+#viewDirectorDashboard .business-kpi-card{
+  min-height:58px!important;
+  padding:8px 9px!important;
+  grid-template-columns:28px minmax(0,1fr)!important;
+  gap:7px!important;
+  align-content:start!important;
+}
+#viewDirectorDashboard .business-kpi-card .kpi-icon{
+  width:28px!important;
+  height:28px!important;
+  border-radius:8px!important;
+  font-size:15px!important;
+}
+#viewDirectorDashboard .business-kpi-card strong{
+  font-size:20px!important;
+  line-height:1!important;
+}
+#viewDirectorDashboard .business-kpi-card span{
+  font-size:10.5px!important;
+  line-height:1.15!important;
+  margin-top:2px!important;
+}
+#viewDirectorDashboard .business-kpi-card button{
+  grid-column:1 / -1!important;
+  font-size:10.5px!important;
+  line-height:1.1!important;
+  margin-top:3px!important;
+}
+@media(max-width:1200px){
+  #viewDirectorDashboard .business-kpi-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;}
+  #viewDirectorDashboard .business-kpi-card{padding:7px!important;gap:6px!important;}
+  #viewDirectorDashboard .business-kpi-card span{font-size:10px!important;}
+  #viewDirectorDashboard .business-kpi-card button{font-size:10px!important;}
+}
+@media(max-width:900px){
+  #viewDirectorDashboard .business-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media(max-width:520px){
+  #viewDirectorDashboard .business-kpi-grid{grid-template-columns:1fr!important;}
+}
