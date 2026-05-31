@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.35.1";
+const APP_VERSION = "1.35.2";
 
 
 let sb = null;
@@ -1642,7 +1642,7 @@ function setPersonFormMode(mode = "add") {
 }
 
 function clearPersonForm() {
-  ["personFirst", "personLast", "personFunction", "personCode"].forEach(id => {
+  ["personEmployeeNumber", "personFirst", "personLast", "personFunction", "personCode"].forEach(id => {
     const el = $("#" + id);
     if (el) el.value = "";
   });
@@ -1769,14 +1769,51 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "settings", group: "office", title: "Podešavanja firme", lines: ["Kancelarijsko ovlašćenje - osnovna podešavanja firme"] }
 ];
 
+function getPersonEmployeeNumber(person = {}) {
+  const permissions = person.permissions || {};
+  return String(
+    person.employee_number ||
+    person.worker_number ||
+    person.evidential_number ||
+    person.evidence_number ||
+    permissions.employee_number ||
+    permissions.worker_number ||
+    permissions.evidential_number ||
+    permissions.evidence_number ||
+    ""
+  ).trim();
+}
+
+function formatPersonNameWithEmployeeNumber(person = {}, fallbackName = "") {
+  const number = getPersonEmployeeNumber(person);
+  const name = fallbackName || `${person.first_name || ""} ${person.last_name || ""}`.trim();
+  return number ? `${number} — ${name || "Zaposleni"}` : (name || "Zaposleni");
+}
+
+function currentWorkerEmployeeNumber() {
+  return getPersonEmployeeNumber(currentWorker || {});
+}
+
+function reportEmployeeNumber(r) {
+  const d = r?.data || {};
+  return String(
+    getPersonEmployeeNumber(r?.company_users || {}) ||
+    d.employee_number ||
+    d.worker_number ||
+    d.created_by_employee_number ||
+    ""
+  ).trim();
+}
+
 function getPersonPreviewData() {
+  const employeeNumber = $("#personEmployeeNumber")?.value.trim() || "";
   const first = $("#personFirst")?.value.trim() || "Zaposleni";
   const last = $("#personLast")?.value.trim() || "";
   const role = $("#personFunction")?.value.trim() || "terenski radni unos";
   const code = $("#personCode")?.value.trim() || "šifra zaposlenog";
   const selectedKeys = $$(".perm:checked").map(ch => ch.value);
   const materialNames = $$(".material-perm:checked").map(ch => ch.dataset.name || ch.value).filter(Boolean);
-  return { first, last, role, code, selectedKeys, materialNames };
+  return { employeeNumber, first, last, role, code, selectedKeys, materialNames };
 }
 
 function renderWorkerPreview(show = true) {
@@ -1785,7 +1822,7 @@ function renderWorkerPreview(show = true) {
   if (!card || !body) return;
 
   const d = getPersonPreviewData();
-  const hasAnyFormValue = ["personFirst", "personLast", "personFunction", "personCode"].some(id => ($("#" + id)?.value || "").trim());
+  const hasAnyFormValue = ["personEmployeeNumber", "personFirst", "personLast", "personFunction", "personCode"].some(id => ($("#" + id)?.value || "").trim());
   const hasSelection = d.selectedKeys.length > 0 || d.materialNames.length > 0;
 
   if (!show || (!hasAnyFormValue && !hasSelection)) {
@@ -1833,8 +1870,9 @@ function renderWorkerPreview(show = true) {
     <div class="phone-preview-shell">
       <div class="phone-preview-topbar">Terenski radni unos</div>
       <div class="phone-preview-card">
-        <h4>Dobrodošli, ${escapeHtml((d.first + " " + d.last).trim())}</h4>
+        <h4>Dobrodošli, ${escapeHtml(d.employeeNumber ? `${d.employeeNumber} — ${(d.first + " " + d.last).trim()}` : (d.first + " " + d.last).trim())}</h4>
         <p>${escapeHtml(currentCompany?.name || "Firma")} · ${escapeHtml(d.role)}</p>
+        ${d.employeeNumber ? `<small>Evidencioni broj radnika: ${escapeHtml(d.employeeNumber)}</small>` : ""}
         <small>Pristupni kod zaposlenog: ${escapeHtml(d.code)}</small>
       </div>
       <div class="phone-preview-card">
@@ -1852,7 +1890,7 @@ function hideWorkerPreview() {
 }
 
 function bindPersonPreviewEvents() {
-  ["personFirst", "personLast", "personFunction", "personCode"].forEach(id => {
+  ["personEmployeeNumber", "personFirst", "personLast", "personFunction", "personCode"].forEach(id => {
     const el = $("#" + id);
     if (el) el.addEventListener("input", () => {
       renderWorkerPreview(true);
@@ -1881,6 +1919,7 @@ window.editPerson = async (id) => {
     if (!person) throw new Error("Zaposleni nije pronađen.");
 
     editingPersonId = person.id;
+    $("#personEmployeeNumber").value = getPersonEmployeeNumber(person);
     $("#personFirst").value = person.first_name || "";
     $("#personLast").value = person.last_name || "";
     $("#personFunction").value = person.function_title || "";
@@ -1906,6 +1945,7 @@ async function savePersonForm() {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
 
+    const employeeNumber = $("#personEmployeeNumber")?.value.trim() || "";
     const firstName = $("#personFirst").value.trim();
     const lastName = $("#personLast").value.trim();
     const functionTitle = $("#personFunction").value.trim();
@@ -1923,13 +1963,17 @@ async function savePersonForm() {
       throw new Error(`Ovaj pristupni kod već koristi ${fullName} (${status}). Odredi drugi kod, jer jedan kod ne sme pripadati dvema osobama u celoj aplikaciji.`);
     }
 
+    const permissions = collectPermissions();
+    permissions.employee_number = employeeNumber;
+    permissions.worker_number = employeeNumber;
+
     const payload = {
       company_id: currentCompany.id,
       first_name: firstName,
       last_name: lastName,
       function_title: functionTitle,
       access_code: code,
-      permissions: collectPermissions(),
+      permissions,
       active: true
     };
 
@@ -2176,10 +2220,12 @@ async function saveAssetForm() {
 
 function renderPersonItem(p) {
   const permissionCount = Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length;
-  const fullName = `${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}`;
+  const rawFullName = `${p.first_name || ""} ${p.last_name || ""}`.trim();
+  const fullName = escapeHtml(formatPersonNameWithEmployeeNumber(p, rawFullName));
+  const employeeNumber = getPersonEmployeeNumber(p);
   return `
     <div class="director-table-row person-card-v1116" data-person-id="${escapeHtml(p.id)}">
-      <div class="dt-cell dt-name"><strong>${fullName}</strong><small>Pristupni kod: ${escapeHtml(p.access_code || "—")}</small></div>
+      <div class="dt-cell dt-name"><strong>${fullName}</strong><small>${employeeNumber ? `Broj radnika: ${escapeHtml(employeeNumber)} · ` : ""}Pristupni kod: ${escapeHtml(p.access_code || "—")}</small></div>
       <div class="dt-cell"><span>${escapeHtml(p.function_title || "—")}</span><small>Radno mesto</small></div>
       <div class="dt-cell"><span class="dt-status dt-ok">Aktivan</span><small>${permissionCount} rubrika</small></div>
       <div class="dt-actions person-actions-v1116">
@@ -2752,11 +2798,12 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
     ]);
 
     if (peopleRes.data) peopleRes.data.forEach(p => {
-      const text = `${p.first_name} ${p.last_name} ${p.function_title} ${p.access_code} ${p.active ? "aktivan" : "neaktivan"}`;
+      const employeeNumber = getPersonEmployeeNumber(p);
+      const text = `${employeeNumber} ${p.first_name} ${p.last_name} ${p.function_title} ${p.access_code} ${p.active ? "aktivan" : "neaktivan"}`;
       if (searchMatch(text, q)) results.push({
         type:"Zaposleni / osoba",
-        title:`${p.first_name} ${p.last_name}`,
-        subtitle:`${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
+        title:formatPersonNameWithEmployeeNumber(p),
+        subtitle:`${employeeNumber ? `broj radnika: ${employeeNumber} · ` : ""}${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
         actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Izmeni</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši sa spiska</button>` : `<span class="pill">sklonjeno iz aktivnog spiska</span>`}`
       });
     });
@@ -3121,6 +3168,7 @@ function renderDirectorDefectNoticeInReports() {
 function defectHtml(r) {
   const d = r.data || {};
   const person = r.company_users ? `${r.company_users.first_name} ${r.company_users.last_name}` : (d.created_by_worker || "Nepoznat zaposleni");
+  const employeeNumber = reportEmployeeNumber(r);
   const status = d.defect_status || "prijavljen";
   const reportedAt = d.defect_reported_at || r.submitted_at || r.created_at;
   const assetName = [d.defect_asset_code, d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name)].filter(Boolean).join(" · ") || "—";
@@ -3129,7 +3177,7 @@ function defectHtml(r) {
     <div class="item report-item defect-item">
       <strong>🚨 KVAR · ${escapeHtml(d.defect_urgency || "prijavljen")}</strong>
       ${d.sent_immediately ? `<span class="pill danger-pill">Evidentirano odmah · vidi Direkcija i Šef mehanizacije</span>` : ""}
-      <small>${escapeHtml(person)} · ${escapeHtml(r.company_users?.function_title || d.function_title || "")} · ${escapeHtml(r.report_date || "")}</small><br/>
+      <small>${escapeHtml([employeeNumber ? `broj ${employeeNumber}` : "", person, r.company_users?.function_title || d.function_title || "", r.report_date || ""].filter(Boolean).join(" · "))}</small><br/>
       <span class="pill">Prijavljeno: ${escapeHtml(formatDateTimeLocal(reportedAt))}</span>
       <span class="pill">Status: ${escapeHtml(status)}</span>
       <span class="pill">Gradilište/lokacija: ${escapeHtml(d.defect_site_name || d.site_name || "bez gradilišta")}</span>
@@ -3953,7 +4001,8 @@ function buildReportPaperHtml(r, paperIdPrefix = "paper") {
         <tbody>
           <tr><th>Datum izveštaja</th><td>${escapeHtml(formatDateOnlyLocal(r.report_date || d.report_date_manual || d.report_date || ""))}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
           <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
-          <tr><th>Zaposleni / odgovorno lice</th><td>${escapeHtml(person)}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
+          <tr><th>Broj radnika</th><td>${escapeHtml(reportEmployeeNumber(r) || "—")}</td><th>Zaposleni / odgovorno lice</th><td>${escapeHtml(person)}</td></tr>
+          <tr><th>Radno mesto</th><td colspan="3">${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
           <tr><th>Firma</th><td>${escapeHtml(currentCompany?.company_name || currentCompany?.name || "—")}</td><th>Broj dokumenta</th><td>${escapeHtml(reportDocumentNumber(r))}</td></tr>
         </tbody>
       </table>
@@ -4345,7 +4394,8 @@ function buildSingleReportExcelHtml(r) {
       <tr><th>Firma</th><td>${escapeHtml(currentCompanyExportName())}</td><th>Broj dokumenta</th><td>${escapeHtml(docNo)}</td></tr>
       <tr><th>Datum izveštaja</th><td>${escapeHtml(formatDateOnlyLocal(r.report_date || d.report_date))}</td><th>Status</th><td>${escapeHtml(reportStatusLabel(r.status))}</td></tr>
       <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "")}</td><th>Vreme slanja</th><td>${escapeHtml(formatDateTimeLocal(r.submitted_at || r.created_at))}</td></tr>
-      <tr><th>Zaposleni</th><td>${escapeHtml(reportPersonName(r))}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</td></tr>
+      <tr><th>Broj radnika</th><td>${escapeHtml(reportEmployeeNumber(r) || "—")}</td><th>Zaposleni</th><td>${escapeHtml(reportPersonName(r))}</td></tr>
+      <tr><th>Radno mesto</th><td colspan="3">${escapeHtml(r.company_users?.function_title || d.function_title || "")}</td></tr>
       <tr><th>Opis rada</th><td colspan="3">${escapeHtml(d.description || d.note || "")}</td></tr>
     </table>
 
@@ -4454,6 +4504,7 @@ function buildSingleReportExcelCsv(r) {
     firma: currentCompanyExportName(),
     gradiliste: d.site_name || "",
     zaposleni: reportPersonName(r),
+    brojRadnika: reportEmployeeNumber(r),
     radnoMesto: r.company_users?.function_title || d.function_title || "",
     status: reportStatusLabel(r.status),
     vremeSlanja: formatDateTimeLocal(r.submitted_at || r.created_at),
@@ -4465,11 +4516,11 @@ function buildSingleReportExcelCsv(r) {
   rows.push(["sep=;"]);
   rows.push(["DNEVNI RADNI IZVEŠTAJ SA TERENA - KANCELARIJSKI EXCEL IZVOZ"]);
   rows.push([]);
-  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna koja je sipala gorivo", "Tablice cisterne koja je sipala gorivo"]);
+  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Broj radnika", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna koja je sipala gorivo", "Tablice cisterne koja je sipala gorivo"]);
 
   if (machines.length) {
     machines.forEach((m) => rows.push([
-      "Rad mašine", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      "Rad mašine", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
       m.asset_code || m.machine_code || "", m.name || "",
       machineKmStart(m), machineKmEnd(m), machineKmTotal(m),
       machineMtcStart(m), machineMtcEnd(m), machineMtcTotal(m),
@@ -4479,7 +4530,7 @@ function buildSingleReportExcelCsv(r) {
 
   if (fuels.length) {
     fuels.forEach((f) => rows.push([
-      "Gorivo", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      "Gorivo", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
       f.asset_code || "", f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
       "", "", "", "", "", "",
       f.liters || "",
@@ -4493,7 +4544,7 @@ function buildSingleReportExcelCsv(r) {
   const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
   if (fieldTankers.length) {
     fieldTankers.forEach((ft) => rows.push([
-      "Gorivo cisterna", base.datum, base.firma, ft.site_name || base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      "Gorivo cisterna", base.datum, base.firma, ft.site_name || base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
       ft.asset_code || "", ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
       "", "", "", "", "", "",
       ft.liters || "",
@@ -4509,7 +4560,7 @@ function buildSingleReportExcelCsv(r) {
 
   if (vehicles.length) {
     vehicles.forEach((v) => rows.push([
-      "Vozilo / tura", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      "Vozilo / tura", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
       v.asset_code || v.vehicle_code || "", v.name || v.vehicle || v.registration || "",
       v.km_start || "", v.km_end || "", numericDiff(v.km_start, v.km_end), "", "", "",
       "", "", "", "", "", v.route || "", "", v.tours || "", v.cubic_m3 || v.cubic_auto || "", "", "", "", "", ""
@@ -4518,7 +4569,7 @@ function buildSingleReportExcelCsv(r) {
 
   if (materials.length) {
     materials.forEach((m) => rows.push([
-      "Materijal", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      "Materijal", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
       "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", m.tours || m.material_tours || "", "",
       m.material || m.name || "", m.per_tour || m.quantity_per_tour || m.material_per_tour || "", materialQuantityValue(m), materialUnitValue(m), m.note || materialCalcText(m) || ""
     ]));
@@ -4526,7 +4577,7 @@ function buildSingleReportExcelCsv(r) {
 
   if (lowloaders.length) {
     lowloaders.forEach((ll) => rows.push([
-      "Transport labudicom", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      "Transport labudicom", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
       ll.plates || ll.registration || "", [ll.machine, ll.accompanying_tools || ll.tools].filter(Boolean).join(" / "),
       ll.km_start || "", ll.km_end || "", numericDiff(ll.km_start, ll.km_end), "", "", "",
       "", "", "", "", "", ll.from_site || ll.from_address || "", ll.to_site || ll.to_address || "", "", "", "", "", "", "", ""
@@ -4534,7 +4585,7 @@ function buildSingleReportExcelCsv(r) {
   }
 
   if (!machines.length && !fuels.length && !fieldTankers.length && !vehicles.length && !materials.length && !lowloaders.length) {
-    rows.push(["Nema unetih stavki", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis]);
+    rows.push(["Nema unetih stavki", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis]);
   }
 
   return "\ufeff" + rows.map(singleReportCsvRow).join("\r\n");
@@ -4577,7 +4628,7 @@ function reportHtml(r) {
         </div>
         <div class="report-list-worker">
           <strong>${escapeHtml(person)}</strong>
-          <small>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</small>
+          <small>${escapeHtml([reportEmployeeNumber(r) ? `broj ${reportEmployeeNumber(r)}` : "", r.company_users?.function_title || d.function_title || ""].filter(Boolean).join(" · "))}</small>
         </div>
         <div class="report-list-sections">${sectionsHtml}</div>
         <div class="report-list-status"><span class="status-chip status-${escapeHtml(statusText)}">${escapeHtml(statusLabel)}</span></div>
@@ -6941,6 +6992,9 @@ function buildFieldTankerMemoryReportData(entries = []) {
     field_tanker_total_liters: totalLiters || "",
     field_tanker_count: entries.length,
     created_by_worker: currentWorker?.full_name || "",
+    employee_number: currentWorkerEmployeeNumber(),
+    worker_number: currentWorkerEmployeeNumber(),
+    created_by_employee_number: currentWorkerEmployeeNumber(),
     function_title: currentWorker?.function_title || "",
     description: "Memorisana sipanja goriva cisternom poslata kao jedan dnevni izveštaj."
   };
@@ -8206,6 +8260,9 @@ function collectWorkerData() {
 
   return {
     report_sections_sent: reportSectionsSent,
+    employee_number: currentWorkerEmployeeNumber(),
+    worker_number: currentWorkerEmployeeNumber(),
+    created_by_employee_number: currentWorkerEmployeeNumber(),
     site_id: reportSiteId,
     site_name: reportSiteName,
     // v1.16.3: Gradilište i datum izveštaja čuva samo datum/godinu kroz report_date i gradilište kroz site_id/site_name.
@@ -8806,6 +8863,7 @@ const EXPORT_TEMPLATE_KEY = "swp_export_template";
 const EXPORT_COLUMNS = [
   { key:"date", label:"Datum" },
   { key:"worker", label:"Zaposleni koji šalje izveštaj" },
+  { key:"employee_number", label:"Broj radnika" },
   { key:"function", label:"Radno mesto" },
   { key:"site", label:"Gradilište" },
   { key:"hours", label:"Ukupno sati rada" },
@@ -9103,6 +9161,7 @@ function flattenReportRowsForExport(r) {
   const base = {
     date: r.report_date || "",
     worker: reportPersonName(r),
+    employee_number: reportEmployeeNumber(r),
     function: r.company_users?.function_title || "",
     site: d.site_name || "",
     hours: d.hours || "",
@@ -9521,6 +9580,7 @@ function smartExportReportMatches(r, settings) {
       r.company_users?.first_name,
       r.company_users?.last_name,
       r.company_users?.function_title,
+      reportEmployeeNumber(r),
       d.created_by_worker,
       d.worker_name,
       d.access_code,
@@ -9536,6 +9596,7 @@ function baseExportRow(r) {
   return {
     date: r.report_date || "",
     worker: reportPersonName(r),
+    employee_number: reportEmployeeNumber(r),
     function: r.company_users?.function_title || "",
     site: d.site_name || "",
     hours: d.hours || "",
@@ -10169,6 +10230,9 @@ async function sendDefectNow() {
       ...defectImpact,
       defect_urgency: $("#wrDefectUrgency")?.value || "",
       created_by_worker: worker.full_name,
+      employee_number: getPersonEmployeeNumber(worker),
+      worker_number: getPersonEmployeeNumber(worker),
+      created_by_employee_number: getPersonEmployeeNumber(worker),
       function_title: worker.function_title,
       called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || ""
     };
