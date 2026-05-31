@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.36.3";
+const APP_VERSION = "1.36.4";
 
 
 let sb = null;
@@ -4773,7 +4773,6 @@ function reportHtml(r) {
   const d = r.data || {};
   const person = reportDocumentPerson(r);
   const title = reportDocumentTitle(r);
-  const checked = getExportSelectedIds().includes(r.id) ? "checked" : "";
   const sections = getReportFilledSections(d);
   const sectionsHtml = sections.slice(0, 6).map(x => `<span class="pill report-section-pill">${escapeHtml(x)}</span>`).join("") + (sections.length > 6 ? `<span class="pill report-section-pill">+${sections.length - 6}</span>` : "");
   const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
@@ -4783,9 +4782,6 @@ function reportHtml(r) {
   return `
     <article class="report-row-item report-document-card">
       <div class="report-list-grid">
-        <label class="export-select-row report-export-cell" title="Izaberi izveštaj za Excel export">
-          <input type="checkbox" class="report-export-check" data-report-id="${escapeHtml(r.id)}" ${checked} onchange="toggleReportExportSelection('${r.id}', this.checked)" />
-        </label>
         <div class="report-list-date">
           <strong>${escapeHtml(r.report_date || "")}</strong>
           <small>${escapeHtml(submitted || "")}</small>

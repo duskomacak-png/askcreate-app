@@ -6092,6 +6092,18 @@ button:hover,
 
 /* v1.35.8 — Spisak zaposlenih: dodat R. br. i stručni naziv Evidencioni broj radnika. */
 
+/* v1.36.4 — Izveštaji: uklonjen masovni Excel odabir sa liste; svaki izveštaj se obrađuje pojedinačno */
+#viewDirectorDashboard #tabReports .report-export-toolbar{display:none!important;}
+#viewDirectorDashboard #tabReports .report-list-grid{grid-template-columns:130px 1.35fr 1.05fr 1.25fr 120px!important;}
+@media (max-width: 980px){
+  #viewDirectorDashboard #tabReports .report-list-grid{grid-template-columns:1fr!important;}
+  #viewDirectorDashboard #tabReports .report-list-date,
+  #viewDirectorDashboard #tabReports .report-list-site,
+  #viewDirectorDashboard #tabReports .report-list-worker,
+  #viewDirectorDashboard #tabReports .report-list-sections,
+  #viewDirectorDashboard #tabReports .report-list-status{grid-column:1!important;}
+}
+
 /* v1.36.3 — Direkcija KPI kartice u jednom redu: manje kartice, 5 komada u jednoj liniji na laptopu */
 #viewDirectorDashboard .business-kpi-grid{
   grid-template-columns:repeat(5,minmax(0,1fr))!important;
