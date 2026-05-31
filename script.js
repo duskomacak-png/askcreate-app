@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.36.6";
+const APP_VERSION = "1.36.7";
 
 
 let sb = null;
@@ -3377,6 +3377,7 @@ async function loadReports(options = {}) {
   const dailyReports = directorReportsCache.filter(isPendingDirectorReport);
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
   renderDefectsList();
+  renderFuelReportsList();
   renderArchiveList();
   renderExportPanel();
 }
@@ -3438,6 +3439,55 @@ function renderDefectsList() {
   if (!box) return;
   const defects = directorReportsCache.filter(hasDefectData);
   box.innerHTML = defects.map(defectHtml).join("") || `<p class="muted">Nema prijavljenih kvarova.</p>`;
+}
+
+function fuelReportHtml(r) {
+  const d = r.data || {};
+  const person = reportDocumentPerson(r);
+  const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
+  const liters = Math.round(businessCollectFuelLiters(d) * 100) / 100;
+  const entries = Array.isArray(d.field_tanker_entries)
+    ? d.field_tanker_entries
+    : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+  const sites = [...new Set(entries.map(x => x && x.site_name).filter(Boolean))];
+  const title = entries.length ? `Cisterna · ${entries.length} sipanja` : "Evidencija goriva – cisterna";
+  return `
+    <article class="report-row-item report-document-card fuel-report-card">
+      <div class="report-list-grid">
+        <div class="report-list-date">
+          <strong>${escapeHtml(r.report_date || "")}</strong>
+          <small>${escapeHtml(submitted || "")}</small>
+        </div>
+        <div class="report-list-site">
+          <strong>${escapeHtml(sites.join(", ") || d.site_name || "Gorivo cisterna")}</strong>
+          <small>${escapeHtml(title)}</small>
+        </div>
+        <div class="report-list-worker">
+          <strong>${escapeHtml(person)}</strong>
+          <small>${escapeHtml([reportEmployeeNumber(r) ? `broj ${reportEmployeeNumber(r)}` : "", r.company_users?.function_title || d.function_title || ""].filter(Boolean).join(" · "))}</small>
+        </div>
+        <div class="report-list-status">
+          <span class="status-chip">${escapeHtml(liters ? `${liters} L` : "Gorivo")}</span>
+          <small>${escapeHtml(reportStatusLabel(r.status))}</small>
+        </div>
+      </div>
+      <div class="report-card-actions no-print report-row-actions">
+        <button class="secondary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori</button>
+        <button class="archive-report-btn compact-doc-btn" type="button" onclick="archiveReport('${r.id}')">📦 Arhiviraj</button>
+      </div>
+    </article>`;
+}
+
+function renderFuelReportsList() {
+  const box = $("#fuelReportsList");
+  if (!box) return;
+  const todayIso = today();
+  const fuelReports = directorReportsCache.filter(r =>
+    !isArchivedReport(r) &&
+    hasFieldTankerFuelData(r) &&
+    String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso
+  );
+  box.innerHTML = fuelReports.map(fuelReportHtml).join("") || `<p class="muted">Danas nema izveštaja od cisterne za gorivo.</p>`;
 }
 
 function archiveReportHtml(r) {
@@ -10702,6 +10752,7 @@ function bindEvents() {
   if ($("#refreshDirectorBtn")) $("#refreshDirectorBtn").addEventListener("click", loadDirectorCompany);
   if ($("#directorManualRefreshBtn")) $("#directorManualRefreshBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#refreshArchiveBtn")) $("#refreshArchiveBtn").addEventListener("click", manualDirectorRefresh);
+  if ($("#refreshFuelReportsBtn")) $("#refreshFuelReportsBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
 
@@ -10712,6 +10763,7 @@ function bindEvents() {
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
+    if (btn.dataset.tab === "fuel") renderFuelReportsList();
     if (btn.dataset.tab === "archive") renderArchiveList();
   }));
 

@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1366" />
+  <link rel="stylesheet" href="style.css?v=1367" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -438,7 +438,7 @@
           <div class="business-kpi-card">
             <div class="kpi-icon green">⛽</div>
             <div><strong id="directorMetricFuel">—</strong><span>Goriva danas</span></div>
-            <button type="button" data-business-tab="reports">Vidi detalje ›</button>
+            <button type="button" data-business-tab="fuel">Vidi detalje ›</button>
           </div>
           <div class="business-kpi-card">
             <div class="kpi-icon orange">🛠️</div>
@@ -685,6 +685,19 @@
         </div>
       </div>
 
+      <div id="tabFuel" class="tab-panel">
+        <div class="card reports-workspace-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Gorivo danas</p>
+              <h3>Izveštaji cisterne za gorivo</h3>
+              <p class="muted">Ovde se prikazuju samo današnji izveštaji radnika koji ima rubriku <b>Evidencija goriva – cisterna</b>. Ne mešaju se sa dnevnim izveštajima za odobrenje.</p>
+            </div>
+            <button id="refreshFuelReportsBtn" class="secondary small-action" type="button">Osveži gorivo</button>
+          </div>
+          <div id="fuelReportsList" class="list"></div>
+        </div>
+      </div>
 
       <div id="tabArchive" class="tab-panel">
         <div class="card reports-workspace-card">
@@ -1318,6 +1331,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1366"></script>
+  <script src="script.js?v=1367"></script>
 </body>
 </html>

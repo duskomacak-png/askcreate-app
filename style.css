@@ -6194,3 +6194,8 @@ button:hover,
 @media(max-width:520px){
   #viewDirectorDashboard .business-kpi-grid{grid-template-columns:1fr!important;}
 }
+
+/* v1.36.7 — Goriva danas otvara posebnu listu današnjih izveštaja cisterne */
+#fuelReportsList{border:1px solid var(--office-line);border-radius:12px;overflow:hidden;background:#fff;}
+#fuelReportsList .report-row-item:hover{background:#f6fbf7!important;}
+.fuel-report-card .status-chip{background:#ecfdf5;color:#166534;border-color:#bbf7d0;}
