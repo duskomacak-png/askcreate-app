@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.34.0";
+const APP_VERSION = "1.34.1";
 
 
 let sb = null;
@@ -4204,22 +4204,156 @@ window.addReportToExcelSelection = function(id) {
   toast("Izveštaj je dodat u Excel izbor.");
 };
 
+function excelDisplayValue(key, value) {
+  if (key === "status") return reportStatusLabel(value);
+  if (key === "date" || /_date$/.test(key) || key === "leave_from" || key === "leave_to") return value ? formatDateOnlyLocal(value) : "";
+  return excelCellText(value);
+}
+
+function excelNonEmpty(value) {
+  return String(value ?? "").trim() !== "";
+}
+
+function excelSectionRows(items, columns) {
+  const rows = Array.isArray(items) ? items : [];
+  if (!rows.length) return `<tr><td colspan="${columns.length}" class="empty-cell">Nema podataka</td></tr>`;
+  return rows.map((row, i) => `<tr>${columns.map(col => `<td>${escapeHtml(excelDisplayValue(col.key, col.get ? col.get(row, i) : row[col.key]))}</td>`).join("")}</tr>`).join("");
+}
+
+function excelColgroup(widths = []) {
+  return widths.length ? `<colgroup>${widths.map(w => `<col style="width:${w};" />`).join("")}</colgroup>` : "";
+}
+
+function cleanExcelShell(title, bodyHtml, subtitle = "") {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; color:#111827; background:#ffffff; }
+  .sheet { max-width: 1180px; }
+  .doc-title { font-size: 18pt; font-weight: 800; margin: 0 0 6px; color:#111827; }
+  .doc-subtitle { font-size: 10pt; color:#4b5563; margin: 0 0 18px; }
+  .section-title { font-size: 12pt; font-weight: 800; margin: 20px 0 8px; color:#111827; border-bottom:2px solid #111827; padding-bottom:4px; }
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 14px; font-size: 10.5pt; }
+  th { background:#e8f1ec; color:#111827; font-weight:800; border:1px solid #9ca3af; padding:7px 8px; text-align:left; white-space:normal; }
+  td { border:1px solid #c7d0d8; padding:7px 8px; vertical-align:top; white-space:normal; mso-number-format:"\\@"; }
+  .meta th { background:#f3f4f6; width: 22%; }
+  .meta td { width: 28%; }
+  .empty-cell { color:#6b7280; font-style:italic; text-align:center; }
+  .small-note { color:#6b7280; font-size:9pt; margin-top:10px; }
+</style>
+</head>
+<body><div class="sheet"><div class="doc-title">${escapeHtml(title)}</div>${subtitle ? `<div class="doc-subtitle">${escapeHtml(subtitle)}</div>` : ""}${bodyHtml}</div></body>
+</html>`;
+}
+
+function buildSingleReportExcelHtml(r) {
+  const d = r.data || {};
+  const machines = Array.isArray(d.machines) ? d.machines : [];
+  const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
+  const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+  const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
+  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+  const title = reportDocumentTitle(r);
+  const docNo = reportDocumentNumber(r);
+  const body = `
+    <div class="section-title">Osnovni podaci</div>
+    <table class="meta">
+      <tr><th>Firma</th><td>${escapeHtml(currentCompanyExportName())}</td><th>Broj dokumenta</th><td>${escapeHtml(docNo)}</td></tr>
+      <tr><th>Datum izveštaja</th><td>${escapeHtml(formatDateOnlyLocal(r.report_date || d.report_date))}</td><th>Status</th><td>${escapeHtml(reportStatusLabel(r.status))}</td></tr>
+      <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "")}</td><th>Vreme slanja</th><td>${escapeHtml(formatDateTimeLocal(r.submitted_at || r.created_at))}</td></tr>
+      <tr><th>Zaposleni</th><td>${escapeHtml(reportPersonName(r))}</td><th>Radno mesto</th><td>${escapeHtml(r.company_users?.function_title || d.function_title || "")}</td></tr>
+      <tr><th>Opis rada</th><td colspan="3">${escapeHtml(d.description || d.note || "")}</td></tr>
+    </table>
+
+    <div class="section-title">Rad mašina — KM i MTČ odvojeno</div>
+    <table>${excelColgroup(["7%","13%","20%","10%","10%","10%","10%","10%","10%"])}
+      <tr><th>#</th><th>Broj</th><th>Mašina</th><th>KM početak</th><th>KM kraj</th><th>Ukupno KM</th><th>MTČ početak</th><th>MTČ kraj</th><th>Ukupno MTČ</th></tr>
+      ${excelSectionRows(machines, [
+        {key:"i", get:(m,i)=>i+1},
+        {key:"code", get:m=>m.asset_code || m.machine_code || ""},
+        {key:"name", get:m=>m.name || ""},
+        {key:"km_start", get:m=>machineKmStart(m)},
+        {key:"km_end", get:m=>machineKmEnd(m)},
+        {key:"km_total", get:m=>machineKmTotal(m)},
+        {key:"mtc_start", get:m=>machineMtcStart(m)},
+        {key:"mtc_end", get:m=>machineMtcEnd(m)},
+        {key:"mtc_total", get:m=>machineMtcTotal(m)}
+      ])}
+    </table>
+
+    <div class="section-title">Gorivo</div>
+    <table>${excelColgroup(["6%","13%","12%","20%","10%","10%","10%","14%","15%"])}
+      <tr><th>#</th><th>Tip sredstva</th><th>Broj</th><th>Sredstvo</th><th>Litara</th><th>KM</th><th>MTČ</th><th>Sipao</th><th>Primio</th></tr>
+      ${excelSectionRows(fuels, [
+        {key:"i", get:(f,i)=>i+1},
+        {key:"type", get:f=>assetKindLabel(f.asset_kind)},
+        {key:"code", get:f=>f.asset_code || ""},
+        {key:"asset", get:f=>f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || ""},
+        {key:"liters", get:f=>f.liters || ""},
+        {key:"km", get:f=>f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || ""},
+        {key:"mtc", get:f=>f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || ""},
+        {key:"by", get:f=>f.by || ""},
+        {key:"receiver", get:f=>f.receiver || d.fuel_receiver || ""}
+      ])}
+    </table>
+
+    <div class="section-title">Vozila / ture</div>
+    <table>${excelColgroup(["6%","13%","18%","12%","10%","10%","12%","9%","10%"])}
+      <tr><th>#</th><th>Broj</th><th>Vozilo</th><th>Registracija</th><th>KM početak</th><th>KM kraj</th><th>Relacija</th><th>Ture</th><th>m³</th></tr>
+      ${excelSectionRows(vehicles, [
+        {key:"i", get:(v,i)=>i+1},
+        {key:"code", get:v=>v.asset_code || v.vehicle_code || ""},
+        {key:"name", get:v=>v.name || v.vehicle || ""},
+        {key:"registration", get:v=>v.registration || ""},
+        {key:"km_start", get:v=>v.km_start || ""},
+        {key:"km_end", get:v=>v.km_end || ""},
+        {key:"route", get:v=>v.route || ""},
+        {key:"tours", get:v=>v.tours || ""},
+        {key:"cubic", get:v=>v.cubic_m3 || v.cubic_auto || ""}
+      ])}
+    </table>
+
+    <div class="section-title">Materijal</div>
+    <table>${excelColgroup(["6%","16%","24%","10%","14%","12%","18%"])}
+      <tr><th>#</th><th>Radnja</th><th>Materijal</th><th>Ture</th><th>Količina po turi</th><th>Ukupno</th><th>Napomena</th></tr>
+      ${excelSectionRows(materials, [
+        {key:"i", get:(m,i)=>i+1},
+        {key:"action", get:m=>m.action || m.material_action || ""},
+        {key:"material", get:m=>m.material || m.name || ""},
+        {key:"tours", get:m=>m.tours || m.material_tours || ""},
+        {key:"per", get:m=>m.per_tour || m.quantity_per_tour || m.material_per_tour || ""},
+        {key:"qty", get:m=>[materialQuantityValue(m), materialUnitValue(m)].filter(Boolean).join(" ")},
+        {key:"note", get:m=>m.note || materialCalcText(m) || ""}
+      ])}
+    </table>
+
+    <div class="section-title">Transport mašine labudicom</div>
+    <table>${excelColgroup(["6%","14%","18%","18%","12%","12%","20%"])}
+      <tr><th>#</th><th>Tablice</th><th>Od</th><th>Do</th><th>KM početak</th><th>KM kraj</th><th>Mašina / alat</th></tr>
+      ${excelSectionRows(lowloaders, [
+        {key:"i", get:(ll,i)=>i+1},
+        {key:"plates", get:ll=>ll.plates || ll.registration || ""},
+        {key:"from", get:ll=>ll.from_site || ll.from_address || ""},
+        {key:"to", get:ll=>ll.to_site || ll.to_address || ""},
+        {key:"km_start", get:ll=>ll.km_start || ""},
+        {key:"km_end", get:ll=>ll.km_end || ""},
+        {key:"machine", get:ll=>[ll.machine, ll.accompanying_tools || ll.tools].filter(Boolean).join(" / ")}
+      ])}
+    </table>
+    <div class="small-note">Izvoz pripremljen u AskCreate.app. Dokument ostaje u bazi; Excel je izlazni fajl za kancelariju.</div>`;
+  return cleanExcelShell(title, body, "Kancelarijski Excel pregled — podaci su razdvojeni po sekcijama radi lakše kontrole.");
+}
+
 window.exportSingleReportToExcel = function(id) {
   const r = directorReportsCache.find(x => String(x.id) === String(id));
   if (!r) return toast("Izveštaj nije pronađen.", true);
-  const settings = { type: "all", from: "", to: "", site: "", worker: "", item: "" };
-  const rows = getSmartRowsForReport(r, settings);
-  if (!rows.length) return toast("Ovaj izveštaj nema redove za Excel export.", true);
-  const columns = EXPORT_COLUMNS.filter(c => rows.some(row => String(row[c.key] ?? "").trim() !== "") || ["date","worker","function","site","status"].includes(c.key));
-  const head = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
-  const body = rows.map((row, index) => `<tr class="${index % 2 ? "even" : "odd"}">${columns.map(c => `<td>${escapeHtml(excelCellText(row[c.key]))}</td>`).join("")}</tr>`).join("");
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8" />
-  <style>body{font-family:Arial,Helvetica,sans-serif;color:#111827;}table{border-collapse:collapse;width:100%;font-size:12px;}th{background:#0f7a3b;color:#fff;font-weight:700;border:1px solid #0b5f2e;padding:8px 10px;text-align:left;white-space:nowrap;}td{border:1px solid #cfd8dc;padding:7px 9px;vertical-align:top;mso-number-format:"\\@";}tr.even td{background:#f6fbf7;}</style>
-  </head><body><h3>${escapeHtml(reportDocumentTitle(r))}</h3><p>Firma: ${escapeHtml(currentCompanyExportName())}</p><table>${head}${body}</table></body></html>`;
+  const html = buildSingleReportExcelHtml(r);
   const blob = new Blob(["﻿" + html], {type:"application/vnd.ms-excel;charset=utf-8"});
   const name = safeFilePart(`${reportDocumentTitle(r)}_${r.report_date || today()}_${(r.data || {}).site_name || "izvestaj"}`) + ".xls";
   downloadBlob(blob, name);
-  toast("Excel fajl za ovaj izveštaj je preuzet.");
+  toast("Čist Excel dokument je preuzet — sekcije su odvojene i KM/MTČ su jasni.");
 };
 
 function reportHtml(r) {
@@ -8265,7 +8399,7 @@ const EXPORT_GROUPS = [
     id: "machines",
     title: "Mašine",
     hint: "Bager, valjak, buldozer i druga mehanizacija.",
-    keys: ["machine_code", "machine", "machine_start", "machine_end", "machine_hours", "machine_work"]
+    keys: ["machine_code", "machine", "machine_km_start", "machine_km_end", "machine_km_total", "machine_start", "machine_end", "machine_hours", "machine_work"]
   },
   {
     id: "vehicles",
@@ -8608,7 +8742,7 @@ const SMART_EXPORT_PRESETS = {
   },
   machines: {
     title: "Rad mašina / MTČ",
-    keys: ["date","site","worker","machine_code","machine","machine_start","machine_end","machine_hours","machine_work","status"]
+    keys: ["date","site","worker","machine_code","machine","machine_km_start","machine_km_end","machine_km_total","machine_start","machine_end","machine_hours","machine_work","status"]
   },
   vehicles: {
     title: "Vozila / ture / m³",
@@ -9422,42 +9556,12 @@ function buildExcelHtmlTable() {
   if (!columns.length) throw new Error("Štikliraj bar jednu rubriku za Excel export.");
   if (!rows.length) throw new Error("Nema izabranih izveštaja za export.");
 
-  const head = `<tr>${columns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
-  const body = rows.map((row, index) => `<tr class="${index % 2 ? "even" : "odd"}">${columns.map(c => `<td>${escapeHtml(excelCellText(row[c.key]))}</td>`).join("")}</tr>`).join("");
+  const cleanColumns = columns.filter(c => rows.some(row => excelNonEmpty(row[c.key])) || ["date", "worker", "function", "site", "status"].includes(c.key));
+  const head = `<tr>${cleanColumns.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr>`;
+  const body = rows.map((row, index) => `<tr class="${index % 2 ? "even" : "odd"}">${cleanColumns.map(c => `<td>${escapeHtml(excelDisplayValue(c.key, row[c.key]))}</td>`).join("")}</tr>`).join("");
+  const summary = `<p class="doc-subtitle">Izabrano redova: ${rows.length}. Status je prikazan ljudski, a prazne kolone su automatski sklonjene.</p>`;
 
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<style>
-  body { font-family: Arial, Helvetica, sans-serif; color: #111827; }
-  table { border-collapse: collapse; width: 100%; font-size: 12px; }
-  th {
-    background: #0f7a3b;
-    color: #ffffff;
-    font-weight: 700;
-    border: 1px solid #0b5f2e;
-    padding: 8px 10px;
-    text-align: left;
-    white-space: nowrap;
-  }
-  td {
-    border: 1px solid #cfd8dc;
-    padding: 7px 9px;
-    vertical-align: top;
-    mso-number-format: "\@";
-  }
-  tr.odd td { background: #ffffff; }
-  tr.even td { background: #f6fbf7; }
-</style>
-</head>
-<body>
-<table>
-  ${head}
-  ${body}
-</table>
-</body>
-</html>`;
+  return cleanExcelShell("DNEVNI RADNI IZVEŠTAJI SA TERENA", `${summary}<table>${head}${body}</table>`, `Firma: ${currentCompanyExportName()} · Datum izvoza: ${formatDateOnlyLocal(today())}`);
 }
 
 async function exportCsv() {
@@ -9476,7 +9580,7 @@ async function exportExcelFile() {
     const html = buildExcelHtmlTable();
     const blob = new Blob(["﻿" + html], {type:"application/vnd.ms-excel;charset=utf-8"});
     downloadBlob(blob, `dnevni-izvestaji-${today()}.xls`);
-    toast("Excel tabela je preuzeta. Otvori fajl u Excelu.");
+    toast("Čist Excel fajl je preuzet — kolone su sređene i prazne kolone su sklonjene.");
   } catch(e) {
     toast(e.message, true);
   }
