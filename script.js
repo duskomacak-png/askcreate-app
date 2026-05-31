@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.34.7";
+const APP_VERSION = "1.34.8";
 
 
 let sb = null;
@@ -3175,7 +3175,9 @@ function renderReportReadableDetails(d = {}, options = {}) {
     }
     return "";
   };
-  const tankerLabel = (ft = {}) => firstValue(ft.tanker_registration, ft.tanker_plates, ft.cistern_registration, ft.cistern_plates, ft.tanker_asset_code, ft.tanker_vehicle_code, ft.tanker_asset_name, ft.tanker_vehicle, ft.cistern_vehicle, ft.cistern_name, ft.tanker_manual_vehicle);
+  const tankerPlates = (ft = {}) => firstValue(ft.tanker_registration, ft.tanker_plates, ft.cistern_registration, ft.cistern_plates);
+  const tankerName = (ft = {}) => firstValue(ft.tanker_asset_name, ft.tanker_vehicle, ft.cistern_vehicle, ft.cistern_name, ft.tanker_manual_vehicle, ft.tanker_asset_code, ft.tanker_vehicle_code);
+  const tankerLabel = (ft = {}) => firstValue(tankerPlates(ft), tankerName(ft));
   const fuelKmValue = (entry = {}) => firstValue(entry.km, entry.current_km, entry.asset_kind === "vehicle" ? firstValue(entry.reading, entry.mtc_km) : "");
   const fuelMtcValue = (entry = {}) => firstValue(entry.mtc, entry.current_mtc, entry.asset_kind === "machine" ? firstValue(entry.reading, entry.mtc_km) : "");
   const assetDisplayName = (entry = {}) => firstValue(entry.asset_name, entry.machine, entry.vehicle, entry.other, entry.manual_asset_name, entry.asset_custom, entry.machine_custom, entry.vehicle_custom, entry.other_custom);
@@ -3529,7 +3531,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>#</th>
           <th>Tip sredstva</th>
           <th>Broj sredstva</th>
-          <th>Sredstvo koje je tankovano</th>
+          <th>Mašina / vozilo / ostalo koje prima gorivo</th>
           <th>Litara</th>
           <th>KM</th>
           <th>MTČ</th>
@@ -3555,38 +3557,25 @@ function renderReportReadableDetails(d = {}, options = {}) {
     </table>` : `<p class="report-empty">Nema sipanja goriva.</p>`;
 
   const fieldTankerTable = fieldTankers.length ? `
-    <table class="report-mini-table report-mini-table-tanker">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Gradilište</th>
-          <th>Cisterna / tablice</th>
-          <th>Tip sredstva</th>
-          <th>Broj sredstva</th>
-          <th>Sredstvo koje je tankovano</th>
-          <th>KM</th>
-          <th>MTČ</th>
-          <th>Litara</th>
-          <th>Primio gorivo</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${fieldTankers.map((ft, i) => `
-          <tr>
-            <td>${i + 1}</td>
-            <td>${val(ft.site_name)}</td>
-            <td>${val(tankerLabel(ft))}</td>
-            <td>${val(assetKindLabel(ft.asset_kind))}</td>
-            <td>${val(ft.asset_code)}</td>
-            <td>${val(assetDisplayName(ft))}</td>
-            <td>${val(fuelKmValue(ft))}</td>
-            <td>${val(fuelMtcValue(ft))}</td>
-            <td>${val(ft.liters)}</td>
-            <td>${val(ft.receiver || ft.received_by)}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>` : `<p class="report-empty">Nema terenskih sipanja cisternom.</p>`;
+    <div class="paper-tanker-list">
+      ${fieldTankers.map((ft, i) => `
+        <div class="paper-tanker-card">
+          <div class="paper-tanker-title">${i + 1}. Sipanje goriva cisternom</div>
+          <div class="paper-tanker-grid">
+            <b>Gradilište</b><span>${val(ft.site_name)}</span>
+            <b>Tablice cisterne koja je sipala gorivo</b><span>${val(tankerPlates(ft))}</span>
+            <b>Cisterna koja je sipala gorivo</b><span>${val(tankerName(ft))}</span>
+            <b>Rubrika primaoca goriva</b><span>${val(assetKindLabel(ft.asset_kind))}</span>
+            <b>Broj primaoca</b><span>${val(ft.asset_code)}</span>
+            <b>Mašina / vozilo / ostalo koje prima gorivo</b><span>${val(assetDisplayName(ft))}</span>
+            <b>KM</b><span>${val(fuelKmValue(ft))}</span>
+            <b>MTČ</b><span>${val(fuelMtcValue(ft))}</span>
+            <b>Litara</b><span>${val(ft.liters)}</span>
+            <b>Primio gorivo</b><span>${val(ft.receiver || ft.received_by)}</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>` : `<p class="report-empty">Nema terenskih sipanja cisternom.</p>`;
 
   const materialTable = materialEntries.length ? `
     <table class="report-mini-table">
@@ -4447,7 +4436,7 @@ function buildSingleReportExcelCsv(r) {
   rows.push(["sep=;"]);
   rows.push(["DNEVNI RADNI IZVEŠTAJ SA TERENA - KANCELARIJSKI EXCEL IZVOZ"]);
   rows.push([]);
-  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna", "Tablice cisterne"]);
+  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna koja je sipala gorivo", "Tablice cisterne koja je sipala gorivo"]);
 
   if (machines.length) {
     machines.forEach((m) => rows.push([
@@ -6432,7 +6421,7 @@ function addFieldTankerEntry(values = {}) {
       <option value="other" ${kind === "other" ? "selected" : ""}>Oprema / ostalo</option>
     </select>
 
-    <label>Sredstvo koje je tankovano / interni broj</label>
+    <label>Mašina / vozilo / ostalo koje prima gorivo / interni broj</label>
     <input class="ft-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}" />
     <div class="asset-smart-result ft-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
     <select class="ft-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}</select>
@@ -6696,7 +6685,7 @@ function normalizeStoredFieldTankerEntry(entry = {}, index = 0) {
 function validateFieldTankerEntryForMemory(entry) {
   if (!entry.site_name) return "Cisterna goriva: izaberi ili upiši gradilište/lokaciju za svako sipanje.";
   if (!(entry.tanker_asset_name || entry.tanker_registration || entry.tanker_plates)) return "Cisterna goriva: upiši tablice, interni broj ili naziv cisterne iz koje se sipa gorivo.";
-  if (!entry.asset_name) return "Cisterna goriva: upiši interni broj, naziv ili tablice sredstva koje je tankovano.";
+  if (!entry.asset_name) return "Cisterna goriva: upiši interni broj, naziv ili tablice sredstva koje prima gorivo.";
   const kmValue = String(entry.km || entry.current_km || "").trim();
   const mtcValue = String(entry.mtc || entry.current_mtc || "").trim();
   if (!kmValue && !mtcValue) return "Cisterna goriva: upiši KM ili MTČ za svako sipanje. Dovoljno je jedno od ta dva polja.";
@@ -8275,7 +8264,7 @@ function getFirstFieldTankerValidationIssue() {
     const assetValue = (assetSearch?.value || "").trim();
     if (!siteValue) return { section: "#secFieldTanker", entry: card, field: siteSelect || siteCustom, message: `Cisterna goriva ${n}: izaberi ili upiši gradilište/lokaciju.` };
     if (!(cisternSearch?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: cisternSearch, message: `Cisterna goriva ${n}: upiši tablice, interni broj ili naziv cisterne iz koje se sipa gorivo.` };
-    if (!assetValue) return { section: "#secFieldTanker", entry: card, field: assetSearch, message: `Cisterna goriva ${n}: upiši interni broj, naziv ili tablice sredstva koje je tankovano.` };
+    if (!assetValue) return { section: "#secFieldTanker", entry: card, field: assetSearch, message: `Cisterna goriva ${n}: upiši interni broj, naziv ili tablice sredstva koje prima gorivo.` };
     const kmValue = (km?.value || "").trim();
     const mtcValue = (mtc?.value || "").trim();
     if (!kmValue && !mtcValue) return { section: "#secFieldTanker", entry: card, field: km || mtc, message: `Cisterna goriva ${n}: upiši KM ili MTČ. Dovoljno je jedno od ta dva polja — vozilo obično KM, mašina obično MTČ.` };
@@ -8712,11 +8701,11 @@ const EXPORT_COLUMNS = [
   { key:"fuel_receiver", label:"Primio gorivo" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
   { key:"field_tanker_vehicle_code", label:"Broj cisterne" },
-  { key:"field_tanker_vehicle", label:"Cisterna koja je sipala" },
-  { key:"field_tanker_vehicle_registration", label:"Tablice cisterne" },
-  { key:"field_tanker_type", label:"Kategorija tankovanog sredstva" },
-  { key:"field_tanker_asset_code", label:"Broj tankovanog sredstva" },
-  { key:"field_tanker_asset", label:"Naziv tankovanog sredstva" },
+  { key:"field_tanker_vehicle", label:"Cisterna koja je sipala gorivo" },
+  { key:"field_tanker_vehicle_registration", label:"Tablice cisterne koja je sipala gorivo" },
+  { key:"field_tanker_type", label:"Rubrika primaoca goriva" },
+  { key:"field_tanker_asset_code", label:"Broj primaoca" },
+  { key:"field_tanker_asset", label:"Mašina / vozilo / ostalo koje prima gorivo" },
   { key:"field_tanker_registration", label:"Registracija" },
   { key:"field_tanker_km", label:"KM pri tankovanju cisternom" },
   { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
