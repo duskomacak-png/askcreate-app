@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.34.2";
+const APP_VERSION = "1.34.3";
 
 
 let sb = null;
@@ -4355,11 +4355,11 @@ function excelCleanCell(value) {
     .trim();
 }
 
-function excelTsvRow(values = []) {
-  return values.map(excelCleanCell).join("\t");
+function singleReportCsvRow(values = []) {
+  return values.map(v => csvEscape(excelCleanCell(v))).join(";");
 }
 
-function buildSingleReportExcelTsv(r) {
+function buildSingleReportExcelCsv(r) {
   const d = r.data || {};
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
@@ -4367,127 +4367,88 @@ function buildSingleReportExcelTsv(r) {
   const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
   const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
   const docNo = reportDocumentNumber(r);
+  const base = {
+    datum: formatDateOnlyLocal(r.report_date || d.report_date),
+    firma: currentCompanyExportName(),
+    gradiliste: d.site_name || "",
+    zaposleni: reportPersonName(r),
+    radnoMesto: r.company_users?.function_title || d.function_title || "",
+    status: reportStatusLabel(r.status),
+    vremeSlanja: formatDateTimeLocal(r.submitted_at || r.created_at),
+    dokument: docNo,
+    opis: d.description || d.note || ""
+  };
+
   const rows = [];
-  const add = values => rows.push(excelTsvRow(values));
-  const blank = () => rows.push("");
+  rows.push(["sep=;"]);
+  rows.push(["DNEVNI RADNI IZVEŠTAJ SA TERENA - KANCELARIJSKI EXCEL IZVOZ"]);
+  rows.push([]);
+  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena"]);
 
-  add(["DNEVNI RADNI IZVEŠTAJ SA TERENA"]);
-  add(["Kancelarijski Excel izvoz - svaka rubrika je u posebnoj ćeliji, bez spojenih naslova i bez web formatiranja."]);
-  blank();
-
-  add(["OSNOVNI PODACI"]);
-  add(["Firma", currentCompanyExportName(), "Broj dokumenta", docNo]);
-  add(["Datum izveštaja", formatDateOnlyLocal(r.report_date || d.report_date), "Status", reportStatusLabel(r.status)]);
-  add(["Gradilište", d.site_name || "", "Vreme slanja", formatDateTimeLocal(r.submitted_at || r.created_at)]);
-  add(["Zaposleni", reportPersonName(r), "Radno mesto", r.company_users?.function_title || d.function_title || ""]);
-  add(["Opis rada", d.description || d.note || ""]);
-  blank();
-
-  add(["RAD MAŠINA - KM I MTČ ODVOJENO"]);
-  add(["#", "Broj mašine", "Mašina", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Rad / napomena"]);
   if (machines.length) {
-    machines.forEach((m, i) => add([
-      i + 1,
-      m.asset_code || m.machine_code || "",
-      m.name || "",
-      machineKmStart(m),
-      machineKmEnd(m),
-      machineKmTotal(m),
-      machineMtcStart(m),
-      machineMtcEnd(m),
-      machineMtcTotal(m),
-      m.work || m.description || m.note || ""
+    machines.forEach((m) => rows.push([
+      "Rad mašine", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      m.asset_code || m.machine_code || "", m.name || "",
+      machineKmStart(m), machineKmEnd(m), machineKmTotal(m),
+      machineMtcStart(m), machineMtcEnd(m), machineMtcTotal(m),
+      "", "", "", "", "", "", "", "", "", "", "", "", "", m.work || m.description || m.note || ""
     ]));
-  } else {
-    add(["Nema podataka"]);
   }
-  blank();
 
-  add(["GORIVO"]);
-  add(["#", "Tip sredstva", "Broj", "Sredstvo", "Litara", "KM", "MTČ", "Gorivo sipao", "Gorivo primio"]);
   if (fuels.length) {
-    fuels.forEach((f, i) => add([
-      i + 1,
-      assetKindLabel(f.asset_kind),
-      f.asset_code || "",
-      f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
+    fuels.forEach((f) => rows.push([
+      "Gorivo", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      f.asset_code || "", f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
+      "", "", "", "", "", "",
       f.liters || "",
       f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || "",
       f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || "",
-      f.by || "",
-      f.receiver || d.fuel_receiver || ""
+      f.by || "", f.receiver || d.fuel_receiver || "",
+      "", "", "", "", "", "", "", "", assetKindLabel(f.asset_kind)
     ]));
-  } else {
-    add(["Nema podataka"]);
   }
-  blank();
 
-  add(["VOZILA / TURE"]);
-  add(["#", "Broj", "Vozilo", "Registracija", "KM početak", "KM kraj", "Relacija", "Ture", "m³"]);
   if (vehicles.length) {
-    vehicles.forEach((v, i) => add([
-      i + 1,
-      v.asset_code || v.vehicle_code || "",
-      v.name || v.vehicle || "",
-      v.registration || "",
-      v.km_start || "",
-      v.km_end || "",
-      v.route || "",
-      v.tours || "",
-      v.cubic_m3 || v.cubic_auto || ""
+    vehicles.forEach((v) => rows.push([
+      "Vozilo / tura", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      v.asset_code || v.vehicle_code || "", v.name || v.vehicle || v.registration || "",
+      v.km_start || "", v.km_end || "", numericDiff(v.km_start, v.km_end), "", "", "",
+      "", "", "", "", "", v.route || "", "", v.tours || "", v.cubic_m3 || v.cubic_auto || "", "", "", "", "", ""
     ]));
-  } else {
-    add(["Nema podataka"]);
   }
-  blank();
 
-  add(["MATERIJAL"]);
-  add(["#", "Radnja", "Materijal", "Ture", "Količina po turi", "Ukupno", "Jedinica", "Napomena"]);
   if (materials.length) {
-    materials.forEach((m, i) => add([
-      i + 1,
-      m.action || m.material_action || "",
-      m.material || m.name || "",
-      m.tours || m.material_tours || "",
-      m.per_tour || m.quantity_per_tour || m.material_per_tour || "",
-      materialQuantityValue(m),
-      materialUnitValue(m),
-      m.note || materialCalcText(m) || ""
+    materials.forEach((m) => rows.push([
+      "Materijal", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", m.tours || m.material_tours || "", "",
+      m.material || m.name || "", m.per_tour || m.quantity_per_tour || m.material_per_tour || "", materialQuantityValue(m), materialUnitValue(m), m.note || materialCalcText(m) || ""
     ]));
-  } else {
-    add(["Nema podataka"]);
   }
-  blank();
 
-  add(["TRANSPORT MAŠINE LABUDICOM"]);
-  add(["#", "Tablice", "Od", "Do", "KM početak", "KM kraj", "Mašina / alat"]);
   if (lowloaders.length) {
-    lowloaders.forEach((ll, i) => add([
-      i + 1,
-      ll.plates || ll.registration || "",
-      ll.from_site || ll.from_address || "",
-      ll.to_site || ll.to_address || "",
-      ll.km_start || "",
-      ll.km_end || "",
-      [ll.machine, ll.accompanying_tools || ll.tools].filter(Boolean).join(" / ")
+    lowloaders.forEach((ll) => rows.push([
+      "Transport labudicom", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      ll.plates || ll.registration || "", [ll.machine, ll.accompanying_tools || ll.tools].filter(Boolean).join(" / "),
+      ll.km_start || "", ll.km_end || "", numericDiff(ll.km_start, ll.km_end), "", "", "",
+      "", "", "", "", "", ll.from_site || ll.from_address || "", ll.to_site || ll.to_address || "", "", "", "", "", "", "", ""
     ]));
-  } else {
-    add(["Nema podataka"]);
   }
-  blank();
 
-  add(["Izvoz pripremljen u AskCreate.app. Dokument ostaje u bazi; Excel je izlazni fajl za kancelariju."]);
-  return "\ufeff" + rows.join("\r\n");
+  if (!machines.length && !fuels.length && !vehicles.length && !materials.length && !lowloaders.length) {
+    rows.push(["Nema unetih stavki", base.datum, base.firma, base.gradiliste, base.zaposleni, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis]);
+  }
+
+  return "\ufeff" + rows.map(singleReportCsvRow).join("\r\n");
 }
 
 window.exportSingleReportToExcel = function(id) {
   const r = directorReportsCache.find(x => String(x.id) === String(id));
   if (!r) return toast("Izveštaj nije pronađen.", true);
-  const tsv = buildSingleReportExcelTsv(r);
-  const blob = new Blob([tsv], {type:"application/vnd.ms-excel;charset=utf-8"});
-  const name = safeFilePart(`${reportDocumentTitle(r)}_${r.report_date || today()}_${(r.data || {}).site_name || "izvestaj"}`) + ".xls";
+  const csv = buildSingleReportExcelCsv(r);
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  const name = safeFilePart(`${reportDocumentTitle(r)}_${r.report_date || today()}_${(r.data || {}).site_name || "izvestaj"}`) + ".csv";
   downloadBlob(blob, name);
-  toast("Excel dokument je preuzet u čistom kancelarijskom rasporedu.");
+  toast("Excel/CSV dokument je preuzet — kolone su sada stvarno razdvojene za Excel/LibreOffice.");
 };
 
 function reportHtml(r) {
