@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.34.8";
+const APP_VERSION = "1.34.9";
 
 
 let sb = null;
@@ -3556,26 +3556,44 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </tbody>
     </table>` : `<p class="report-empty">Nema sipanja goriva.</p>`;
 
+  const tankerHeaderText = (() => {
+    const plates = Array.from(new Set(fieldTankers.map(ft => tankerPlates(ft)).filter(v => safe(v))));
+    const names = Array.from(new Set(fieldTankers.map(ft => tankerName(ft)).filter(v => safe(v))));
+    const parts = [];
+    if (plates.length) parts.push(`Tablice: ${plates.map(esc).join(", ")}`);
+    if (names.length) parts.push(`Cisterna: ${names.map(esc).join(", ")}`);
+    return parts.length ? ` <span class="paper-section-note">${parts.join(" · ")}</span>` : "";
+  })();
+
   const fieldTankerTable = fieldTankers.length ? `
-    <div class="paper-tanker-list">
-      ${fieldTankers.map((ft, i) => `
-        <div class="paper-tanker-card">
-          <div class="paper-tanker-title">${i + 1}. Sipanje goriva cisternom</div>
-          <div class="paper-tanker-grid">
-            <b>Gradilište</b><span>${val(ft.site_name)}</span>
-            <b>Tablice cisterne koja je sipala gorivo</b><span>${val(tankerPlates(ft))}</span>
-            <b>Cisterna koja je sipala gorivo</b><span>${val(tankerName(ft))}</span>
-            <b>Rubrika primaoca goriva</b><span>${val(assetKindLabel(ft.asset_kind))}</span>
-            <b>Broj primaoca</b><span>${val(ft.asset_code)}</span>
-            <b>Mašina / vozilo / ostalo koje prima gorivo</b><span>${val(assetDisplayName(ft))}</span>
-            <b>KM</b><span>${val(fuelKmValue(ft))}</span>
-            <b>MTČ</b><span>${val(fuelMtcValue(ft))}</span>
-            <b>Litara</b><span>${val(ft.liters)}</span>
-            <b>Primio gorivo</b><span>${val(ft.receiver || ft.received_by)}</span>
-          </div>
-        </div>
-      `).join("")}
-    </div>` : `<p class="report-empty">Nema terenskih sipanja cisternom.</p>`;
+    <table class="report-mini-table report-mini-table-tanker-clean">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Rubrika</th>
+          <th>Broj</th>
+          <th>Mašina / vozilo / ostalo koje je sipano</th>
+          <th>KM</th>
+          <th>MTČ</th>
+          <th>Litara</th>
+          <th>Primio gorivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${fieldTankers.map((ft, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(assetKindLabel(ft.asset_kind))}</td>
+            <td>${val(ft.asset_code)}</td>
+            <td>${val(assetDisplayName(ft))}</td>
+            <td>${val(fuelKmValue(ft))}</td>
+            <td>${val(fuelMtcValue(ft))}</td>
+            <td>${val(ft.liters)}</td>
+            <td>${val(ft.receiver || ft.received_by)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema terenskih sipanja cisternom.</p>`;
 
   const materialTable = materialEntries.length ? `
     <table class="report-mini-table">
@@ -3689,7 +3707,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </div>` : ""}
 
       ${hasFieldTankers ? `<div class="report-section">
-        <h4>Evidencija goriva – cisterna</h4>
+        <h4>Evidencija goriva – cisterna${tankerHeaderText}</h4>
         ${fieldTankerTable}
       </div>` : ""}
 
