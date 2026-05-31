@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.33.9";
+const APP_VERSION = "1.34.0";
 
 
 let sb = null;
@@ -3991,17 +3991,98 @@ window.closeReportDocumentCenter = function() {
   document.body.classList.remove("report-doc-open", "printing-report-document-center");
 };
 
-window.printReportDocument = function(id) {
+function loadJsPdfForReports() {
+  const jsPDF = window.jspdf?.jsPDF || window.jsPDF;
+  if (jsPDF) return Promise.resolve(jsPDF);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-report-jspdf="1"]');
+    if (existing) {
+      existing.addEventListener("load", () => {
+        const loaded = window.jspdf?.jsPDF || window.jsPDF;
+        loaded ? resolve(loaded) : reject(new Error("PDF print alat nije učitan."));
+      });
+      existing.addEventListener("error", reject);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    script.async = true;
+    script.dataset.reportJspdf = "1";
+    script.onload = () => {
+      const loaded = window.jspdf?.jsPDF || window.jsPDF;
+      loaded ? resolve(loaded) : reject(new Error("PDF print alat nije učitan."));
+    };
+    script.onerror = () => reject(new Error("PDF print alat nije mogao da se učita. Proveri internet vezu."));
+    document.head.appendChild(script);
+  });
+}
+
+async function buildCleanReportPdfBlobUrl(r) {
+  const [html2canvas, jsPDF] = await Promise.all([loadHtml2CanvasForReports(), loadJsPdfForReports()]);
+  const holder = document.createElement("div");
+  holder.className = "report-clean-print-holder";
+  holder.style.position = "fixed";
+  holder.style.left = "-10000px";
+  holder.style.top = "0";
+  holder.style.width = "210mm";
+  holder.style.background = "#ffffff";
+  holder.style.zIndex = "-1";
+  holder.style.pointerEvents = "none";
+  holder.innerHTML = buildReportPaperHtml(r, "clean-print-paper");
+  document.body.appendChild(holder);
+  try {
+    const paper = holder.querySelector(".report-paper-view");
+    if (!paper) throw new Error("A4 dokument nije pronađen za štampu.");
+    paper.style.width = "210mm";
+    paper.style.maxWidth = "210mm";
+    paper.style.minHeight = "297mm";
+    paper.style.margin = "0";
+    paper.style.boxShadow = "none";
+    paper.style.border = "0";
+    paper.style.background = "#ffffff";
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const canvas = await html2canvas(paper, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      scrollX: 0,
+      scrollY: 0
+    });
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
+    const imgData = canvas.toDataURL("image/jpeg", 0.98);
+    pdf.addImage(imgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    if (typeof pdf.autoPrint === "function") pdf.autoPrint({ variant: "non-conform" });
+    return pdf.output("bloburl");
+  } finally {
+    holder.remove();
+  }
+}
+
+window.printReportDocument = async function(id) {
   const r = directorReportsCache.find(x => String(x.id) === String(id));
   if (!r) return toast("Izveštaj nije pronađen.", true);
-  const html = buildStandaloneReportPrintHtml(r);
-  const w = window.open("", "_blank");
-  if (!w) return toast("Browser je blokirao novi prozor. Dozvoli pop-up za askcreate.app.", true);
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-  toast("Za direktnu štampu u Chrome opcijama isključi Headers and footers/Zaglavlja i podnožja. PDF dugme pravi čist dokument automatski.");
-  setTimeout(() => { try { w.focus(); w.print(); } catch(e) {} }, 350);
+  try {
+    toast("Pripremam čistu A4 štampu bez datuma i duplog naslova...");
+    const pdfUrl = await buildCleanReportPdfBlobUrl(r);
+    const w = window.open(pdfUrl, "_blank");
+    if (!w) {
+      const a = document.createElement("a");
+      a.href = pdfUrl;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast("Otvoren je čist PDF za štampu. Ako browser blokira automatsku štampu, pritisni Print u PDF prikazu.");
+      return;
+    }
+    setTimeout(() => { try { w.focus(); } catch(e) {} }, 300);
+    toast("Otvoren je čist A4 dokument za štampu, bez Chrome datuma i zaglavlja.");
+  } catch (e) {
+    document.querySelectorAll(".report-clean-print-holder").forEach(x => x.remove());
+    toast(e.message || "Čista štampa nije uspela.", true);
+  }
 };
 
 function loadHtml2PdfForReports() {
