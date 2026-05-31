@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.35.0";
+const APP_VERSION = "1.35.1";
 
 
 let sb = null;
@@ -5954,6 +5954,10 @@ function workerSetSections(perms) {
     const el = $(sel);
     if (el) el.classList.toggle("active", !!perms[key]);
   });
+
+  // Za cisternu postoji posebna memorija sipanja, pa ne prikazujemo dodatno dugme "Sačuvaj kao nacrt" da ne zbunjuje vozača.
+  const draftBtn = $("#saveDraftBtn");
+  if (draftBtn) draftBtn.classList.toggle("hidden", !!perms.field_tanker);
 }
 
 
@@ -6364,6 +6368,103 @@ function updateFieldTankerCisternSmartResult(entryEl, asset, manualValue) {
   result.textContent = "Upiši tablice, interni broj ili naziv cisterne iz Direkcije.";
 }
 
+
+function getGlobalFieldTankerCisternSearchValue() {
+  return $("#fieldTankerCisternSearch")?.value.trim() || getCurrentFieldTankerCisternSearchValue();
+}
+
+function updateGlobalFieldTankerCisternResult(asset, manualValue) {
+  const result = $("#fieldTankerCisternPicked");
+  if (!result) return;
+  if (asset) {
+    const reg = getAssetRegistration(asset);
+    result.className = "asset-smart-result ok";
+    result.textContent = `Pronađena cisterna iz Direkcije: ${formatAssetLabel(asset)}${reg ? ` · tablice ${reg}` : ""}`;
+    return;
+  }
+  const value = String(manualValue || "").trim();
+  if (value) {
+    result.className = "asset-smart-result warn";
+    result.textContent = `Cisterna nije pronađena u vozilima Direkcije. Biće poslato ručno: ${value}`;
+    return;
+  }
+  result.className = "asset-smart-result";
+  result.textContent = "Upiši tablice, interni broj ili naziv cisterne iz Direkcije.";
+}
+
+function refreshGlobalFieldTankerCisternSelect() {
+  const searchInput = $("#fieldTankerCisternSearch");
+  const select = $("#fieldTankerCisternSelect");
+  const custom = $("#fieldTankerCisternCustom");
+  if (!searchInput || !select) return;
+  const searchNow = searchInput.value.trim();
+  const asset = findFieldTankerCisternVehicleForSmartInput(searchNow);
+  const selectedValue = asset ? (getAssetRegistration(asset) || getAssetCode(asset) || getAssetName(asset)) : searchNow;
+  select.innerHTML = buildFieldTankerCisternVehicleOptionsHtml(selectedValue, searchNow);
+  if (asset) {
+    const name = getAssetName(asset) || getAssetRegistration(asset) || getAssetCode(asset) || "";
+    if (Array.from(select.options).some(o => o.value === name)) select.value = name;
+    if (custom) custom.value = "";
+    updateGlobalFieldTankerCisternResult(asset, "");
+    writeCurrentFieldTankerCistern({
+      tanker_asset_id: asset.id || "",
+      tanker_asset_code: getAssetCode(asset) || "",
+      tanker_asset_name: getAssetName(asset) || searchNow,
+      tanker_registration: getAssetRegistration(asset) || searchNow,
+      tanker_vehicle: getAssetName(asset) || searchNow,
+      cistern_vehicle: getAssetName(asset) || searchNow,
+      cistern_registration: getAssetRegistration(asset) || searchNow
+    });
+  } else {
+    if (custom) custom.value = searchNow;
+    updateGlobalFieldTankerCisternResult(null, searchNow);
+    if (searchNow) {
+      writeCurrentFieldTankerCistern({
+        tanker_asset_name: searchNow,
+        tanker_registration: searchNow,
+        tanker_vehicle: searchNow,
+        cistern_vehicle: searchNow,
+        cistern_registration: searchNow,
+        tanker_manual_vehicle: searchNow
+      });
+    }
+  }
+}
+
+function initGlobalFieldTankerCisternBox() {
+  const input = $("#fieldTankerCisternSearch");
+  if (!input) return;
+  const saved = getCurrentFieldTankerCisternSearchValue();
+  if (saved && !input.value) input.value = saved;
+  refreshGlobalFieldTankerCisternSelect();
+  input.addEventListener("input", refreshGlobalFieldTankerCisternSelect);
+  input.addEventListener("change", refreshGlobalFieldTankerCisternSelect);
+}
+
+function getFieldTankerGlobalCisternData() {
+  const search = getGlobalFieldTankerCisternSearchValue();
+  const select = $("#fieldTankerCisternSelect");
+  const option = select?.options ? select.options[select.selectedIndex] : null;
+  const manual = $("#fieldTankerCisternCustom")?.value.trim() || "";
+  const asset = findFieldTankerCisternVehicleForSmartInput(search);
+  const name = asset ? (getAssetName(asset) || search) : (manual || search);
+  const reg = asset ? getAssetRegistration(asset) : (option?.dataset?.registration || search);
+  return {
+    tanker_asset_id: asset?.id || (manual ? null : (option?.dataset?.assetId || null)),
+    tanker_asset_code: asset ? (getAssetCode(asset) || "") : (manual ? "" : (option?.dataset?.assetCode || "")),
+    tanker_asset_name: name,
+    tanker_asset_custom: manual,
+    tanker_registration: reg,
+    tanker_plates: reg,
+    tanker_vehicle: name,
+    tanker_vehicle_code: asset ? (getAssetCode(asset) || "") : (manual ? "" : (option?.dataset?.assetCode || "")),
+    tanker_manual_vehicle: manual,
+    cistern_vehicle: name,
+    cistern_registration: reg,
+    cistern_plates: reg
+  };
+}
+
 function refreshFieldTankerSelectors() {
   $$("#fieldTankerEntries .field-tanker-entry").forEach(card => {
     const siteSelect = card.querySelector(".ft-site-select");
@@ -6421,6 +6522,11 @@ function addFieldTankerEntry(values = {}) {
   const selectedCisternVehicle = values.tanker_asset_name || values.tanker_vehicle || values.cistern_vehicle || values.cistern_name || "";
   const manualCisternVehicle = values.tanker_asset_custom || values.tanker_manual_vehicle || values.cistern_custom || "";
   const cisternSearchValue = values.tanker_asset_code || values.tanker_vehicle_code || values.cistern_code || values.tanker_registration || values.tanker_plates || values.cistern_registration || values.cistern_plates || manualCisternVehicle || selectedCisternVehicle || "";
+  const globalCisternInput = $("#fieldTankerCisternSearch");
+  if (globalCisternInput && !globalCisternInput.value.trim() && cisternSearchValue) {
+    globalCisternInput.value = cisternSearchValue;
+    setTimeout(refreshGlobalFieldTankerCisternSelect, 0);
+  }
   const div = document.createElement("div");
   div.className = "entry-card field-tanker-entry";
   div.innerHTML = `
@@ -6436,12 +6542,13 @@ function addFieldTankerEntry(values = {}) {
     <label>Upiši naziv gradilište ako nije u listi</label>
     <input class="ft-site-custom" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.site_custom || values.manual_site || "")}" />
 
-    <label>Cisterna / vozilo koje sipa gorivo</label>
-    <input class="ft-cistern-search asset-code-search smart-asset-input" placeholder="upiši tablice, interni broj ili naziv cisterne" value="${escapeHtml(cisternSearchValue)}" />
-    <div class="asset-smart-result ft-cistern-picked">Upiši tablice, interni broj ili naziv cisterne iz Direkcije.</div>
-    <select class="ft-cistern-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerCisternVehicleOptionsHtml(selectedCisternVehicle || cisternSearchValue, cisternSearchValue)}</select>
-    <input class="ft-cistern-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualCisternVehicle)}" />
-    <p class="field-hint">Ovo je cisterna iz koje se sipa gorivo. Biraj vozilo iz spiska Direkcije, da se zna tačno sa kojim tablicama je gorivo sipano.</p>
+    <div class="field-tanker-entry-cistern-block hidden" aria-hidden="true">
+      <label>Cisterna / vozilo koje sipa gorivo</label>
+      <input class="ft-cistern-search asset-code-search smart-asset-input" placeholder="upiši tablice, interni broj ili naziv cisterne" value="${escapeHtml(cisternSearchValue)}" />
+      <div class="asset-smart-result ft-cistern-picked">Upiši tablice, interni broj ili naziv cisterne iz Direkcije.</div>
+      <select class="ft-cistern-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerCisternVehicleOptionsHtml(selectedCisternVehicle || cisternSearchValue, cisternSearchValue)}</select>
+      <input class="ft-cistern-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualCisternVehicle)}" />
+    </div>
 
     <label>Vrsta sredstva koje prima gorivo</label>
     <select class="ft-asset-kind">
@@ -6450,7 +6557,7 @@ function addFieldTankerEntry(values = {}) {
       <option value="other" ${kind === "other" ? "selected" : ""}>Oprema / ostalo</option>
     </select>
 
-    <label>Mašina / vozilo / ostalo koje prima gorivo / interni broj</label>
+    <label>Broj / naziv sredstva koje prima gorivo</label>
     <input class="ft-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}" />
     <div class="asset-smart-result ft-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
     <select class="ft-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1">${buildFieldTankerAssetOptionsHtml(kind, selectedAsset, values.asset_code || values.field_tanker_asset_code || manualAsset || selectedAsset || "")}</select>
@@ -6541,13 +6648,14 @@ function getFieldTankerEntries() {
     const siteOption = siteSelect?.options ? siteSelect.options[siteSelect.selectedIndex] : null;
     const manualSite = el.querySelector(".ft-site-custom")?.value.trim() || "";
     const site = manualSite || (siteSelect?.value || "").trim();
-    const cisternSearch = el.querySelector(".ft-cistern-search")?.value.trim() || "";
+    const globalCistern = getFieldTankerGlobalCisternData();
+    const cisternSearch = getGlobalFieldTankerCisternSearchValue() || el.querySelector(".ft-cistern-search")?.value.trim() || "";
     const cisternSelect = el.querySelector(".ft-cistern-select");
     const cisternOption = cisternSelect?.options ? cisternSelect.options[cisternSelect.selectedIndex] : null;
-    const manualCistern = el.querySelector(".ft-cistern-custom")?.value.trim() || "";
+    const manualCistern = globalCistern.tanker_manual_vehicle || el.querySelector(".ft-cistern-custom")?.value.trim() || "";
     const cisternAsset = findFieldTankerCisternVehicleForSmartInput(cisternSearch);
-    const cisternName = cisternAsset ? (getAssetName(cisternAsset) || cisternSearch) : (manualCistern || cisternSearch);
-    const cisternRegistration = cisternAsset ? getAssetRegistration(cisternAsset) : (cisternOption?.dataset?.registration || cisternSearch);
+    const cisternName = globalCistern.tanker_asset_name || (cisternAsset ? (getAssetName(cisternAsset) || cisternSearch) : (manualCistern || cisternSearch));
+    const cisternRegistration = globalCistern.tanker_registration || (cisternAsset ? getAssetRegistration(cisternAsset) : (cisternOption?.dataset?.registration || cisternSearch));
     const kind = el.querySelector(".ft-asset-kind")?.value || "machine";
     const assetSelect = el.querySelector(".ft-asset-select");
     const assetOption = assetSelect?.options ? assetSelect.options[assetSelect.selectedIndex] : null;
@@ -6563,15 +6671,15 @@ function getFieldTankerEntries() {
       site_id: manualSite ? null : (siteOption?.dataset?.siteId || null),
       site_name: site,
       site_custom: manualSite,
-      tanker_asset_id: cisternAsset?.id || (manualCistern ? null : (cisternOption?.dataset?.assetId || null)),
-      tanker_asset_code: cisternAsset ? (getAssetCode(cisternAsset) || "") : (manualCistern ? "" : (cisternOption?.dataset?.assetCode || "")),
+      tanker_asset_id: globalCistern.tanker_asset_id || cisternAsset?.id || (manualCistern ? null : (cisternOption?.dataset?.assetId || null)),
+      tanker_asset_code: globalCistern.tanker_asset_code || (cisternAsset ? (getAssetCode(cisternAsset) || "") : (manualCistern ? "" : (cisternOption?.dataset?.assetCode || ""))),
       tanker_asset_name: cisternName,
-      tanker_asset_custom: manualCistern,
+      tanker_asset_custom: globalCistern.tanker_asset_custom || manualCistern,
       tanker_registration: cisternRegistration,
       tanker_plates: cisternRegistration,
       tanker_vehicle: cisternName,
-      tanker_vehicle_code: cisternAsset ? (getAssetCode(cisternAsset) || "") : (manualCistern ? "" : (cisternOption?.dataset?.assetCode || "")),
-      tanker_manual_vehicle: manualCistern,
+      tanker_vehicle_code: globalCistern.tanker_vehicle_code || (cisternAsset ? (getAssetCode(cisternAsset) || "") : (manualCistern ? "" : (cisternOption?.dataset?.assetCode || ""))),
+      tanker_manual_vehicle: globalCistern.tanker_manual_vehicle || manualCistern,
       cistern_vehicle: cisternName,
       cistern_registration: cisternRegistration,
       cistern_plates: cisternRegistration,
@@ -6651,6 +6759,17 @@ function writeCurrentFieldTankerCistern(data = {}) {
 
 function clearCurrentFieldTankerCistern() {
   try { localStorage.removeItem(getFieldTankerCurrentCisternKey()); } catch(e) {}
+  const input = $("#fieldTankerCisternSearch");
+  const select = $("#fieldTankerCisternSelect");
+  const custom = $("#fieldTankerCisternCustom");
+  const result = $("#fieldTankerCisternPicked");
+  if (input) input.value = "";
+  if (select) select.innerHTML = "";
+  if (custom) custom.value = "";
+  if (result) {
+    result.className = "asset-smart-result";
+    result.textContent = "Upiši tablice, interni broj ili naziv cisterne iz Direkcije.";
+  }
 }
 
 function getCurrentFieldTankerCisternSearchValue() {
@@ -8283,7 +8402,7 @@ function getFirstFieldTankerValidationIssue() {
     const n = i + 1;
     const siteSelect = card.querySelector(".ft-site-select");
     const siteCustom = card.querySelector(".ft-site-custom");
-    const cisternSearch = card.querySelector(".ft-cistern-search");
+    const cisternSearch = $("#fieldTankerCisternSearch") || card.querySelector(".ft-cistern-search");
     const assetSearch = card.querySelector(".ft-asset-search");
     const km = card.querySelector(".ft-km");
     const mtc = card.querySelector(".ft-mtc");
@@ -8292,7 +8411,7 @@ function getFirstFieldTankerValidationIssue() {
     const siteValue = (siteCustom?.value || "").trim() || (siteSelect?.value || "").trim();
     const assetValue = (assetSearch?.value || "").trim();
     if (!siteValue) return { section: "#secFieldTanker", entry: card, field: siteSelect || siteCustom, message: `Cisterna goriva ${n}: izaberi ili upiši gradilište/lokaciju.` };
-    if (!(cisternSearch?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: cisternSearch, message: `Cisterna goriva ${n}: upiši tablice, interni broj ili naziv cisterne iz koje se sipa gorivo.` };
+    if (!(cisternSearch?.value || "").trim()) return { section: "#secFieldTanker", entry: card, field: cisternSearch, message: `Cisterna goriva: prvo gore upiši tablice / cisternu koja sipa gorivo.` };
     if (!assetValue) return { section: "#secFieldTanker", entry: card, field: assetSearch, message: `Cisterna goriva ${n}: upiši interni broj, naziv ili tablice sredstva koje prima gorivo.` };
     const kmValue = (km?.value || "").trim();
     const mtcValue = (mtc?.value || "").trim();
@@ -10326,6 +10445,7 @@ function bindEvents() {
   if ($("#memorizeFieldTankerBtn")) $("#memorizeFieldTankerBtn").addEventListener("click", memorizeCurrentFieldTankerEntries);
   if ($("#sendStoredFieldTankerBtn")) $("#sendStoredFieldTankerBtn").addEventListener("click", sendStoredFieldTankerEntries);
   if ($("#clearStoredFieldTankerBtn")) $("#clearStoredFieldTankerBtn").addEventListener("click", clearStoredFieldTankerEntries);
+  initGlobalFieldTankerCisternBox();
 
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
   if ($("#workerInstallBtn")) $("#workerInstallBtn").addEventListener("click", installWorkerApp);

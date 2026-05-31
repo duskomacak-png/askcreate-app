@@ -6015,12 +6015,10 @@ button:hover,
 .paper-tanker-grid b:nth-last-child(2),.paper-tanker-grid span:last-child{border-bottom:0;}
 @media(max-width:720px){.paper-tanker-grid{grid-template-columns:1fr}.paper-tanker-grid b{border-right:0;border-bottom:0;padding-bottom:2px}.paper-tanker-grid span{padding-top:2px}}
 .paper-section-note{font-size:0.76em;font-weight:800;color:#4d5a52;margin-left:8px;text-transform:none;letter-spacing:0;}
-.report-mini-table-tanker-clean th:nth-child(1),.report-mini-table-tanker-clean td:nth-child(1){width:30px;text-align:center;}
-.report-mini-table-tanker-clean th:nth-child(2),.report-mini-table-tanker-clean td:nth-child(2){width:46px;text-align:center;}
-.report-mini-table-tanker-clean th:nth-child(3),.report-mini-table-tanker-clean td:nth-child(3),
-.report-mini-table-tanker-clean th:nth-child(4),.report-mini-table-tanker-clean td:nth-child(4),
-.report-mini-table-tanker-clean th:nth-child(5),.report-mini-table-tanker-clean td:nth-child(5){width:116px;}
+.report-mini-table-tanker-clean th:nth-child(1),.report-mini-table-tanker-clean td:nth-child(1){width:34px;text-align:center;}
+.report-mini-table-tanker-clean th:nth-child(2),.report-mini-table-tanker-clean td:nth-child(2){width:92px;}
+.report-mini-table-tanker-clean th:nth-child(3),.report-mini-table-tanker-clean td:nth-child(3){width:58px;text-align:center;}
+.report-mini-table-tanker-clean th:nth-child(5),.report-mini-table-tanker-clean td:nth-child(5),
 .report-mini-table-tanker-clean th:nth-child(6),.report-mini-table-tanker-clean td:nth-child(6),
-.report-mini-table-tanker-clean th:nth-child(7),.report-mini-table-tanker-clean td:nth-child(7),
-.report-mini-table-tanker-clean th:nth-child(8),.report-mini-table-tanker-clean td:nth-child(8){width:54px;text-align:center;}
-.report-mini-table-tanker-clean th:nth-child(9),.report-mini-table-tanker-clean td:nth-child(9){width:96px;}
+.report-mini-table-tanker-clean th:nth-child(7),.report-mini-table-tanker-clean td:nth-child(7){width:58px;text-align:center;}
+.report-mini-table-tanker-clean th:nth-child(8),.report-mini-table-tanker-clean td:nth-child(8){width:105px;}

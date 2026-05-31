@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1350" />
+  <link rel="stylesheet" href="style.css?v=1351" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1125,7 +1125,15 @@
 
         <div id="secFieldTanker" class="dyn-section">
           <h4>Evidencija goriva – cisterna</h4>
-          <p class="hint">Ova rubrika se koristi za evidenciju goriva koje cisterna isporučuje na gradilištu. Svako sipanje se unosi posebno.</p>
+          <p class="hint">Prvo upiši tablice / cisternu koja sipa gorivo. Aplikacija ih pamti za ovaj dnevni izveštaj dok ga ne pošalješ Upravi.</p>
+          <div id="fieldTankerCisternBox" class="entry-card field-tanker-cistern-box">
+            <label>Tablice / cisterna koja sipa gorivo</label>
+            <input id="fieldTankerCisternSearch" class="asset-code-search smart-asset-input" placeholder="npr. BG123BG, interni broj ili naziv cisterne" autocomplete="off" />
+            <div id="fieldTankerCisternPicked" class="asset-smart-result">Upiši tablice, interni broj ili naziv cisterne iz Direkcije.</div>
+            <select id="fieldTankerCisternSelect" class="hidden-asset-select" aria-hidden="true" tabindex="-1"></select>
+            <input id="fieldTankerCisternCustom" class="hidden-asset-custom" type="hidden" />
+            <p class="field-hint">Ovo se unosi jednom za ceo izveštaj. Svako sipanje ispod automatski koristi iste tablice cisterne.</p>
+          </div>
           <div id="fieldTankerEntries" class="entry-list"></div>
           <button id="addFieldTankerBtn" class="secondary" type="button" onclick="addFieldTankerEntry()">+ Dodaj sipanje</button>
 
@@ -1265,6 +1273,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1350"></script>
+  <script src="script.js?v=1351"></script>
 </body>
 </html>
