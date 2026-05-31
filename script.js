@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.36.9";
+const APP_VERSION = "1.37.0";
 
 
 let sb = null;
@@ -2116,6 +2116,7 @@ window.deleteReportPermanently = async (id) => {
       .eq("company_id", currentCompany.id);
     if (error) throw error;
 
+    removeLocalArchivedReport(id);
     toast("Izveštaj je trajno obrisan iz baze.");
     closeReportDocumentCenter?.();
     await loadReports();
@@ -3104,6 +3105,49 @@ async function directorDirectListArchivedReports() {
   return Array.isArray(data) ? data : [];
 }
 
+
+function directorArchiveLocalKey() {
+  return `askcreate_archived_reports_${currentCompany?.id || "no_company"}`;
+}
+
+function loadLocalArchivedReports() {
+  if (!currentCompany?.id) return [];
+  try {
+    const raw = localStorage.getItem(directorArchiveLocalKey());
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(r => r && r.id) : [];
+  } catch (e) {
+    console.warn("AskCreate.app: lokalna arhiva nije učitana:", e.message);
+    return [];
+  }
+}
+
+function writeLocalArchivedReports(list) {
+  if (!currentCompany?.id) return;
+  try {
+    localStorage.setItem(directorArchiveLocalKey(), JSON.stringify(Array.isArray(list) ? list.slice(0, 500) : []));
+  } catch (e) {
+    console.warn("AskCreate.app: lokalna arhiva nije upisana:", e.message);
+  }
+}
+
+function saveLocalArchivedReport(report) {
+  if (!report?.id || !currentCompany?.id) return;
+  const archivedReport = {
+    ...report,
+    status: "archived",
+    updated_at: new Date().toISOString()
+  };
+  const map = new Map(loadLocalArchivedReports().map(r => [String(r.id), r]));
+  map.set(String(archivedReport.id), archivedReport);
+  writeLocalArchivedReports(Array.from(map.values()));
+}
+
+function removeLocalArchivedReport(id) {
+  if (!id || !currentCompany?.id) return;
+  writeLocalArchivedReports(loadLocalArchivedReports().filter(r => String(r.id) !== String(id)));
+}
+
 function mergeReportsById(primary = [], extra = []) {
   const map = new Map();
   [...primary, ...extra].forEach(r => {
@@ -3394,7 +3438,8 @@ async function loadReports(options = {}) {
   try {
     const activeReports = await directorRpcListReports();
     const archivedReports = await directorDirectListArchivedReports();
-    data = mergeReportsById(activeReports, archivedReports);
+    const localArchivedReports = loadLocalArchivedReports();
+    data = mergeReportsById(mergeReportsById(activeReports, archivedReports), localArchivedReports);
   } catch (error) {
     if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
     else toast(error.message, true);
@@ -5005,15 +5050,40 @@ window.setReportStatus = async (id, status) => {
 };
 
 window.archiveReport = async (id) => {
-  if (!confirm("Arhivirati izveštaj?\n\nIzveštaj ostaje u bazi, ali se sklanja iz aktivne liste.")) return;
+  if (!confirm("Arhivirati izveštaj?\n\nIzveštaj ostaje u bazi, ali se sklanja iz aktivne liste i prelazi u karticu Arhiva.")) return;
+  const existingReport = directorReportsCache.find(r => String(r.id) === String(id));
   try {
     await directorRpcArchiveReport(id);
   } catch (error) {
-    return toast(error.message || String(error), true);
+    try {
+      const { error: directError } = await sb
+        .from("reports")
+        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("company_id", currentCompany.id);
+      if (directError) throw directError;
+    } catch (fallbackError) {
+      return toast((error?.message || fallbackError?.message || String(error)), true);
+    }
   }
-  toast("Izveštaj je arhiviran. Podaci ostaju sačuvani u bazi.");
+
+  if (existingReport) {
+    saveLocalArchivedReport(existingReport);
+    directorReportsCache = directorReportsCache.map(r => String(r.id) === String(id) ? { ...r, status: "archived", updated_at: new Date().toISOString() } : r);
+    businessUpdateReportsMetrics(directorReportsCache);
+    renderFuelReportsList();
+    renderArchiveList();
+    renderDefectsList();
+    const reportsBox = document.getElementById("reportsList");
+    if (reportsBox) {
+      const dailyReports = directorReportsCache.filter(isPendingDirectorReport);
+      reportsBox.innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
+    }
+  }
+
+  toast("Izveštaj je arhiviran i prebačen u karticu Arhiva.");
   closeReportDocumentCenter?.();
-  loadReports();
+  await loadReports({ silent: true });
 };
 
 window.returnReport = async (id) => {
