@@ -6087,3 +6087,5 @@ button:hover,
   .people-register-filter,
   .people-register-actions-filtered .small-action{width:100%;}
 }
+
+/* v1.35.6 — Filter radnog mesta sada filtrira i prikazanu evidenciju zaposlenih, ne samo CSV/štampu. */

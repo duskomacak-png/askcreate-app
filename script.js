@@ -2298,6 +2298,14 @@ function renderPersonItem(p) {
   `;
 }
 
+function renderPeopleRegisterList() {
+  const list = $("#peopleList");
+  if (!list) return;
+  const people = filteredDirectorPeopleForRegister();
+  const roleLabel = peopleRegisterRoleLabel();
+  list.innerHTML = people.map(renderPersonItem).join("") || `<p class="muted">Nema zaposlenih za prikaz: ${escapeHtml(roleLabel)}.</p>`;
+}
+
 async function loadPeople() {
   if (!currentCompany) return;
 
@@ -2313,9 +2321,7 @@ async function loadPeople() {
   directorPeopleCache = data || [];
   updateSmartExportDatalists();
   businessUpdatePeopleCount(data || []);
-  const list = $("#peopleList");
-  if (!list) return;
-  list.innerHTML = (data || []).map(renderPersonItem).join("") || `<p class="muted">Nema dodatih osoba.</p>`;
+  renderPeopleRegisterList();
 }
 
 function sortedDirectorPeopleForRegister() {
@@ -2408,6 +2414,13 @@ function printPeopleRegister() {
 
 window.downloadPeopleRegister = downloadPeopleRegister;
 window.printPeopleRegister = printPeopleRegister;
+window.renderPeopleRegisterList = renderPeopleRegisterList;
+
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.id === "peopleRegisterRoleFilter") {
+    renderPeopleRegisterList();
+  }
+});
 
 async function loadSites() {
   if (!currentCompany) return;
