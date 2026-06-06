@@ -6300,3 +6300,123 @@ button:hover,
   #fuelReportsList .fuel-report-card .report-list-grid > div{border-right:0!important;border-bottom:1px solid #edf3ee!important;}
   #fuelReportsList .fuel-report-card .report-list-grid > div:last-child{border-bottom:0!important;}
 }
+
+/* === AskCreate: Dnevnik rada + Karnet pregledi === */
+.office-forms-card {
+  overflow: hidden;
+}
+.office-form-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  background: rgba(255,255,255,.035);
+}
+.office-form-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted, #aeb7b0);
+  font-weight: 700;
+}
+.office-form-preview {
+  display: grid;
+  gap: 16px;
+}
+.office-form-preview section {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.16);
+}
+.office-form-preview h4 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.office-form-titlebar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(83, 210, 119, .22);
+  background: linear-gradient(135deg, rgba(83,210,119,.12), rgba(255,255,255,.035));
+}
+.office-form-titlebar b {
+  display: block;
+  font-size: 18px;
+}
+.office-form-titlebar span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted, #aeb7b0);
+  font-size: 13px;
+}
+.office-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  align-content: flex-start;
+}
+.office-badges span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(83,210,119,.12);
+  border: 1px solid rgba(83,210,119,.22);
+  color: #dfffe7;
+  font-size: 12px;
+  font-weight: 800;
+}
+.office-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.office-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.office-table th,
+.office-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  text-align: left;
+  vertical-align: top;
+}
+.office-table th {
+  background: rgba(255,255,255,.055);
+  color: #eaf7ee;
+  font-weight: 900;
+}
+.office-table tr:last-child td {
+  border-bottom: 0;
+}
+.office-empty {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255,255,255,.16);
+  background: rgba(255,255,255,.03);
+}
+@media (max-width: 900px) {
+  .office-form-filters {
+    grid-template-columns: 1fr;
+  }
+  .office-form-titlebar {
+    flex-direction: column;
+  }
+  .office-badges {
+    justify-content: flex-start;
+  }
+}

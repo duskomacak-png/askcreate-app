@@ -250,6 +250,10 @@ function businessUpdateReportsMetrics(list) {
   const todayIso = today();
   const todayDefects = reports.filter(r => String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
   const archived = reports.filter(isArchivedReport).length;
+  const todayDailyLogReports = reports.filter(r => officeReportMatchesDateSite(r, todayIso, todayIso, "")).length;
+  const todayCarnetRows = officeMetricCarnetRowsForToday(reports);
+  businessSetText("directorMetricDailyLog", String(todayDailyLogReports));
+  businessSetText("directorMetricCarnet", String(todayCarnetRows));
   businessSetText("directorMetricFuel", fuelReportCountLabel(fuelReports.length));
   businessSetText("directorMetricFuelLabel", fuel > 0 ? `Gorivo danas · ${fuel} L` : "Gorivo danas");
   businessSetText("directorMetricDefectsToday", String(todayDefects));
@@ -3457,7 +3461,283 @@ async function loadReports(options = {}) {
   renderFuelReportsList();
   renderArchiveList();
   renderExportPanel();
+  officeFillSiteDatalists();
+  if (document.getElementById("tabDailyLog")?.classList.contains("active")) renderDailyLogPreview();
+  if (document.getElementById("tabCarnet")?.classList.contains("active")) renderCarnetPreview();
 }
+
+// === AskCreate v-karnet: Dnevnik rada + Karnet pregledi za Direkciju ===
+function officeReportDate(r = {}) {
+  return String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10);
+}
+
+function officeReportSite(r = {}) {
+  const d = r.data || {};
+  return String(d.site_name || d.site || r.site_name || "").trim();
+}
+
+function officePersonLabel(r = {}) {
+  const d = r.data || {};
+  return reportDocumentPerson(r) || reportPersonName(r) || d.created_by_worker || d.worker_name || "—";
+}
+
+function officeReportMatchesDateSite(r, from = "", to = "", site = "") {
+  if (!r || isArchivedReport(r)) return false;
+  const date = officeReportDate(r);
+  if (from && date && date < from) return false;
+  if (to && date && date > to) return false;
+  const siteQ = normalizeSearch(site || "");
+  if (siteQ && !normalizeSearch(officeReportSite(r)).includes(siteQ)) return false;
+  return true;
+}
+
+function officeFillSiteDatalists() {
+  const options = activeDirectorSites().map(s => exportOptionHtml(s.name, [s.location, "gradilište"].filter(Boolean).join(" · "))).join("");
+  ["dailyLogSiteList", "carnetSiteList"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = options;
+  });
+}
+
+function officeEnsureDefaultDates() {
+  const t = today();
+  if (document.getElementById("dailyLogDate") && !document.getElementById("dailyLogDate").value) document.getElementById("dailyLogDate").value = t;
+  if (document.getElementById("carnetFrom") && !document.getElementById("carnetFrom").value) document.getElementById("carnetFrom").value = t;
+  if (document.getElementById("carnetTo") && !document.getElementById("carnetTo").value) document.getElementById("carnetTo").value = t;
+}
+
+function officeMetricCarnetRowsForToday(reports = []) {
+  const t = today();
+  return reports.filter(r => officeReportMatchesDateSite(r, t, t, "")).reduce((sum, r) => {
+    const d = r.data || {};
+    return sum
+      + (Array.isArray(d.workers) ? d.workers.length : (Array.isArray(d.worker_entries) ? d.worker_entries.length : (d.hours ? 1 : 0)))
+      + (Array.isArray(d.machines) ? d.machines.length : 0)
+      + (Array.isArray(d.vehicles) ? d.vehicles.length : 0);
+  }, 0);
+}
+
+function officeTable(headers = [], rows = []) {
+  if (!rows.length) return `<p class="muted office-empty">Nema podataka za ovu rubriku.</p>`;
+  return `<div class="office-table-wrap"><table class="office-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(v => `<td>${escapeHtml(v === undefined || v === null ? "" : String(v))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function officeBuildDailyLogData(date, site) {
+  const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSite(r, date, date, site));
+  const workers = [];
+  const machines = [];
+  const vehicles = [];
+  const fuels = [];
+  const materials = [];
+  const defects = [];
+
+  reports.forEach(r => {
+    const d = r.data || {};
+    const reportPerson = officePersonLabel(r);
+    const reportSite = officeReportSite(r) || site || "—";
+    const workerRows = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
+    if (workerRows.length) {
+      workerRows.forEach(w => workers.push([
+        reportSite,
+        w.employee_number || w.worker_number || "",
+        w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || reportPerson,
+        w.function_title || w.role || "",
+        w.hours || "",
+        d.description || ""
+      ]));
+    } else if (d.hours || d.description) {
+      workers.push([reportSite, reportEmployeeNumber(r) || "", reportPerson, r.company_users?.function_title || d.function_title || "", d.hours || "", d.description || ""]);
+    }
+
+    (Array.isArray(d.machines) ? d.machines : []).forEach(m => machines.push([
+      reportSite,
+      m.asset_code || m.machine_code || "",
+      m.name || d.machine || "",
+      reportPerson,
+      machineMtcStart(m),
+      machineMtcEnd(m),
+      machineMtcTotal(m),
+      machineKmTotal(m),
+      m.work || ""
+    ]));
+
+    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => vehicles.push([
+      reportSite,
+      v.asset_code || v.vehicle_code || "",
+      v.name || v.vehicle || d.vehicle || "",
+      v.registration || "",
+      reportPerson,
+      v.km_start || "",
+      v.km_end || "",
+      v.route || d.route || "",
+      v.tours || d.tours || "",
+      v.cubic_m3 || v.cubic_auto || ""
+    ]));
+
+    const ownFuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+    ownFuels.forEach(f => fuels.push([
+      reportSite,
+      f.asset_code || "",
+      f.asset_name || f.machine || f.vehicle || f.other || "",
+      f.liters || "",
+      f.km || f.current_km || "",
+      f.mtc || f.current_mtc || "",
+      f.by || reportPerson,
+      f.receiver || d.fuel_receiver || ""
+    ]));
+
+    const tankerFuels = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+    tankerFuels.forEach(f => fuels.push([
+      f.site_name || reportSite,
+      f.asset_code || "",
+      f.asset_name || f.machine || f.vehicle || f.other || "",
+      f.liters || "",
+      f.km || f.current_km || "",
+      f.mtc || f.current_mtc || "",
+      f.tanker_asset_name || f.tanker_vehicle || f.cistern_vehicle || reportPerson,
+      f.receiver || f.received_by || ""
+    ]));
+
+    const mats = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
+    mats.forEach(m => materials.push([
+      reportSite,
+      m.action || m.material_action || "",
+      m.material || m.name || "",
+      m.tours || m.material_tours || "",
+      materialQuantityValue(m),
+      materialUnitValue(m),
+      m.note || ""
+    ]));
+
+    if (hasDefectData(r)) {
+      defects.push([
+        d.defect_site_name || reportSite,
+        d.defect_asset_code || "",
+        d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
+        d.defect || d.defect_description || d.problem_description || "",
+        d.defect_urgency || "",
+        d.defect_status || d.mechanic_status || "novo"
+      ]);
+    }
+  });
+
+  return { reports, workers, machines, vehicles, fuels, materials, defects };
+}
+
+function renderDailyLogPreview() {
+  officeEnsureDefaultDates();
+  officeFillSiteDatalists();
+  const date = document.getElementById("dailyLogDate")?.value || today();
+  const site = document.getElementById("dailyLogSite")?.value || "";
+  const data = officeBuildDailyLogData(date, site);
+  const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
+  const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
+  const box = document.getElementById("dailyLogPreview");
+  if (!box) return;
+  box.innerHTML = `
+    <div class="office-form-titlebar">
+      <div><b>Dnevnik rada</b><span>${escapeHtml(formatDateOnlyLocal(date))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
+      <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.workers.length} radnika</span><span>${totalHours || 0} h</span><span>${Math.round(totalFuel * 100) / 100} L</span></div>
+    </div>
+    <section><h4>👷 Radnici i radni sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis rada"], data.workers)}</section>
+    <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ početak","MTČ kraj","Ukupno MTČ","Ukupno KM","Rad"], data.machines)}</section>
+    <section><h4>🚚 Vozila / kamioni</h4>${officeTable(["Gradilište","Broj","Vozilo","Registracija","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
+    <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj sredstva","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], data.fuels)}</section>
+    <section><h4>📦 Materijali</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
+    <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis kvara","Hitnost","Status"], data.defects)}</section>
+  `;
+}
+
+function officeBuildCarnetData(from, to, site) {
+  const workerRows = [];
+  const assetRows = [];
+  (directorReportsCache || []).filter(r => officeReportMatchesDateSite(r, from, to, site)).forEach(r => {
+    const d = r.data || {};
+    const reportSite = officeReportSite(r) || "—";
+    const date = officeReportDate(r);
+    const reportPerson = officePersonLabel(r);
+    const workerRowsRaw = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
+    if (workerRowsRaw.length) {
+      workerRowsRaw.forEach(w => workerRows.push([date, reportSite, w.employee_number || w.worker_number || "", w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || reportPerson, w.function_title || w.role || "", w.hours || "", d.description || ""]));
+    } else if (d.hours || d.description) {
+      workerRows.push([date, reportSite, reportEmployeeNumber(r) || "", reportPerson, r.company_users?.function_title || d.function_title || "", d.hours || "", d.description || ""]);
+    }
+
+    (Array.isArray(d.machines) ? d.machines : []).forEach(m => assetRows.push([date, reportSite, "Mašina", m.asset_code || m.machine_code || "", m.name || d.machine || "", reportPerson, machineMtcTotal(m), machineKmTotal(m), "", m.work || ""]));
+    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => assetRows.push([date, reportSite, "Vozilo", v.asset_code || v.vehicle_code || "", v.name || v.vehicle || d.vehicle || "", reportPerson, "", decimalDiffText(v.km_start, v.km_end), v.tours || d.tours || "", v.route || ""]));
+  });
+  return { workerRows, assetRows };
+}
+
+function renderCarnetPreview() {
+  officeEnsureDefaultDates();
+  officeFillSiteDatalists();
+  const from = document.getElementById("carnetFrom")?.value || today();
+  const to = document.getElementById("carnetTo")?.value || from;
+  const site = document.getElementById("carnetSite")?.value || "";
+  const data = officeBuildCarnetData(from, to, site);
+  const totalHours = data.workerRows.reduce((sum, r) => sum + parseDecimalInput(r[5]), 0);
+  const totalMtc = data.assetRows.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
+  const box = document.getElementById("carnetPreview");
+  if (!box) return;
+  box.innerHTML = `
+    <div class="office-form-titlebar">
+      <div><b>Karnet radnika i mehanizacije</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
+      <div class="office-badges"><span>${data.workerRows.length} radnik-redova</span><span>${totalHours || 0} h</span><span>${data.assetRows.length} sredstava</span><span>${Math.round(totalMtc * 100) / 100} MTČ</span></div>
+    </div>
+    <section><h4>📒 Karnet radnika</h4>${officeTable(["Datum","Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workerRows)}</section>
+    <section><h4>🚜 Karnet mehanizacije / vozila</h4>${officeTable(["Datum","Gradilište","Tip","Broj","Sredstvo","Rukovalac/vozač","MTČ","KM","Ture","Opis/relacija"], data.assetRows)}</section>
+  `;
+}
+
+function officeCsvDownload(filename, headers, rows) {
+  const csv = "\ufeff" + [headers, ...rows].map(row => row.map(v => csvEscape(excelCleanCell(v))).join(";")).join("\r\n");
+  downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), filename);
+}
+
+function downloadDailyLogCsv() {
+  const date = document.getElementById("dailyLogDate")?.value || today();
+  const site = document.getElementById("dailyLogSite")?.value || "";
+  const data = officeBuildDailyLogData(date, site);
+  const rows = [];
+  data.workers.forEach(r => rows.push(["Radnici", ...r]));
+  data.machines.forEach(r => rows.push(["Mašine", ...r]));
+  data.vehicles.forEach(r => rows.push(["Vozila", ...r]));
+  data.fuels.forEach(r => rows.push(["Gorivo", ...r]));
+  data.materials.forEach(r => rows.push(["Materijali", ...r]));
+  data.defects.forEach(r => rows.push(["Kvarovi", ...r]));
+  if (!rows.length) return toast("Nema podataka za Dnevnik rada u izabranom filteru.", true);
+  officeCsvDownload(`dnevnik_rada_${safeFilePart(currentCompany?.company_code || "firma")}_${date}.csv`, ["Rubrika","Kolona 1","Kolona 2","Kolona 3","Kolona 4","Kolona 5","Kolona 6","Kolona 7","Kolona 8","Kolona 9","Kolona 10"], rows);
+}
+
+function downloadCarnetCsv() {
+  const from = document.getElementById("carnetFrom")?.value || today();
+  const to = document.getElementById("carnetTo")?.value || from;
+  const site = document.getElementById("carnetSite")?.value || "";
+  const data = officeBuildCarnetData(from, to, site);
+  const rows = [];
+  data.workerRows.forEach(r => rows.push(["Karnet radnika", ...r]));
+  data.assetRows.forEach(r => rows.push(["Karnet mehanizacije", ...r]));
+  if (!rows.length) return toast("Nema podataka za Karnet u izabranom filteru.", true);
+  officeCsvDownload(`karnet_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.csv`, ["Rubrika","Datum","Gradilište","Broj/Tip","Naziv/Radnik","Radno mesto/Sredstvo","Sati/Rukovalac","Opis/MTČ","KM","Ture","Napomena"], rows);
+}
+
+function printOfficePreview(title, previewId) {
+  const box = document.getElementById(previewId);
+  if (!box || !box.innerHTML.trim()) return toast("Prvo prikaži pregled, pa pokreni štampu.", true);
+  const win = window.open("", "_blank", "width=1100,height=800");
+  if (!win) return toast("Pregledač je blokirao prozor za štampu. Dozvoli popup.", true);
+  win.document.open();
+  win.document.write(`<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;margin:18px}h1{font-size:20px;margin:0 0 10px}.office-form-titlebar{display:flex;justify-content:space-between;gap:16px;border:1px solid #ccc;padding:10px;margin-bottom:12px}.office-form-titlebar b{display:block;font-size:18px}.office-form-titlebar span{font-size:12px}.office-badges{display:flex;gap:6px;flex-wrap:wrap}.office-badges span{border:1px solid #999;padding:4px 6px;border-radius:12px}h4{margin:14px 0 6px}.office-table{width:100%;border-collapse:collapse;font-size:10px}.office-table th,.office-table td{border:1px solid #aaa;padding:5px;vertical-align:top}.office-table th{background:#eee}.muted{color:#555}.office-empty{border:1px dashed #bbb;padding:8px}</style></head><body><h1>${escapeHtml(currentCompanyExportName())} · ${escapeHtml(title)}</h1>${box.innerHTML}<script>window.onload=function(){setTimeout(function(){window.print()},250)};<\/script></body></html>`);
+  win.document.close();
+}
+
+window.renderDailyLogPreview = renderDailyLogPreview;
+window.renderCarnetPreview = renderCarnetPreview;
+window.downloadDailyLogCsv = downloadDailyLogCsv;
+window.downloadCarnetCsv = downloadCarnetCsv;
+window.printDailyLogPreview = () => printOfficePreview("Dnevnik rada", "dailyLogPreview");
+window.printCarnetPreview = () => printOfficePreview("Karnet", "carnetPreview");
 
 
 function renderDirectorDefectNoticeInReports() {
@@ -10853,6 +11133,14 @@ function bindEvents() {
   if ($("#directorManualRefreshBtn")) $("#directorManualRefreshBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#refreshArchiveBtn")) $("#refreshArchiveBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#refreshFuelReportsBtn")) $("#refreshFuelReportsBtn").addEventListener("click", manualDirectorRefresh);
+  if ($("#refreshDailyLogBtn")) $("#refreshDailyLogBtn").addEventListener("click", manualDirectorRefresh);
+  if ($("#refreshCarnetBtn")) $("#refreshCarnetBtn").addEventListener("click", manualDirectorRefresh);
+  if ($("#renderDailyLogBtn")) $("#renderDailyLogBtn").addEventListener("click", renderDailyLogPreview);
+  if ($("#renderCarnetBtn")) $("#renderCarnetBtn").addEventListener("click", renderCarnetPreview);
+  if ($("#printDailyLogBtn")) $("#printDailyLogBtn").addEventListener("click", printDailyLogPreview);
+  if ($("#printCarnetBtn")) $("#printCarnetBtn").addEventListener("click", printCarnetPreview);
+  if ($("#downloadDailyLogCsvBtn")) $("#downloadDailyLogCsvBtn").addEventListener("click", downloadDailyLogCsv);
+  if ($("#downloadCarnetCsvBtn")) $("#downloadCarnetCsvBtn").addEventListener("click", downloadCarnetCsv);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
 
@@ -10865,6 +11153,8 @@ function bindEvents() {
     if (btn.dataset.tab === "defects") renderDefectsList();
     if (btn.dataset.tab === "fuel") renderFuelReportsList();
     if (btn.dataset.tab === "archive") renderArchiveList();
+    if (btn.dataset.tab === "dailyLog") renderDailyLogPreview();
+    if (btn.dataset.tab === "carnet") renderCarnetPreview();
   }));
 
   $$('[data-business-tab]').forEach(btn => btn.addEventListener('click', () => {

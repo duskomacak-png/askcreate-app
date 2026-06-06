@@ -391,6 +391,8 @@
           <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
           <button class="tab" data-tab="materials">📦 Materijali</button>
           <button class="tab" data-tab="reports">📄 Izveštaji</button>
+          <button class="tab" data-tab="dailyLog">📘 Dnevnik rada</button>
+          <button class="tab" data-tab="carnet">📒 Karnet</button>
           <button class="tab" data-tab="archive">🗄️ Arhiva</button>
           <button class="tab workspace-hidden-tab" data-tab="fuel" type="button">⛽ Gorivo</button>
           <button class="tab" data-tab="support">⚙️ Podešavanja</button>
@@ -445,6 +447,16 @@
             <div class="kpi-icon orange">🛠️</div>
             <div><strong id="directorMetricDefectsToday">—</strong><span>Kvarovi danas</span></div>
             <button type="button" data-business-tab="defects">Vidi detalje ›</button>
+          </div>
+          <div class="business-kpi-card">
+            <div class="kpi-icon green">📘</div>
+            <div><strong id="directorMetricDailyLog">—</strong><span>Dnevnik rada danas</span></div>
+            <button type="button" data-business-tab="dailyLog">Vidi detalje ›</button>
+          </div>
+          <div class="business-kpi-card">
+            <div class="kpi-icon green">📒</div>
+            <div><strong id="directorMetricCarnet">—</strong><span>Karnet stavki danas</span></div>
+            <button type="button" data-business-tab="carnet">Vidi detalje ›</button>
           </div>
           <div class="business-kpi-card">
             <div class="kpi-icon green">🗄️</div>
@@ -683,6 +695,61 @@
             <button id="directorManualRefreshBtn" class="secondary small-action" type="button">Osveži odmah</button>
           </div>
           <div id="reportsList" class="list"></div>
+        </div>
+      </div>
+
+      <div id="tabDailyLog" class="tab-panel">
+        <div class="card reports-workspace-card office-forms-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Dnevnik rada</p>
+              <h3>Dnevnik rada po gradilištu</h3>
+              <p class="muted">Šef gradilišta ili Direkcija izabere datum i gradilište. Aplikacija od već poslatih izveštaja složi radnike, mašine, vozila, gorivo, materijal i kvarove u jedan pregled za štampu ili Excel.</p>
+            </div>
+            <button id="refreshDailyLogBtn" class="secondary small-action" type="button">Osveži dnevnik</button>
+          </div>
+          <div class="office-form-filters">
+            <label>Datum
+              <input id="dailyLogDate" type="date" />
+            </label>
+            <label>Gradilište
+              <input id="dailyLogSite" list="dailyLogSiteList" placeholder="Sva gradilišta ili izaberi jedno" />
+              <datalist id="dailyLogSiteList"></datalist>
+            </label>
+            <button id="renderDailyLogBtn" class="primary" type="button">Prikaži dnevnik</button>
+            <button id="printDailyLogBtn" class="secondary" type="button">Štampaj</button>
+            <button id="downloadDailyLogCsvBtn" class="secondary" type="button">Excel CSV</button>
+          </div>
+          <div id="dailyLogPreview" class="office-form-preview"></div>
+        </div>
+      </div>
+
+      <div id="tabCarnet" class="tab-panel">
+        <div class="card reports-workspace-card office-forms-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Karnet</p>
+              <h3>Karnet radnika i mehanizacije</h3>
+              <p class="muted">Ovo je gotov pregled za Direkciju: radni sati po radniku i rad mašina/vozila po datumu, gradilištu, MTČ/KM, gorivu i kvarovima.</p>
+            </div>
+            <button id="refreshCarnetBtn" class="secondary small-action" type="button">Osveži karnet</button>
+          </div>
+          <div class="office-form-filters">
+            <label>Od datuma
+              <input id="carnetFrom" type="date" />
+            </label>
+            <label>Do datuma
+              <input id="carnetTo" type="date" />
+            </label>
+            <label>Gradilište
+              <input id="carnetSite" list="carnetSiteList" placeholder="Sva gradilišta ili izaberi jedno" />
+              <datalist id="carnetSiteList"></datalist>
+            </label>
+            <button id="renderCarnetBtn" class="primary" type="button">Prikaži karnet</button>
+            <button id="printCarnetBtn" class="secondary" type="button">Štampaj</button>
+            <button id="downloadCarnetCsvBtn" class="secondary" type="button">Excel CSV</button>
+          </div>
+          <div id="carnetPreview" class="office-form-preview"></div>
         </div>
       </div>
 
