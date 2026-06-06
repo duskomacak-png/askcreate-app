@@ -1100,6 +1100,41 @@
 
 
 
+    <section id="viewOwnerDashboardPanel" class="view owner-only-panel">
+      <div class="dashboard-head owner-panel-head">
+        <div>
+          <p class="business-eyebrow">Vlasnik / Gazda</p>
+          <h2 id="ownerPanelName">Pregled firme</h2>
+          <p id="ownerPanelCompanyLabel">Radni sati, gorivo, materijal i gradilišta</p>
+        </div>
+        <div class="owner-panel-actions">
+          <button id="ownerPanelRefreshBtn" class="secondary" type="button">Osveži pregled</button>
+          <button id="ownerPanelLogoutBtn" class="secondary" type="button">Odjavi uređaj</button>
+        </div>
+      </div>
+
+      <div class="card reports-workspace-card owner-dashboard-card owner-public-card">
+        <div class="office-form-titlebar">
+          <div>
+            <p class="business-eyebrow">Samo pregled — bez izmena</p>
+            <h3>👑 Gazda pregled firme</h3>
+            <p class="muted">Ovaj panel je za vlasnika firme: radni sati, gorivo, materijal, potrošnja, kvarovi i gradilišta po periodu.</p>
+          </div>
+        </div>
+        <div class="office-filter-row owner-filter-row">
+          <label>Od datuma <input id="ownerPanelDashboardFrom" type="date" /></label>
+          <label>Do datuma <input id="ownerPanelDashboardTo" type="date" /></label>
+          <label>Gradilište <input id="ownerPanelDashboardSite" list="ownerPanelDashboardSiteList" placeholder="Sva gradilišta ili izaberi jedno" /></label>
+          <datalist id="ownerPanelDashboardSiteList"></datalist>
+          <button id="ownerPanelRenderBtn" class="primary" type="button">Prikaži</button>
+        </div>
+        <div id="ownerPanelDashboardPreview" class="office-form-preview owner-dashboard-preview">
+          <p class="muted">Pregled će se učitati kada se vlasnik prijavi.</p>
+        </div>
+      </div>
+    </section>
+
+
     <section id="viewMechanicBossPanel" class="view">
       <div class="dashboard-head mechanic-boss-head">
         <div>

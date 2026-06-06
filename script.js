@@ -270,8 +270,9 @@ function show(view) {
     const loginCard = document.querySelector("#viewWorkerLogin .card");
     if (loginCard) loginCard.classList.remove("worker-company-locked-card");
   }
-  document.body.classList.toggle("worker-field-theme", view === "WorkerForm" || view === "MechanicBossPanel");
+  document.body.classList.toggle("worker-field-theme", view === "WorkerForm" || view === "MechanicBossPanel" || view === "OwnerDashboardPanel");
   document.body.classList.toggle("mechanic-boss-mode", view === "MechanicBossPanel");
+  document.body.classList.toggle("owner-dashboard-mode", view === "OwnerDashboardPanel");
   if (view !== "WorkerForm") document.body.classList.remove("worker-desktop-panel");
   if (publicViews.includes(view)) {
     clearCompanyBrandFromBody();
@@ -3611,7 +3612,7 @@ function officeReportMatchesDateSite(r, from = "", to = "", site = "") {
 
 function officeFillSiteDatalists() {
   const options = activeDirectorSites().map(s => exportOptionHtml(s.name, [s.location, "gradilište"].filter(Boolean).join(" · "))).join("");
-  ["dailyLogSiteList", "carnetSiteList", "materialOverviewSiteList", "ownerDashboardSiteList"].forEach(id => {
+  ["dailyLogSiteList", "carnetSiteList", "materialOverviewSiteList", "ownerDashboardSiteList", "ownerPanelDashboardSiteList"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = options;
   });
@@ -4347,7 +4348,7 @@ function buildMaterialTotals(rows = []) {
 
 function ensureOverviewDatalists() {
   const options = activeDirectorSites().map(s => exportOptionHtml(s.name, [s.location, "gradilište"].filter(Boolean).join(" · "))).join("");
-  ["materialOverviewSiteList", "ownerDashboardSiteList"].forEach(id => {
+  ["materialOverviewSiteList", "ownerDashboardSiteList", "ownerPanelDashboardSiteList"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = options;
   });
@@ -4417,14 +4418,14 @@ function buildOwnerDashboardData(from, to, site = "") {
   return { reports, hours, mtc, km, tours, fuel, materials, materialM3, fuelRows, badFuel, defectCount };
 }
 
-function renderOwnerDashboard() {
+function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
   ensureOverviewDatalists();
-  ensureOverviewDefaultDates("ownerDashboard");
-  const from = document.getElementById("ownerDashboardFrom")?.value || today().slice(0, 8) + "01";
-  const to = document.getElementById("ownerDashboardTo")?.value || today();
-  const site = document.getElementById("ownerDashboardSite")?.value || "";
+  ensureOverviewDefaultDates(prefix);
+  const from = document.getElementById(`${prefix}From`)?.value || today().slice(0, 8) + "01";
+  const to = document.getElementById(`${prefix}To`)?.value || today();
+  const site = document.getElementById(`${prefix}Site`)?.value || "";
   const data = buildOwnerDashboardData(from, to, site);
-  const box = document.getElementById("ownerDashboardPreview");
+  const box = document.getElementById(previewId || `${prefix}Preview`);
   if (!box) return;
   const materialTotals = buildMaterialTotals(data.materials);
   const fuelBadRows = data.fuelRows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad").map(row => {
@@ -12007,6 +12008,10 @@ function bindEvents() {
   if ($("#downloadCarnetCsvBtn")) $("#downloadCarnetCsvBtn").addEventListener("click", downloadCarnetCsv);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
+  if ($("#ownerPanelRefreshBtn")) $("#ownerPanelRefreshBtn").addEventListener("click", refreshOwnerDashboardPanel);
+  if ($("#ownerPanelRenderBtn")) $("#ownerPanelRenderBtn").addEventListener("click", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview"));
+  if ($("#ownerPanelLogoutBtn")) $("#ownerPanelLogoutBtn").addEventListener("click", logoutOwnerDashboardPanel);
+  ["ownerPanelDashboardFrom", "ownerPanelDashboardTo", "ownerPanelDashboardSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview")); });
 
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
@@ -12185,6 +12190,83 @@ let mechanicBossAssetsCache = [];
 function isMechanicBossWorker(worker = currentWorker) {
   const perms = worker?.permissions || {};
   return !!(perms.mechanic_boss || perms.mechanicBoss || perms.mechanic_manager || perms.head_mechanic);
+}
+
+function isOwnerDashboardWorker(worker = currentWorker) {
+  const perms = worker?.permissions || {};
+  const title = `${worker?.function_title || ""} ${worker?.role || ""}`.toLowerCase();
+  return !!(perms.owner_dashboard || perms.ownerDashboard || perms.owner_panel || title.includes("gazda") || title.includes("vlasnik") || title.includes("direktor"));
+}
+
+async function safeOwnerSelect(table, select = "*") {
+  try {
+    if (!currentWorker?.company_id || !sb) return [];
+    const { data, error } = await sb.from(table).select(select).eq("company_id", currentWorker.company_id);
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.warn(`Gazda panel: ${table} nije učitan`, e?.message || e);
+    return [];
+  }
+}
+
+async function loadOwnerPanelData() {
+  if (!currentWorker?.company_id || !sb) throw new Error("Vlasnik/Gazda nije prijavljen.");
+  currentCompany = {
+    id: currentWorker.company_id,
+    name: currentWorker.company_name || "Firma",
+    company_code: currentWorker.company_code || "",
+    brand_color: currentWorker.brand_color || "green",
+    status: "active"
+  };
+  const [people, sites, assets, reports] = await Promise.all([
+    safeOwnerSelect("company_users", "*"),
+    safeOwnerSelect("sites", "*"),
+    safeOwnerSelect("assets", "*"),
+    safeOwnerSelect("reports", "*")
+  ]);
+  directorPeopleCache = people.filter(p => p.active !== false);
+  directorSitesCache = sites.filter(x => x.active !== false);
+  directorAssetsCache = assets.filter(x => x.active !== false);
+  directorReportsCache = await attachReportUsersFallback((reports || []).filter(r => !isArchivedReport(r)));
+  try {
+    const { data, error } = await sb.rpc("director_list_materials", { p_company_id: currentWorker.company_id });
+    if (!error) directorMaterialsCache = data || [];
+  } catch (e) {
+    directorMaterialsCache = [];
+  }
+  ensureOverviewDatalists();
+}
+
+async function refreshOwnerDashboardPanel() {
+  try {
+    await loadOwnerPanelData();
+    renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview");
+  } catch (e) {
+    const box = document.getElementById("ownerPanelDashboardPreview");
+    if (box) box.innerHTML = `<div class="site-boss-warning"><b>Gazda pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava vlasniku da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za vlasnički pregled.</span></div>`;
+    toast(e.message || "Gazda pregled nije učitan.", true);
+  }
+}
+
+async function openOwnerDashboardPanel() {
+  stopMechanicBossWatcher();
+  await applyWorkerCompanyBrand();
+  setInternalHeader("Gazda pregled", `${currentWorker?.full_name || "Vlasnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  const name = document.getElementById("ownerPanelName");
+  const label = document.getElementById("ownerPanelCompanyLabel");
+  if (name) name.textContent = currentWorker?.full_name || "Vlasnik / Gazda";
+  if (label) label.textContent = `${currentWorker?.company_name || "Firma"} · pregled bez izmena`;
+  show("OwnerDashboardPanel");
+  await refreshOwnerDashboardPanel();
+}
+
+function logoutOwnerDashboardPanel() {
+  localStorage.removeItem("swp_worker");
+  currentWorker = null;
+  clearCompanyBrandFromBody();
+  setInternalHeader("", "", false);
+  show("WorkerLogin");
 }
 
 function stopMechanicBossWatcher() {
@@ -12833,6 +12915,9 @@ async function openWorkerForm() {
   await applyWorkerCompanyBrand();
   if (isMechanicBossWorker(currentWorker)) {
     return openMechanicBossPanel();
+  }
+  if (isOwnerDashboardWorker(currentWorker)) {
+    return openOwnerDashboardPanel();
   }
   $("#wrDate").value = today();
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;

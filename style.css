@@ -6609,3 +6609,35 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { colo
   .site-boss-overview-actions { justify-content: stretch; }
   .site-boss-overview-actions button { flex: 1 1 100%; }
 }
+
+/* === AskCreate v8: poseban Gazda/Vlasnik panel === */
+.owner-dashboard-mode {
+  background: radial-gradient(circle at top left, rgba(245, 181, 76, .16), transparent 34%), #07110d;
+}
+.owner-only-panel {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px;
+}
+.owner-panel-head {
+  border: 1px solid rgba(245, 181, 76, .26);
+  background: linear-gradient(135deg, rgba(16, 27, 21, .96), rgba(49, 33, 12, .78));
+}
+.owner-panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.owner-public-card {
+  border-color: rgba(245, 181, 76, .24);
+  box-shadow: 0 18px 50px rgba(0,0,0,.32);
+}
+.owner-filter-row {
+  align-items: end;
+}
+@media (max-width: 760px) {
+  .owner-only-panel { padding: 10px; }
+  .owner-panel-actions { justify-content: stretch; }
+  .owner-panel-actions button, .owner-filter-row button { width: 100%; }
+}
