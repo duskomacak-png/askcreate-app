@@ -3649,6 +3649,7 @@ function officeBuildDailyLogData(date, site) {
   const fuels = [];
   const materials = [];
   const defects = [];
+  const syntheticDailyWorkers = new Set();
 
   reports.forEach(r => {
     const d = r.data || {};
@@ -3656,15 +3657,19 @@ function officeBuildDailyLogData(date, site) {
     const reportSite = officeReportSite(r) || site || "—";
     const workerRows = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
     if (workerRows.length) {
-      workerRows.forEach(w => workers.push([
-        reportSite,
-        w.employee_number || w.worker_number || "",
-        w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || reportPerson,
-        w.function_title || w.role || "",
-        w.hours || "",
-        d.description || ""
-      ]));
-    } else if (d.hours || d.description) {
+      workerRows.forEach(w => {
+        const rowSite = w.site_name || w.site || reportSite;
+        if (!officeEntryMatchesSite({ site_name: rowSite }, reportSite, site)) return;
+        workers.push([
+          rowSite || reportSite,
+          w.employee_number || w.worker_number || "",
+          w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || reportPerson,
+          w.function_title || w.role || "",
+          w.hours || "",
+          d.description || w.description || w.note || ""
+        ]);
+      });
+    } else if ((d.hours || d.description) && (!site || officeEntryMatchesSite({ site_name: reportSite }, reportSite, site))) {
       workers.push([reportSite, reportEmployeeNumber(r) || "", reportPerson, r.company_users?.function_title || d.function_title || "", d.hours || "", d.description || ""]);
     }
 
@@ -3672,33 +3677,46 @@ function officeBuildDailyLogData(date, site) {
       if (!officeEntryMatchesSite(m, reportSite, site)) return;
       const entrySite = officeEntrySiteName(m, reportSite) || reportSite;
       machines.push([
-      entrySite,
-      m.asset_code || m.machine_code || "",
-      m.name || d.machine || "",
-      reportPerson,
-      machineMtcStart(m),
-      machineMtcEnd(m),
-      machineMtcTotal(m),
-      machineKmTotal(m),
-      m.work || ""
-    ]);
+        entrySite,
+        m.asset_code || m.machine_code || "",
+        m.name || d.machine || "",
+        reportPerson,
+        machineMtcStart(m),
+        machineMtcEnd(m),
+        machineMtcTotal(m),
+        machineKmTotal(m),
+        officeEntryDescription(m, "Rad mašine / MTČ")
+      ]);
+      if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, entrySite, r, "Rad mašine / MTČ", machineMtcTotal(m));
     });
 
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
       if (!officeEntryMatchesSite(v, reportSite, site)) return;
       const entrySite = officeEntrySiteName(v, reportSite) || reportSite;
       vehicles.push([
-      entrySite,
-      v.asset_code || v.vehicle_code || "",
-      v.name || v.vehicle || d.vehicle || "",
-      v.registration || "",
-      reportPerson,
-      v.km_start || "",
-      v.km_end || "",
-      v.route || d.route || "",
-      v.tours || d.tours || "",
-      v.cubic_m3 || v.cubic_auto || ""
-    ]);
+        entrySite,
+        v.asset_code || v.vehicle_code || "",
+        v.name || v.vehicle || d.vehicle || "",
+        v.registration || "",
+        reportPerson,
+        v.km_start || v.start_km || "",
+        v.km_end || v.end_km || "",
+        officeVehicleRouteText(v),
+        v.tours || d.tours || "",
+        officeVehicleM3(v)
+      ]);
+      if (officeVehicleMaterialName(v) || v.tours || officeVehicleM3(v)) {
+        materials.push([
+          entrySite,
+          officeVehicleMaterialAction(v) || "prevoz",
+          officeVehicleMaterialName(v) || "Materijal iz ture",
+          v.tours || "",
+          officeVehicleM3(v),
+          officeVehicleM3(v) ? "m³" : "",
+          officeVehicleRouteText(v) || v.note || ""
+        ]);
+      }
+      if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, entrySite, r, "Vožnja / ture", "");
     });
 
     const ownFuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
@@ -3706,15 +3724,15 @@ function officeBuildDailyLogData(date, site) {
       if (!officeEntryMatchesSite(f, reportSite, site)) return;
       const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
       fuels.push([
-      entrySite,
-      f.asset_code || "",
-      f.asset_name || f.machine || f.vehicle || f.other || "",
-      f.liters || "",
-      f.km || f.current_km || "",
-      f.mtc || f.current_mtc || "",
-      f.by || reportPerson,
-      f.receiver || d.fuel_receiver || ""
-    ]);
+        entrySite,
+        f.asset_code || "",
+        f.asset_name || f.machine || f.vehicle || f.other || "",
+        f.liters || "",
+        f.km || f.current_km || "",
+        f.mtc || f.current_mtc || "",
+        f.by || reportPerson,
+        f.receiver || d.fuel_receiver || ""
+      ]);
     });
 
     const tankerFuels = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
@@ -3722,15 +3740,15 @@ function officeBuildDailyLogData(date, site) {
       if (!officeEntryMatchesSite(f, reportSite, site)) return;
       const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
       fuels.push([
-      entrySite,
-      f.asset_code || "",
-      f.asset_name || f.machine || f.vehicle || f.other || "",
-      f.liters || "",
-      f.km || f.current_km || "",
-      f.mtc || f.current_mtc || "",
-      f.tanker_asset_name || f.tanker_vehicle || f.cistern_vehicle || reportPerson,
-      f.receiver || f.received_by || ""
-    ]);
+        entrySite,
+        f.asset_code || "",
+        f.asset_name || f.machine || f.vehicle || f.other || "",
+        f.liters || "",
+        f.km || f.current_km || "",
+        f.mtc || f.current_mtc || "",
+        f.tanker_asset_name || f.tanker_vehicle || f.cistern_vehicle || reportPerson,
+        f.receiver || f.received_by || ""
+      ]);
     });
 
     const mats = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
@@ -3738,25 +3756,28 @@ function officeBuildDailyLogData(date, site) {
       if (!officeEntryMatchesSite(m, reportSite, site)) return;
       const entrySite = officeEntrySiteName(m, reportSite) || reportSite;
       materials.push([
-      entrySite,
-      m.action || m.material_action || "",
-      m.material || m.name || "",
-      m.tours || m.material_tours || "",
-      materialQuantityValue(m),
-      materialUnitValue(m),
-      m.note || ""
-    ]);
+        entrySite,
+        m.action || m.material_action || "",
+        m.material || m.name || m.material_name || "",
+        m.tours || m.material_tours || "",
+        materialQuantityValue(m),
+        materialUnitValue(m),
+        m.note || materialCalcText(m) || ""
+      ]);
     });
 
     if (hasDefectData(r)) {
-      defects.push([
-        d.defect_site_name || reportSite,
-        d.defect_asset_code || "",
-        d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
-        d.defect || d.defect_description || d.problem_description || "",
-        d.defect_urgency || "",
-        d.defect_status || d.mechanic_status || "novo"
-      ]);
+      const defectSite = d.defect_site_name || reportSite;
+      if (!site || normalizeSearch(defectSite).includes(normalizeSearch(site))) {
+        defects.push([
+          defectSite,
+          d.defect_asset_code || "",
+          d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
+          d.defect || d.defect_description || d.problem_description || "",
+          d.defect_urgency || "",
+          d.defect_status || d.mechanic_status || "novo"
+        ]);
+      }
     }
   });
 
@@ -3891,25 +3912,36 @@ function copySiteBossSummaryToDailyLog() {
 function officeBuildCarnetData(from, to, site) {
   const workerRows = [];
   const assetRows = [];
+  const syntheticWorkers = new Set();
   (directorReportsCache || []).filter(r => officeReportMatchesDateSite(r, from, to, site)).forEach(r => {
     const d = r.data || {};
     const reportSite = officeReportSite(r) || "—";
     const date = officeReportDate(r);
     const reportPerson = officePersonLabel(r);
     const workerRowsRaw = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
+
     if (workerRowsRaw.length) {
-      workerRowsRaw.forEach(w => workerRows.push([date, reportSite, w.employee_number || w.worker_number || "", w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || reportPerson, w.function_title || w.role || "", w.hours || "", d.description || ""]));
-    } else if (d.hours || d.description) {
+      workerRowsRaw.forEach(w => {
+        const rowSite = w.site_name || w.site || reportSite;
+        if (!officeEntryMatchesSite({ site_name: rowSite }, reportSite, site)) return;
+        workerRows.push([date, rowSite || reportSite, w.employee_number || w.worker_number || "", w.full_name || [w.first_name, w.last_name].filter(Boolean).join(" ") || reportPerson, w.function_title || w.role || "", w.hours || "", d.description || w.description || w.note || ""]);
+      });
+    } else if ((d.hours || d.description) && (!site || officeEntryMatchesSite({ site_name: reportSite }, reportSite, site))) {
       workerRows.push([date, reportSite, reportEmployeeNumber(r) || "", reportPerson, r.company_users?.function_title || d.function_title || "", d.hours || "", d.description || ""]);
     }
 
     (Array.isArray(d.machines) ? d.machines : []).forEach(m => {
       if (!officeEntryMatchesSite(m, reportSite, site)) return;
-      assetRows.push([date, officeEntrySiteName(m, reportSite) || reportSite, "Mašina", m.asset_code || m.machine_code || "", m.name || d.machine || "", reportPerson, machineMtcTotal(m), machineKmTotal(m), "", m.work || ""]);
+      const entrySite = officeEntrySiteName(m, reportSite) || reportSite;
+      assetRows.push([date, entrySite, "Mašina", m.asset_code || m.machine_code || "", m.name || d.machine || "", reportPerson, machineMtcTotal(m), machineKmTotal(m), "", "", "", officeEntryDescription(m, "Rad mašine / MTČ")]);
+      if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, entrySite, r, "Rad mašine / MTČ", machineMtcTotal(m));
     });
+
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
       if (!officeEntryMatchesSite(v, reportSite, site)) return;
-      assetRows.push([date, officeEntrySiteName(v, reportSite) || reportSite, "Vozilo", v.asset_code || v.vehicle_code || "", v.name || v.vehicle || d.vehicle || "", reportPerson, "", decimalDiffText(v.km_start, v.km_end), v.tours || d.tours || "", v.route || ""]);
+      const entrySite = officeEntrySiteName(v, reportSite) || reportSite;
+      assetRows.push([date, entrySite, "Vozilo", v.asset_code || v.vehicle_code || "", v.name || v.vehicle || d.vehicle || "", reportPerson, "", officeVehicleKmTotal(v), v.tours || d.tours || "", officeVehicleMaterialName(v), officeVehicleM3(v), officeVehicleRouteText(v)]);
+      if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, entrySite, r, "Vožnja / ture", "");
     });
   });
   return { workerRows, assetRows };
@@ -3924,15 +3956,17 @@ function renderCarnetPreview() {
   const data = officeBuildCarnetData(from, to, site);
   const totalHours = data.workerRows.reduce((sum, r) => sum + parseDecimalInput(r[5]), 0);
   const totalMtc = data.assetRows.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
+  const totalKm = data.assetRows.reduce((sum, r) => sum + parseDecimalInput(r[7]), 0);
+  const totalTours = data.assetRows.reduce((sum, r) => sum + parseDecimalInput(r[8]), 0);
   const box = document.getElementById("carnetPreview");
   if (!box) return;
   box.innerHTML = `
     <div class="office-form-titlebar">
       <div><b>Karnet radnika i mehanizacije</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
-      <div class="office-badges"><span>${data.workerRows.length} radnik-redova</span><span>${totalHours || 0} h</span><span>${data.assetRows.length} sredstava</span><span>${Math.round(totalMtc * 100) / 100} MTČ</span></div>
+      <div class="office-badges"><span>${data.workerRows.length} radnik-redova</span><span>${totalHours || 0} h</span><span>${data.assetRows.length} sredstava</span><span>${Math.round(totalMtc * 100) / 100} MTČ</span><span>${Math.round(totalKm * 100) / 100} km</span><span>${Math.round(totalTours * 100) / 100} tura</span></div>
     </div>
     <section><h4>📒 Karnet radnika</h4>${officeTable(["Datum","Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workerRows)}</section>
-    <section><h4>🚜 Karnet mehanizacije / vozila</h4>${officeTable(["Datum","Gradilište","Tip","Broj","Sredstvo","Rukovalac/vozač","MTČ","KM","Ture","Opis/relacija"], data.assetRows)}</section>
+    <section><h4>🚜 Karnet mehanizacije / vozila</h4>${officeTable(["Datum","Gradilište","Tip","Broj","Sredstvo","Rukovalac/vozač","MTČ","KM","Ture","Materijal","m³","Opis/relacija"], data.assetRows)}</section>
   `;
 }
 
@@ -3965,7 +3999,7 @@ function downloadCarnetCsv() {
   data.workerRows.forEach(r => rows.push(["Karnet radnika", ...r]));
   data.assetRows.forEach(r => rows.push(["Karnet mehanizacije", ...r]));
   if (!rows.length) return toast("Nema podataka za Karnet u izabranom filteru.", true);
-  officeCsvDownload(`karnet_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.csv`, ["Rubrika","Datum","Gradilište","Broj/Tip","Naziv/Radnik","Radno mesto/Sredstvo","Sati/Rukovalac","Opis/MTČ","KM","Ture","Napomena"], rows);
+  officeCsvDownload(`karnet_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.csv`, ["Rubrika","Datum","Gradilište","Broj/Tip","Naziv/Radnik","Radno mesto/Sredstvo","Sati/Rukovalac","Opis/MTČ","KM","Ture","Materijal","m³","Napomena"], rows);
 }
 
 function printOfficePreview(title, previewId) {
@@ -4274,6 +4308,60 @@ function officeReportMatchesDateSiteDeep(r, from = "", to = "", site = "") {
 function round2(n) {
   const x = Number(n || 0);
   return Math.round(x * 100) / 100;
+}
+
+
+// === AskCreate v9: finalno povezivanje Dnevnika/Karneta sa multi-gradilište stavkama ===
+function officeReportTypeLabel(r = {}) {
+  const d = r.data || {};
+  return d.report_type_label || d.report_label || d.report_type || "Radnički unos";
+}
+
+function officeVehicleKmTotal(v = {}) {
+  return v.km_total || v.vehicle_km_total || decimalDiffText(v.km_start || v.start_km, v.km_end || v.end_km) || "";
+}
+
+function officeVehicleMaterialName(v = {}) {
+  return v.material_name || v.material || v.material_custom || v.cargo || v.load || "";
+}
+
+function officeVehicleMaterialAction(v = {}) {
+  return v.transport_type || v.direction || v.action || v.material_action || v.transport_direction || "";
+}
+
+function officeVehicleM3(v = {}) {
+  return v.cubic_m3 || v.cubic_auto || v.total_m3 || v.calculated_m3 || v.volume_m3 || "";
+}
+
+function officeVehicleRouteText(v = {}) {
+  const from = v.load_location || v.from_location || v.from_site || v.pickup || "";
+  const to = v.unload_location || v.to_location || v.to_site || v.delivery || "";
+  const route = v.route || [from, to].filter(Boolean).join(" → ");
+  return route || "";
+}
+
+function officeEntryDescription(entry = {}, fallback = "") {
+  return entry.work || entry.description || entry.note || entry.notes || fallback || "";
+}
+
+function officePushSyntheticWorker(rows, seen, date, siteName, r, label, hours = "") {
+  const person = officePersonLabel(r);
+  const emp = reportEmployeeNumber(r) || (r.data || {}).employee_number || (r.data || {}).worker_number || "";
+  const role = r.company_users?.function_title || (r.data || {}).function_title || (r.data || {}).worker_role || "";
+  const key = [date, siteName || "—", emp, person, label].join("||");
+  if (seen.has(key)) return;
+  seen.add(key);
+  rows.push([date, siteName || "—", emp, person, role, hours || "", label || officeReportTypeLabel(r)]);
+}
+
+function officePushDailySyntheticWorker(rows, seen, siteName, r, label, hours = "") {
+  const person = officePersonLabel(r);
+  const emp = reportEmployeeNumber(r) || (r.data || {}).employee_number || (r.data || {}).worker_number || "";
+  const role = r.company_users?.function_title || (r.data || {}).function_title || (r.data || {}).worker_role || "";
+  const key = [siteName || "—", emp, person, label].join("||");
+  if (seen.has(key)) return;
+  seen.add(key);
+  rows.push([siteName || "—", emp, person, role, hours || "", label || officeReportTypeLabel(r)]);
 }
 
 function buildMaterialOverviewRows(from, to, site = "") {
