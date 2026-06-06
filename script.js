@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.41.0";
+const APP_VERSION = "1.42.0";
 
 
 let sb = null;
@@ -29,6 +29,9 @@ let pwaInstallPromptReadyAt = 0;
 let directorAutoRefreshTimer = null;
 let directorAutoRefreshBusy = false;
 let directorKnownReportIds = new Set();
+let workerReportSubmitBusy = false;
+let fieldTankerMemorySubmitBusy = false;
+let adminCompanySaveBusy = false;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -8645,6 +8648,13 @@ function buildFieldTankerMemoryReportData(entries = []) {
 }
 
 async function sendStoredFieldTankerEntries() {
+  if (fieldTankerMemorySubmitBusy) {
+    toast("Slanje memorisanih sipanja je već u toku. Sačekaj potvrdu.", true);
+    return;
+  }
+  const sendBtn = $("#sendStoredFieldTankerBtn");
+  fieldTankerMemorySubmitBusy = true;
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.dataset.oldText = sendBtn.textContent || ""; sendBtn.textContent = "Šaljem..."; }
   try {
     if (!navigator.onLine) throw new Error("Nema interneta. Memorisana sipanja ostaju sačuvana na telefonu.");
     const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
@@ -8677,6 +8687,9 @@ async function sendStoredFieldTankerEntries() {
     toast(`Sva memorisana sipanja su poslata Upravi ✅ (${entries.length})`);
   } catch(e) {
     toast(e.message, true);
+  } finally {
+    fieldTankerMemorySubmitBusy = false;
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = sendBtn.dataset.oldText || "Pošalji memorisana sipanja"; delete sendBtn.dataset.oldText; }
   }
 }
 
@@ -12152,6 +12165,13 @@ function bindEvents() {
     $("#acCompanyCode").addEventListener("blur", () => checkAdminCompanyCodeAvailability(true).catch(() => {}));
   }
   $("#addApprovedCompanyBtn").addEventListener("click", async () => {
+    if (adminCompanySaveBusy) {
+      toast("Čuvanje firme je već u toku. Sačekaj završetak.", true);
+      return;
+    }
+    const adminSaveBtn = $("#addApprovedCompanyBtn");
+    adminCompanySaveBusy = true;
+    if (adminSaveBtn) { adminSaveBtn.disabled = true; adminSaveBtn.dataset.oldText = adminSaveBtn.textContent || ""; adminSaveBtn.textContent = "Čuvam..."; }
     try {
       const paidUntil = $("#acPaidUntil")?.value || null;
       const companyCode = normalizeLoginCode($("#acCompanyCode").value);
@@ -12195,7 +12215,12 @@ function bindEvents() {
       setAdminCompanyCodeStatus("Šifra firme mora biti jedinstvena. Crveno znači zauzeto, zeleno znači slobodno.", "info");
       toast("Firma je sačuvana u Admin CRM.");
       loadApprovedCompanies();
-    } catch(e) { toast(e.message, true); }
+    } catch(e) {
+      toast(e.message, true);
+    } finally {
+      adminCompanySaveBusy = false;
+      if (adminSaveBtn) { adminSaveBtn.disabled = false; adminSaveBtn.textContent = adminSaveBtn.dataset.oldText || "Sačuvaj firmu"; delete adminSaveBtn.dataset.oldText; }
+    }
   });
 
   $("#directorSignupBtn").addEventListener("click", async () => {
@@ -12376,6 +12401,13 @@ function bindEvents() {
   }
 
   $("#submitReportBtn").addEventListener("click", async () => {
+    if (workerReportSubmitBusy) {
+      toast("Slanje izveštaja je već u toku. Ne pritiskaj dugme više puta.", true);
+      return;
+    }
+    const submitBtn = $("#submitReportBtn");
+    workerReportSubmitBusy = true;
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.oldText = submitBtn.textContent || ""; submitBtn.textContent = "Šaljem..."; }
     try {
       if (!navigator.onLine) {
         saveDraft();
@@ -12420,7 +12452,12 @@ function bindEvents() {
         console.warn("AskCreate.app: izveštaj je poslat, ali priprema sledeće forme nije uspela:", resetError);
         toast("Izveštaj je poslat Upravi ✅ Ako forma ne izgleda prazno, odjavi se i uđi ponovo.");
       }
-    } catch(e) { toast(e.message, true); }
+    } catch(e) {
+      toast(e.message, true);
+    } finally {
+      workerReportSubmitBusy = false;
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.oldText || "Pošalji izveštaj"; delete submitBtn.dataset.oldText; }
+    }
   });
 }
 
