@@ -3,15 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AskCreate.app — terenski izveštaji, dnevnik rada, karnet, gorivo i materijal za građevinske firme</title>
+  <title>AskCreate.app — aplikacija za građevinske firme, dnevnik rada, karnet i kontrolu potrošnje goriva</title>
   <meta name="theme-color" content="#39b54a" />
-  <meta name="description" content="AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju: terenski izveštaji, dnevnik rada, karnet radnika i mehanizacije, gorivo, kvarovi, materijal, voda, labudica, odobravanje, arhiva, štampa i Excel izvoz." />
-  <meta name="keywords" content="AskCreate.app, terenski izveštaji, građevinska firma, niskogradnja, dnevnik rada, karnet, evidencija goriva, potrošnja goriva, kvarovi mašina, građevinska mehanizacija, Excel izvoz" />
+  <meta name="description" content="AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju: terenski izveštaji, dnevnik rada, karnet, radnici, mašine, vozila, materijal, voda, labudica, gorivo, norme potrošnje i upozorenja na povećanu potrošnju po mašini ili vozilu, uz Excel izvoz i arhivu." />
+  <meta name="keywords" content="AskCreate.app, aplikacija za građevinske firme, niskogradnja, terenski izveštaji, dnevnik rada, karnet radnika, karnet mehanizacije, evidencija goriva, potrošnja goriva po mašini, potrošnja goriva po vozilu, norma potrošnje goriva, velika potrošnja goriva, kvarovi mašina, građevinska mehanizacija, materijal po gradilištu, labudica, cisterna za vodu, Excel izvoz" />
   <link rel="manifest" href="manifest.json?v=1336" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1450" />
+  <link rel="stylesheet" href="style.css?v=1460" />
+
+  <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
+  <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="AskCreate.app" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "AskCreate.app",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web, Android, iOS",
+    "description": "AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju. Podržava terenske izveštaje, dnevnik rada, karnet radnika i mehanizacije, evidenciju goriva, norme potrošnje po mašini i vozilu, upozorenja na povećanu potrošnju, materijal po gradilištu, cisternu za vodu, labudicu, kvarove, arhivu, štampu i Excel izvoz.",
+    "featureList": [
+      "Terenski izveštaji preko telefona",
+      "Dnevnik rada po gradilištu",
+      "Karnet radnika i mehanizacije",
+      "Potrošnja goriva po mašini i vozilu",
+      "Norma potrošnje L/MTČ, L/100 km i L/sat",
+      "Upozorenje na povećanu potrošnju goriva",
+      "Materijal po gradilištu po danu i mesecu",
+      "Cisterna za vodu",
+      "Labudica i transport mašina",
+      "Kvarovi, arhiva, štampa i Excel izvoz"
+    ],
+    "inLanguage": "sr"
+  }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -74,11 +102,12 @@
         </div>
 
         <section class="home-seo-panel narrow-phone-width" aria-label="Šta je AskCreate.app">
-          <h2>AskCreate.app za terenske izveštaje u građevini</h2>
-          <p><strong>AskCreate.app</strong> je poslovna PWA aplikacija za firme koje rade niskogradnju, građevinu, transport i rad sa mehanizacijom. Radnici sa telefona šalju izveštaje sa gradilišta, a Direkcija dobija pregledne podatke za dnevnik rada, karnet, gorivo, kvarove, materijal, vodu, labudicu, arhivu, štampu i Excel izvoz.</p>
-          <p>Aplikacija je napravljena za realan teren: vozač može uneti više gradilišta u jednom dnevnom izveštaju, bagerista može raspodeliti MTČ po gradilištima, cisterna evidentira gorivo ili vodu, a Vlasnik/Direktor vidi zbir firme po danu, mesecu i gradilištu.</p>
+          <h2>AskCreate.app za građevinske firme, niskogradnju i kontrolu potrošnje goriva</h2>
+          <p><strong>AskCreate.app</strong> je poslovna PWA aplikacija za firme koje rade niskogradnju, puteve, zemljane radove, transport, asfaltiranje i rad sa građevinskom mehanizacijom. Radnici sa telefona šalju terenske izveštaje, a Direkcija dobija dnevnik rada, karnet radnika i mehanizacije, gorivo, kvarove, materijal, vodu, labudicu, arhivu, štampu i Excel izvoz.</p>
+          <p>Aplikacija računa <strong>potrošnju goriva po mašini i vozilu</strong>. Direkcija kod svake mašine ili vozila može uneti normu potrošnje, na primer L/MTČ, L/100 km ili L/sat, kao i dozvoljeno odstupanje. Sistem poredi očekivanu i stvarno sipanu količinu goriva i pomaže da se uoči povećana ili sumnjiva potrošnja po bageru, kamionu, cisterni ili drugom sredstvu rada.</p>
+          <p>Aplikacija je napravljena za realan teren: vozač može uneti više gradilišta u jednom dnevnom izveštaju, bagerista može raspodeliti MTČ po gradilištima, cisterna evidentira gorivo ili vodu, labudica evidentira transport mašine, a Vlasnik/Direktor vidi zbir firme po danu, mesecu i gradilištu.</p>
           <div class="home-seo-tags" aria-label="Glavne funkcije AskCreate.app">
-            <span>Dnevnik rada</span><span>Karnet</span><span>Gorivo</span><span>Kvarovi</span><span>Materijal</span><span>Excel izvoz</span>
+            <span>Dnevnik rada</span><span>Karnet</span><span>Potrošnja goriva</span><span>Norma L/MTČ</span><span>Norma L/100 km</span><span>Upozorenje na veliku potrošnju</span><span>Materijal po gradilištu</span><span>Labudica</span><span>Cisterna za vodu</span><span>Excel izvoz</span>
           </div>
         </section>
 
