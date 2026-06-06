@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.39.0";
+const APP_VERSION = "1.40.0";
 
 
 let sb = null;
@@ -872,7 +872,7 @@ async function installWorkerApp() {
       toast("Osvežavam instalacioni režim...");
       const url = new URL(window.location.href);
       url.searchParams.set("install", "1");
-      url.searchParams.set("v", "1335");
+      url.searchParams.set("v", "1340");
       url.searchParams.set("t", Date.now().toString());
       setTimeout(() => { window.location.href = url.toString(); }, 650);
       return;
@@ -7559,6 +7559,12 @@ function workerReportTypeFromSelection() {
   return getSelectedWorkerModule()?.reportType || "";
 }
 
+function workerModuleValueFromReportType(reportType = "") {
+  const type = String(reportType || "").trim();
+  const found = WORKER_MODULE_DEFINITIONS.find(m => m.reportType === type);
+  return found?.value || "";
+}
+
 function refreshWorkerModuleSelector(perms = {}) {
   const select = $("#wrModuleSelect");
   const hint = $("#wrModuleHint");
@@ -10119,7 +10125,48 @@ function getFirstFieldTankerValidationIssue() {
   return null;
 }
 
+function getActiveWorkerModuleValidationIssue(data = {}) {
+  const module = getSelectedWorkerModule();
+  if (!module) return { section: "#workerModuleChooser", field: $("#wrModuleSelect"), message: "Prvo izaberi šta danas popunjavaš." };
+  const type = module.reportType;
+
+  if (type === "worker_hours" && !(data.workers || data.worker_entries || []).length) {
+    return { section: "#secWorkers", field: $("#addWorkerEntryBtn"), message: "Dodaj bar jednog radnika i sate rada pre slanja radnog izveštaja." };
+  }
+  if (type === "machine_work_daily" && !(data.machines || []).length) {
+    return { section: "#secMachines", field: $("#addMachineBtn"), message: "Dodaj bar jednu mašinu/MTČ stavku pre slanja izveštaja bageriste/rukovaoca." };
+  }
+  if (type === "truck_tours_daily" && !(data.vehicles || []).length) {
+    return { section: "#secVehicles", field: $("#addVehicleBtn"), message: "Dodaj bar jedno vozilo/turu pre slanja izveštaja vozača." };
+  }
+  if (type === "fuel_entry" && !(data.fuel_entries || []).length) {
+    return { section: "#secFuel", field: $("#addFuelBtn"), message: "Dodaj bar jedno sipanje goriva pre slanja evidencije goriva." };
+  }
+  if (type === "lowloader_transport" && !(data.lowloader_moves || data.lowloader_entries || []).length) {
+    return { section: "#secLowloader", field: $("#addLowloaderBtn"), message: "Dodaj bar jedan transport labudicom pre slanja." };
+  }
+  if (type === "material_movement" && !(data.material_entries || data.material_movements || []).length) {
+    return { section: "#secMaterials", field: $("#addWorkerMaterialEntryBtn"), message: "Dodaj bar jednu stavku materijala pre slanja." };
+  }
+  if (type === "warehouse_movement" && !(data.warehouse_item || data.warehouse_qty)) {
+    return { section: "#secWarehouse", field: $("#wrWarehouseItem") || $("#wrWarehouseQty"), message: "Upiši stavku i količinu za magacin pre slanja." };
+  }
+  if (type === "defect_report" && !(data.defect || data.defect_asset_name || data.defect_asset_code || data.defect_manual_asset_name)) {
+    return { section: "#secDefects", field: $("#wrDefect") || $("#wrDefectAssetName"), message: "Upiši sredstvo ili opis kvara pre slanja prijave kvara." };
+  }
+  if (type === "leave_request" && !hasLeaveRequestData(data.leave_request)) {
+    return { section: "#secLeaveRequest", field: $("#wrLeaveDate") || $("#wrLeaveFrom"), message: "Popuni datum slobodnog dana ili period godišnjeg odmora pre slanja zahteva." };
+  }
+  return null;
+}
+
 function validateWorkerReportBeforeSubmit(data) {
+  const moduleIssue = getActiveWorkerModuleValidationIssue(data);
+  if (moduleIssue) {
+    moduleIssue.message = `Izveštaj nije poslat. ${moduleIssue.message}`;
+    return moduleIssue;
+  }
+
   const siteSection = $("#secWorkerSite");
   if (siteSection?.classList.contains("active") && !($("#wrSiteName")?.value || "").trim()) {
     return {
@@ -10164,6 +10211,12 @@ function loadDraft() {
     $("#wrDate").value = draft.date || today();
     const d = draft.data || {};
 
+    const moduleValue = workerModuleValueFromReportType(d.report_type || d.reportType || "");
+    if (moduleValue && $("#wrModuleSelect")) {
+      $("#wrModuleSelect").value = moduleValue;
+      applyWorkerModuleSelection({ addDefaults: false });
+    }
+
     if ($("#wrLeaveType")) $("#wrLeaveType").value = "slobodan_dan";
   updateLeaveRequestVisibility();
   if ($("#workerEntries")) $("#workerEntries").innerHTML = "";
@@ -10188,6 +10241,7 @@ function loadDraft() {
       wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_code", wrDefectSiteName:"defect_site_name", wrDefect:"defect", wrDefectStopsWork:"defect_work_impact", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone", wrSignatureName:"signature_name"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
     if (d.signature_data_url) setSignatureImage(d.signature_data_url);
+    if (moduleValue && $("#wrModuleSelect")) applyWorkerModuleSelection({ addDefaults: false });
     updateLeaveRequestVisibility();
   } catch {}
 }
@@ -12365,7 +12419,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1335", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1340", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
