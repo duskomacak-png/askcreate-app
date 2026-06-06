@@ -11984,7 +11984,10 @@ function bindEvents() {
   if ($("#workerLoginBtn")) $("#workerLoginBtn").addEventListener("click", loginWorkerByCode);
   if ($("#workerInstallBtn")) $("#workerInstallBtn").addEventListener("click", installWorkerApp);
   if ($("#homeInstallBtn")) $("#homeInstallBtn").addEventListener("click", installWorkerApp);
-  if ($("#refreshMechanicDefectsBtn")) $("#refreshMechanicDefectsBtn").addEventListener("click", () => loadMechanicBossDefects({ silent: false }));
+  if ($("#refreshMechanicDefectsBtn")) $("#refreshMechanicDefectsBtn").addEventListener("click", async () => { await loadMechanicBossDefects({ silent: false }); await loadMechanicBossOperations({ silent: true }); });
+  if ($("#refreshMechanicOpsBtn")) $("#refreshMechanicOpsBtn").addEventListener("click", () => loadMechanicBossOperations({ silent: false }));
+  if ($("#mechanicFuelFrom")) $("#mechanicFuelFrom").addEventListener("change", renderMechanicFuelAnalysis);
+  if ($("#mechanicFuelTo")) $("#mechanicFuelTo").addEventListener("change", renderMechanicFuelAnalysis);
   if ($("#enableMechanicPushBtn")) $("#enableMechanicPushBtn").addEventListener("click", enableMechanicPushNotifications);
   if ($("#mechanicLogoutBtn")) $("#mechanicLogoutBtn").addEventListener("click", logoutMechanicBoss);
 
@@ -12069,6 +12072,8 @@ let mechanicBossTimer = null;
 let mechanicBossLastNewCount = 0;
 let mechanicBossLastSignature = "";
 let mechanicBossReportsCache = [];
+let mechanicBossAllReportsCache = [];
+let mechanicBossAssetsCache = [];
 
 function isMechanicBossWorker(worker = currentWorker) {
   const perms = worker?.permissions || {};
@@ -12432,6 +12437,108 @@ function setMechanicSectionCount(id, count, suffix = "") {
   el.textContent = `${count}${suffix}`;
 }
 
+
+async function mechanicListCompanyReportsSafe() {
+  if (!currentWorker?.company_id || !sb) return [];
+  const { data, error } = await sb
+    .from("reports")
+    .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
+    .eq("company_id", currentWorker.company_id)
+    .order("submitted_at", { ascending: false, nullsFirst: false })
+    .limit(500);
+  if (error) throw error;
+  return attachReportUsersFallback ? await attachReportUsersFallback(data || []) : (data || []);
+}
+
+async function mechanicListAssetsSafe() {
+  if (!currentWorker?.company_id || !sb) return [];
+  const { data, error } = await sb
+    .from("assets")
+    .select("*")
+    .eq("company_id", currentWorker.company_id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+function mechanicEnsureFuelDates() {
+  const fromEl = document.getElementById("mechanicFuelFrom");
+  const toEl = document.getElementById("mechanicFuelTo");
+  const from = today().slice(0, 8) + "01";
+  const to = today();
+  if (fromEl && !fromEl.value) fromEl.value = from;
+  if (toEl && !toEl.value) toEl.value = to;
+  return { from: fromEl?.value || from, to: toEl?.value || to };
+}
+
+function mechanicFuelRowCells(row) {
+  const expected = expectedFuelForRow(row);
+  const diff = row.liters - expected;
+  const status = fuelConsumptionStatus(row);
+  return [
+    row.label,
+    assetTypeLabel(row.type),
+    formatAssetFuelNorm(row.asset) || "Nema norme",
+    row.mtc ? `${round2(row.mtc)} MTČ` : "—",
+    row.km ? `${round2(row.km)} km` : "—",
+    expected ? `${round2(expected)} L` : "—",
+    row.liters ? `${round2(row.liters)} L` : "—",
+    expected ? `${diff >= 0 ? "+" : ""}${round2(diff)} L` : "—",
+    `<span class="${status.cls}">${escapeHtml(status.label)}</span>`
+  ];
+}
+
+function renderMechanicFuelAnalysis() {
+  const box = document.getElementById("mechanicFuelOverview");
+  if (!box) return;
+  const { from, to } = mechanicEnsureFuelDates();
+
+  // Mehaničar koristi iste računske funkcije kao Direkcija, ali samo sa podacima svoje firme.
+  directorReportsCache = Array.isArray(mechanicBossAllReportsCache) ? mechanicBossAllReportsCache : [];
+  directorAssetsCache = Array.isArray(mechanicBossAssetsCache) ? mechanicBossAssetsCache : [];
+
+  const rows = buildFuelConsumptionRows(from, to);
+  const badRows = rows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad");
+  const warnRows = rows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-warn");
+  const noNormAssets = (directorAssetsCache || [])
+    .filter(a => a && a.active !== false && !assetFuelNormValue(a))
+    .slice(0, 40);
+  const totalLiters = round2(rows.reduce((sum, row) => sum + Number(row.liters || 0), 0));
+  const totalExpected = round2(rows.reduce((sum, row) => sum + Number(expectedFuelForRow(row) || 0), 0));
+
+  const table = (headers, bodyRows, empty) => bodyRows.length
+    ? `<div class="mechanic-table-wrap"><table class="mechanic-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${bodyRows.map(row => `<tr>${row.map((v, idx) => idx === row.length - 1 && String(v).includes("<span") ? `<td>${v}</td>` : `<td>${escapeHtml(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`
+    : `<p class="muted tiny">${escapeHtml(empty)}</p>`;
+
+  box.innerHTML = `
+    <div class="owner-kpi-grid mechanic-kpi-grid">
+      <div class="owner-kpi"><b>${rows.length}</b><span>sredstava u analizi</span></div>
+      <div class="owner-kpi"><b>${totalLiters} L</b><span>stvarno sipano</span></div>
+      <div class="owner-kpi"><b>${totalExpected} L</b><span>očekivano po normi</span></div>
+      <div class="owner-kpi"><b>${badRows.length}</b><span>povećana potrošnja</span></div>
+      <div class="owner-kpi"><b>${noNormAssets.length}</b><span>sredstva bez norme</span></div>
+    </div>
+    <section><h4>🚨 Povećana potrošnja</h4>${table(["Sredstvo","Tip","Norma","MTČ","KM","Očekivano","Sipano","Razlika","Status"], badRows.map(mechanicFuelRowCells), "Nema povećane potrošnje u izabranom periodu.")}</section>
+    <section><h4>⚠️ Proveriti / manje od norme</h4>${table(["Sredstvo","Tip","Norma","MTČ","KM","Očekivano","Sipano","Razlika","Status"], warnRows.map(mechanicFuelRowCells), "Nema sredstava za proveru.")}</section>
+    <section><h4>🧾 Sva sredstva sa gorivom/radom</h4>${table(["Sredstvo","Tip","Norma","MTČ","KM","Očekivano","Sipano","Razlika","Status"], rows.map(mechanicFuelRowCells), "Nema dovoljno podataka za potrošnju. Potrebni su MTČ/KM i sipanja goriva.")}</section>
+    <section><h4>📌 Sredstva bez upisane norme</h4>${table(["Sredstvo","Tip","Interni broj","Registracija","Šta fali"], noNormAssets.map(a => [formatAssetTitleWithCode(a), assetTypeLabel(normalizeAssetType(a.asset_type)), getAssetCode(a) || "—", getAssetRegistration(a) || "—", "Uneti normu potrošnje u Direkciji"]), "Sva aktivna sredstva imaju upisanu normu ili nema aktivnih sredstava.")}</section>`;
+}
+
+async function loadMechanicBossOperations({ silent = false } = {}) {
+  if (!currentWorker?.company_id || !sb) return;
+  try {
+    const [reports, assets] = await Promise.all([mechanicListCompanyReportsSafe(), mechanicListAssetsSafe()]);
+    mechanicBossAllReportsCache = reports || [];
+    mechanicBossAssetsCache = assets || [];
+    renderMechanicFuelAnalysis();
+    if (!silent) toast("Potrošnja i sredstva su osveženi.");
+  } catch (e) {
+    const box = document.getElementById("mechanicFuelOverview");
+    if (box) box.innerHTML = `<p class="muted">Ne mogu učitati potrošnju: ${escapeHtml(e.message || String(e))}</p>`;
+    if (!silent) toast(e.message || "Ne mogu učitati potrošnju.", true);
+  }
+}
+
 function renderMechanicBossDefects() {
   const tableBody = $("#mechanicBossTableBody");
   const cards = $("#mechanicBossCards");
@@ -12535,6 +12642,7 @@ async function openMechanicBossPanel() {
   if (label) label.textContent = `${currentWorker?.company_name || "Firma"} · panel kvarova`;
   show("MechanicBossPanel");
   await loadMechanicBossDefects({ silent: true });
+  await loadMechanicBossOperations({ silent: true });
   refreshMechanicPushUi();
   mechanicBossTimer = setInterval(() => loadMechanicBossDefects({ silent: true }), 30000);
 }

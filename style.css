@@ -6533,3 +6533,18 @@ body.worker-field-theme #viewWorkerForm .worker-module-chooser select{
 .material-overview-card section {
   margin-top: 16px;
 }
+
+/* AskCreate v6 - Šef mehanizacije: potrošnja + sredstva */
+.mechanic-ops-card { margin-top: 12px; }
+.mechanic-fuel-filters { margin: 12px 0; }
+.mechanic-fuel-overview section { margin-top: 16px; }
+.mechanic-fuel-overview h4 { margin: 0 0 10px; color: #0f172a; }
+.mechanic-kpi-grid .owner-kpi { background: #f8fafc; border-color: #dbe3ee; box-shadow: none; }
+.mechanic-kpi-grid .owner-kpi b { color: #0f172a; }
+.mechanic-kpi-grid .owner-kpi span { color: #475569; }
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-ops-card,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview .owner-kpi {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { color: #0f172a !important; }

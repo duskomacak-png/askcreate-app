@@ -1125,6 +1125,23 @@
         <button id="enableMechanicPushBtn" class="primary" type="button">🔔 Uključi obaveštenja za kvarove</button>
       </div>
 
+      <div class="card mechanic-table-card mechanic-ops-card">
+        <div class="mechanic-table-title">
+          <div>
+            <h3>⛽ Potrošnja goriva i sredstva</h3>
+            <p class="hint">Šef mehanizacije vidi normu, očekivanu potrošnju, stvarno sipano gorivo i sredstva bez upisane norme. Radnik i dalje samo unosi podatke.</p>
+          </div>
+          <button id="refreshMechanicOpsBtn" class="secondary" type="button">Osveži potrošnju</button>
+        </div>
+        <div class="fuel-analysis-filters mechanic-fuel-filters">
+          <label>Od datuma<input id="mechanicFuelFrom" type="date" /></label>
+          <label>Do datuma<input id="mechanicFuelTo" type="date" /></label>
+        </div>
+        <div id="mechanicFuelOverview" class="mechanic-fuel-overview">
+          <p class="muted">Učitavam potrošnju...</p>
+        </div>
+      </div>
+
       <div class="mechanic-summary-grid">
         <div class="card mechanic-summary-card mechanic-new mechanic-collapsible is-collapsed" data-mechanic-section="new">
           <button class="mechanic-section-toggle" type="button" onclick="toggleMechanicSection('mechanicNewDefects')" aria-controls="mechanicNewDefects" aria-expanded="false">
