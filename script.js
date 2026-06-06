@@ -1716,7 +1716,7 @@ function canonicalPersonFunction(value = "") {
 
 const ROLE_PERMISSION_PRESETS = {
   "Vlasnik / Gazda": ["owner_dashboard", "view_reports", "excel_export"],
-  "Vozač": ["vehicles", "materials", "fuel", "defects", "leave_request"],
+  "Vozač": ["vehicles", "materials", "fuel", "lowloader", "water_tanker", "defects", "leave_request"],
   "Rukovaoc građevinskom mehanizacijom": ["machines", "fuel", "defects", "leave_request"],
   "Fizički radnik": ["workers", "leave_request"],
   "Mehaničar": ["defects", "workers", "warehouse", "leave_request"],
@@ -1896,6 +1896,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "machines", group: "field", title: "Rad sa mašinom", lines: ["Mašina iz evidencije ili dodatni unos", "Početni i završni MTČ", "Sati rada"] },
   { key: "vehicles", group: "field", title: "Rad vozila / kamiona", lines: ["Vozilo / kamion", "Početna i završna kilometraža", "Ture / kubici"] },
   { key: "lowloader", group: "field", title: "Transport mašine labudicom", lines: ["Tablice labudice", "Odakle i gde se vozi", "Mašina koju seli", "Početna / završna kilometraža"] },
+  { key: "water_tanker", group: "field", title: "Cisterna za vodu", lines: ["Vozilo / cisterna", "Punjenje i istovar/prskanje", "Litara vode", "Broj punjenja"] },
   { key: "fuel", group: "field", title: "Evidencija goriva – korisnik", lines: ["Mašina ili vozilo", "KM posebno", "MTČ posebno", "Litara", "Ko je sipao / primio"] },
   { key: "field_tanker", group: "field", title: "Evidencija goriva – cisterna", lines: ["Gradilište", "Mašina ili vozilo", "Litara", "Primio gorivo"] },
   { key: "materials", group: "field", title: "Evidencija materijala", lines: ["Ulaz / izlaz / ugradnja", "Vrsta materijala", "Količina i jedinica mere"] },
@@ -2312,15 +2313,33 @@ async function findDuplicateAssetCode(rawCode) {
 let assetCodeCheckTimer = null;
 let directorAssetListFilter = "all";
 
+function rawAssetTypeValue(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
 function normalizeAssetType(value) {
-  const v = String(value || "").toLowerCase().trim();
+  const v = rawAssetTypeValue(value);
   if (["machine", "masina", "mašina"].includes(v)) return "machine";
-  if (["vehicle", "vozilo", "truck", "kamion"].includes(v)) return "vehicle";
-  if (["other", "ostalo", "oprema"].includes(v)) return "other";
+  if (["vehicle", "vozilo", "truck", "kamion", "vehicle_kiper", "kiper", "lowloader", "lowloader_vehicle", "labudica", "water_tanker", "cisterna_voda", "cisterna za vodu", "fuel_tanker_vehicle", "fuel_tanker", "cisterna_gorivo", "small_fuel_tanker", "mala_cisterna", "pickup_service", "pickup", "pikap", "kombi"].includes(v)) return "vehicle";
+  if (["fixed_fuel_pump", "fuel_canister", "other", "ostalo", "oprema"].includes(v)) return "other";
   return v || "other";
 }
 
 function assetTypeLabel(value) {
+  const raw = rawAssetTypeValue(value);
+  const detailed = {
+    vehicle_kiper: "Kiper / kamion za materijal",
+    lowloader_vehicle: "Labudica / niskonoseća prikolica",
+    lowloader: "Labudica / niskonoseća prikolica",
+    water_tanker: "Cisterna za vodu",
+    fuel_tanker_vehicle: "Cisterna za gorivo",
+    fuel_tanker: "Cisterna za gorivo",
+    small_fuel_tanker: "Mala pokretna cisterna za gorivo",
+    pickup_service: "Kombi / pikap / servisno vozilo",
+    fixed_fuel_pump: "Fiksna pumpa u bazi",
+    fuel_canister: "Kanister / ručno sipanje"
+  };
+  if (detailed[raw]) return detailed[raw];
   const v = normalizeAssetType(value);
   if (v === "machine") return "Mašina";
   if (v === "vehicle") return "Vozilo";
@@ -7507,6 +7526,14 @@ const WORKER_MODULE_DEFINITIONS = [
     reportType: "lowloader_transport"
   },
   {
+    value: "water_tanker",
+    label: "Cisterna za vodu",
+    requiredPerms: ["water_tanker"],
+    sectionKeys: ["water_tanker"],
+    needsMainSite: false,
+    reportType: "water_tanker_daily"
+  },
+  {
     value: "defect_report",
     label: "Prijava kvara",
     requiredPerms: ["defects"],
@@ -7600,6 +7627,7 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   if (module.value === "fuel_entry" && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
   if (module.value === "field_tanker" && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
   if (module.value === "lowloader" && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
+  if (module.value === "water_tanker" && $("#waterTankerEntries") && !$("#waterTankerEntries").children.length) addWaterTankerEntry();
   if ((module.value === "truck_tours" || module.value === "material_entry") && $("#materialEntries") && !$("#materialEntries").children.length && perms.materials) addMaterialEntry();
   updateLeaveRequestVisibility();
 }
@@ -7635,6 +7663,7 @@ function workerSetSections(perms) {
     machines: "#secMachines",
     vehicles: "#secVehicles",
     lowloader: "#secLowloader",
+    water_tanker: "#secWaterTanker",
     fuel: "#secFuel",
     field_tanker: "#secFieldTanker",
     materials: "#secMaterials",
@@ -8140,6 +8169,7 @@ function initGlobalFieldTankerCisternBox() {
 }
 
 function getFieldTankerGlobalCisternData() {
+  const sourceType = $("#fieldTankerSourceType")?.value || "fuel_tanker";
   const search = getGlobalFieldTankerCisternSearchValue();
   const select = $("#fieldTankerCisternSelect");
   const option = select?.options ? select.options[select.selectedIndex] : null;
@@ -8159,7 +8189,9 @@ function getFieldTankerGlobalCisternData() {
     tanker_manual_vehicle: manual,
     cistern_vehicle: name,
     cistern_registration: reg,
-    cistern_plates: reg
+    cistern_plates: reg,
+    source_type: sourceType,
+    fuel_source_type: sourceType
   };
 }
 
@@ -8366,6 +8398,8 @@ function getFieldTankerEntries() {
     const receiver = el.querySelector(".ft-receiver")?.value.trim() || "";
     return {
       no: i + 1,
+      source_type: globalCistern.source_type || "fuel_tanker",
+      fuel_source_type: globalCistern.fuel_source_type || globalCistern.source_type || "fuel_tanker",
       site_id: manualSite ? null : (siteOption?.dataset?.siteId || null),
       site_name: site,
       site_custom: manualSite,
@@ -8446,7 +8480,9 @@ function writeCurrentFieldTankerCistern(data = {}) {
     tanker_manual_vehicle: data.tanker_manual_vehicle || data.tanker_asset_custom || data.cistern_custom || "",
     cistern_vehicle: data.cistern_vehicle || data.tanker_asset_name || data.tanker_vehicle || data.cistern_name || "",
     cistern_registration: data.tanker_registration || data.tanker_plates || data.cistern_registration || data.cistern_plates || "",
-    cistern_plates: data.tanker_registration || data.tanker_plates || data.cistern_registration || data.cistern_plates || ""
+    cistern_plates: data.tanker_registration || data.tanker_plates || data.cistern_registration || data.cistern_plates || "",
+    source_type: data.source_type || data.fuel_source_type || "fuel_tanker",
+    fuel_source_type: data.fuel_source_type || data.source_type || "fuel_tanker"
   };
   const hasValue = Object.values(value).some(v => String(v || "").trim());
   try {
@@ -8885,6 +8921,87 @@ function refreshOneFuelAssetSelect(entryEl) {
 }
 
 
+
+function addWaterTankerEntry(values = {}) {
+  const list = $("#waterTankerEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".water-tanker-entry").length + 1;
+  const selectedVehicle = values.vehicle || values.asset_name || values.tanker_vehicle || "";
+  const div = document.createElement("div");
+  div.className = "entry-card water-tanker-entry";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Cisterna za vodu ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+    <label>Vozilo / cisterna za vodu</label>
+    <select class="wt-vehicle">${buildVehicleOptionsHtml(selectedVehicle)}</select>
+    <input class="wt-vehicle-custom" placeholder="ako nije u listi, upiši naziv/tablice" value="${escapeHtml(values.vehicle_custom || values.tanker_custom || "")}" />
+    <label>Gradilište / lokacija rada</label>
+    <select class="wt-site entry-site-select">${buildLowloaderSiteOptionsHtml(values.site_name || values.site || "")}</select>
+    <div class="mini-grid">
+      <div><label>KM početak</label><input class="wt-km-start numeric-text" inputmode="decimal" value="${escapeHtml(values.km_start || "")}" /></div>
+      <div><label>KM kraj</label><input class="wt-km-end numeric-text" inputmode="decimal" value="${escapeHtml(values.km_end || "")}" /></div>
+      <div><label>Litara vode</label><input class="wt-liters numeric-text" inputmode="decimal" placeholder="npr. 8000" value="${escapeHtml(values.water_liters || values.liters || "")}" /></div>
+      <div><label>Broj punjenja</label><input class="wt-loads numeric-text" inputmode="decimal" placeholder="npr. 2" value="${escapeHtml(values.loads || values.fill_count || "")}" /></div>
+    </div>
+    <div class="grid two">
+      <div><label>Gde je punjena voda</label><input class="wt-fill-location" placeholder="baza, hidrant, bunar..." value="${escapeHtml(values.fill_location || "")}" /></div>
+      <div><label>Gde je istovar / prskanje</label><input class="wt-unload-location" placeholder="gradilište, put, deonica..." value="${escapeHtml(values.unload_location || values.spray_location || "")}" /></div>
+    </div>
+    <label>Namena</label>
+    <select class="wt-purpose">
+      <option value="prskanje" ${(values.purpose || "") === "prskanje" ? "selected" : ""}>Prskanje puta / prašina</option>
+      <option value="zalivanje" ${(values.purpose || "") === "zalivanje" ? "selected" : ""}>Zalivanje / vlaženje</option>
+      <option value="dopuna" ${(values.purpose || "") === "dopuna" ? "selected" : ""}>Dopuna vode</option>
+      <option value="ciscenje" ${(values.purpose || "") === "ciscenje" ? "selected" : ""}>Čišćenje / pranje</option>
+      <option value="ostalo" ${(values.purpose || "") === "ostalo" ? "selected" : ""}>Ostalo</option>
+    </select>
+    <label>Napomena</label>
+    <input class="wt-note" placeholder="npr. prskano zbog prašine" value="${escapeHtml(values.note || "")}" />
+  `;
+  div.querySelector(".remove-entry")?.addEventListener("click", () => { div.remove(); renumberWaterTankerEntries(); });
+  list.appendChild(div);
+  preventNumberInputScrollChanges(div);
+}
+
+function renumberWaterTankerEntries() {
+  $$("#waterTankerEntries .water-tanker-entry").forEach((card, i) => {
+    const title = card.querySelector(".entry-card-head strong");
+    if (title) title.textContent = `Cisterna za vodu ${i + 1}`;
+  });
+}
+
+function getWaterTankerEntries() {
+  return $$("#waterTankerEntries .water-tanker-entry").map((el, i) => {
+    const select = el.querySelector(".wt-vehicle");
+    const option = select?.options ? select.options[select.selectedIndex] : null;
+    const custom = el.querySelector(".wt-vehicle-custom")?.value.trim() || "";
+    const vehicle = custom || select?.value || "";
+    return {
+      no: i + 1,
+      asset_id: custom ? null : (option?.dataset?.assetId || null),
+      asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
+      vehicle,
+      asset_name: vehicle,
+      vehicle_custom: custom,
+      registration: custom ? "" : (option?.dataset?.registration || ""),
+      ...getWorkerSiteOptionPayload(el.querySelector(".wt-site")),
+      km_start: el.querySelector(".wt-km-start")?.value || "",
+      km_end: el.querySelector(".wt-km-end")?.value || "",
+      water_liters: el.querySelector(".wt-liters")?.value || "",
+      liters: el.querySelector(".wt-liters")?.value || "",
+      loads: el.querySelector(".wt-loads")?.value || "",
+      fill_count: el.querySelector(".wt-loads")?.value || "",
+      fill_location: el.querySelector(".wt-fill-location")?.value.trim() || "",
+      unload_location: el.querySelector(".wt-unload-location")?.value.trim() || "",
+      spray_location: el.querySelector(".wt-unload-location")?.value.trim() || "",
+      purpose: el.querySelector(".wt-purpose")?.value || "",
+      note: el.querySelector(".wt-note")?.value.trim() || ""
+    };
+  }).filter(x => x.vehicle || x.site_name || x.water_liters || x.loads || x.fill_location || x.unload_location || x.note);
+}
+
 function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
   if (!list) return;
@@ -8901,6 +9018,25 @@ function addFuelEntry(values = {}) {
     <div class="entry-card-head">
       <strong>Sipanje goriva ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+
+
+    <div class="grid two">
+      <div>
+        <label>Izvor goriva</label>
+        <select class="f-source-type">
+          <option value="fixed_pump" ${(values.source_type || values.fuel_source_type || "") === "fixed_pump" ? "selected" : ""}>Fiksna pumpa u bazi</option>
+          <option value="small_tanker" ${(values.source_type || values.fuel_source_type || "") === "small_tanker" ? "selected" : ""}>Mala pokretna cisterna</option>
+          <option value="fuel_tanker" ${(values.source_type || values.fuel_source_type || "") === "fuel_tanker" ? "selected" : ""}>Cisterna za gorivo</option>
+          <option value="gas_station" ${(values.source_type || values.fuel_source_type || "") === "gas_station" ? "selected" : ""}>Benzinska pumpa / račun</option>
+          <option value="canister" ${(values.source_type || values.fuel_source_type || "") === "canister" ? "selected" : ""}>Kanister / ručno</option>
+          <option value="other" ${(values.source_type || values.fuel_source_type || "") === "other" ? "selected" : ""}>Ostalo</option>
+        </select>
+      </div>
+      <div>
+        <label>Naziv izvora / lokacija</label>
+        <input class="f-source-name" placeholder="npr. Pumpa baza, mala cisterna 1000 L" value="${escapeHtml(values.source_name || values.fuel_source || values.location || "")}" />
+      </div>
     </div>
 
     <label>Vrsta sredstva</label>
@@ -8984,6 +9120,11 @@ function getFuelEntries() {
       reading,
       mtc_km: reading,
       by: el.querySelector(".f-by")?.value.trim() || "",
+      source_type: el.querySelector(".f-source-type")?.value || "",
+      fuel_source_type: el.querySelector(".f-source-type")?.value || "",
+      source_name: el.querySelector(".f-source-name")?.value.trim() || "",
+      fuel_source: el.querySelector(".f-source-name")?.value.trim() || "",
+      fuel_location: el.querySelector(".f-source-name")?.value.trim() || "",
       receiver: currentWorker?.full_name || ""
     };
   }).filter(f => f.asset_name || f.liters || f.km || f.mtc || f.reading || f.by);
@@ -9003,6 +9144,7 @@ window.memorizeCurrentFieldTankerEntries = memorizeCurrentFieldTankerEntries;
 window.sendStoredFieldTankerEntries = sendStoredFieldTankerEntries;
 window.clearStoredFieldTankerEntries = clearStoredFieldTankerEntries;
 window.addLowloaderEntry = addLowloaderEntry;
+window.addWaterTankerEntry = addWaterTankerEntry;
 window.addMaterialEntry = addMaterialEntry;
 window.renumberLowloaderEntries = renumberLowloaderEntries;
 window.refreshFuelMachineOptions = refreshFuelMachineOptions;
@@ -9089,6 +9231,7 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
     (d.lowloader_moves || d.lowloader_entries || []).forEach(x => addLowloaderEntry(x));
+    (d.water_tanker_entries || d.water_entries || []).forEach(x => addWaterTankerEntry(x));
     (d.field_tanker_entries || d.tanker_fuel_entries || []).forEach(x => addFieldTankerEntry(x));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
@@ -9874,11 +10017,13 @@ function collectWorkerData() {
   const canWarehouse = activeKeys.has("warehouse");
   const canDefects = activeKeys.has("defects");
   const canLowloader = activeKeys.has("lowloader");
+  const canWaterTanker = activeKeys.has("water_tanker");
   const canFieldTanker = activeKeys.has("field_tanker");
   const lowloaderMoves = canLowloader ? getLowloaderEntries() : [];
+  const waterTankerEntries = canWaterTanker ? getWaterTankerEntries() : [];
   const fieldTankerEntries = canFieldTanker ? getFieldTankerEntries() : [];
   const materialEntries = canMaterials ? getMaterialEntries() : [];
-  const dailyItemSiteSummary = summarizeSitesFromDailyItems([...(machines || []), ...(vehicles || []), ...(materialEntries || [])]);
+  const dailyItemSiteSummary = summarizeSitesFromDailyItems([...(machines || []), ...(vehicles || []), ...(waterTankerEntries || []), ...(materialEntries || [])]);
   const leaveRequest = canLeaveRequest ? getLeaveRequestData() : null;
 
   const defectAssetPayload = canDefects ? getDefectAssetPayload() : {
@@ -9915,6 +10060,7 @@ function collectWorkerData() {
     machines: machines.length > 0,
     vehicles: vehicles.length > 0,
     lowloader: lowloaderMoves.length > 0,
+    water_tanker: waterTankerEntries.length > 0,
     field_tanker: fieldTankerEntries.length > 0,
     fuel: fuelEntries.length > 0,
     materials: materialEntries.length > 0,
@@ -9945,6 +10091,9 @@ function collectWorkerData() {
     vehicles,
     lowloader_moves: lowloaderMoves,
     lowloader_entries: lowloaderMoves,
+    water_tanker_entries: waterTankerEntries,
+    water_entries: waterTankerEntries,
+    water_liters: waterTankerEntries.reduce((sum, w) => sum + parseDecimalInput(w.water_liters || w.liters), 0) || "",
     field_tanker_entries: fieldTankerEntries,
     tanker_fuel_entries: fieldTankerEntries,
     fuel_entries: fuelEntries,
@@ -10012,6 +10161,7 @@ function clearWorkerForm() {
   if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
   if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
   if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
+  if ($("#waterTankerEntries")) $("#waterTankerEntries").innerHTML = "";
   if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
   if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
   localStorage.removeItem("swp_draft");
@@ -10159,6 +10309,9 @@ function getActiveWorkerModuleValidationIssue(data = {}) {
   if (type === "lowloader_transport" && !(data.lowloader_moves || data.lowloader_entries || []).length) {
     return { section: "#secLowloader", field: $("#addLowloaderBtn"), message: "Dodaj bar jedan transport labudicom pre slanja." };
   }
+  if (type === "water_tanker_daily" && !(data.water_tanker_entries || data.water_entries || []).length) {
+    return { section: "#secWaterTanker", field: $("#addWaterTankerBtn"), message: "Dodaj bar jedan rad cisterne za vodu pre slanja." };
+  }
   if (type === "material_movement" && !(data.material_entries || data.material_movements || []).length) {
     return { section: "#secMaterials", field: $("#addWorkerMaterialEntryBtn"), message: "Dodaj bar jednu stavku materijala pre slanja." };
   }
@@ -10238,12 +10391,14 @@ function loadDraft() {
     if ($("#vehicleEntries")) $("#vehicleEntries").innerHTML = "";
     if ($("#fuelEntries")) $("#fuelEntries").innerHTML = "";
     if ($("#lowloaderEntries")) $("#lowloaderEntries").innerHTML = "";
+    if ($("#waterTankerEntries")) $("#waterTankerEntries").innerHTML = "";
     if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
     if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
     (d.workers || d.worker_entries || []).forEach(w => addWorkerEntry(w));
     (d.machines || []).forEach(m => addMachineEntry(m));
     (d.vehicles || []).forEach(v => addVehicleEntry(v));
     (d.lowloader_moves || d.lowloader_entries || []).forEach(x => addLowloaderEntry(x));
+    (d.water_tanker_entries || d.water_entries || []).forEach(x => addWaterTankerEntry(x));
     (d.field_tanker_entries || d.tanker_fuel_entries || []).forEach(x => addFieldTankerEntry(x));
     if ((!d.vehicles || !d.vehicles.length) && (d.vehicle || d.km_start || d.km_end || d.route || d.tours)) {
       addVehicleEntry({ name: d.vehicle, km_start: d.km_start, km_end: d.km_end, route: d.route, tours: d.tours });
@@ -10281,6 +10436,7 @@ const WORKER_UI_PERMISSION_MAP = {
   machines: { label: "Rad sa mašinom", window: "Evidencija rada mašine", worker: true },
   vehicles: { label: "Rad vozila / kamiona", window: "Vozilo / ture / m³", worker: true },
   lowloader: { label: "Transport mašine labudicom", window: "Labudica / prevoz mašine", worker: true },
+  water_tanker: { label: "Cisterna za vodu", window: "Voda / cisterna", worker: true },
   fuel: { label: "Evidencija goriva – korisnik", window: "Sipanje goriva", worker: true },
   field_tanker: { label: "Evidencija goriva – cisterna", window: "Evidencija goriva – cisterna", worker: true },
   materials: { label: "Materijal", window: "Materijal", worker: true },

@@ -2,9 +2,9 @@ const CACHE_NAME = "askcreate-app-v1420";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1410",
-  "./script.js?v=1410",
-  "./manifest.json?v=1410",
+  "./style.css?v=1420",
+  "./script.js?v=1420",
+  "./manifest.json?v=1420",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

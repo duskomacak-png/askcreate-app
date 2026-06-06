@@ -10,7 +10,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1370" />
+  <link rel="stylesheet" href="style.css?v=1420" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -529,6 +529,7 @@
                 <label><input type="checkbox" class="perm" value="machines" /> Rad sa mašinom</label>
                 <label><input type="checkbox" class="perm" value="vehicles" /> Rad vozila / kamiona</label>
                 <label><input type="checkbox" class="perm" value="lowloader" /> Transport mašine labudicom</label>
+                <label><input type="checkbox" class="perm" value="water_tanker" /> Cisterna za vodu</label>
                 <label><input type="checkbox" class="perm" value="fuel" /> Evidencija goriva – korisnik</label>
                 <label><input type="checkbox" class="perm" value="field_tanker" /> Evidencija goriva – cisterna</label>
                 <label><input type="checkbox" class="perm" value="materials" /> Evidencija materijala</label>
@@ -634,16 +635,25 @@
             <label>Kategorija</label>
             <select id="assetType">
               <option value="machine">Mašina</option>
-              <option value="vehicle">Vozilo</option>
+              <option value="vehicle">Vozilo / opšte</option>
+              <option value="vehicle_kiper">Kiper / kamion za materijal</option>
+              <option value="lowloader_vehicle">Labudica / niskonoseća prikolica</option>
+              <option value="water_tanker">Cisterna za vodu</option>
+              <option value="fuel_tanker_vehicle">Cisterna za gorivo</option>
+              <option value="small_fuel_tanker">Mala pokretna cisterna za gorivo</option>
+              <option value="pickup_service">Kombi / pikap / servisno vozilo</option>
+              <option value="fixed_fuel_pump">Fiksna pumpa u bazi</option>
+              <option value="fuel_canister">Kanister / ručno sipanje</option>
               <option value="other">Oprema / ostalo</option>
             </select>
             <label>Registracija / oznaka</label>
             <input id="assetReg" placeholder="BG-123-AA / interna oznaka" />
-            <label>Kapacitet vozila (m³)</label>
+            <label>Kapacitet</label>
             <div class="unit-input">
-              <input id="assetCapacity" inputmode="decimal" placeholder="npr. 18" />
-              <span class="unit-suffix">m³</span>
+              <input id="assetCapacity" inputmode="decimal" placeholder="npr. 18 m³, 8000 L ili 1000 L" />
+              <span class="unit-suffix">m³ / L</span>
             </div>
+            <p class="field-hint">Za kiper upiši m³, za cisternu za vodu ili gorivo upiši litre. Labudica uglavnom nema kapacitet materijala.</p>
             <div class="asset-consumption-box">
               <label>Norma potrošnje goriva</label>
               <div class="asset-consumption-grid">
@@ -1419,6 +1429,13 @@
           <button id="addLowloaderBtn" class="secondary" type="button" onclick="addLowloaderEntry()">+ Dodaj selidbu mašine</button>
         </div>
 
+        <div id="secWaterTanker" class="dyn-section">
+          <h4>Cisterna za vodu</h4>
+          <p class="hint">Za vodu se ne računaju m³ materijala. Unosi se vozilo/cisterna, litri vode, punjenje, istovar/prskanje i gradilište.</p>
+          <div id="waterTankerEntries" class="entry-list"></div>
+          <button id="addWaterTankerBtn" class="secondary" type="button" onclick="addWaterTankerEntry()">+ Dodaj rad cisterne za vodu</button>
+        </div>
+
         <div id="secFuel" class="dyn-section">
           <h4>Sipanje goriva</h4>
           <p class="hint">Možeš evidentirati više sipanja goriva i povezati svako sipanje sa konkretnim sredstvom.</p>
@@ -1433,6 +1450,14 @@
           <h4>Evidencija goriva – cisterna</h4>
           <p class="hint">Prvo upiši tablice / cisternu koja sipa gorivo. Aplikacija ih pamti za ovaj dnevni izveštaj dok ga ne pošalješ Upravi.</p>
           <div id="fieldTankerCisternBox" class="entry-card field-tanker-cistern-box">
+            <label>Izvor goriva</label>
+            <select id="fieldTankerSourceType">
+              <option value="fuel_tanker">Cisterna za gorivo</option>
+              <option value="small_tanker">Mala pokretna cisterna</option>
+              <option value="fixed_pump">Fiksna pumpa u bazi</option>
+              <option value="canister">Kanister / ručno</option>
+              <option value="other">Ostalo</option>
+            </select>
             <label>Tablice / cisterna koja sipa gorivo</label>
             <input id="fieldTankerCisternSearch" class="asset-code-search smart-asset-input" placeholder="npr. BG123BG, interni broj ili naziv cisterne" autocomplete="off" />
             <div id="fieldTankerCisternPicked" class="asset-smart-result">Upiši tablice, interni broj ili naziv cisterne iz Direkcije.</div>
@@ -1579,6 +1604,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1370"></script>
+  <script src="script.js?v=1420"></script>
 </body>
 </html>
