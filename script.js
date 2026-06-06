@@ -1707,6 +1707,47 @@ function canonicalPersonFunction(value = "") {
   return "Ostalo";
 }
 
+
+const ROLE_PERMISSION_PRESETS = {
+  "Vozač": ["vehicles", "materials", "fuel", "defects", "leave_request"],
+  "Rukovaoc građevinskom mehanizacijom": ["machines", "fuel", "defects", "leave_request"],
+  "Fizički radnik": ["workers", "leave_request"],
+  "Mehaničar": ["defects", "workers", "warehouse", "leave_request"],
+  "Magacioner": ["warehouse", "materials", "leave_request"],
+  "Šef gradilišta inženjer": ["site_daily_log", "workers", "machines", "vehicles", "materials", "defects", "signature", "view_reports", "approve_reports"],
+  "Šef mehanizacije": ["mechanic_boss", "defects", "fuel", "machines", "vehicles", "view_reports", "approve_reports"],
+  "Ostalo": ["workers", "leave_request"]
+};
+
+function rolePresetKeys(roleValue = "") {
+  return ROLE_PERMISSION_PRESETS[canonicalPersonFunction(roleValue)] || [];
+}
+
+function updateRolePresetHint() {
+  const role = $("#personFunction")?.value || "";
+  const hint = $("#rolePresetHint");
+  const btn = $("#applyRolePresetBtn");
+  const keys = rolePresetKeys(role);
+  if (hint) {
+    if (!role) hint.textContent = "Izaberi radno mesto. Aplikacija može automatski predložiti osnovne funkcije, a Direkcija posle može dodati ili skinuti šta treba.";
+    else if (keys.length) hint.textContent = `Za ulogu „${canonicalPersonFunction(role)}” predloženo je ${keys.length} osnovnih funkcija. Direkcija može ručno dodati ili skinuti funkcije.`;
+    else hint.textContent = "Za ovu ulogu nema posebnog predloga. Funkcije štiklira Direkcija ručno.";
+  }
+  if (btn) btn.disabled = !keys.length;
+}
+
+function applyRolePresetToPersonForm({ merge = false } = {}) {
+  const role = $("#personFunction")?.value || "";
+  const keys = new Set(rolePresetKeys(role));
+  if (!keys.size) return;
+  $$(".perm").forEach(ch => {
+    if (merge) ch.checked = ch.checked || keys.has(ch.value);
+    else ch.checked = keys.has(ch.value);
+  });
+  renderWorkerPreview(true);
+  toast("Predložene funkcije za izabranu ulogu su primenjene. Direkcija i dalje može ručno da ih promeni.");
+}
+
 function selectedPeopleRegisterRole() {
   return $("#peopleRegisterRoleFilter")?.value || "";
 }
@@ -2004,6 +2045,11 @@ function bindPersonPreviewEvents() {
   });
   const hideBtn = $("#hideWorkerPreviewBtn");
   if (hideBtn) hideBtn.addEventListener("click", hideWorkerPreview);
+  const roleSelect = $("#personFunction");
+  if (roleSelect) roleSelect.addEventListener("change", updateRolePresetHint);
+  const presetBtn = $("#applyRolePresetBtn");
+  if (presetBtn) presetBtn.addEventListener("click", () => applyRolePresetToPersonForm({ merge: false }));
+  updateRolePresetHint();
 }
 
 window.editPerson = async (id) => {
@@ -2130,6 +2176,72 @@ window.deleteReportPermanently = async (id) => {
   }
 };
 
+
+function defaultFuelUnitForAssetType(assetType) {
+  const t = normalizeAssetType(assetType);
+  if (t === "vehicle") return "l_per_100km";
+  if (t === "machine") return "l_per_mtc";
+  return "l_per_hour";
+}
+
+function fuelNormUnitLabel(unit) {
+  const u = String(unit || "").trim();
+  if (u === "l_per_100km") return "L / 100 km";
+  if (u === "l_per_hour") return "L / sat";
+  return "L / MTČ";
+}
+
+function assetFuelNormValue(asset) {
+  return parseDecimalInput(asset?.fuel_norm ?? asset?.consumption_norm ?? asset?.fuel_consumption_norm ?? "");
+}
+
+function assetFuelNormUnit(asset) {
+  return String(asset?.fuel_norm_unit || asset?.consumption_unit || defaultFuelUnitForAssetType(asset?.asset_type || asset?.type || "machine"));
+}
+
+function assetFuelToleranceValue(asset) {
+  const n = parseDecimalInput(asset?.fuel_tolerance_percent ?? asset?.consumption_tolerance_percent ?? asset?.tolerance_percent ?? "");
+  return n > 0 ? n : 20;
+}
+
+function formatAssetFuelNorm(asset) {
+  const n = assetFuelNormValue(asset);
+  if (!n) return "";
+  return `${n} ${fuelNormUnitLabel(assetFuelNormUnit(asset))}`;
+}
+
+function formatAssetTolerance(asset) {
+  return `${assetFuelToleranceValue(asset)}%`;
+}
+
+function isMissingAssetConsumptionColumnError(error) {
+  const msg = String(error?.message || error?.details || "").toLowerCase();
+  return msg.includes("fuel_norm") || msg.includes("fuel_norm_unit") || msg.includes("fuel_tolerance_percent") || msg.includes("consumption");
+}
+
+function stripAssetConsumptionColumns(payload) {
+  const clean = { ...payload };
+  delete clean.fuel_norm;
+  delete clean.fuel_norm_unit;
+  delete clean.fuel_tolerance_percent;
+  return clean;
+}
+
+async function saveAssetPayloadWithConsumptionFallback(payload, editingId) {
+  const runSave = async (dataPayload) => {
+    if (editingId) {
+      return await sb.from("assets").update(dataPayload).eq("id", editingId).eq("company_id", currentCompany.id);
+    }
+    return await sb.from("assets").insert(dataPayload);
+  };
+  let { error } = await runSave(payload);
+  if (!error) return { ok: true };
+  if (!isMissingAssetConsumptionColumnError(error)) throw error;
+  const retry = await runSave(stripAssetConsumptionColumns(payload));
+  if (retry.error) throw retry.error;
+  return { ok: true, warning: "Sredstvo je sačuvano, ali norme potrošnje nisu upisane jer u Supabase tabeli assets još nisu dodate nove kolone. Pokreni SQL iz poruke, pa ponovo izmeni sredstvo." };
+}
+
 function setAssetFormMode(mode = "add") {
   const editing = mode === "edit";
   const title = document.querySelector("#assetFormTitle");
@@ -2141,12 +2253,14 @@ function setAssetFormMode(mode = "add") {
 }
 
 function clearAssetForm() {
-  ["assetCode", "assetName", "assetReg", "assetCapacity"].forEach(id => {
+  ["assetCode", "assetName", "assetReg", "assetCapacity", "assetFuelNorm", "assetFuelTolerance"].forEach(id => {
     const el = document.querySelector("#" + id);
     if (el) el.value = "";
   });
   const type = document.querySelector("#assetType");
   if (type) type.value = "machine";
+  const fuelUnit = document.querySelector("#assetFuelUnit");
+  if (fuelUnit) fuelUnit.value = "l_per_mtc";
   editingAssetId = null;
   setAssetFormMode("add");
   setAssetCodeStatus("Interni broj sredstva mora biti jedinstven u ovoj firmi. Ne koristi isti broj za dve mašine, vozila ili opremu.", "info");
@@ -2263,6 +2377,9 @@ window.editAsset = async (id) => {
     document.querySelector("#assetType").value = asset.asset_type || "machine";
     document.querySelector("#assetReg").value = asset.registration || "";
     document.querySelector("#assetCapacity").value = asset.capacity || "";
+    if (document.querySelector("#assetFuelNorm")) document.querySelector("#assetFuelNorm").value = asset.fuel_norm || asset.consumption_norm || asset.fuel_consumption_norm || "";
+    if (document.querySelector("#assetFuelUnit")) document.querySelector("#assetFuelUnit").value = asset.fuel_norm_unit || asset.consumption_unit || defaultFuelUnitForAssetType(asset.asset_type || "machine");
+    if (document.querySelector("#assetFuelTolerance")) document.querySelector("#assetFuelTolerance").value = asset.fuel_tolerance_percent || asset.consumption_tolerance_percent || asset.tolerance_percent || "";
     setAssetFormMode("edit");
     checkAssetCodeAvailability(false).catch(() => {});
     toast("Sredstvo je otvoreno za izmenu.");
@@ -2281,6 +2398,9 @@ async function saveAssetForm() {
     const assetType = document.querySelector("#assetType").value;
     const registration = document.querySelector("#assetReg").value.trim();
     const capacity = document.querySelector("#assetCapacity").value.trim();
+    const fuelNorm = document.querySelector("#assetFuelNorm")?.value.trim() || "";
+    const fuelNormUnit = document.querySelector("#assetFuelUnit")?.value || defaultFuelUnitForAssetType(assetType);
+    const fuelTolerance = document.querySelector("#assetFuelTolerance")?.value.trim() || "";
 
     if (!name) throw new Error("Upiši naziv mašine/vozila.");
 
@@ -2297,21 +2417,17 @@ async function saveAssetForm() {
       name,
       asset_type: assetType,
       registration,
-      capacity
+      capacity,
+      fuel_norm: fuelNorm,
+      fuel_norm_unit: fuelNormUnit,
+      fuel_tolerance_percent: fuelTolerance
     };
 
-    if (editingAssetId) {
-      const { error } = await sb
-        .from("assets")
-        .update(payload)
-        .eq("id", editingAssetId)
-        .eq("company_id", currentCompany.id);
-      if (error) throw error;
-      toast("Sredstvo je izmenjeno.");
+    const saveResult = await saveAssetPayloadWithConsumptionFallback(payload, editingAssetId);
+    if (saveResult.warning) {
+      toast(saveResult.warning, true);
     } else {
-      const { error } = await sb.from("assets").insert(payload);
-      if (error) throw error;
-      toast("Sredstvo dodato.");
+      toast(editingAssetId ? "Sredstvo je izmenjeno." : "Sredstvo dodato.");
     }
 
     clearAssetForm();
@@ -2672,6 +2788,7 @@ function renderAssetsList() {
       <div class="dt-cell"><span>${escapeHtml(assetTypeLabel(a.asset_type))}</span><small>Kategorija</small></div>
       <div class="dt-cell"><span>${escapeHtml(a.registration || "—")}</span><small>Reg. oznaka</small></div>
       <div class="dt-cell"><span>${escapeHtml(formatCapacityM3(a.capacity))}</span><small>Kapacitet</small></div>
+      <div class="dt-cell"><span>${escapeHtml(formatAssetFuelNorm(a) || "—")}</span><small>Norma goriva</small><small class="asset-consumption-note">Odstupanje ${escapeHtml(formatAssetTolerance(a))}</small></div>
       <div class="dt-actions management-actions asset-actions-v1117">
         <button class="edit-btn" type="button" onclick="editAsset('${a.id}')">✏️ Izmeni</button>
         <button class="delete-btn" type="button" onclick="deleteAsset('${a.id}', '${escapeHtml(a.name || '')}')">Skloni</button>
@@ -3459,6 +3576,7 @@ async function loadReports(options = {}) {
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
   renderDefectsList();
   renderFuelReportsList();
+  renderFuelConsumptionAnalysis();
   renderArchiveList();
   renderExportPanel();
   officeFillSiteDatalists();
@@ -3834,6 +3952,159 @@ function fuelReportHtml(r) {
     </article>`;
 }
 
+
+function assetLookupKeyParts(asset = {}) {
+  return [getAssetCode(asset), asset?.asset_code, asset?.machine_code, asset?.vehicle_code, asset?.tanker_asset_code, asset?.name, asset?.asset_name, asset?.machine, asset?.vehicle, asset?.other, asset?.registration]
+    .map(v => String(v || "").trim())
+    .filter(Boolean);
+}
+
+function buildDirectorAssetLookup() {
+  const map = new Map();
+  (directorAssetsCache || []).forEach(asset => {
+    assetLookupKeyParts(asset).forEach(key => map.set(normalizeVehicleSearch(key), asset));
+  });
+  return map;
+}
+
+function findDirectorAssetForEntry(entry = {}, lookup = buildDirectorAssetLookup()) {
+  for (const key of assetLookupKeyParts(entry)) {
+    const found = lookup.get(normalizeVehicleSearch(key));
+    if (found) return found;
+  }
+  return null;
+}
+
+function reportDateInRange(report, from, to) {
+  const d = String(report?.report_date || report?.created_at || "").slice(0, 10);
+  if (from && d < from) return false;
+  if (to && d > to) return false;
+  return true;
+}
+
+function fuelAnalysisAssetKey(asset, entry) {
+  return String(asset?.id || entry?.asset_id || entry?.asset_code || entry?.machine_code || entry?.vehicle_code || entry?.asset_name || entry?.machine || entry?.vehicle || entry?.other || "unknown");
+}
+
+function fuelAnalysisAssetLabel(asset, entry) {
+  return formatAssetTitleWithCode(asset || entry) || entry?.asset_name || entry?.machine || entry?.vehicle || entry?.other || "Nepoznato sredstvo";
+}
+
+function addFuelAnalysisWork(rows, entry = {}, kind = "") {
+  if (!entry) return;
+  const lookup = rows.lookup;
+  const asset = findDirectorAssetForEntry(entry, lookup);
+  const key = fuelAnalysisAssetKey(asset, entry);
+  if (!rows.map.has(key)) {
+    rows.map.set(key, {
+      asset,
+      label: fuelAnalysisAssetLabel(asset, entry),
+      type: normalizeAssetType(asset?.asset_type || entry.asset_type || entry.asset_kind || kind),
+      mtc: 0,
+      km: 0,
+      hours: 0,
+      liters: 0,
+      sites: new Set()
+    });
+  }
+  const row = rows.map.get(key);
+  row.type = row.type || normalizeAssetType(asset?.asset_type || entry.asset_type || entry.asset_kind || kind);
+  row.mtc += parseDecimalInput(machineMtcTotal(entry) || entry.mtc_total || entry.total_mtc || entry.hours_mtc || entry.mtc);
+  row.km += parseDecimalInput(machineKmTotal(entry) || entry.km_total || entry.total_km);
+  row.hours += parseDecimalInput(entry.hours || entry.work_hours || "");
+  const site = entry.site_name || entry.site || "";
+  if (site) row.sites.add(site);
+}
+
+function addFuelAnalysisLiters(rows, entry = {}) {
+  if (!entry) return;
+  const lookup = rows.lookup;
+  const asset = findDirectorAssetForEntry(entry, lookup);
+  const key = fuelAnalysisAssetKey(asset, entry);
+  if (!rows.map.has(key)) {
+    rows.map.set(key, {
+      asset,
+      label: fuelAnalysisAssetLabel(asset, entry),
+      type: normalizeAssetType(asset?.asset_type || entry.asset_type || entry.asset_kind || ""),
+      mtc: 0,
+      km: 0,
+      hours: 0,
+      liters: 0,
+      sites: new Set()
+    });
+  }
+  const row = rows.map.get(key);
+  row.type = row.type || normalizeAssetType(asset?.asset_type || entry.asset_type || entry.asset_kind || "");
+  row.liters += parseDecimalInput(entry.liters || entry.fuel_liters);
+  const site = entry.site_name || entry.site || "";
+  if (site) row.sites.add(site);
+}
+
+function expectedFuelForRow(row) {
+  const asset = row.asset || {};
+  const norm = assetFuelNormValue(asset);
+  const unit = assetFuelNormUnit(asset);
+  if (!norm) return 0;
+  if (unit === "l_per_100km") return row.km * norm / 100;
+  if (unit === "l_per_hour") return (row.hours || row.mtc) * norm;
+  return row.mtc * norm;
+}
+
+function fuelConsumptionStatus(row) {
+  const expected = expectedFuelForRow(row);
+  if (!expected || !row.liters) return { label: "Nema dovoljno podataka", cls: "" };
+  const diff = row.liters - expected;
+  const pct = Math.abs(diff) / expected * 100;
+  const tolerance = assetFuelToleranceValue(row.asset || {});
+  if (pct <= tolerance) return { label: "U normi", cls: "consumption-status-ok" };
+  return { label: diff > 0 ? "Povećana potrošnja" : "Manje od norme", cls: diff > 0 ? "consumption-status-bad" : "consumption-status-warn" };
+}
+
+function buildFuelConsumptionRows(from, to) {
+  const rows = { map: new Map(), lookup: buildDirectorAssetLookup() };
+  (directorReportsCache || []).filter(r => reportDateInRange(r, from, to)).forEach(r => {
+    const d = r.data || {};
+    (Array.isArray(d.machines) ? d.machines : []).forEach(m => addFuelAnalysisWork(rows, m, "machine"));
+    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => addFuelAnalysisWork(rows, v, "vehicle"));
+    (Array.isArray(d.fuel_entries) ? d.fuel_entries : []).forEach(f => addFuelAnalysisLiters(rows, f));
+    const tanker = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+    tanker.forEach(f => addFuelAnalysisLiters(rows, f));
+  });
+  return Array.from(rows.map.values()).filter(r => r.liters || r.mtc || r.km || r.hours);
+}
+
+function renderFuelConsumptionAnalysis() {
+  const box = $("#fuelConsumptionList");
+  if (!box) return;
+  const from = $("#fuelAnalysisFrom")?.value || today().slice(0, 8) + "01";
+  const to = $("#fuelAnalysisTo")?.value || today();
+  if ($("#fuelAnalysisFrom") && !$("#fuelAnalysisFrom").value) $("#fuelAnalysisFrom").value = from;
+  if ($("#fuelAnalysisTo") && !$("#fuelAnalysisTo").value) $("#fuelAnalysisTo").value = to;
+  const rows = buildFuelConsumptionRows(from, to);
+  const tableRows = rows.map(row => {
+    const expected = expectedFuelForRow(row);
+    const diff = row.liters - expected;
+    const status = fuelConsumptionStatus(row);
+    return [
+      row.label,
+      assetTypeLabel(row.type),
+      [...row.sites].join(", ") || "—",
+      row.mtc ? `${Math.round(row.mtc * 100) / 100} MTČ` : "—",
+      row.km ? `${Math.round(row.km * 100) / 100} km` : "—",
+      formatAssetFuelNorm(row.asset) || "Nema norme",
+      expected ? `${Math.round(expected * 100) / 100} L` : "—",
+      row.liters ? `${Math.round(row.liters * 100) / 100} L` : "—",
+      expected ? `${diff >= 0 ? "+" : ""}${Math.round(diff * 100) / 100} L` : "—",
+      `<span class="${status.cls}">${escapeHtml(status.label)}</span>`
+    ];
+  });
+  if (!tableRows.length) {
+    box.innerHTML = `<p class="muted office-empty">Nema podataka za potrošnju u izabranom periodu. Potrebni su rad MTČ/KM i sipanja goriva.</p>`;
+    return;
+  }
+  box.innerHTML = `<div class="office-table-wrap"><table class="office-table"><thead><tr>${["Sredstvo","Tip","Gradilišta","MTČ","KM","Norma","Očekivano","Sipano","Razlika","Status"].map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${tableRows.map(row => `<tr>${row.map((v, idx) => idx === 9 ? `<td>${v}</td>` : `<td>${escapeHtml(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
 function renderFuelReportsList() {
   const box = $("#fuelReportsList");
   if (!box) return;
@@ -3859,8 +4130,8 @@ function archiveReportHtml(r) {
           <small>${escapeHtml(submitted || "")}</small>
         </div>
         <div class="report-list-site">
-          <strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong>
-          <small>${escapeHtml(title)}</small>
+          <strong>${escapeHtml(reportPrimaryLocationLabel(r))}</strong>
+          <small>${escapeHtml(d.report_type_label || title)}</small>
         </div>
         <div class="report-list-worker">
           <strong>${escapeHtml(person)}</strong>
@@ -5277,6 +5548,11 @@ window.exportSingleReportToExcel = function(id) {
   toast("Excel/CSV dokument je preuzet — kolone su sada stvarno razdvojene za Excel/LibreOffice.");
 };
 
+function reportPrimaryLocationLabel(r = {}) {
+  const d = r.data || {};
+  return d.site_name || d.request_title || d.report_type_label || d.report_label || "Bez gradilišta";
+}
+
 function reportHtml(r) {
   const d = r.data || {};
   const person = reportDocumentPerson(r);
@@ -5295,8 +5571,8 @@ function reportHtml(r) {
           <small>${escapeHtml(submitted || "")}</small>
         </div>
         <div class="report-list-site">
-          <strong>${escapeHtml(d.site_name || "Bez gradilišta")}</strong>
-          <small>${escapeHtml(title)}</small>
+          <strong>${escapeHtml(reportPrimaryLocationLabel(r))}</strong>
+          <small>${escapeHtml(d.report_type_label || title)}</small>
         </div>
         <div class="report-list-worker">
           <strong>${escapeHtml(person)}</strong>
@@ -5352,6 +5628,7 @@ window.archiveReport = async (id) => {
     directorReportsCache = directorReportsCache.map(r => String(r.id) === String(id) ? { ...r, status: "archived", updated_at: new Date().toISOString() } : r);
     businessUpdateReportsMetrics(directorReportsCache);
     renderFuelReportsList();
+    renderFuelConsumptionAnalysis();
     renderArchiveList();
     renderDefectsList();
     const reportsBox = document.getElementById("reportsList");
@@ -6156,6 +6433,34 @@ function updateVehicleCubic(entryEl) {
   }
 }
 
+
+function getWorkerSiteOptionPayload(select) {
+  if (!select) return { site_id: null, site_name: "" };
+  const option = select.options ? select.options[select.selectedIndex] : null;
+  return {
+    site_id: option?.dataset?.siteId || null,
+    site_name: String(select.value || "").trim()
+  };
+}
+
+function refreshDailyItemSiteSelectors() {
+  $$(".entry-site-select").forEach(select => {
+    const oldValue = select.value || "";
+    select.innerHTML = buildLowloaderSiteOptionsHtml(oldValue);
+    if (oldValue && Array.from(select.options).some(o => o.value === oldValue)) select.value = oldValue;
+  });
+}
+
+function summarizeSitesFromDailyItems(items = []) {
+  const names = Array.from(new Set((items || []).map(x => x.site_name || x.site || "").filter(Boolean)));
+  if (!names.length) return { site_id: null, site_name: "" };
+  if (names.length === 1) {
+    const first = (items || []).find(x => (x.site_name || x.site) === names[0]) || {};
+    return { site_id: first.site_id || null, site_name: names[0] };
+  }
+  return { site_id: null, site_name: `Više gradilišta (${names.length})` };
+}
+
 function addVehicleEntry(values = {}) {
   const list = $("#vehicleEntries");
   if (!list) return;
@@ -6178,6 +6483,10 @@ function addVehicleEntry(values = {}) {
     <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
     <input class="v-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
 
+    <label>Gradilište za ovu stavku</label>
+    <select class="v-site entry-site-select">${buildLowloaderSiteOptionsHtml(values.site_name || values.site || "")}</select>
+    <p class="field-hint">Ako si danas radio na više gradilišta, dodaj novu stavku za svako gradilište. Direkcija će dobiti jedan izveštaj, a stavke će se razvrstati po gradilištu.</p>
+
     <div class="mini-grid">
       <div>
         <label>KM početak</label>
@@ -6189,8 +6498,35 @@ function addVehicleEntry(values = {}) {
       </div>
     </div>
 
-    <label>Relacija</label>
-    <input class="v-route" placeholder="Od - do" value="${escapeHtml(values.route || "")}" />
+    <div class="grid two">
+      <div>
+        <label>Smer / tip prevoza</label>
+        <select class="v-direction">
+          <option value="" ${!values.direction && !values.transport_direction ? "selected" : ""}>Izaberi</option>
+          <option value="dovoz" ${(values.direction || values.transport_direction) === "dovoz" ? "selected" : ""}>Dovoz na gradilište</option>
+          <option value="odvoz" ${(values.direction || values.transport_direction) === "odvoz" ? "selected" : ""}>Odvoz sa gradilišta</option>
+          <option value="interno" ${(values.direction || values.transport_direction) === "interno" ? "selected" : ""}>Interno / između gradilišta</option>
+        </select>
+      </div>
+      <div>
+        <label>Materijal</label>
+        <input class="v-material" placeholder="zemlja, šut, tampon..." value="${escapeHtml(values.material || values.material_name || "")}" />
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div>
+        <label>Utovar / polazak</label>
+        <input class="v-load" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.load_location || values.from || "")}" />
+      </div>
+      <div>
+        <label>Istovar / dolazak</label>
+        <input class="v-unload" placeholder="npr. Makiš" value="${escapeHtml(values.unload_location || values.to || "")}" />
+      </div>
+    </div>
+
+    <label>Relacija / napomena relacije</label>
+    <input class="v-route" placeholder="Od - do, ako treba dodatno objašnjenje" value="${escapeHtml(values.route || "")}" />
 
     <div class="mini-grid">
       <div>
@@ -6219,6 +6555,7 @@ function addVehicleEntry(values = {}) {
   });
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
   div.querySelector(".v-tours").addEventListener("input", () => updateVehicleCubic(div));
+  div.querySelector(".v-site")?.addEventListener("change", () => updateVehicleCubic(div));
   const refreshVehiclesBtn = div.querySelector(".refresh-vehicle-assets");
   if (refreshVehiclesBtn) refreshVehiclesBtn.addEventListener("click", async () => {
     try {
@@ -6257,6 +6594,13 @@ function getVehicleEntries() {
       registration: selected.registration,
       capacity: selected.capacity,
       vehicle_custom: el.querySelector(".v-custom")?.value.trim() || "",
+      ...getWorkerSiteOptionPayload(el.querySelector(".v-site")),
+      direction: el.querySelector(".v-direction")?.value || "",
+      transport_direction: el.querySelector(".v-direction")?.value || "",
+      material: el.querySelector(".v-material")?.value.trim() || "",
+      material_name: el.querySelector(".v-material")?.value.trim() || "",
+      load_location: el.querySelector(".v-load")?.value.trim() || "",
+      unload_location: el.querySelector(".v-unload")?.value.trim() || "",
       km_start: el.querySelector(".v-km-start")?.value || "",
       km_end: el.querySelector(".v-km-end")?.value || "",
       route: el.querySelector(".v-route")?.value.trim() || "",
@@ -6265,7 +6609,7 @@ function getVehicleEntries() {
       cubic_manual: manualCubic,
       cubic_m3: finalCubic
     };
-  }).filter(v => v.name || v.km_start || v.km_end || v.route || v.tours || v.cubic_m3);
+  }).filter(v => v.name || v.site_name || v.material || v.direction || v.load_location || v.unload_location || v.km_start || v.km_end || v.route || v.tours || v.cubic_m3);
 }
 
 async function loadWorkerSites(selectedName = "") {
@@ -6297,6 +6641,7 @@ async function loadWorkerSites(selectedName = "") {
       if (hint) hint.textContent = "Uprava još nije dodala aktivno gradilište ili je SQL za worker_list_sites star.";
       refreshFieldTankerSelectors();
       refreshDefectSiteDatalist();
+      refreshDailyItemSiteSelectors();
       return;
     }
 
@@ -6313,6 +6658,7 @@ async function loadWorkerSites(selectedName = "") {
     }
     refreshFieldTankerSelectors();
     refreshDefectSiteDatalist();
+    refreshDailyItemSiteSelectors();
 
     if (hint) hint.textContent = "Odaberi aktivno gradilište koje je dodala Uprava.";
   } catch (e) {
@@ -6670,11 +7016,168 @@ function getMaterialEntries() {
   }).filter(m => m.action || m.material || m.quantity || m.tours || m.per_tour || m.note);
 }
 
+
+const WORKER_MODULE_DEFINITIONS = [
+  {
+    value: "worker_hours",
+    label: "Radni izveštaj / radni sati",
+    requiredPerms: ["workers"],
+    sectionKeys: ["workers", "signature"],
+    needsMainSite: true,
+    reportType: "worker_hours"
+  },
+  {
+    value: "machine_work",
+    label: "Rad mašine / MTČ",
+    requiredPerms: ["machines"],
+    sectionKeys: ["machines", "signature"],
+    // v2.1: Bagerista može u toku dana raditi na više gradilišta.
+    // Zato gradilište više nije jedno glavno polje, nego se bira u svakoj stavki mašine.
+    needsMainSite: false,
+    reportType: "machine_work_daily"
+  },
+  {
+    value: "truck_tours",
+    label: "Vožnja / ture / materijal",
+    requiredPerms: ["vehicles"],
+    // v2.1: Vozač može imati više gradilišta u jednom dnevnom izveštaju.
+    // Materijal se unosi u samoj stavci vozila, da Direkcija može čistije da razvrsta po gradilištu.
+    sectionKeys: ["vehicles", "signature"],
+    needsMainSite: false,
+    reportType: "truck_tours_daily"
+  },
+  {
+    value: "fuel_entry",
+    label: "Sipanje goriva",
+    requiredPerms: ["fuel"],
+    sectionKeys: ["fuel"],
+    needsMainSite: false,
+    reportType: "fuel_entry"
+  },
+  {
+    value: "field_tanker",
+    label: "Cisterna goriva",
+    requiredPerms: ["field_tanker"],
+    sectionKeys: ["field_tanker"],
+    needsMainSite: false,
+    reportType: "field_tanker_daily_batch"
+  },
+  {
+    value: "lowloader",
+    label: "Labudica / transport mašine",
+    requiredPerms: ["lowloader"],
+    sectionKeys: ["lowloader"],
+    needsMainSite: false,
+    reportType: "lowloader_transport"
+  },
+  {
+    value: "defect_report",
+    label: "Prijava kvara",
+    requiredPerms: ["defects"],
+    sectionKeys: ["defects"],
+    needsMainSite: false,
+    reportType: "defect_report"
+  },
+  {
+    value: "leave_request",
+    label: "Slobodan dan / godišnji odmor",
+    requiredPerms: ["leave_request"],
+    sectionKeys: ["leave_request"],
+    needsMainSite: false,
+    reportType: "leave_request"
+  },
+  {
+    value: "warehouse",
+    label: "Magacin",
+    requiredPerms: ["warehouse"],
+    sectionKeys: ["warehouse"],
+    needsMainSite: false,
+    reportType: "warehouse_movement"
+  },
+  {
+    value: "material_entry",
+    label: "Materijal",
+    requiredPerms: ["materials"],
+    sectionKeys: ["materials", "signature"],
+    needsMainSite: true,
+    reportType: "material_movement"
+  }
+];
+
+function getAllowedWorkerModules(perms = {}) {
+  const normalized = normalizePermissions(perms);
+  return WORKER_MODULE_DEFINITIONS.filter(module => module.requiredPerms.some(key => !!normalized[key]));
+}
+
+function getSelectedWorkerModule() {
+  const value = $("#wrModuleSelect")?.value || "";
+  return WORKER_MODULE_DEFINITIONS.find(m => m.value === value) || null;
+}
+
+function activeWorkerSectionKeys(perms = {}) {
+  const module = getSelectedWorkerModule();
+  if (!module) return new Set();
+  const normalized = normalizePermissions(perms);
+  const keys = new Set(module.sectionKeys.filter(key => !!normalized[key]));
+  if (module.needsMainSite && (normalized.daily_work || normalized.daily_work_site || true)) keys.add("daily_work");
+  return keys;
+}
+
+function workerReportTypeFromSelection() {
+  return getSelectedWorkerModule()?.reportType || "";
+}
+
+function refreshWorkerModuleSelector(perms = {}) {
+  const select = $("#wrModuleSelect");
+  const hint = $("#wrModuleHint");
+  if (!select) return;
+  const allowed = getAllowedWorkerModules(perms);
+  const previous = select.value;
+  select.innerHTML = `<option value="">Izaberi rubriku...</option>` + allowed.map(m => `<option value="${escapeHtml(m.value)}">${escapeHtml(m.label)}</option>`).join("");
+  if (allowed.length === 1) select.value = allowed[0].value;
+  else if (allowed.some(m => m.value === previous)) select.value = previous;
+  else select.value = "";
+  if (hint) {
+    hint.textContent = allowed.length
+      ? "Direkcija ti je dozvolila ove rubrike. Izaberi samo ono što danas popunjavaš."
+      : "Ovom profilu Direkcija još nije dodelila nijednu radničku rubriku.";
+  }
+  applyWorkerModuleSelection({ addDefaults: false });
+}
+
+function applyWorkerModuleSelection({ addDefaults = true } = {}) {
+  const perms = currentWorker?.permissions || {};
+  workerSetSections(perms);
+  const module = getSelectedWorkerModule();
+  const hint = $("#wrModuleHint");
+  if (hint && module) hint.textContent = `Otvoren je obrazac: ${module.label}. Ostali obrasci su sakriveni da se podaci ne mešaju.`;
+  if (!module || !addDefaults) return;
+  if (module.value === "worker_hours" && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
+  if (module.value === "machine_work" && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
+  if (module.value === "truck_tours" && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
+  if (module.value === "fuel_entry" && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
+  if (module.value === "field_tanker" && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
+  if (module.value === "lowloader" && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
+  if ((module.value === "truck_tours" || module.value === "material_entry") && $("#materialEntries") && !$("#materialEntries").children.length && perms.materials) addMaterialEntry();
+  updateLeaveRequestVisibility();
+}
+
+function ensureWorkerModuleSelected() {
+  const select = $("#wrModuleSelect");
+  if (!select || select.value) return true;
+  const allowed = getAllowedWorkerModules(currentWorker?.permissions || {});
+  if (allowed.length === 1) {
+    select.value = allowed[0].value;
+    applyWorkerModuleSelection({ addDefaults: true });
+    return true;
+  }
+  return false;
+}
+
 function workerSetSections(perms) {
-  // v1.16.5 pravilo:
-  // "Gradilište i datum izveštaja" kod zaposlenog prikazuje samo Datum/godinu + Gradilište iz liste Uprave.
-  // Opis rada i sati rada više se ne otvaraju pod ovom rubrikom.
-  const dailyAllowed = !!(perms.daily_work || perms.daily_work_site);
+  // Stabilizacija unosa: Direkcija dodeljuje dozvoljene funkcije, ali zaposleni iz menija bira samo jednu rubriku koju sada popunjava.
+  // Time se zahtev za odsustvo, kvar, gorivo i radni izveštaj više ne prikazuju i ne šalju zajedno bez potrebe.
+  const activeKeys = activeWorkerSectionKeys(perms);
 
   const dailySection = $("#secDailyWork");
   if (dailySection) {
@@ -6683,7 +7186,7 @@ function workerSetSections(perms) {
   }
 
   const siteSection = $("#secWorkerSite");
-  if (siteSection) siteSection.classList.toggle("active", dailyAllowed);
+  if (siteSection) siteSection.classList.toggle("active", activeKeys.has("daily_work"));
 
   const map = {
     workers: "#secWorkers",
@@ -6700,12 +7203,12 @@ function workerSetSections(perms) {
   };
   Object.entries(map).forEach(([key, sel]) => {
     const el = $(sel);
-    if (el) el.classList.toggle("active", !!perms[key]);
+    if (el) el.classList.toggle("active", activeKeys.has(key));
   });
 
-  // Za cisternu postoji posebna memorija sipanja, pa ne prikazujemo dodatno dugme "Sačuvaj kao nacrt" da ne zbunjuje vozača.
+  const module = getSelectedWorkerModule();
   const draftBtn = $("#saveDraftBtn");
-  if (draftBtn) draftBtn.classList.toggle("hidden", !!perms.field_tanker);
+  if (draftBtn) draftBtn.classList.toggle("hidden", module?.value === "field_tanker");
 }
 
 
@@ -6776,6 +7279,10 @@ function addMachineEntry(values = {}) {
 
     <select class="m-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildMachineOptionsHtml(values.name || "")}</select>
     <input class="m-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.machine_custom || "")}" />
+
+    <label>Gradilište za ovu stavku</label>
+    <select class="m-site entry-site-select">${buildLowloaderSiteOptionsHtml(values.site_name || values.site || "")}</select>
+    <p class="field-hint">Ako si danas radio na više gradilišta, dodaj novu stavku za svako gradilište. MTČ se sabira u jednom dnevnom izveštaju.</p>
 
     <div class="machine-meter-grid">
       <div class="meter-box meter-box-km">
@@ -6890,6 +7397,7 @@ function getMachineEntries() {
       machine_code: custom ? "" : (option?.dataset?.assetCode || ""),
       name: custom || selected,
       machine_custom: custom,
+      ...getWorkerSiteOptionPayload(el.querySelector(".m-site")),
       km_start: kmStart,
       km_end: kmEnd,
       km_total: kmTotal,
@@ -6902,7 +7410,7 @@ function getMachineEntries() {
       hours: mtcTotal,
       work: el.querySelector(".m-work")?.value.trim() || ""
     };
-  }).filter(m => m.name || m.km_start || m.km_end || m.km_total || m.mtc_start || m.mtc_end || m.mtc_total || m.start || m.end || m.hours || m.work);
+  }).filter(m => m.name || m.site_name || m.km_start || m.km_end || m.km_total || m.mtc_start || m.mtc_end || m.mtc_total || m.start || m.end || m.hours || m.work);
 }
 
 
@@ -8894,22 +9402,25 @@ async function submitSiteLogToDirector() {
 
 function collectWorkerData() {
   const perms = currentWorker?.permissions || {};
-  const machines = perms.machines ? getMachineEntries() : [];
-  const vehicles = perms.vehicles ? getVehicleEntries() : [];
-  const fuelEntries = perms.fuel ? getFuelEntries() : [];
+  const activeKeys = activeWorkerSectionKeys(perms);
+  const selectedModule = getSelectedWorkerModule();
+  const machines = activeKeys.has("machines") ? getMachineEntries() : [];
+  const vehicles = activeKeys.has("vehicles") ? getVehicleEntries() : [];
+  const fuelEntries = activeKeys.has("fuel") ? getFuelEntries() : [];
   const selectedSite = getSelectedWorkerSite();
-  const canDaily = !!(perms.daily_work || perms.daily_work_site);
-  const canWorkers = !!perms.workers;
-  const canMaterials = !!perms.materials;
-  const canSignature = !!perms.signature;
-  const canLeaveRequest = !!perms.leave_request;
-  const canWarehouse = !!perms.warehouse;
-  const canDefects = !!perms.defects;
-  const canLowloader = !!perms.lowloader;
-  const canFieldTanker = !!perms.field_tanker;
+  const canDaily = activeKeys.has("daily_work");
+  const canWorkers = activeKeys.has("workers");
+  const canMaterials = activeKeys.has("materials");
+  const canSignature = activeKeys.has("signature");
+  const canLeaveRequest = activeKeys.has("leave_request");
+  const canWarehouse = activeKeys.has("warehouse");
+  const canDefects = activeKeys.has("defects");
+  const canLowloader = activeKeys.has("lowloader");
+  const canFieldTanker = activeKeys.has("field_tanker");
   const lowloaderMoves = canLowloader ? getLowloaderEntries() : [];
   const fieldTankerEntries = canFieldTanker ? getFieldTankerEntries() : [];
   const materialEntries = canMaterials ? getMaterialEntries() : [];
+  const dailyItemSiteSummary = summarizeSitesFromDailyItems([...(machines || []), ...(vehicles || []), ...(materialEntries || [])]);
   const leaveRequest = canLeaveRequest ? getLeaveRequestData() : null;
 
   const defectAssetPayload = canDefects ? getDefectAssetPayload() : {
@@ -8935,11 +9446,11 @@ function collectWorkerData() {
   const lowloaderFallbackSiteName = firstLowloaderMove
     ? (firstLowloaderMove.from_site || firstLowloaderMove.from_address || firstLowloaderMove.to_site || firstLowloaderMove.to_address || "Transport mašine labudicom")
     : "";
-  const leaveFallbackSiteName = canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za odsustvo / godišnji odmor" : "";
+  // Odsustvo/godišnji nije gradilište. Zato ga više ne koristimo kao fallback za site_name.
   const firstFieldTankerEntry = fieldTankerEntries.find(x => x.site_name || x.site_id) || null;
   const fieldTankerFallbackSiteName = firstFieldTankerEntry ? (firstFieldTankerEntry.site_name || "Evidencija goriva – cisterna") : "";
-  const reportSiteName = selectedSite.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || (canFieldTanker && fieldTankerEntries.length ? fieldTankerFallbackSiteName : "") || leaveFallbackSiteName;
-  const reportSiteId = selectedSite.site_id || firstFieldTankerEntry?.site_id || null;
+  const reportSiteName = selectedSite.site_name || dailyItemSiteSummary.site_name || (canLowloader && lowloaderMoves.length ? lowloaderFallbackSiteName : "") || (canFieldTanker && fieldTankerEntries.length ? fieldTankerFallbackSiteName : "");
+  const reportSiteId = selectedSite.site_id || dailyItemSiteSummary.site_id || firstFieldTankerEntry?.site_id || null;
 
   const reportSectionsSent = {
     workers: canWorkers && getWorkerEntries().length > 0,
@@ -8956,6 +9467,9 @@ function collectWorkerData() {
   };
 
   return {
+    report_type: selectedModule?.reportType || "unknown_worker_report",
+    report_type_label: selectedModule?.label || "Radnički izveštaj",
+    request_title: canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za odsustvo / godišnji odmor" : "",
     report_sections_sent: reportSectionsSent,
     employee_number: currentWorkerEmployeeNumber(),
     worker_number: currentWorkerEmployeeNumber(),
@@ -9048,23 +9562,14 @@ function clearWorkerForm() {
 }
 
 function ensureWorkerDefaultEntries() {
-  const perms = currentWorker?.permissions || {};
-
-  // Ne pozivati ovu funkciju samu iz sebe. To je pravilo ranije pravilo
-  // beskonačnu petlju posle slanja izveštaja i zaposleni je dobijao grešku
-  // iako je RPC slanje možda već prošlo.
-  if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
-  if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
-  if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
-  if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
-  if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
-  if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
-  if (perms.materials && $("#materialEntries") && !$("#materialEntries").children.length) addMaterialEntry();
-
+  // v2.1: Ne dodajemo više prazne kartice za sve dozvoljene rubrike.
+  // Radnik prvo izabere rubriku iz menija, pa se dodaje samo taj obrazac.
+  applyWorkerModuleSelection({ addDefaults: true });
   refreshMachineDatalists();
   refreshVehicleSelects();
   refreshFuelMachineOptions();
   refreshFieldTankerSelectors();
+  refreshDailyItemSiteSelectors();
   refreshMaterialEntrySelectors();
 }
 
@@ -10639,7 +11144,7 @@ function renderExportPanel() {
     return `<div class="export-selected-item">
       <b>${escapeHtml(r.report_date || "bez datuma")}</b>
       <span>${escapeHtml(reportPersonName(r) || "Nepoznat zaposleni")}</span>
-      <small>${escapeHtml(d.site_name || "bez gradilišta")} · ${escapeHtml(r.status || "")}</small>
+      <small>${escapeHtml(reportPrimaryLocationLabel(r))} · ${escapeHtml(r.status || "")}</small>
       <button class="secondary small-btn" type="button" onclick="toggleReportExportSelection('${r.id}', false); const cb=document.querySelector('[onchange*=\'${r.id}\']'); if(cb) cb.checked=false;">Ukloni</button>
     </div>`;
   }).join("") : `<p class="muted">Nema izabranih izveštaja. Idi u tab Izveštaji i štikliraj šta želiš za Excel.</p>`;
@@ -11133,6 +11638,9 @@ function bindEvents() {
   if ($("#directorManualRefreshBtn")) $("#directorManualRefreshBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#refreshArchiveBtn")) $("#refreshArchiveBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#refreshFuelReportsBtn")) $("#refreshFuelReportsBtn").addEventListener("click", manualDirectorRefresh);
+  if ($("#refreshFuelAnalysisBtn")) $("#refreshFuelAnalysisBtn").addEventListener("click", () => renderFuelConsumptionAnalysis());
+  if ($("#fuelAnalysisFrom")) $("#fuelAnalysisFrom").addEventListener("change", () => renderFuelConsumptionAnalysis());
+  if ($("#fuelAnalysisTo")) $("#fuelAnalysisTo").addEventListener("change", () => renderFuelConsumptionAnalysis());
   if ($("#refreshDailyLogBtn")) $("#refreshDailyLogBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#refreshCarnetBtn")) $("#refreshCarnetBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#renderDailyLogBtn")) $("#renderDailyLogBtn").addEventListener("click", renderDailyLogPreview);
@@ -11151,7 +11659,7 @@ function bindEvents() {
     $("#tab" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add("active");
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
-    if (btn.dataset.tab === "fuel") renderFuelReportsList();
+    if (btn.dataset.tab === "fuel") { renderFuelReportsList(); renderFuelConsumptionAnalysis(); }
     if (btn.dataset.tab === "archive") renderArchiveList();
     if (btn.dataset.tab === "dailyLog") renderDailyLogPreview();
     if (btn.dataset.tab === "carnet") renderCarnetPreview();
@@ -11247,6 +11755,7 @@ function bindEvents() {
 
   $("#saveDraftBtn").addEventListener("click", saveDraft);
   if ($("#wrLeaveType")) $("#wrLeaveType").addEventListener("change", updateLeaveRequestVisibility);
+  if ($("#wrModuleSelect")) $("#wrModuleSelect").addEventListener("change", () => applyWorkerModuleSelection({ addDefaults: true }));
   initSignaturePad();
   if ($("#clearSignatureBtn")) $("#clearSignatureBtn").addEventListener("click", () => clearSignatureCanvas(true));
   if ($("#wrDefectAssetName")) {
@@ -11262,6 +11771,11 @@ function bindEvents() {
       }
       const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
       if (!worker) throw new Error("Zaposleni nije prijavljen.");
+      if (!ensureWorkerModuleSelected()) {
+        const chooser = $("#workerModuleChooser") || $("#wrModuleSelect");
+        if (chooser?.scrollIntoView) chooser.scrollIntoView({ behavior: "smooth", block: "center" });
+        throw new Error("Prvo izaberi šta danas popunjavaš. Tako se radni izveštaj, gorivo, kvar i odsustvo ne mešaju.");
+      }
       const data = collectWorkerData();
       const validationIssue = validateWorkerReportBeforeSubmit(data);
       if (validationIssue) {
@@ -11857,7 +12371,7 @@ async function openWorkerForm() {
   $("#wrDate").value = today();
   $("#workerHello").textContent = `Dobrodošli, ${currentWorker.full_name}`;
   $("#workerCompanyLabel").textContent = `${currentWorker.company_name} · ${currentWorker.function_title}`;
-  workerSetSections(currentWorker.permissions || {});
+  refreshWorkerModuleSelector(currentWorker.permissions || {});
   const siteLogEnabled = !!(currentWorker.permissions || {}).site_daily_log;
   const siteLogPanel = $("#siteLogPanel");
   const normalWorkerFormCard = $("#normalWorkerFormCard");
@@ -11895,12 +12409,8 @@ async function openWorkerForm() {
   if (useDesktopPanel && !perms.site_daily_log) {
     setInternalHeader("Terenski radni unos - laptop prikaz", `${currentWorker?.full_name || "Zaposleni"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   }
-  if (perms.workers && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
-  if (perms.machines && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
-  if (perms.vehicles && $("#vehicleEntries") && !$("#vehicleEntries").children.length) addVehicleEntry();
-  if (perms.lowloader && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
-  if (perms.fuel && $("#fuelEntries") && !$("#fuelEntries").children.length) addFuelEntry();
-  if (perms.field_tanker && $("#fieldTankerEntries") && !$("#fieldTankerEntries").children.length) addFieldTankerEntry();
+  refreshWorkerModuleSelector(perms);
+  applyWorkerModuleSelection({ addDefaults: true });
   renderStoredFieldTankerEntries();
   updateLeaveRequestVisibility();
 }

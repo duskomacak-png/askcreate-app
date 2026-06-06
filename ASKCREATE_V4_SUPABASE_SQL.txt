@@ -1,0 +1,12 @@
+-- AskCreate v4: dodatna polja za norme potrošnje goriva na sredstvima rada
+-- Pokreni u Supabase SQL editoru ako želiš da se norme čuvaju u tabeli assets.
+-- Bez ovog SQL-a aplikacija će i dalje sačuvati sredstvo, ali norme potrošnje neće biti upisane.
+
+ALTER TABLE public.assets
+  ADD COLUMN IF NOT EXISTS fuel_norm text,
+  ADD COLUMN IF NOT EXISTS fuel_norm_unit text DEFAULT 'l_per_mtc',
+  ADD COLUMN IF NOT EXISTS fuel_tolerance_percent text DEFAULT '20';
+
+COMMENT ON COLUMN public.assets.fuel_norm IS 'Norma potrošnje goriva, npr. 12 za L/MTČ ili 38 za L/100km.';
+COMMENT ON COLUMN public.assets.fuel_norm_unit IS 'Jedinica norme: l_per_mtc, l_per_100km ili l_per_hour.';
+COMMENT ON COLUMN public.assets.fuel_tolerance_percent IS 'Dozvoljeno odstupanje potrošnje u procentima, npr. 20.';

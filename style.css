@@ -6420,3 +6420,81 @@ button:hover,
     justify-content: flex-start;
   }
 }
+
+/* v1.2 stabilizacija unosa: uloga -> funkcije -> radnik bira jednu rubriku */
+.role-preset-box,
+.worker-module-chooser{
+  margin:10px 0 14px;
+  padding:12px;
+  border:1px solid rgba(34,197,94,.22);
+  border-radius:14px;
+  background:linear-gradient(135deg, rgba(240,253,244,.96), rgba(255,255,255,.96));
+}
+.role-preset-box b,
+.worker-module-chooser label{
+  display:block;
+  margin-bottom:6px;
+  color:#14532d;
+  font-weight:800;
+}
+.role-preset-box .small-action{margin-top:8px;}
+.worker-module-chooser select{
+  width:100%;
+  border:1px solid rgba(34,197,94,.35);
+  border-radius:12px;
+  padding:12px;
+  font-size:16px;
+  font-weight:750;
+  background:#fff;
+}
+body.worker-field-theme #viewWorkerForm .worker-module-chooser{
+  background:rgba(14,24,18,.76);
+  border-color:rgba(74,222,128,.32);
+  box-shadow:0 12px 30px rgba(0,0,0,.22);
+}
+body.worker-field-theme #viewWorkerForm .worker-module-chooser label{color:#bbf7d0;}
+body.worker-field-theme #viewWorkerForm .worker-module-chooser select{
+  background:#f8fafc;
+  color:#102015;
+}
+
+
+/* v4: norme potrošnje i pregled goriva */
+.asset-consumption-box {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+.asset-consumption-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 10px;
+  align-items: center;
+}
+.fuel-analysis-card {
+  margin-top: 14px;
+}
+.fuel-analysis-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.fuel-analysis-filters label {
+  min-width: 180px;
+}
+.consumption-status-ok { color: #6ee7b7; font-weight: 800; }
+.consumption-status-warn { color: #fbbf24; font-weight: 800; }
+.consumption-status-bad { color: #fb7185; font-weight: 800; }
+.asset-consumption-note {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255,255,255,.62);
+  font-size: 12px;
+}
+@media (max-width: 680px) {
+  .asset-consumption-grid { grid-template-columns: 1fr; }
+  .fuel-analysis-filters { display: grid; grid-template-columns: 1fr; }
+}

@@ -502,6 +502,11 @@
               <option value="Fizički radnik">Fizički radnik</option>
               <option value="Ostalo">Ostalo</option>
             </select>
+            <div id="rolePresetBox" class="role-preset-box">
+              <b>Predlog funkcija po ulozi</b>
+              <p id="rolePresetHint" class="muted tiny">Izaberi radno mesto. Aplikacija može automatski predložiti osnovne funkcije, a Direkcija posle može dodati ili skinuti šta treba.</p>
+              <button id="applyRolePresetBtn" class="secondary small-action" type="button">Primeni preporučene funkcije</button>
+            </div>
             <div id="directorWorkerCodeHelpBox" class="code-help-box">
               <b>Prijava zaposlenog:</b>
               <span>Šifra firme se uzima automatski iz aktivne firme. Ovde upisuješ samo lični pristupni kod zaposlenog.</span>
@@ -634,6 +639,26 @@
               <input id="assetCapacity" inputmode="decimal" placeholder="npr. 18" />
               <span class="unit-suffix">m³</span>
             </div>
+            <div class="asset-consumption-box">
+              <label>Norma potrošnje goriva</label>
+              <div class="asset-consumption-grid">
+                <div class="unit-input">
+                  <input id="assetFuelNorm" inputmode="decimal" placeholder="npr. 12 ili 38" />
+                  <span class="unit-suffix">L</span>
+                </div>
+                <select id="assetFuelUnit">
+                  <option value="l_per_mtc">L / MTČ</option>
+                  <option value="l_per_100km">L / 100 km</option>
+                  <option value="l_per_hour">L / sat</option>
+                </select>
+              </div>
+              <p class="field-hint">Za mašine najčešće upiši L/MTČ, za kamione i vozila L/100 km. Ovo koristi Direkcija, Šef mehanizacije i kasnije Gazda za kontrolu potrošnje.</p>
+              <label>Dozvoljeno odstupanje potrošnje (%)</label>
+              <div class="unit-input">
+                <input id="assetFuelTolerance" inputmode="decimal" placeholder="npr. 20" />
+                <span class="unit-suffix">%</span>
+              </div>
+            </div>
             <div class="row asset-form-actions"><button id="addAssetBtn" class="primary">Sačuvaj</button><button id="cancelEditAssetBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
           </div>
           <div class="card">
@@ -764,6 +789,21 @@
             <button id="refreshFuelReportsBtn" class="secondary small-action" type="button">Osveži gorivo</button>
           </div>
           <div id="fuelReportsList" class="list"></div>
+        </div>
+        <div class="card reports-workspace-card fuel-analysis-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Kontrola potrošnje</p>
+              <h3>Potrošnja po mašini / vozilu</h3>
+              <p class="muted">Poredi normu iz evidencije sredstava rada sa stvarno sipanim gorivom i prijavljenim MTČ/KM. Ovo je osnov za Šefa mehanizacije i Gazdin pregled.</p>
+            </div>
+            <button id="refreshFuelAnalysisBtn" class="secondary small-action" type="button">Osveži potrošnju</button>
+          </div>
+          <div class="fuel-analysis-filters">
+            <label>Od <input id="fuelAnalysisFrom" type="date" /></label>
+            <label>Do <input id="fuelAnalysisTo" type="date" /></label>
+          </div>
+          <div id="fuelConsumptionList" class="office-form-preview"></div>
         </div>
       </div>
 
@@ -1188,9 +1228,17 @@
 
       <div id="normalWorkerFormCard" class="card">
         <h3>Terenski radni unos</h3>
-        <p class="hint">Ako ti Uprava uključi rubriku Gradilište i datum izveštaja, popunjavaš samo datum/godinu i biraš gradilište iz liste Uprave. Ostale rubrike vidiš samo ako su posebno uključene.</p>
+        <p class="hint">Uprava određuje koje funkcije imaš, a ti iz menija biraš samo ono što danas popunjavaš. Tako se kvar, gorivo, godišnji i radni izveštaj više ne mešaju.</p>
         <label>Datum / godina</label>
         <input id="wrDate" type="date" />
+
+        <div id="workerModuleChooser" class="worker-module-chooser">
+          <label>Šta danas popunjavaš?</label>
+          <select id="wrModuleSelect">
+            <option value="">Izaberi rubriku...</option>
+          </select>
+          <p id="wrModuleHint" class="hint">Prikazaće se samo obrazac koji izabereš. Ostale dozvoljene rubrike ostaju sakrivene dok ih ne izabereš.</p>
+        </div>
 
         <div id="secWorkerSite" class="dyn-section">
           <label>Ime gradilišta</label>
