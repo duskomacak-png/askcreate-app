@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.43.0";
+const APP_VERSION = "1.44.0";
 
 
 let sb = null;
@@ -32,6 +32,9 @@ let directorKnownReportIds = new Set();
 let workerReportSubmitBusy = false;
 let fieldTankerMemorySubmitBusy = false;
 let adminCompanySaveBusy = false;
+let directorBulkApproveBusy = false;
+let directorBulkArchiveBusy = false;
+let directorBulkDeleteArchiveBusy = false;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -2162,11 +2165,29 @@ async function savePersonForm() {
   }
 }
 
+function reportActionLabel(r) {
+  if (!r) return "izveštaj";
+  const d = r.data || {};
+  const date = r.report_date || d.report_date || "bez datuma";
+  const type = d.report_type_label || reportDocumentTitle(r) || "Izveštaj";
+  const person = reportDocumentPerson(r) || "nepoznat radnik";
+  const site = reportPrimaryLocationLabel(r) || d.site_name || d.location || "bez gradilišta";
+  return `${type} · ${person} · ${site} · ${date}`;
+}
+
+function confirmPermanentDeleteReport(r) {
+  const label = reportActionLabel(r);
+  return confirm(
+    `Da li ste sigurni da želite trajno obrisati ovu stavku?\n\n${label}\n\n` +
+    "Ova radnja briše stavku iz baze i ne može se vratiti."
+  );
+}
+
 window.deleteReportPermanently = async (id) => {
   try {
     if (!currentCompany) throw new Error("Nema aktivne firme.");
-    const warning = "Ako izbrišete ovaj izveštaj, on više neće postojati u aplikaciji ni u bazi podataka.\n\nOvu radnju nije moguće vratiti.\n\nPotvrditi trajno brisanje?";
-    if (!confirm(warning)) return;
+    const existingReport = directorReportsCache.find(r => String(r.id) === String(id)) || loadLocalArchivedReports().find(r => String(r.id) === String(id));
+    if (!confirmPermanentDeleteReport(existingReport || { id, data: { report_type_label: "Arhivirani izveštaj" } })) return;
 
     const { error } = await sb
       .from("reports")
@@ -2176,8 +2197,11 @@ window.deleteReportPermanently = async (id) => {
     if (error) throw error;
 
     removeLocalArchivedReport(id);
+    directorReportsCache = directorReportsCache.filter(r => String(r.id) !== String(id));
     toast("Izveštaj je trajno obrisan iz baze.");
     closeReportDocumentCenter?.();
+    renderArchiveList();
+    businessUpdateReportsMetrics(directorReportsCache);
     await loadReports();
     if (typeof runDirectorGlobalSearch === "function") runDirectorGlobalSearch(false);
   } catch (e) {
@@ -6326,6 +6350,111 @@ window.archiveReport = async (id) => {
   toast("Izveštaj je arhiviran i prebačen u karticu Arhiva.");
   closeReportDocumentCenter?.();
   await loadReports({ silent: true });
+};
+
+function isApprovedDirectorReport(r) {
+  const status = String(r?.status || "").toLowerCase();
+  return status === "approved" || status === "odobreno";
+}
+
+function refreshDirectorReportViewsAfterBulk() {
+  businessUpdateReportsMetrics(directorReportsCache);
+  renderFuelReportsList();
+  renderFuelConsumptionAnalysis();
+  renderArchiveList();
+  renderDefectsList();
+  const reportsBox = document.getElementById("reportsList");
+  if (reportsBox) {
+    const dailyReports = directorReportsCache.filter(isPendingDirectorReport);
+    reportsBox.innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
+  }
+  if (typeof renderFlowTestPreview === "function") renderFlowTestPreview();
+}
+
+window.approveAllPendingReports = async () => {
+  if (directorBulkApproveBusy) return toast("Odobravanje je već u toku. Sačekaj da se završi.", true);
+  const pending = directorReportsCache.filter(isPendingDirectorReport);
+  if (!pending.length) return toast("Nema izveštaja koji čekaju odobrenje.", true);
+  const sample = pending.slice(0, 5).map(r => `• ${reportActionLabel(r)}`).join("\n");
+  const more = pending.length > 5 ? `\n• ... i još ${pending.length - 5}` : "";
+  if (!confirm(`Odobriti sve izveštaje koji čekaju odobrenje?\n\nUkupno: ${pending.length}\n\n${sample}${more}`)) return;
+  directorBulkApproveBusy = true;
+  try {
+    for (const r of pending) {
+      await directorRpcApproveReport(r.id);
+      directorReportsCache = directorReportsCache.map(x => String(x.id) === String(r.id) ? { ...x, status: "approved", updated_at: new Date().toISOString() } : x);
+    }
+    toast(`Odobreno izveštaja: ${pending.length}.`);
+    refreshDirectorReportViewsAfterBulk();
+    await loadReports({ silent: true });
+  } catch (e) {
+    toast(e.message || String(e), true);
+  } finally {
+    directorBulkApproveBusy = false;
+  }
+};
+
+window.archiveAllApprovedReports = async () => {
+  if (directorBulkArchiveBusy) return toast("Arhiviranje je već u toku. Sačekaj da se završi.", true);
+  const approved = directorReportsCache.filter(r => isApprovedDirectorReport(r) && !isArchivedReport(r));
+  if (!approved.length) return toast("Nema odobrenih izveštaja za arhiviranje.", true);
+  const sample = approved.slice(0, 5).map(r => `• ${reportActionLabel(r)}`).join("\n");
+  const more = approved.length > 5 ? `\n• ... i još ${approved.length - 5}` : "";
+  if (!confirm(`Arhivirati sve odobrene izveštaje?\n\nUkupno: ${approved.length}\n\n${sample}${more}\n\nIzveštaji ostaju u bazi i prelaze u karticu Arhiva.`)) return;
+  directorBulkArchiveBusy = true;
+  try {
+    for (const r of approved) {
+      try {
+        await directorRpcArchiveReport(r.id);
+      } catch (rpcError) {
+        const { error: directError } = await sb
+          .from("reports")
+          .update({ status: "archived", updated_at: new Date().toISOString() })
+          .eq("id", r.id)
+          .eq("company_id", currentCompany.id);
+        if (directError) throw rpcError || directError;
+      }
+      saveLocalArchivedReport(r);
+      directorReportsCache = directorReportsCache.map(x => String(x.id) === String(r.id) ? { ...x, status: "archived", updated_at: new Date().toISOString() } : x);
+    }
+    toast(`Arhivirano izveštaja: ${approved.length}.`);
+    refreshDirectorReportViewsAfterBulk();
+    await loadReports({ silent: true });
+  } catch (e) {
+    toast(e.message || String(e), true);
+  } finally {
+    directorBulkArchiveBusy = false;
+  }
+};
+
+window.deleteAllArchivedReportsPermanently = async () => {
+  if (directorBulkDeleteArchiveBusy) return toast("Brisanje arhive je već u toku. Sačekaj da se završi.", true);
+  const archived = directorReportsCache.filter(isArchivedReport);
+  if (!archived.length) return toast("Arhiva je prazna.", true);
+  const sample = archived.slice(0, 8).map(r => `• ${reportActionLabel(r)}`).join("\n");
+  const more = archived.length > 8 ? `\n• ... i još ${archived.length - 8}` : "";
+  if (!confirm(`Da li ste sigurni da želite trajno obrisati SVE stavke iz arhive?\n\nUkupno: ${archived.length}\n\n${sample}${more}\n\nOva radnja briše stavke iz baze i ne može se vratiti.`)) return;
+  directorBulkDeleteArchiveBusy = true;
+  try {
+    for (const r of archived) {
+      const { error } = await sb
+        .from("reports")
+        .delete()
+        .eq("id", r.id)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
+      removeLocalArchivedReport(r.id);
+      directorReportsCache = directorReportsCache.filter(x => String(x.id) !== String(r.id));
+    }
+    toast(`Trajno obrisano iz arhive: ${archived.length}.`);
+    closeReportDocumentCenter?.();
+    refreshDirectorReportViewsAfterBulk();
+    await loadReports({ silent: true });
+  } catch (e) {
+    toast(e.message || String(e), true);
+  } finally {
+    directorBulkDeleteArchiveBusy = false;
+  }
 };
 
 window.returnReport = async (id) => {

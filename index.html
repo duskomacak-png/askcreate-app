@@ -754,6 +754,10 @@
             <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</span>
             <button id="directorManualRefreshBtn" class="secondary small-action" type="button">Osveži odmah</button>
           </div>
+          <div class="bulk-report-actions no-print">
+            <button class="primary small-action" type="button" onclick="approveAllPendingReports()">Odobri sve koji čekaju</button>
+            <button class="archive-report-btn small-action" type="button" onclick="archiveAllApprovedReports()">Arhiviraj sve odobrene</button>
+          </div>
           <div id="reportsList" class="list"></div>
         </div>
       </div>
@@ -888,7 +892,10 @@
               <h3>Arhivirani izveštaji</h3>
               <p class="muted">Ovde stoje izveštaji koje je Direkcija sklonila iz aktivne obrade. Iz arhive možeš otvoriti, štampati ili trajno obrisati izveštaj iz baze.</p>
             </div>
-            <button id="refreshArchiveBtn" class="secondary small-action" type="button">Osveži arhivu</button>
+            <div class="archive-head-actions no-print">
+              <button id="refreshArchiveBtn" class="secondary small-action" type="button">Osveži arhivu</button>
+              <button class="delete-btn small-action" type="button" onclick="deleteAllArchivedReportsPermanently()">Obriši svu arhivu trajno</button>
+            </div>
           </div>
           <div id="archiveReportsList" class="list"></div>
         </div>

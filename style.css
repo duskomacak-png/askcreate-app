@@ -6709,3 +6709,29 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { colo
   .test-flow-head { display: block; }
   .test-actions button { width: 100%; }
 }
+
+.bulk-report-actions,
+.archive-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0 6px;
+}
+
+.archive-head-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .bulk-report-actions,
+  .archive-head-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bulk-report-actions button,
+  .archive-head-actions button {
+    width: 100%;
+  }
+}
