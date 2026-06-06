@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AskCreate.app</title>
+  <title>AskCreate.app — terenski izveštaji, dnevnik rada, karnet, gorivo i materijal za građevinske firme</title>
   <meta name="theme-color" content="#39b54a" />
-  <meta name="description" content="AskCreate.app je poslovni alat za terenske izveštaje, evidenciju gradilišta, zaposlenih, sredstava rada, materijala, odobravanje i Excel izvoz." />
+  <meta name="description" content="AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju: terenski izveštaji, dnevnik rada, karnet radnika i mehanizacije, gorivo, kvarovi, materijal, voda, labudica, odobravanje, arhiva, štampa i Excel izvoz." />
+  <meta name="keywords" content="AskCreate.app, terenski izveštaji, građevinska firma, niskogradnja, dnevnik rada, karnet, evidencija goriva, potrošnja goriva, kvarovi mašina, građevinska mehanizacija, Excel izvoz" />
   <link rel="manifest" href="manifest.json?v=1336" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1420" />
+  <link rel="stylesheet" href="style.css?v=1450" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -29,9 +30,9 @@
 
   <header class="topbar app-brand-header">
     <div>
-      <div class="brand-kicker">App koja pomaže terenu i kancelariji</div>
+      <div class="brand-kicker">PWA za građevinske firme i niskogradnju</div>
       <h1>AskCreate.app</h1>
-      <p>Terenski izveštaji bez papira, poziva i ručnog prepisivanja u Excel.</p>
+      <p>Terenski izveštaji, dnevnik rada, karnet, gorivo, kvarovi, materijal i Excel — sve iz terena u Direkciju.</p>
     </div>
     <button id="logoutBtn" class="ghost hidden">Odjavi se</button>
   </header>
@@ -71,6 +72,15 @@
             <strong>Admin ulaz</strong>
           </button>
         </div>
+
+        <section class="home-seo-panel narrow-phone-width" aria-label="Šta je AskCreate.app">
+          <h2>AskCreate.app za terenske izveštaje u građevini</h2>
+          <p><strong>AskCreate.app</strong> je poslovna PWA aplikacija za firme koje rade niskogradnju, građevinu, transport i rad sa mehanizacijom. Radnici sa telefona šalju izveštaje sa gradilišta, a Direkcija dobija pregledne podatke za dnevnik rada, karnet, gorivo, kvarove, materijal, vodu, labudicu, arhivu, štampu i Excel izvoz.</p>
+          <p>Aplikacija je napravljena za realan teren: vozač može uneti više gradilišta u jednom dnevnom izveštaju, bagerista može raspodeliti MTČ po gradilištima, cisterna evidentira gorivo ili vodu, a Vlasnik/Direktor vidi zbir firme po danu, mesecu i gradilištu.</p>
+          <div class="home-seo-tags" aria-label="Glavne funkcije AskCreate.app">
+            <span>Dnevnik rada</span><span>Karnet</span><span>Gorivo</span><span>Kvarovi</span><span>Materijal</span><span>Excel izvoz</span>
+          </div>
+        </section>
 
         <section class="public-legal-panel card home-terms-card narrow-phone-width" aria-label="Uslovi korišćenja i odgovornost korisnika">
           <div class="public-info-head home-terms-head">
@@ -395,7 +405,7 @@
           <button class="tab" data-tab="carnet">📒 Karnet</button>
           <button class="tab" data-tab="archive">🗄️ Arhiva</button>
           <button class="tab workspace-hidden-tab" data-tab="fuel" type="button">⛽ Gorivo</button>
-          <button class="tab" data-tab="owner" type="button">👑 Gazda pregled</button>
+          <button class="tab" data-tab="owner" type="button">👑 Vlasnik/Direktor pregled</button>
           <button class="tab" data-tab="test" type="button">🧪 Kontrola tokova</button>
           <button class="tab" data-tab="support">⚙️ Podešavanja</button>
           <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
@@ -495,7 +505,7 @@
             <label>Radno mesto</label>
             <select id="personFunction">
               <option value="">Izaberi radno mesto</option>
-              <option value="Vlasnik / Gazda">Vlasnik / Gazda</option>
+              <option value="Vlasnik / Direktor">Vlasnik / Direktor</option>
               <option value="Šef mehanizacije">Šef mehanizacije</option>
               <option value="Šef gradilišta inženjer">Šef gradilišta inženjer</option>
               <option value="Mehaničar">Mehaničar</option>
@@ -551,7 +561,7 @@
               <div class="permission-group permission-group-office">
                 <h4>🏢 Kancelarijska ovlašćenja</h4>
                 <p class="muted tiny">Ove stavke se ne pojavljuju kao polja u terenskom izveštaju. One samo daju pristup pregledima, odobravanjima ili podešavanjima.</p>
-                <label><input type="checkbox" class="perm" value="owner_dashboard" /> Gazda pregled firme</label>
+                <label><input type="checkbox" class="perm" value="owner_dashboard" /> Vlasnik/Direktor pregled firme</label>
                 <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
                 <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje izveštaja</label>
                 <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
@@ -584,7 +594,7 @@
                 <div class="people-register-actions people-register-actions-filtered">
                   <select id="peopleRegisterRoleFilter" class="people-register-filter" title="Filtriraj spisak po radnom mestu">
                     <option value="">Sva radna mesta</option>
-                    <option value="Vlasnik / Gazda">Vlasnik / Gazda</option>
+                    <option value="Vlasnik / Direktor">Vlasnik / Direktor</option>
                     <option value="Šef mehanizacije">Šef mehanizacije</option>
                     <option value="Šef gradilišta inženjer">Šef gradilišta inženjer</option>
                     <option value="Mehaničar">Mehaničar</option>
@@ -667,7 +677,7 @@
                   <option value="l_per_hour">L / sat</option>
                 </select>
               </div>
-              <p class="field-hint">Za mašine najčešće upiši L/MTČ, za kamione i vozila L/100 km. Ovo koristi Direkcija, Šef mehanizacije i kasnije Gazda za kontrolu potrošnje.</p>
+              <p class="field-hint">Za mašine najčešće upiši L/MTČ, za kamione i vozila L/100 km. Ovo koristi Direkcija, Šef mehanizacije i kasnije Vlasnik/Direktor za kontrolu potrošnje.</p>
               <label>Dozvoljeno odstupanje potrošnje (%)</label>
               <div class="unit-input">
                 <input id="assetFuelTolerance" inputmode="decimal" placeholder="npr. 20" />
@@ -850,7 +860,7 @@
         <div class="card reports-workspace-card owner-dashboard-card">
           <div class="workspace-section-head">
             <div>
-              <p class="business-eyebrow">Gazda / vlasnik firme</p>
+              <p class="business-eyebrow">Vlasnik / direktor firme</p>
               <h3>Pregled firme bez ulaska u svaku stavku</h3>
               <p class="muted">Ovaj ekran sabira radne sate, gorivo, materijal, ture, MTČ/KM i kvarove. Namenjen je vlasniku firme i Direkciji za brzu kontrolu.</p>
             </div>
@@ -1140,7 +1150,7 @@
     <section id="viewOwnerDashboardPanel" class="view owner-only-panel">
       <div class="dashboard-head owner-panel-head">
         <div>
-          <p class="business-eyebrow">Vlasnik / Gazda</p>
+          <p class="business-eyebrow">Vlasnik / Direktor</p>
           <h2 id="ownerPanelName">Pregled firme</h2>
           <p id="ownerPanelCompanyLabel">Radni sati, gorivo, materijal i gradilišta</p>
         </div>
@@ -1154,7 +1164,7 @@
         <div class="office-form-titlebar">
           <div>
             <p class="business-eyebrow">Samo pregled — bez izmena</p>
-            <h3>👑 Gazda pregled firme</h3>
+            <h3>👑 Vlasnik/Direktor pregled firme</h3>
             <p class="muted">Ovaj panel je za vlasnika firme: radni sati, gorivo, materijal, potrošnja, kvarovi i gradilišta po periodu.</p>
           </div>
         </div>

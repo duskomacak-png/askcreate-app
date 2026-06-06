@@ -6735,3 +6735,36 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { colo
     width: 100%;
   }
 }
+
+
+/* AskCreate v1.45.0 — tanja početna traka + SEO tekst za Google/AI */
+.app-brand-header.topbar,
+.topbar.app-brand-header{
+  padding:8px 18px!important;
+  min-height:0!important;
+  box-shadow:0 2px 10px rgba(15,118,110,.16)!important;
+}
+.app-brand-header .brand-kicker{font-size:10px!important;letter-spacing:.12em!important;margin-bottom:1px!important;}
+.app-brand-header h1{font-size:clamp(20px,2.4vw,28px)!important;margin:0 0 2px!important;line-height:1.05!important;}
+.app-brand-header p{font-size:13px!important;line-height:1.25!important;max-width:860px!important;}
+.home-seo-panel{
+  background:#fff;
+  border:1px solid #d9e6dd;
+  border-left:4px solid var(--green,#217346);
+  border-radius:16px;
+  padding:14px 16px;
+  box-shadow:0 8px 22px rgba(15,23,42,.045);
+  margin:12px auto;
+}
+.home-seo-panel h2{font-size:18px;margin:0 0 8px;color:#173c27;}
+.home-seo-panel p{font-size:14px;line-height:1.55;margin:0 0 8px;color:#304139;}
+.home-seo-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.home-seo-tags span{font-size:12px;font-weight:800;color:#14532d;background:#eaf6ef;border:1px solid #cfe8d7;border-radius:999px;padding:5px 8px;}
+@media(max-width:700px){
+  .app-brand-header.topbar,.topbar.app-brand-header{padding:7px 12px!important;}
+  .app-brand-header h1{font-size:22px!important;}
+  .app-brand-header p{font-size:12px!important;}
+  .home-seo-panel{padding:12px;margin-top:10px;}
+  .home-seo-panel h2{font-size:16px;}
+  .home-seo-panel p{font-size:13px;}
+}

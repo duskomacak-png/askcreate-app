@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.44.0";
+const APP_VERSION = "1.45.0";
 
 
 let sb = null;
@@ -1677,7 +1677,7 @@ async function loadDirectorCompany() {
 
 
 const PERSON_FUNCTION_OPTIONS = [
-  "Vlasnik / Gazda",
+  "Vlasnik / Direktor",
   "Šef mehanizacije",
   "Šef gradilišta inženjer",
   "Mehaničar",
@@ -1705,7 +1705,7 @@ function canonicalPersonFunction(value = "") {
   const n = normalizePersonFunctionText(raw);
   const direct = PERSON_FUNCTION_OPTIONS.find(opt => normalizePersonFunctionText(opt) === n);
   if (direct) return direct;
-  if ((n.includes("vlasnik") || n.includes("gazda") || n.includes("direktor") || n.includes("owner"))) return "Vlasnik / Gazda";
+  if ((n.includes("vlasnik") || n.includes("gazda") || n.includes("direktor") || n.includes("owner"))) return "Vlasnik / Direktor";
   if (n.includes("mehanizacije") && n.includes("sef")) return "Šef mehanizacije";
   if (n.includes("gradil") && (n.includes("sef") || n.includes("inzenjer"))) return "Šef gradilišta inženjer";
   if (n.includes("mehanicar") || n.includes("mehanicar")) return "Mehaničar";
@@ -1718,7 +1718,7 @@ function canonicalPersonFunction(value = "") {
 
 
 const ROLE_PERMISSION_PRESETS = {
-  "Vlasnik / Gazda": ["owner_dashboard", "view_reports", "excel_export"],
+  "Vlasnik / Direktor": ["owner_dashboard", "view_reports", "excel_export"],
   "Vozač": ["vehicles", "materials", "fuel", "lowloader", "water_tanker", "defects", "leave_request"],
   "Rukovaoc građevinskom mehanizacijom": ["machines", "fuel", "defects", "leave_request"],
   "Fizički radnik": ["workers", "leave_request"],
@@ -1910,7 +1910,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "desktop_panel", group: "layout", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
   { key: "site_daily_log", group: "layout", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
   { key: "mechanic_boss", group: "layout", title: "Šef mehanizacije", lines: ["Poseban panel za kvarove", "Novi / aktivni / rešeni kvarovi", "Preuzmi, U radu, Rešeno, napomena"] },
-  { key: "owner_dashboard", group: "office", title: "Gazda pregled firme", lines: ["Vlasnički pregled bez izmene podataka", "Radni sati, gorivo, materijal, kvarovi, gradilišta"] },
+  { key: "owner_dashboard", group: "office", title: "Vlasnik/Direktor pregled firme", lines: ["Vlasnički pregled bez izmene podataka", "Radni sati, gorivo, materijal, kvarovi, gradilišta"] },
   { key: "view_reports", group: "office", title: "Pregled izveštaja", lines: ["Kancelarijsko ovlašćenje - nije polje u terenskom izveštaju"] },
   { key: "approve_reports", group: "office", title: "Odobravanje izveštaja", lines: ["Kancelarijsko ovlašćenje - odobravanje ili vraćanje izveštaja"] },
   { key: "excel_export", group: "office", title: "Izvoz u Excel", lines: ["Kancelarijsko ovlašćenje - priprema i preuzimanje Excel/CSV izvoza"] },
@@ -4441,7 +4441,7 @@ function renderFuelConsumptionAnalysis() {
 
 
 
-// === AskCreate v5: Gazda pregled + materijal po gradilištu ===
+// === AskCreate v5: Vlasnik/Direktor pregled + materijal po gradilištu ===
 function officeEntrySiteName(entry = {}, fallback = "") {
   return String(entry.site_name || entry.site || entry.site_label || entry.project_name || fallback || "").trim();
 }
@@ -4696,7 +4696,7 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
   });
   box.innerHTML = `
     <div class="office-form-titlebar">
-      <div><b>Gazda pregled firme</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
+      <div><b>Vlasnik/Direktor pregled firme</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
       <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.defectCount} kvarova</span><span>${data.badFuel} povećane potrošnje</span></div>
     </div>
     <div class="owner-kpi-grid">
@@ -12701,7 +12701,7 @@ function renderFlowTestPanel() {
     "10. Direkcija: otvori Karnet i proveri radnike, mašine, vozila, MTČ, KM, ture, materijal i m³.",
     "11. Šef gradilišta: proveri da vidi pregled svog datuma/gradilišta.",
     "12. Šef mehanizacije: proveri kvarove, potrošnju i sredstva bez norme.",
-    "13. Gazda: proveri zbir firme po danu/mesecu i po gradilištu."
+    "13. Vlasnik/Direktor: proveri zbir firme po danu/mesecu i po gradilištu."
   ];
   box.innerHTML = `
     <div class="test-flow-head">
@@ -13090,7 +13090,7 @@ function isMechanicBossWorker(worker = currentWorker) {
 function isOwnerDashboardWorker(worker = currentWorker) {
   const perms = worker?.permissions || {};
   const title = `${worker?.function_title || ""} ${worker?.role || ""}`.toLowerCase();
-  return !!(perms.owner_dashboard || perms.ownerDashboard || perms.owner_panel || title.includes("gazda") || title.includes("vlasnik") || title.includes("direktor"));
+  return !!(perms.owner_dashboard || perms.ownerDashboard || perms.owner_panel || title.includes("vlasnik") || title.includes("gazda") || title.includes("direktor"));
 }
 
 async function safeOwnerSelect(table, select = "*") {
@@ -13100,13 +13100,13 @@ async function safeOwnerSelect(table, select = "*") {
     if (error) throw error;
     return data || [];
   } catch (e) {
-    console.warn(`Gazda panel: ${table} nije učitan`, e?.message || e);
+    console.warn(`Vlasnik/Direktor panel: ${table} nije učitan`, e?.message || e);
     return [];
   }
 }
 
 async function loadOwnerPanelData() {
-  if (!currentWorker?.company_id || !sb) throw new Error("Vlasnik/Gazda nije prijavljen.");
+  if (!currentWorker?.company_id || !sb) throw new Error("Vlasnik/Direktor nije prijavljen.");
   currentCompany = {
     id: currentWorker.company_id,
     name: currentWorker.company_name || "Firma",
@@ -13139,18 +13139,18 @@ async function refreshOwnerDashboardPanel() {
     renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview");
   } catch (e) {
     const box = document.getElementById("ownerPanelDashboardPreview");
-    if (box) box.innerHTML = `<div class="site-boss-warning"><b>Gazda pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava vlasniku da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za vlasnički pregled.</span></div>`;
-    toast(e.message || "Gazda pregled nije učitan.", true);
+    if (box) box.innerHTML = `<div class="site-boss-warning"><b>Vlasnik/Direktor pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava vlasniku da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za vlasnički pregled.</span></div>`;
+    toast(e.message || "Vlasnik/Direktor pregled nije učitan.", true);
   }
 }
 
 async function openOwnerDashboardPanel() {
   stopMechanicBossWatcher();
   await applyWorkerCompanyBrand();
-  setInternalHeader("Gazda pregled", `${currentWorker?.full_name || "Vlasnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
+  setInternalHeader("Vlasnik/Direktor pregled", `${currentWorker?.full_name || "Vlasnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   const name = document.getElementById("ownerPanelName");
   const label = document.getElementById("ownerPanelCompanyLabel");
-  if (name) name.textContent = currentWorker?.full_name || "Vlasnik / Gazda";
+  if (name) name.textContent = currentWorker?.full_name || "Vlasnik / Direktor";
   if (label) label.textContent = `${currentWorker?.company_name || "Firma"} · pregled bez izmena`;
   show("OwnerDashboardPanel");
   await refreshOwnerDashboardPanel();
