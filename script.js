@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.42.0";
+const APP_VERSION = "1.43.0";
 
 
 let sb = null;
@@ -3391,7 +3391,7 @@ function hasDailyReportData(r) {
 
   const arraysToCheck = [
     d.workers, d.worker_entries, d.machines, d.vehicles,
-    d.lowloader_moves, d.lowloader_entries,
+    d.lowloader_moves, d.lowloader_entries, d.water_tanker_entries, d.water_entries,
     d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries,
     d.material_entries, d.material_movements
   ];
@@ -3664,11 +3664,72 @@ function officeTable(headers = [], rows = []) {
   return `<div class="office-table-wrap"><table class="office-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(v => `<td>${escapeHtml(v === undefined || v === null ? "" : String(v))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
 }
 
+
+// === v14: voda, labudica i izvor goriva u pregledima/izvozima ===
+function officeWaterEntries(d = {}) {
+  return Array.isArray(d.water_tanker_entries) ? d.water_tanker_entries : (Array.isArray(d.water_entries) ? d.water_entries : []);
+}
+
+function officeLowloaderEntries(d = {}) {
+  return Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+}
+
+function waterTankerLiters(entry = {}) {
+  return parseDecimalInput(entry.water_liters || entry.liters || entry.water_l || "");
+}
+
+function waterTankerLoads(entry = {}) {
+  return parseDecimalInput(entry.loads || entry.fill_count || entry.water_loads || "");
+}
+
+function waterTankerKmTotal(entry = {}) {
+  return decimalDiffText(entry.km_start || entry.start_km, entry.km_end || entry.end_km) || entry.km_total || "";
+}
+
+function waterTankerPurposeLabel(value = "") {
+  const v = String(value || "").toLowerCase();
+  if (v === "prskanje") return "Prskanje puta / prašina";
+  if (v === "zalivanje") return "Zalivanje / vlaženje";
+  if (v === "dopuna") return "Dopuna vode";
+  if (v === "ciscenje" || v === "čišćenje") return "Čišćenje / pranje";
+  return value || "";
+}
+
+function lowloaderKmTotal(entry = {}) {
+  return entry.km_total || decimalDiffText(entry.km_start || entry.start_km, entry.km_end || entry.end_km) || "";
+}
+
+function lowloaderSiteLabel(entry = {}, fallback = "") {
+  return entry.site_name || entry.site || entry.to_site || entry.to_address || entry.from_site || entry.from_address || fallback || "";
+}
+
+function fuelSourceTypeLabel(value = "") {
+  const v = String(value || "").toLowerCase();
+  if (v === "fixed_base_pump") return "Fiksna pumpa u bazi";
+  if (v === "small_mobile_tanker") return "Mala pokretna cisterna";
+  if (v === "fuel_tanker") return "Cisterna za gorivo";
+  if (v === "gas_station") return "Benzinska pumpa / račun";
+  if (v === "canister") return "Kanister / ručno";
+  if (v === "other") return "Ostalo";
+  return value || "";
+}
+
+function fuelSourceName(entry = {}) {
+  return entry.source_name || entry.fuel_source || entry.fuel_location || entry.tanker_asset_name || entry.tanker_vehicle || entry.cistern_vehicle || "";
+}
+
+function fuelSourceText(entry = {}) {
+  return [fuelSourceTypeLabel(entry.fuel_source_type || entry.source_type), fuelSourceName(entry)].filter(Boolean).join(" · ");
+}
+
+
 function officeBuildDailyLogData(date, site) {
   const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSite(r, date, date, site));
   const workers = [];
   const machines = [];
   const vehicles = [];
+  const lowloaders = [];
+  const waters = [];
   const fuels = [];
   const materials = [];
   const defects = [];
@@ -3742,6 +3803,45 @@ function officeBuildDailyLogData(date, site) {
       if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, entrySite, r, "Vožnja / ture", "");
     });
 
+    officeLowloaderEntries(d).forEach(ll => {
+      if (!officeEntryMatchesSite({ site_name: lowloaderSiteLabel(ll, reportSite) }, reportSite, site)) return;
+      const entrySite = lowloaderSiteLabel(ll, reportSite) || reportSite;
+      lowloaders.push([
+        entrySite,
+        ll.plates || ll.registration || ll.tanker_plates || "",
+        ll.machine || ll.machine_name || ll.transported_machine || "",
+        reportPerson,
+        ll.from_site || ll.from_address || "",
+        ll.to_site || ll.to_address || "",
+        ll.km_start || "",
+        ll.km_end || "",
+        lowloaderKmTotal(ll),
+        ll.accompanying_tools || ll.tools || ll.note || ""
+      ]);
+      if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, entrySite, r, "Transport mašine labudicom", "");
+    });
+
+    officeWaterEntries(d).forEach(wt => {
+      if (!officeEntryMatchesSite(wt, reportSite, site)) return;
+      const entrySite = officeEntrySiteName(wt, reportSite) || reportSite;
+      waters.push([
+        entrySite,
+        wt.asset_code || wt.vehicle_code || "",
+        wt.vehicle || wt.asset_name || wt.tanker_vehicle || "",
+        reportPerson,
+        wt.km_start || "",
+        wt.km_end || "",
+        waterTankerKmTotal(wt),
+        waterTankerLiters(wt) || "",
+        waterTankerLoads(wt) || "",
+        wt.fill_location || "",
+        wt.unload_location || wt.spray_location || "",
+        waterTankerPurposeLabel(wt.purpose),
+        wt.note || ""
+      ]);
+      if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, entrySite, r, "Cisterna za vodu", "");
+    });
+
     const ownFuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
     ownFuels.forEach(f => {
       if (!officeEntryMatchesSite(f, reportSite, site)) return;
@@ -3754,7 +3854,8 @@ function officeBuildDailyLogData(date, site) {
         f.km || f.current_km || "",
         f.mtc || f.current_mtc || "",
         f.by || reportPerson,
-        f.receiver || d.fuel_receiver || ""
+        f.receiver || d.fuel_receiver || "",
+        fuelSourceText(f)
       ]);
     });
 
@@ -3770,7 +3871,8 @@ function officeBuildDailyLogData(date, site) {
         f.km || f.current_km || "",
         f.mtc || f.current_mtc || "",
         f.tanker_asset_name || f.tanker_vehicle || f.cistern_vehicle || reportPerson,
-        f.receiver || f.received_by || ""
+        f.receiver || f.received_by || "",
+        fuelSourceText(f)
       ]);
     });
 
@@ -3804,8 +3906,9 @@ function officeBuildDailyLogData(date, site) {
     }
   });
 
-  return { reports, workers, machines, vehicles, fuels, materials, defects };
+  return { reports, workers, machines, vehicles, lowloaders, waters, fuels, materials, defects };
 }
+
 
 function renderDailyLogPreview() {
   officeEnsureDefaultDates();
@@ -3815,17 +3918,20 @@ function renderDailyLogPreview() {
   const data = officeBuildDailyLogData(date, site);
   const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
   const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
+  const totalWater = (data.waters || []).reduce((sum, r) => sum + parseDecimalInput(r[7]), 0);
   const box = document.getElementById("dailyLogPreview");
   if (!box) return;
   box.innerHTML = `
     <div class="office-form-titlebar">
       <div><b>Dnevnik rada</b><span>${escapeHtml(formatDateOnlyLocal(date))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
-      <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.workers.length} radnika</span><span>${totalHours || 0} h</span><span>${Math.round(totalFuel * 100) / 100} L</span></div>
+      <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.workers.length} radnika</span><span>${totalHours || 0} h</span><span>${Math.round(totalFuel * 100) / 100} L goriva</span><span>${Math.round(totalWater * 100) / 100} L vode</span></div>
     </div>
     <section><h4>👷 Radnici i radni sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis rada"], data.workers)}</section>
     <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ početak","MTČ kraj","Ukupno MTČ","Ukupno KM","Rad"], data.machines)}</section>
     <section><h4>🚚 Vozila / kamioni</h4>${officeTable(["Gradilište","Broj","Vozilo","Registracija","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
-    <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj sredstva","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], data.fuels)}</section>
+    <section><h4>🚛 Labudica / transport mašine</h4>${officeTable(["Gradilište","Tablice","Prevezena mašina","Vozač","Od","Do","KM poč.","KM kraj","Ukupno KM","Napomena"], data.lowloaders || [])}</section>
+    <section><h4>💧 Cisterna za vodu</h4>${officeTable(["Gradilište","Broj","Cisterna","Vozač","KM poč.","KM kraj","Ukupno KM","Litara vode","Punjenja","Punjenje","Istovar/prskanje","Namena","Napomena"], data.waters || [])}</section>
+    <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj sredstva","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio","Izvor"], data.fuels)}</section>
     <section><h4>📦 Materijali</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
     <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis kvara","Hitnost","Status"], data.defects)}</section>
   `;
@@ -3966,9 +4072,24 @@ function officeBuildCarnetData(from, to, site) {
       assetRows.push([date, entrySite, "Vozilo", v.asset_code || v.vehicle_code || "", v.name || v.vehicle || d.vehicle || "", reportPerson, "", officeVehicleKmTotal(v), v.tours || d.tours || "", officeVehicleMaterialName(v), officeVehicleM3(v), officeVehicleRouteText(v)]);
       if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, entrySite, r, "Vožnja / ture", "");
     });
+
+    officeLowloaderEntries(d).forEach(ll => {
+      if (!officeEntryMatchesSite({ site_name: lowloaderSiteLabel(ll, reportSite) }, reportSite, site)) return;
+      const entrySite = lowloaderSiteLabel(ll, reportSite) || reportSite;
+      assetRows.push([date, entrySite, "Labudica", ll.plates || ll.registration || "", ll.machine || ll.machine_name || ll.transported_machine || "", reportPerson, "", lowloaderKmTotal(ll), "1", "", "", [ll.from_site || ll.from_address, ll.to_site || ll.to_address, ll.accompanying_tools || ll.tools || ll.note].filter(Boolean).join(" → ")]);
+      if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, entrySite, r, "Transport mašine labudicom", "");
+    });
+
+    officeWaterEntries(d).forEach(wt => {
+      if (!officeEntryMatchesSite(wt, reportSite, site)) return;
+      const entrySite = officeEntrySiteName(wt, reportSite) || reportSite;
+      assetRows.push([date, entrySite, "Cisterna za vodu", wt.asset_code || wt.vehicle_code || "", wt.vehicle || wt.asset_name || wt.tanker_vehicle || "", reportPerson, "", waterTankerKmTotal(wt), waterTankerLoads(wt) || "", "Voda", waterTankerLiters(wt) || "", [waterTankerPurposeLabel(wt.purpose), wt.fill_location && `punjenje: ${wt.fill_location}`, (wt.unload_location || wt.spray_location) && `istovar/prskanje: ${wt.unload_location || wt.spray_location}`, wt.note].filter(Boolean).join(" · ")]);
+      if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, entrySite, r, "Cisterna za vodu", "");
+    });
   });
   return { workerRows, assetRows };
 }
+
 
 function renderCarnetPreview() {
   officeEnsureDefaultDates();
@@ -3981,12 +4102,14 @@ function renderCarnetPreview() {
   const totalMtc = data.assetRows.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
   const totalKm = data.assetRows.reduce((sum, r) => sum + parseDecimalInput(r[7]), 0);
   const totalTours = data.assetRows.reduce((sum, r) => sum + parseDecimalInput(r[8]), 0);
+  const totalWater = data.assetRows.filter(r => String(r[2] || "").toLowerCase().includes("voda")).reduce((sum, r) => sum + parseDecimalInput(r[10]), 0);
+  const totalLowloader = data.assetRows.filter(r => String(r[2] || "").toLowerCase().includes("labudica")).length;
   const box = document.getElementById("carnetPreview");
   if (!box) return;
   box.innerHTML = `
     <div class="office-form-titlebar">
       <div><b>Karnet radnika i mehanizacije</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
-      <div class="office-badges"><span>${data.workerRows.length} radnik-redova</span><span>${totalHours || 0} h</span><span>${data.assetRows.length} sredstava</span><span>${Math.round(totalMtc * 100) / 100} MTČ</span><span>${Math.round(totalKm * 100) / 100} km</span><span>${Math.round(totalTours * 100) / 100} tura</span></div>
+      <div class="office-badges"><span>${data.workerRows.length} radnik-redova</span><span>${totalHours || 0} h</span><span>${data.assetRows.length} sredstava</span><span>${Math.round(totalMtc * 100) / 100} MTČ</span><span>${Math.round(totalKm * 100) / 100} km</span><span>${Math.round(totalTours * 100) / 100} tura/punjenja</span><span>${Math.round(totalWater * 100) / 100} L vode</span><span>${totalLowloader} transporta</span></div>
     </div>
     <section><h4>📒 Karnet radnika</h4>${officeTable(["Datum","Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workerRows)}</section>
     <section><h4>🚜 Karnet mehanizacije / vozila</h4>${officeTable(["Datum","Gradilište","Tip","Broj","Sredstvo","Rukovalac/vozač","MTČ","KM","Ture","Materijal","m³","Opis/relacija"], data.assetRows)}</section>
@@ -4006,11 +4129,13 @@ function downloadDailyLogCsv() {
   data.workers.forEach(r => rows.push(["Radnici", ...r]));
   data.machines.forEach(r => rows.push(["Mašine", ...r]));
   data.vehicles.forEach(r => rows.push(["Vozila", ...r]));
+  (data.lowloaders || []).forEach(r => rows.push(["Labudica", ...r]));
+  (data.waters || []).forEach(r => rows.push(["Voda", ...r]));
   data.fuels.forEach(r => rows.push(["Gorivo", ...r]));
   data.materials.forEach(r => rows.push(["Materijali", ...r]));
   data.defects.forEach(r => rows.push(["Kvarovi", ...r]));
   if (!rows.length) return toast("Nema podataka za Dnevnik rada u izabranom filteru.", true);
-  officeCsvDownload(`dnevnik_rada_${safeFilePart(currentCompany?.company_code || "firma")}_${date}.csv`, ["Rubrika","Kolona 1","Kolona 2","Kolona 3","Kolona 4","Kolona 5","Kolona 6","Kolona 7","Kolona 8","Kolona 9","Kolona 10"], rows);
+  officeCsvDownload(`dnevnik_rada_${safeFilePart(currentCompany?.company_code || "firma")}_${date}.csv`, ["Rubrika","Kolona 1","Kolona 2","Kolona 3","Kolona 4","Kolona 5","Kolona 6","Kolona 7","Kolona 8","Kolona 9","Kolona 10","Kolona 11","Kolona 12","Kolona 13"], rows);
 }
 
 function downloadCarnetCsv() {
@@ -4508,7 +4633,7 @@ function downloadMaterialOverviewCsv() {
 
 function buildOwnerDashboardData(from, to, site = "") {
   const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSiteDeep(r, from, to, site));
-  let hours = 0, mtc = 0, km = 0, tours = 0, fuel = 0;
+  let hours = 0, mtc = 0, km = 0, tours = 0, fuel = 0, water = 0, waterLoads = 0, lowloaderKm = 0, lowloaderCount = 0;
   reports.forEach(r => {
     const d = r.data || {};
     const reportSite = officeReportSite(r) || "";
@@ -4517,6 +4642,8 @@ function buildOwnerDashboardData(from, to, site = "") {
     if (!workerRows.length) hours += parseDecimalInput(d.hours || "");
     (Array.isArray(d.machines) ? d.machines : []).forEach(m => { if (officeEntryMatchesSite(m, reportSite, site)) { mtc += parseDecimalInput(machineMtcTotal(m)); km += parseDecimalInput(machineKmTotal(m)); } });
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => { if (officeEntryMatchesSite(v, reportSite, site)) { km += parseDecimalInput(decimalDiffText(v.km_start, v.km_end) || v.km_total || ""); tours += parseDecimalInput(v.tours || ""); } });
+    officeLowloaderEntries(d).forEach(ll => { if (officeEntryMatchesSite({ site_name: lowloaderSiteLabel(ll, reportSite) }, reportSite, site)) { lowloaderCount += 1; lowloaderKm += parseDecimalInput(lowloaderKmTotal(ll)); km += parseDecimalInput(lowloaderKmTotal(ll)); } });
+    officeWaterEntries(d).forEach(wt => { if (officeEntryMatchesSite(wt, reportSite, site)) { water += waterTankerLiters(wt); waterLoads += waterTankerLoads(wt); km += parseDecimalInput(waterTankerKmTotal(wt)); } });
     (Array.isArray(d.fuel_entries) ? d.fuel_entries : []).forEach(f => { if (officeEntryMatchesSite(f, reportSite, site)) fuel += parseDecimalInput(f.liters || f.fuel_liters || ""); });
     const tank = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
     tank.forEach(f => { if (officeEntryMatchesSite(f, reportSite, site)) fuel += parseDecimalInput(f.liters || f.fuel_liters || ""); });
@@ -4526,7 +4653,7 @@ function buildOwnerDashboardData(from, to, site = "") {
   const fuelRows = buildFuelConsumptionRows(from, to).filter(row => !site || [...row.sites].some(s => normalizeSearch(s).includes(normalizeSearch(site))));
   const badFuel = fuelRows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad").length;
   const defectCount = reports.filter(hasDefectData).length;
-  return { reports, hours, mtc, km, tours, fuel, materials, materialM3, fuelRows, badFuel, defectCount };
+  return { reports, hours, mtc, km, tours, fuel, water, waterLoads, lowloaderKm, lowloaderCount, materials, materialM3, fuelRows, badFuel, defectCount };
 }
 
 function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
@@ -4555,6 +4682,8 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
       <div class="owner-kpi"><b>${round2(data.km)} km</b><span>kilometraža</span></div>
       <div class="owner-kpi"><b>${round2(data.tours)}</b><span>ture</span></div>
       <div class="owner-kpi"><b>${round2(data.materialM3)} m³</b><span>materijal m³</span></div>
+      <div class="owner-kpi"><b>${round2(data.water)} L</b><span>voda cisterna</span></div>
+      <div class="owner-kpi"><b>${round2(data.lowloaderCount)}</b><span>transport labudicom</span></div>
     </div>
     <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
     <section><h4>⛽ Povećana potrošnja</h4>${officeTable(["Sredstvo","Norma","Očekivano","Sipano","Razlika","Status"], fuelBadRows)}</section>`;
@@ -4644,7 +4773,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
-  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+  const lowloaders = officeLowloaderEntries(d);
+  const waters = officeWaterEntries(d);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
 
@@ -4695,7 +4825,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const previewHasLeave = !!(safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || Object.values(previewLeaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
   const previewHasWarehouse = !!(safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty));
 
-  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, fuels.length, fieldTankers.length, materialEntries.length, previewHasLeave ? 1 : 0, previewHasWarehouse ? 1 : 0)
+  const maxRows = Math.max(1, workers.length, machines.length, vehicles.length, lowloaders.length, waters.length, fuels.length, fieldTankers.length, materialEntries.length, previewHasLeave ? 1 : 0, previewHasWarehouse ? 1 : 0)
   for (let i = 0; i < maxRows; i++) {
     const w = workers[i] || {};
     const m = machines[i] || {};
@@ -4731,7 +4861,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <td>${val(ll.to_site || ll.to_address)}</td>
         <td>${val(ll.km_start)}</td>
         <td>${val(ll.km_end)}</td>
-        <td>${val(ll.km_total)}</td>
+        <td>${val(lowloaderKmTotal(ll))}</td>
         <td>${val(ll.machine)}</td>
         <td>${val(ll.accompanying_tools || ll.tools)}</td>
         <td>${val(f.asset_name || f.machine || f.vehicle || f.other)}</td>
@@ -4817,6 +4947,22 @@ function renderReportReadableDetails(d = {}, options = {}) {
     addPreview("Transport mašine labudicom", row, "Prateći alat uz mašinu", ll.accompanying_tools || ll.tools);
   });
 
+  waters.forEach((wt, i) => {
+    const row = `Cisterna za vodu ${i + 1}`;
+    addPreview("Cisterna za vodu", row, "Broj", wt.asset_code || wt.vehicle_code);
+    addPreview("Cisterna za vodu", row, "Cisterna", wt.vehicle || wt.asset_name || wt.tanker_vehicle);
+    addPreview("Cisterna za vodu", row, "Gradilište", officeEntrySiteName(wt, d.site_name || ""));
+    addPreview("Cisterna za vodu", row, "KM početak", wt.km_start);
+    addPreview("Cisterna za vodu", row, "KM kraj", wt.km_end);
+    addPreview("Cisterna za vodu", row, "Ukupno KM", waterTankerKmTotal(wt));
+    addPreview("Cisterna za vodu", row, "Litara vode", waterTankerLiters(wt));
+    addPreview("Cisterna za vodu", row, "Broj punjenja", waterTankerLoads(wt));
+    addPreview("Cisterna za vodu", row, "Punjenje vode", wt.fill_location);
+    addPreview("Cisterna za vodu", row, "Istovar / prskanje", wt.unload_location || wt.spray_location);
+    addPreview("Cisterna za vodu", row, "Namena", waterTankerPurposeLabel(wt.purpose));
+    addPreview("Cisterna za vodu", row, "Napomena", wt.note);
+  });
+
   fuels.forEach((f, i) => {
     const row = `Gorivo ${i + 1}`;
     addPreview("Evidencija goriva", row, "Tip sredstva", assetKindLabel(f.asset_kind));
@@ -4827,6 +4973,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
     addPreview("Evidencija goriva", row, "MTČ", f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""));
     addPreview("Evidencija goriva", row, "Sipao", f.by);
     addPreview("Evidencija goriva", row, "Primio", f.receiver || d.fuel_receiver);
+    addPreview("Evidencija goriva", row, "Izvor goriva", fuelSourceText(f));
   });
 
   fieldTankers.forEach((ft, i) => {
@@ -4840,6 +4987,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
     addPreview("Evidencija goriva – cisterna", row, "MTČ", ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""));
     addPreview("Evidencija goriva – cisterna", row, "Litara", ft.liters);
     addPreview("Evidencija goriva – cisterna", row, "Primio gorivo", ft.receiver || ft.received_by);
+    addPreview("Evidencija goriva – cisterna", row, "Izvor goriva", fuelSourceText(ft));
   });
 
   materialEntries.forEach((m, i) => {
@@ -4983,6 +5131,44 @@ function renderReportReadableDetails(d = {}, options = {}) {
       </tbody>
     </table>` : `<p class="report-empty">Nema unetih selidbi labudicom.</p>`;
 
+  const waterTable = waters.length ? `
+    <table class="report-mini-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Broj</th>
+          <th>Cisterna</th>
+          <th>Gradilište</th>
+          <th>KM početak</th>
+          <th>KM kraj</th>
+          <th>Ukupno KM</th>
+          <th>Litara vode</th>
+          <th>Punjenja</th>
+          <th>Punjenje</th>
+          <th>Istovar/prskanje</th>
+          <th>Namena</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${waters.map((wt, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${val(wt.asset_code || wt.vehicle_code)}</td>
+            <td>${val(wt.vehicle || wt.asset_name || wt.tanker_vehicle)}</td>
+            <td>${val(officeEntrySiteName(wt, d.site_name || ""))}</td>
+            <td>${val(wt.km_start)}</td>
+            <td>${val(wt.km_end)}</td>
+            <td>${val(waterTankerKmTotal(wt))}</td>
+            <td>${val(waterTankerLiters(wt))}</td>
+            <td>${val(waterTankerLoads(wt))}</td>
+            <td>${val(wt.fill_location)}</td>
+            <td>${val(wt.unload_location || wt.spray_location)}</td>
+            <td>${val([waterTankerPurposeLabel(wt.purpose), wt.note].filter(Boolean).join(" · "))}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>` : `<p class="report-empty">Nema unete cisterne za vodu.</p>`;
+
   const fuelTable = fuels.length ? `
     <table class="report-mini-table report-mini-table-fuel">
       <thead>
@@ -4996,6 +5182,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>MTČ</th>
           <th>Sipao</th>
           <th>Primio</th>
+          <th>Izvor</th>
         </tr>
       </thead>
       <tbody>
@@ -5010,6 +5197,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(fuelMtcValue(f))}</td>
             <td>${val(f.by)}</td>
             <td>${val(f.receiver || d.fuel_receiver)}</td>
+            <td>${val(fuelSourceText(f))}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -5037,6 +5225,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>MTČ</th>
           <th>Litara</th>
           <th>Primio gorivo</th>
+          <th>Izvor</th>
         </tr>
       </thead>
       <tbody>
@@ -5051,6 +5240,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(fuelMtcValue(ft))}</td>
             <td>${val(ft.liters)}</td>
             <td>${val(ft.receiver || ft.received_by)}</td>
+            <td>${val(fuelSourceText(ft))}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -5110,6 +5300,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
   const hasMachines = machines.some(hasUsefulEntry);
   const hasVehicles = vehicles.some(hasUsefulEntry);
   const hasLowloaders = lowloaders.some(hasUsefulEntry);
+  const hasWaters = waters.some(hasUsefulEntry);
   const hasFuels = fuels.some(hasUsefulEntry);
   const hasFieldTankers = fieldTankers.some(hasUsefulEntry);
   const hasGeneralNote = safe(d.description) || safe(d.note);
@@ -5160,6 +5351,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
       ${hasLowloaders ? `<div class="report-section">
         <h4>Transport mašine labudicom</h4>
         ${lowloaderTable}
+      </div>` : ""}
+
+      ${hasWaters ? `<div class="report-section">
+        <h4>Cisterna za vodu</h4>
+        ${waterTable}
       </div>` : ""}
 
       ${hasFuels ? `<div class="report-section">
@@ -5250,6 +5446,7 @@ function getReportFilledSections(d = {}) {
   if (arr(d.machines).some(hasEntry)) sections.push("Mašina");
   if (arr(d.vehicles).some(hasEntry)) sections.push("Vozilo");
   if (arr(d.lowloader_moves).some(hasEntry) || arr(d.lowloader_entries).some(hasEntry)) sections.push("Transport");
+  if (arr(d.water_tanker_entries).some(hasEntry) || arr(d.water_entries).some(hasEntry)) sections.push("Voda");
   if (arr(d.fuel_entries).some(hasEntry)) sections.push("Gorivo");
   if (arr(d.field_tanker_entries).some(hasEntry) || arr(d.tanker_fuel_entries).some(hasEntry)) sections.push("Cisterna");
   if (hasValue(d.defect) || hasValue(d.defect_asset_name) || hasValue(d.defect_urgency) || hasValue(d.defect_work_impact)) sections.push("Kvar");
@@ -5787,7 +5984,8 @@ function buildSingleReportExcelHtml(r) {
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
-  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+  const lowloaders = officeLowloaderEntries(d);
+  const waters = officeWaterEntries(d);
   const title = reportDocumentTitle(r);
   const docNo = reportDocumentNumber(r);
   const body = `
@@ -5818,8 +6016,8 @@ function buildSingleReportExcelHtml(r) {
     </table>
 
     <div class="section-title">Gorivo</div>
-    <table>${excelColgroup(["6%","13%","12%","20%","10%","10%","10%","14%","15%"])}
-      <tr><th>#</th><th>Tip sredstva</th><th>Broj</th><th>Sredstvo</th><th>Litara</th><th>KM</th><th>MTČ</th><th>Sipao</th><th>Primio</th></tr>
+    <table>${excelColgroup(["5%","11%","10%","18%","8%","8%","8%","11%","11%","10%"])}
+      <tr><th>#</th><th>Tip sredstva</th><th>Broj</th><th>Sredstvo</th><th>Litara</th><th>KM</th><th>MTČ</th><th>Sipao</th><th>Primio</th><th>Izvor</th></tr>
       ${excelSectionRows(fuels, [
         {key:"i", get:(f,i)=>i+1},
         {key:"type", get:f=>assetKindLabel(f.asset_kind)},
@@ -5829,7 +6027,8 @@ function buildSingleReportExcelHtml(r) {
         {key:"km", get:f=>f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || ""},
         {key:"mtc", get:f=>f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || ""},
         {key:"by", get:f=>f.by || ""},
-        {key:"receiver", get:f=>f.receiver || d.fuel_receiver || ""}
+        {key:"receiver", get:f=>f.receiver || d.fuel_receiver || ""},
+        {key:"source", get:f=>fuelSourceText(f)}
       ])}
     </table>
 
@@ -5846,6 +6045,23 @@ function buildSingleReportExcelHtml(r) {
         {key:"route", get:v=>v.route || ""},
         {key:"tours", get:v=>v.tours || ""},
         {key:"cubic", get:v=>v.cubic_m3 || v.cubic_auto || ""}
+      ])}
+    </table>
+
+    <div class="section-title">Cisterna za vodu</div>
+    <table>${excelColgroup(["5%","12%","18%","9%","9%","9%","10%","8%","10%","10%"])}
+      <tr><th>#</th><th>Broj</th><th>Cisterna</th><th>KM početak</th><th>KM kraj</th><th>Ukupno KM</th><th>Litara vode</th><th>Punjenja</th><th>Lokacije</th><th>Namena</th></tr>
+      ${excelSectionRows(waters, [
+        {key:"i", get:(w,i)=>i+1},
+        {key:"code", get:w=>w.asset_code || w.vehicle_code || ""},
+        {key:"vehicle", get:w=>w.vehicle || w.asset_name || w.tanker_vehicle || ""},
+        {key:"km_start", get:w=>w.km_start || ""},
+        {key:"km_end", get:w=>w.km_end || ""},
+        {key:"km_total", get:w=>waterTankerKmTotal(w)},
+        {key:"liters", get:w=>waterTankerLiters(w) || ""},
+        {key:"loads", get:w=>waterTankerLoads(w) || ""},
+        {key:"locations", get:w=>[w.fill_location && `punjenje: ${w.fill_location}`, (w.unload_location || w.spray_location) && `istovar/prskanje: ${w.unload_location || w.spray_location}`].filter(Boolean).join(" / ")},
+        {key:"purpose", get:w=>[waterTankerPurposeLabel(w.purpose), w.note].filter(Boolean).join(" · ")}
       ])}
     </table>
 
@@ -5899,7 +6115,8 @@ function buildSingleReportExcelCsv(r) {
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
-  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+  const lowloaders = officeLowloaderEntries(d);
+  const waters = officeWaterEntries(d);
   const docNo = reportDocumentNumber(r);
   const base = {
     datum: formatDateOnlyLocal(r.report_date || d.report_date),
@@ -5918,7 +6135,7 @@ function buildSingleReportExcelCsv(r) {
   rows.push(["sep=;"]);
   rows.push(["DNEVNI RADNI IZVEŠTAJ SA TERENA - KANCELARIJSKI EXCEL IZVOZ"]);
   rows.push([]);
-  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Broj radnika", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna koja je sipala gorivo", "Tablice cisterne koja je sipala gorivo"]);
+  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Broj radnika", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna koja je sipala gorivo", "Tablice cisterne koja je sipala gorivo", "Izvor goriva", "Litara vode", "Punjenja vode", "Punjenje vode", "Istovar/prskanje vode", "Namena vode"]);
 
   if (machines.length) {
     machines.forEach((m) => rows.push([
@@ -5939,7 +6156,8 @@ function buildSingleReportExcelCsv(r) {
       f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || "",
       f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || "",
       f.by || "", f.receiver || d.fuel_receiver || "",
-      "", "", "", "", "", "", "", "", assetKindLabel(f.asset_kind)
+       "", "", "", "", "", "", "", "", assetKindLabel(f.asset_kind),
+      fuelSourceText(f)
     ]));
   }
 
@@ -5956,7 +6174,8 @@ function buildSingleReportExcelCsv(r) {
       "", "", "", "", "", "", "", "", assetKindLabel(ft.asset_kind),
       ft.tanker_asset_code || ft.tanker_vehicle_code || "",
       ft.tanker_asset_name || ft.tanker_vehicle || ft.cistern_vehicle || "",
-      ft.tanker_registration || ft.tanker_plates || ft.cistern_registration || ft.cistern_plates || ""
+      ft.tanker_registration || ft.tanker_plates || ft.cistern_registration || ft.cistern_plates || "",
+      fuelSourceText(ft)
     ]));
   }
 
@@ -5977,6 +6196,17 @@ function buildSingleReportExcelCsv(r) {
     ]));
   }
 
+  if (waters.length) {
+    waters.forEach((wt) => rows.push([
+      "Cisterna za vodu", base.datum, base.firma, officeEntrySiteName(wt, base.gradiliste), base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
+      wt.asset_code || wt.vehicle_code || "", wt.vehicle || wt.asset_name || wt.tanker_vehicle || "",
+      wt.km_start || "", wt.km_end || "", waterTankerKmTotal(wt), "", "", "",
+      "", "", "", "", "",
+      wt.fill_location || "", wt.unload_location || wt.spray_location || "", waterTankerLoads(wt) || "", "", "Voda", "", waterTankerLiters(wt) || "", "L", wt.note || "",
+      "", "", "", "", waterTankerLiters(wt) || "", waterTankerLoads(wt) || "", wt.fill_location || "", wt.unload_location || wt.spray_location || "", waterTankerPurposeLabel(wt.purpose)
+    ]));
+  }
+
   if (lowloaders.length) {
     lowloaders.forEach((ll) => rows.push([
       "Transport labudicom", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
@@ -5986,7 +6216,7 @@ function buildSingleReportExcelCsv(r) {
     ]));
   }
 
-  if (!machines.length && !fuels.length && !fieldTankers.length && !vehicles.length && !materials.length && !lowloaders.length) {
+  if (!machines.length && !fuels.length && !fieldTankers.length && !vehicles.length && !materials.length && !lowloaders.length && !waters.length) {
     rows.push(["Nema unetih stavki", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis]);
   }
 
@@ -10760,6 +10990,18 @@ const EXPORT_COLUMNS = [
   { key:"lowloader_km", label:"Kilometara sa labudicom" },
   { key:"lowloader_machine", label:"Prevezena mašina" },
   { key:"lowloader_tools", label:"Prateći alat uz mašinu" },
+  { key:"water_site", label:"Gradilište cisterne za vodu" },
+  { key:"water_vehicle_code", label:"Broj cisterne za vodu" },
+  { key:"water_vehicle", label:"Cisterna za vodu" },
+  { key:"water_km_start", label:"KM početak cisterne za vodu" },
+  { key:"water_km_end", label:"KM kraj cisterne za vodu" },
+  { key:"water_km", label:"Ukupno KM cisterne za vodu" },
+  { key:"water_liters", label:"Litara vode" },
+  { key:"water_loads", label:"Broj punjenja vode" },
+  { key:"water_fill_location", label:"Lokacija punjenja vode" },
+  { key:"water_unload_location", label:"Lokacija istovara/prskanja vode" },
+  { key:"water_purpose", label:"Namena vode" },
+  { key:"water_note", label:"Napomena za vodu" },
   { key:"fuel_type", label:"Kategorija sredstva" },
   { key:"fuel_asset_code", label:"Broj sredstva" },
   { key:"fuel_for", label:"Naziv sredstva" },
@@ -10769,6 +11011,8 @@ const EXPORT_COLUMNS = [
   { key:"fuel_mtc", label:"MTČ" },
   { key:"fuel_by", label:"Gorivo sipao" },
   { key:"fuel_receiver", label:"Primio gorivo" },
+  { key:"fuel_source_type", label:"Tip izvora goriva" },
+  { key:"fuel_source", label:"Naziv/lokacija izvora goriva" },
   { key:"field_tanker_site", label:"Gradilište gde je sipano gorivo" },
   { key:"field_tanker_vehicle_code", label:"Broj cisterne" },
   { key:"field_tanker_vehicle", label:"Cisterna koja je sipala gorivo" },
@@ -10780,6 +11024,8 @@ const EXPORT_COLUMNS = [
   { key:"field_tanker_mtc", label:"MTČ pri tankovanju cisternom" },
   { key:"field_tanker_liters", label:"Litara iz cisterne" },
   { key:"field_tanker_receiver", label:"Primio gorivo iz cisterne" },
+  { key:"field_tanker_source_type", label:"Tip izvora cisterne" },
+  { key:"field_tanker_source", label:"Naziv/lokacija izvora cisterne" },
   { key:"material_action", label:"Radnja sa materijalom" },
   { key:"material", label:"Materijal" },
   { key:"material_tours", label:"Ture materijala" },
@@ -10812,7 +11058,7 @@ const EXPORT_COLUMNS = [
 const SIMPLE_EXPORT_KEYS = [
   "date", "worker", "site", "description", "hours",
   "machine", "vehicle", "tours", "cubic", "fuel_liters",
-  "defect", "status"
+  "water_liters", "defect", "status"
 ];
 
 const EXPORT_GROUPS = [
@@ -10844,7 +11090,7 @@ const EXPORT_GROUPS = [
     id: "fuel",
     title: "Sipanje goriva",
     hint: "Gorivo koje je zaposleni sipao u svoju mašinu ili vozilo.",
-    keys: ["fuel_type", "fuel_asset_code", "fuel_for", "fuel_registration", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_by", "fuel_receiver"]
+    keys: ["fuel_type", "fuel_asset_code", "fuel_for", "fuel_registration", "fuel_liters", "fuel_km", "fuel_mtc", "fuel_by", "fuel_receiver", "fuel_source_type", "fuel_source"]
   },
   {
     id: "lowloader",
@@ -10853,10 +11099,16 @@ const EXPORT_GROUPS = [
     keys: ["lowloader_plates", "lowloader_from", "lowloader_to", "lowloader_km_start", "lowloader_km_end", "lowloader_km", "lowloader_machine", "lowloader_tools"]
   },
   {
+    id: "waterTanker",
+    title: "Cisterna za vodu",
+    hint: "Voda za prskanje, punjenje, istovar i rad na gradilištu.",
+    keys: ["water_site", "water_vehicle_code", "water_vehicle", "water_km_start", "water_km_end", "water_km", "water_liters", "water_loads", "water_fill_location", "water_unload_location", "water_purpose", "water_note"]
+  },
+  {
     id: "fieldTanker",
     title: "Evidencija goriva – cisterna",
     hint: "Cisterna koja na terenu sipa gorivo drugim mašinama/vozilima.",
-    keys: ["field_tanker_site", "field_tanker_vehicle_code", "field_tanker_vehicle", "field_tanker_vehicle_registration", "field_tanker_type", "field_tanker_asset_code", "field_tanker_asset", "field_tanker_registration", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver"]
+    keys: ["field_tanker_site", "field_tanker_vehicle_code", "field_tanker_vehicle", "field_tanker_vehicle_registration", "field_tanker_type", "field_tanker_asset_code", "field_tanker_asset", "field_tanker_registration", "field_tanker_km", "field_tanker_mtc", "field_tanker_liters", "field_tanker_receiver", "field_tanker_source_type", "field_tanker_source"]
   },
   {
     id: "material",
@@ -11015,7 +11267,8 @@ function flattenReportRowsForExport(r) {
   const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
-  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+  const lowloaders = officeLowloaderEntries(d);
+  const waters = officeWaterEntries(d);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
   const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
@@ -11075,9 +11328,24 @@ function flattenReportRowsForExport(r) {
     lowloader_to: ll.to_site || ll.to_address || "",
     lowloader_km_start: ll.km_start || "",
     lowloader_km_end: ll.km_end || "",
-    lowloader_km: ll.km_total || "",
-    lowloader_machine: ll.machine || "",
+    lowloader_km: lowloaderKmTotal(ll),
+    lowloader_machine: ll.machine || ll.machine_name || ll.transported_machine || "",
     lowloader_tools: ll.accompanying_tools || ll.tools || ""
+  }));
+
+  waters.forEach(wt => pushRow({
+    water_site: officeEntrySiteName(wt, d.site_name || ""),
+    water_vehicle_code: wt.asset_code || wt.vehicle_code || "",
+    water_vehicle: wt.vehicle || wt.asset_name || wt.tanker_vehicle || "",
+    water_km_start: wt.km_start || "",
+    water_km_end: wt.km_end || "",
+    water_km: waterTankerKmTotal(wt),
+    water_liters: waterTankerLiters(wt) || "",
+    water_loads: waterTankerLoads(wt) || "",
+    water_fill_location: wt.fill_location || "",
+    water_unload_location: wt.unload_location || wt.spray_location || "",
+    water_purpose: waterTankerPurposeLabel(wt.purpose),
+    water_note: wt.note || ""
   }));
 
   fuels.forEach(f => pushRow({
@@ -11089,7 +11357,9 @@ function flattenReportRowsForExport(r) {
     fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || "",
     fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || "",
     fuel_by: f.by || "",
-    fuel_receiver: f.receiver || d.fuel_receiver || ""
+    fuel_receiver: f.receiver || d.fuel_receiver || "",
+    fuel_source_type: fuelSourceTypeLabel(f.fuel_source_type || f.source_type),
+    fuel_source: fuelSourceName(f)
   }));
 
   fieldTankers.forEach(ft => pushRow({
@@ -11104,7 +11374,9 @@ function flattenReportRowsForExport(r) {
     field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
     field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
     field_tanker_liters: ft.liters || "",
-    field_tanker_receiver: ft.receiver || ft.received_by || ""
+    field_tanker_receiver: ft.receiver || ft.received_by || "",
+    field_tanker_source_type: fuelSourceTypeLabel(ft.fuel_source_type || ft.source_type),
+    field_tanker_source: fuelSourceName(ft)
   }));
 
   materials.forEach(mat => pushRow({
@@ -11294,6 +11566,14 @@ function getSmartExportUiText(type) {
       hideItem: false,
       hint: "Cisterna: prikazuje sipanja iz cisterne po gradilištu i datumu."
     },
+    water_tanker: {
+      workerLabel: "Vozač / zaposleni",
+      workerPlaceholder: "npr. Jovan ili prazno za sve",
+      itemLabel: "Cisterna / voda",
+      itemPlaceholder: "npr. cisterna, tablice, Makiš, prskanje",
+      hideItem: false,
+      hint: "Cisterna za vodu: prikazuje litre vode, punjenja, lokacije punjenja i prskanja."
+    },
     materials: {
       workerLabel: "Ime i prezime vozača / zaposleni",
       workerPlaceholder: "npr. Marko ili prazno za sve",
@@ -11377,7 +11657,7 @@ function updateSmartExportDatalists(type = $("#smartExportType")?.value || getSm
     html = buildAssetExportOptions(activeDirectorAssets().filter(isVehicleAsset));
   } else if (type === "machines") {
     html = buildAssetExportOptions(activeDirectorAssets().filter(isMachineAsset));
-  } else if (type === "fuel_all" || type === "fuel_own" || type === "fuel_tanker" || type === "lowloader") {
+  } else if (type === "fuel_all" || type === "fuel_own" || type === "fuel_tanker" || type === "lowloader" || type === "water_tanker") {
     html = buildAssetExportOptions(activeDirectorAssets());
   } else {
     html = [
@@ -11434,7 +11714,16 @@ function smartExportReportMatches(r, settings) {
   if (settings.to && date && date > settings.to) return false;
   const siteQ = normalizeSearch(settings.site || "");
   if (siteQ) {
-    const siteText = normalizeSearch([d.site_name, d.site, r.site_name].filter(Boolean).join(" "));
+    const siteText = normalizeSearch([
+      d.site_name,
+      d.site,
+      r.site_name,
+      ...(Array.isArray(d.machines) ? d.machines.map(x => officeEntrySiteName(x, "")) : []),
+      ...(Array.isArray(d.vehicles) ? d.vehicles.map(x => officeEntrySiteName(x, "")) : []),
+      ...officeLowloaderEntries(d).map(x => lowloaderSiteLabel(x, "")),
+      ...officeWaterEntries(d).map(x => officeEntrySiteName(x, "")),
+      ...(Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries.map(x => officeEntrySiteName(x, "")) : [])
+    ].filter(Boolean).join(" "));
     if (!siteText.includes(siteQ)) return false;
   }
   const workerQ = normalizeSearch(settings.worker || "");
@@ -11455,20 +11744,7 @@ function smartExportReportMatches(r, settings) {
   return true;
 }
 
-function baseExportRow(r) {
-  const d = r.data || {};
-  return {
-    date: r.report_date || "",
-    worker: reportPersonName(r),
-    employee_number: reportEmployeeNumber(r),
-    function: r.company_users?.function_title || "",
-    site: d.site_name || "",
-    hours: d.hours || "",
-    description: d.description || "",
-    status: r.status || "",
-    note: d.note || ""
-  };
-}
+
 
 function smartRowsForReport(r, type) {
   if (!type || type === "all") return flattenReportRowsForExport(r);
@@ -11478,7 +11754,8 @@ function smartRowsForReport(r, type) {
   const workers = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
   const machines = Array.isArray(d.machines) ? d.machines : [];
   const vehicles = Array.isArray(d.vehicles) ? d.vehicles : [];
-  const lowloaders = Array.isArray(d.lowloader_moves) ? d.lowloader_moves : (Array.isArray(d.lowloader_entries) ? d.lowloader_entries : []);
+  const lowloaders = officeLowloaderEntries(d);
+  const waters = officeWaterEntries(d);
   const fuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
   const fieldTankers = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
   const materials = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : []);
@@ -11495,7 +11772,9 @@ function smartRowsForReport(r, type) {
       fuel_km: f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || "",
       fuel_mtc: f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : "") || "",
       fuel_by: f.by || "",
-      fuel_receiver: f.receiver || d.fuel_receiver || ""
+      fuel_receiver: f.receiver || d.fuel_receiver || "",
+      fuel_source_type: fuelSourceTypeLabel(f.fuel_source_type || f.source_type),
+      fuel_source: fuelSourceName(f)
     }));
   }
 
@@ -11513,7 +11792,9 @@ function smartRowsForReport(r, type) {
       field_tanker_km: ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_mtc: ft.mtc || ft.current_mtc || (ft.asset_kind === "machine" ? (ft.reading || ft.mtc_km) : ""),
       field_tanker_liters: ft.liters || "",
-      field_tanker_receiver: ft.receiver || ft.received_by || ""
+      field_tanker_receiver: ft.receiver || ft.received_by || "",
+      field_tanker_source_type: fuelSourceTypeLabel(ft.fuel_source_type || ft.source_type),
+      field_tanker_source: fuelSourceName(ft)
     }));
   }
 
@@ -11570,6 +11851,24 @@ function smartRowsForReport(r, type) {
       lowloader_km: ll.km_total || "",
       lowloader_machine: ll.machine || "",
       lowloader_tools: ll.accompanying_tools || ll.tools || ""
+    }));
+  }
+
+  if (type === "water_tanker") {
+    waters.forEach(wt => rows.push({
+      ...base,
+      water_site: officeEntrySiteName(wt, d.site_name || ""),
+      water_vehicle_code: wt.asset_code || wt.vehicle_code || "",
+      water_vehicle: wt.vehicle || wt.asset_name || wt.tanker_vehicle || "",
+      water_km_start: wt.km_start || "",
+      water_km_end: wt.km_end || "",
+      water_km: waterTankerKmTotal(wt),
+      water_liters: waterTankerLiters(wt) || "",
+      water_loads: waterTankerLoads(wt) || "",
+      water_fill_location: wt.fill_location || "",
+      water_unload_location: wt.unload_location || wt.spray_location || "",
+      water_purpose: waterTankerPurposeLabel(wt.purpose),
+      water_note: wt.note || ""
     }));
   }
 
@@ -11642,7 +11941,10 @@ function smartExportRowMatches(row, settings) {
       row.defect_site,
       row.lowloader_from,
       row.lowloader_to,
-      row.lowloader_tools
+      row.lowloader_tools,
+      row.water_site,
+      row.water_fill_location,
+      row.water_unload_location
     ].filter(Boolean).join(" "));
     if (!siteText.includes(siteQ)) return false;
   }
@@ -11655,7 +11957,9 @@ function smartExportRowMatches(row, settings) {
       row.function,
       row.fuel_by,
       row.fuel_receiver,
-      row.field_tanker_receiver
+      row.field_tanker_receiver,
+      row.fuel_source,
+      row.field_tanker_source
     ].filter(Boolean).join(" "));
     if (!workerText.includes(workerQ)) return false;
   }
@@ -11681,7 +11985,13 @@ function smartExportRowMatches(row, settings) {
       row.defect_registration,
       row.lowloader_machine,
       row.lowloader_tools,
-      row.lowloader_plates
+      row.lowloader_plates,
+      row.water_vehicle_code,
+      row.water_vehicle,
+      row.water_purpose,
+      row.water_note,
+      row.fuel_source,
+      row.field_tanker_source
     ].filter(Boolean).join(" "));
     if (!itemText.includes(itemQ)) return false;
   }
@@ -12205,18 +12515,31 @@ function buildFlowTestData() {
   const reportTypes = new Set(reports.map(r => String((r.data || {}).report_type || r.report_type || "").trim()).filter(Boolean));
   const multiSiteReports = reports.filter(r => {
     const d = r.data || {};
-    return Array.isArray(d.work_items) && d.work_items.length > 1 || Array.isArray(d.vehicle_items) && d.vehicle_items.length > 1 || Array.isArray(d.machine_items) && d.machine_items.length > 1;
+    return (Array.isArray(d.work_items) && d.work_items.length > 1)
+      || (Array.isArray(d.vehicle_items) && d.vehicle_items.length > 1)
+      || (Array.isArray(d.machine_items) && d.machine_items.length > 1)
+      || (Array.isArray(d.vehicles) && d.vehicles.filter(x => x.site_name || x.site_id).length > 1)
+      || (Array.isArray(d.machines) && d.machines.filter(x => x.site_name || x.site_id).length > 1);
   }).length;
   const fuelReports = reports.filter(r => {
     const d = r.data || {};
-    return String(d.report_type || r.report_type || "").includes("fuel") || Array.isArray(d.fuel_entries) && d.fuel_entries.length;
+    return String(d.report_type || r.report_type || "").includes("fuel") || Array.isArray(d.fuel_entries) && d.fuel_entries.length || Array.isArray(d.field_tanker_entries) && d.field_tanker_entries.length;
+  }).length;
+  const waterReports = reports.filter(r => {
+    const d = r.data || {};
+    return String(d.report_type || r.report_type || "").includes("water") || officeWaterEntries(d).length;
+  }).length;
+  const lowloaderReports = reports.filter(r => {
+    const d = r.data || {};
+    return String(d.report_type || r.report_type || "").includes("lowloader") || officeLowloaderEntries(d).length;
   }).length;
   const defectReports = reports.filter(r => {
     const d = r.data || {};
     return String(d.report_type || r.report_type || "").includes("defect") || Array.isArray(d.defects) && d.defects.length;
   }).length;
-  return { reports, peopleCount, sitesCount, assetsCount, materialsCount, reportTypes, multiSiteReports, fuelReports, defectReports };
+  return { reports, peopleCount, sitesCount, assetsCount, materialsCount, reportTypes, multiSiteReports, fuelReports, waterReports, lowloaderReports, defectReports };
 }
+
 
 function renderFlowTestPanel() {
   const box = document.getElementById("flowTestPreview");
@@ -12230,7 +12553,9 @@ function renderFlowTestPanel() {
     ["Poslati izveštaji", d.reports.length, "Za Dnevnik, Karnet, Gazdu i šefove trebaju poslati test izveštaji.", d.reports.length >= 1],
     ["Različiti tipovi unosa", d.reportTypes.size, "Cilj je da tipovi ostanu odvojeni: ture, mašina, gorivo, kvar, odsustvo.", d.reportTypes.size >= 2],
     ["Multi-gradilište izveštaji", d.multiSiteReports, "Vozač/bagerista treba da pošalje jedan izveštaj sa više stavki/gradilišta.", d.multiSiteReports >= 1],
-    ["Gorivo", d.fuelReports, "Treba bar jedan unos goriva za proveru potrošnje.", d.fuelReports >= 1],
+    ["Gorivo", d.fuelReports, "Treba bar jedan unos goriva za proveru potrošnje i izvora goriva.", d.fuelReports >= 1],
+    ["Cisterna za vodu", d.waterReports || 0, "Treba bar jedan unos vode za proveru litara i Dnevnika/Karneta.", (d.waterReports || 0) >= 1],
+    ["Labudica", d.lowloaderReports || 0, "Treba bar jedan transport mašine za proveru Karneta i Excel izvoza.", (d.lowloaderReports || 0) >= 1],
     ["Kvarovi", d.defectReports, "Treba bar jedan kvar za proveru Šefa mehanizacije i Dnevnika.", d.defectReports >= 1]
   ];
   const htmlRows = rows.map(r => `<tr><td><b>${escapeHtml(r[0])}</b></td><td>${escapeHtml(String(r[1]))}</td><td>${escapeHtml(r[2])}</td><td>${testStatusBadge(r[3])}</td></tr>`).join("");
@@ -12241,11 +12566,13 @@ function renderFlowTestPanel() {
     "4. Bagerista: izaberi 'Rad mašine / MTČ' i unesi 2 stavke za 2 gradilišta, pa pošalji jedan dnevni izveštaj.",
     "5. Radnik: probaj 'Slobodan dan / godišnji' i proveri da se ne pojavljuje kao gradilište.",
     "6. Radnik/vozač/bagerista: pošalji gorivo i kvar kroz posebne rubrike.",
-    "7. Direkcija: otvori Dnevnik rada za svako gradilište i proveri da uzima samo svoje stavke.",
-    "8. Direkcija: otvori Karnet i proveri radnike, mašine, vozila, MTČ, KM, ture, materijal i m³.",
-    "9. Šef gradilišta: proveri da vidi pregled svog datuma/gradilišta.",
-    "10. Šef mehanizacije: proveri kvarove, potrošnju i sredstva bez norme.",
-    "11. Gazda: proveri zbir firme po danu/mesecu i po gradilištu."
+    "7. Vozač: pošalji 'Cisterna za vodu' i proveri litre vode u Dnevniku/Karnetu.",
+    "8. Vozač labudice: pošalji transport mašine labudicom i proveri Karnet/Excel.",
+    "9. Direkcija: otvori Dnevnik rada za svako gradilište i proveri da uzima samo svoje stavke.",
+    "10. Direkcija: otvori Karnet i proveri radnike, mašine, vozila, MTČ, KM, ture, materijal i m³.",
+    "11. Šef gradilišta: proveri da vidi pregled svog datuma/gradilišta.",
+    "12. Šef mehanizacije: proveri kvarove, potrošnju i sredstva bez norme.",
+    "13. Gazda: proveri zbir firme po danu/mesecu i po gradilištu."
   ];
   box.innerHTML = `
     <div class="test-flow-head">
