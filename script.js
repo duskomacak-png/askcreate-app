@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.40.0";
+const APP_VERSION = "1.41.0";
 
 
 let sb = null;
@@ -872,7 +872,7 @@ async function installWorkerApp() {
       toast("Osvežavam instalacioni režim...");
       const url = new URL(window.location.href);
       url.searchParams.set("install", "1");
-      url.searchParams.set("v", "1340");
+      url.searchParams.set("v", "1410");
       url.searchParams.set("t", Date.now().toString());
       setTimeout(() => { window.location.href = url.toString(); }, 650);
       return;
@@ -3589,6 +3589,7 @@ async function loadReports(options = {}) {
   if (document.getElementById("tabCarnet")?.classList.contains("active")) renderCarnetPreview();
   if (document.getElementById("tabMaterials")?.classList.contains("active")) renderMaterialOverview();
   if (document.getElementById("tabOwner")?.classList.contains("active")) renderOwnerDashboard();
+  if (document.getElementById("tabTest")?.classList.contains("active")) renderFlowTestPanel();
 }
 
 // === AskCreate v-karnet: Dnevnik rada + Karnet pregledi za Direkciju ===
@@ -12011,6 +12012,105 @@ function installNavigationFallback() {
   });
 }
 
+
+// === AskCreate v10.1: Kontrola tokova za stabilizaciono testiranje ===
+function safeArrayCount(fn) {
+  try {
+    const value = typeof fn === "function" ? fn() : fn;
+    return Array.isArray(value) ? value.length : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function testStatusBadge(ok, labelOk = "spremno", labelBad = "proveriti") {
+  return `<span class="test-status ${ok ? "ok" : "warn"}">${ok ? "✅" : "⚠️"} ${escapeHtml(ok ? labelOk : labelBad)}</span>`;
+}
+
+function buildFlowTestData() {
+  const reports = Array.isArray(directorReportsCache) ? directorReportsCache : [];
+  const peopleCount = safeArrayCount(() => activeDirectorPeople());
+  const sitesCount = safeArrayCount(() => activeDirectorSites());
+  const assetsCount = safeArrayCount(() => activeDirectorAssets());
+  const materialsCount = safeArrayCount(() => activeDirectorMaterials ? activeDirectorMaterials() : (directorMaterialsCache || []));
+  const reportTypes = new Set(reports.map(r => String((r.data || {}).report_type || r.report_type || "").trim()).filter(Boolean));
+  const multiSiteReports = reports.filter(r => {
+    const d = r.data || {};
+    return Array.isArray(d.work_items) && d.work_items.length > 1 || Array.isArray(d.vehicle_items) && d.vehicle_items.length > 1 || Array.isArray(d.machine_items) && d.machine_items.length > 1;
+  }).length;
+  const fuelReports = reports.filter(r => {
+    const d = r.data || {};
+    return String(d.report_type || r.report_type || "").includes("fuel") || Array.isArray(d.fuel_entries) && d.fuel_entries.length;
+  }).length;
+  const defectReports = reports.filter(r => {
+    const d = r.data || {};
+    return String(d.report_type || r.report_type || "").includes("defect") || Array.isArray(d.defects) && d.defects.length;
+  }).length;
+  return { reports, peopleCount, sitesCount, assetsCount, materialsCount, reportTypes, multiSiteReports, fuelReports, defectReports };
+}
+
+function renderFlowTestPanel() {
+  const box = document.getElementById("flowTestPreview");
+  if (!box) return;
+  const d = buildFlowTestData();
+  const rows = [
+    ["Radnici / korisnici", d.peopleCount, "Direkcija treba da ima bar vozača, bageristu, šefa gradilišta, šefa mehanizacije i gazdu.", d.peopleCount >= 5],
+    ["Gradilišta", d.sitesCount, "Potrebna su bar 2–3 gradilišta za proveru multi-gradilište izveštaja.", d.sitesCount >= 2],
+    ["Mašine / vozila", d.assetsCount, "Potrebno je bar jedno vozilo i jedna mašina, sa normom goriva ako testiraš potrošnju.", d.assetsCount >= 2],
+    ["Materijali", d.materialsCount, "Potrebno je bar jedan materijal za ture i pregled materijala po gradilištu.", d.materialsCount >= 1],
+    ["Poslati izveštaji", d.reports.length, "Za Dnevnik, Karnet, Gazdu i šefove trebaju poslati test izveštaji.", d.reports.length >= 1],
+    ["Različiti tipovi unosa", d.reportTypes.size, "Cilj je da tipovi ostanu odvojeni: ture, mašina, gorivo, kvar, odsustvo.", d.reportTypes.size >= 2],
+    ["Multi-gradilište izveštaji", d.multiSiteReports, "Vozač/bagerista treba da pošalje jedan izveštaj sa više stavki/gradilišta.", d.multiSiteReports >= 1],
+    ["Gorivo", d.fuelReports, "Treba bar jedan unos goriva za proveru potrošnje.", d.fuelReports >= 1],
+    ["Kvarovi", d.defectReports, "Treba bar jedan kvar za proveru Šefa mehanizacije i Dnevnika.", d.defectReports >= 1]
+  ];
+  const htmlRows = rows.map(r => `<tr><td><b>${escapeHtml(r[0])}</b></td><td>${escapeHtml(String(r[1]))}</td><td>${escapeHtml(r[2])}</td><td>${testStatusBadge(r[3])}</td></tr>`).join("");
+  const steps = [
+    "1. Direkcija: dodaj/izaberi vozača i primeni preporučene funkcije.",
+    "2. Vozač: izaberi 'Vožnja / ture / materijal' i unesi 3 stavke za 3 gradilišta, pa pošalji jedan dnevni izveštaj.",
+    "3. Direkcija: proveri da je stigao jedan izveštaj, a unutra više gradilišta.",
+    "4. Bagerista: izaberi 'Rad mašine / MTČ' i unesi 2 stavke za 2 gradilišta, pa pošalji jedan dnevni izveštaj.",
+    "5. Radnik: probaj 'Slobodan dan / godišnji' i proveri da se ne pojavljuje kao gradilište.",
+    "6. Radnik/vozač/bagerista: pošalji gorivo i kvar kroz posebne rubrike.",
+    "7. Direkcija: otvori Dnevnik rada za svako gradilište i proveri da uzima samo svoje stavke.",
+    "8. Direkcija: otvori Karnet i proveri radnike, mašine, vozila, MTČ, KM, ture, materijal i m³.",
+    "9. Šef gradilišta: proveri da vidi pregled svog datuma/gradilišta.",
+    "10. Šef mehanizacije: proveri kvarove, potrošnju i sredstva bez norme.",
+    "11. Gazda: proveri zbir firme po danu/mesecu i po gradilištu."
+  ];
+  box.innerHTML = `
+    <div class="test-flow-head">
+      <div><b>Kontrolna lista verzije ${escapeHtml(APP_VERSION)}</b><span>${escapeHtml(formatRefreshTime())}</span></div>
+      <small>Ovaj ekran ne odobrava i ne menja izveštaje — samo pomaže da test ide redom.</small>
+    </div>
+    <div class="office-table-wrap"><table class="office-table"><thead><tr><th>Oblast</th><th>Broj</th><th>Šta proveriti</th><th>Status</th></tr></thead><tbody>${htmlRows}</tbody></table></div>
+    <section class="test-step-list"><h4>Redosled ručnog testa</h4>${steps.map(step => `<label><input type="checkbox" /> <span>${escapeHtml(step)}</span></label>`).join("")}</section>
+    <div class="site-boss-warning"><b>Pravilo stabilizacije:</b> ako ovde nešto ne prođe, ne dodavati novi modul. Prvo ispraviti taj tok, pa tek onda nastaviti dalje.</div>
+  `;
+}
+
+function flowTestPlainText() {
+  const steps = Array.from(document.querySelectorAll("#flowTestPreview .test-step-list span")).map(x => x.textContent.trim()).filter(Boolean);
+  return [
+    `AskCreate kontrolna lista v${APP_VERSION}`,
+    "",
+    ...steps,
+    "",
+    "Napomena: prvo popraviti tok koji ne prođe, ne dodavati novi modul preko greške."
+  ].join("\n");
+}
+
+async function copyFlowTestChecklist() {
+  if (!document.getElementById("flowTestPreview")?.innerHTML) renderFlowTestPanel();
+  const text = flowTestPlainText();
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Lista za test je kopirana.");
+  } catch (e) {
+    toast("Kopiranje nije uspelo. Možeš ručno označiti stavke na ekranu.", true);
+  }
+}
+
 function bindEvents() {
   preventNumberInputScrollChanges(document);
 
@@ -12155,6 +12255,9 @@ function bindEvents() {
   if ($("#ownerPanelLogoutBtn")) $("#ownerPanelLogoutBtn").addEventListener("click", logoutOwnerDashboardPanel);
   ["ownerPanelDashboardFrom", "ownerPanelDashboardTo", "ownerPanelDashboardSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview")); });
 
+  if ($("#refreshFlowTestBtn")) $("#refreshFlowTestBtn").addEventListener("click", renderFlowTestPanel);
+  if ($("#copyFlowTestBtn")) $("#copyFlowTestBtn").addEventListener("click", copyFlowTestChecklist);
+
   $$(".tab").forEach(btn => btn.addEventListener("click", () => {
     $$(".tab").forEach(b => b.classList.remove("active"));
     $$(".tab-panel").forEach(p => p.classList.remove("active"));
@@ -12168,6 +12271,7 @@ function bindEvents() {
     if (btn.dataset.tab === "archive") renderArchiveList();
     if (btn.dataset.tab === "dailyLog") renderDailyLogPreview();
     if (btn.dataset.tab === "carnet") renderCarnetPreview();
+    if (btn.dataset.tab === "test") renderFlowTestPanel();
   }));
 
   $$('[data-business-tab]').forEach(btn => btn.addEventListener('click', () => {
@@ -12419,7 +12523,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1340", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1410", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }

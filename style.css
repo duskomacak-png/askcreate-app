@@ -6641,3 +6641,71 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { colo
   .owner-panel-actions { justify-content: stretch; }
   .owner-panel-actions button, .owner-filter-row button { width: 100%; }
 }
+
+
+/* === AskCreate v10.1: Kontrola tokova === */
+.test-workspace-card {
+  border-color: rgba(59, 130, 246, .22);
+}
+.test-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.test-flow-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.test-flow-head b,
+.test-flow-head span {
+  display: block;
+}
+.test-flow-head span,
+.test-flow-head small {
+  color: var(--muted);
+}
+.test-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: .82rem;
+  border: 1px solid rgba(255,255,255,.12);
+}
+.test-status.ok {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, .10);
+  border-color: rgba(34, 197, 94, .30);
+}
+.test-status.warn {
+  color: #fde68a;
+  background: rgba(245, 158, 11, .10);
+  border-color: rgba(245, 158, 11, .32);
+}
+.test-step-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.test-step-list h4 { margin: 0 0 4px; }
+.test-step-list label {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.08);
+  cursor: pointer;
+}
+.test-step-list input { margin-top: 3px; }
+@media (max-width: 760px) {
+  .test-flow-head { display: block; }
+  .test-actions button { width: 100%; }
+}

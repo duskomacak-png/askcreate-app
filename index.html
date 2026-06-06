@@ -396,6 +396,7 @@
           <button class="tab" data-tab="archive">🗄️ Arhiva</button>
           <button class="tab workspace-hidden-tab" data-tab="fuel" type="button">⛽ Gorivo</button>
           <button class="tab" data-tab="owner" type="button">👑 Gazda pregled</button>
+          <button class="tab" data-tab="test" type="button">🧪 Kontrola tokova</button>
           <button class="tab" data-tab="support">⚙️ Podešavanja</button>
           <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
           <button class="tab workspace-hidden-tab" data-tab="export" type="button">📊 Izvoz u Excel</button>
@@ -849,6 +850,23 @@
             <button id="renderOwnerDashboardBtn" class="primary" type="button">Prikaži pregled</button>
           </div>
           <div id="ownerDashboardPreview" class="office-form-preview owner-dashboard-preview"></div>
+        </div>
+      </div>
+
+      <div id="tabTest" class="tab-panel">
+        <div class="card reports-workspace-card test-workspace-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Stabilizaciona kontrola</p>
+              <h3>Kontrola tokova pre velikog testa</h3>
+              <p class="muted">Ovaj ekran ne menja podatke. Služi da Direkcija vidi šta je spremno za proveru i kojim redom treba testirati radnika, vozača, bageristu, šefove, gazdu, Dnevnik, Karnet, gorivo i materijal.</p>
+            </div>
+            <div class="test-actions">
+              <button id="refreshFlowTestBtn" class="secondary small-action" type="button">Osveži kontrolu</button>
+              <button id="copyFlowTestBtn" class="primary small-action" type="button">Kopiraj listu za test</button>
+            </div>
+          </div>
+          <div id="flowTestPreview" class="office-form-preview test-flow-preview"></div>
         </div>
       </div>
 
