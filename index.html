@@ -395,6 +395,7 @@
           <button class="tab" data-tab="carnet">📒 Karnet</button>
           <button class="tab" data-tab="archive">🗄️ Arhiva</button>
           <button class="tab workspace-hidden-tab" data-tab="fuel" type="button">⛽ Gorivo</button>
+          <button class="tab" data-tab="owner" type="button">👑 Gazda pregled</button>
           <button class="tab" data-tab="support">⚙️ Podešavanja</button>
           <button class="tab workspace-hidden-tab" data-tab="defects" type="button">🛠️ Kvarovi</button>
           <button class="tab workspace-hidden-tab" data-tab="export" type="button">📊 Izvoz u Excel</button>
@@ -493,6 +494,7 @@
             <label>Radno mesto</label>
             <select id="personFunction">
               <option value="">Izaberi radno mesto</option>
+              <option value="Vlasnik / Gazda">Vlasnik / Gazda</option>
               <option value="Šef mehanizacije">Šef mehanizacije</option>
               <option value="Šef gradilišta inženjer">Šef gradilišta inženjer</option>
               <option value="Mehaničar">Mehaničar</option>
@@ -547,6 +549,7 @@
               <div class="permission-group permission-group-office">
                 <h4>🏢 Kancelarijska ovlašćenja</h4>
                 <p class="muted tiny">Ove stavke se ne pojavljuju kao polja u terenskom izveštaju. One samo daju pristup pregledima, odobravanjima ili podešavanjima.</p>
+                <label><input type="checkbox" class="perm" value="owner_dashboard" /> Gazda pregled firme</label>
                 <label><input type="checkbox" class="perm" value="view_reports" /> Pregled izveštaja</label>
                 <label><input type="checkbox" class="perm" value="approve_reports" /> Odobravanje izveštaja</label>
                 <label><input type="checkbox" class="perm" value="excel_export" /> Izvoz u Excel</label>
@@ -579,6 +582,7 @@
                 <div class="people-register-actions people-register-actions-filtered">
                   <select id="peopleRegisterRoleFilter" class="people-register-filter" title="Filtriraj spisak po radnom mestu">
                     <option value="">Sva radna mesta</option>
+                    <option value="Vlasnik / Gazda">Vlasnik / Gazda</option>
                     <option value="Šef mehanizacije">Šef mehanizacije</option>
                     <option value="Šef gradilišta inženjer">Šef gradilišta inženjer</option>
                     <option value="Mehaničar">Mehaničar</option>
@@ -703,6 +707,26 @@
         </div>
       </div>
 
+        <div class="card reports-workspace-card material-overview-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Materijal po gradilištu</p>
+              <h3>Pregled materijala po danu / mesecu</h3>
+              <p class="muted">Sabira ture, m³ i količine iz izveštaja vozača, bagerista i magacina. Ovo je priprema za Direkciju i Gazdin mesečni pregled.</p>
+            </div>
+            <button id="refreshMaterialOverviewBtn" class="secondary small-action" type="button">Osveži materijal</button>
+          </div>
+          <div class="office-form-filters">
+            <label>Od datuma <input id="materialOverviewFrom" type="date" /></label>
+            <label>Do datuma <input id="materialOverviewTo" type="date" /></label>
+            <label>Gradilište <input id="materialOverviewSite" list="materialOverviewSiteList" placeholder="Sva gradilišta ili izaberi jedno" /></label>
+            <datalist id="materialOverviewSiteList"></datalist>
+            <button id="renderMaterialOverviewBtn" class="primary" type="button">Prikaži materijal</button>
+            <button id="downloadMaterialOverviewCsvBtn" class="secondary" type="button">Excel CSV</button>
+          </div>
+          <div id="materialOverviewPreview" class="office-form-preview"></div>
+        </div>
+
       <div id="tabReports" class="tab-panel">
         <div class="card reports-workspace-card">
           <div class="workspace-section-head">
@@ -804,6 +828,27 @@
             <label>Do <input id="fuelAnalysisTo" type="date" /></label>
           </div>
           <div id="fuelConsumptionList" class="office-form-preview"></div>
+        </div>
+      </div>
+
+      <div id="tabOwner" class="tab-panel">
+        <div class="card reports-workspace-card owner-dashboard-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Gazda / vlasnik firme</p>
+              <h3>Pregled firme bez ulaska u svaku stavku</h3>
+              <p class="muted">Ovaj ekran sabira radne sate, gorivo, materijal, ture, MTČ/KM i kvarove. Namenjen je vlasniku firme i Direkciji za brzu kontrolu.</p>
+            </div>
+            <button id="refreshOwnerDashboardBtn" class="secondary small-action" type="button">Osveži pregled</button>
+          </div>
+          <div class="office-form-filters">
+            <label>Od datuma <input id="ownerDashboardFrom" type="date" /></label>
+            <label>Do datuma <input id="ownerDashboardTo" type="date" /></label>
+            <label>Gradilište <input id="ownerDashboardSite" list="ownerDashboardSiteList" placeholder="Sva gradilišta ili izaberi jedno" /></label>
+            <datalist id="ownerDashboardSiteList"></datalist>
+            <button id="renderOwnerDashboardBtn" class="primary" type="button">Prikaži pregled</button>
+          </div>
+          <div id="ownerDashboardPreview" class="office-form-preview owner-dashboard-preview"></div>
         </div>
       </div>
 

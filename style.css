@@ -6498,3 +6498,38 @@ body.worker-field-theme #viewWorkerForm .worker-module-chooser select{
   .asset-consumption-grid { grid-template-columns: 1fr; }
   .fuel-analysis-filters { display: grid; grid-template-columns: 1fr; }
 }
+
+/* AskCreate v5 - gazda pregled + materijal po gradilištu */
+.owner-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+.owner-kpi {
+  border: 1px solid rgba(34,197,94,.22);
+  background: rgba(15, 23, 42, .62);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+.owner-kpi b {
+  display: block;
+  font-size: 1.35rem;
+  color: #ecfdf5;
+  line-height: 1.15;
+}
+.owner-kpi span {
+  display: block;
+  margin-top: 4px;
+  font-size: .82rem;
+  color: rgba(226,232,240,.72);
+}
+.material-overview-card,
+.owner-dashboard-card {
+  margin-top: 16px;
+}
+.owner-dashboard-preview section,
+.material-overview-card section {
+  margin-top: 16px;
+}

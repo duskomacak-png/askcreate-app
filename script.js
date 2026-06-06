@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.37.0";
+const APP_VERSION = "1.38.0";
 
 
 let sb = null;
@@ -1670,6 +1670,7 @@ async function loadDirectorCompany() {
 
 
 const PERSON_FUNCTION_OPTIONS = [
+  "Vlasnik / Gazda",
   "Šef mehanizacije",
   "Šef gradilišta inženjer",
   "Mehaničar",
@@ -1697,6 +1698,7 @@ function canonicalPersonFunction(value = "") {
   const n = normalizePersonFunctionText(raw);
   const direct = PERSON_FUNCTION_OPTIONS.find(opt => normalizePersonFunctionText(opt) === n);
   if (direct) return direct;
+  if ((n.includes("vlasnik") || n.includes("gazda") || n.includes("direktor") || n.includes("owner"))) return "Vlasnik / Gazda";
   if (n.includes("mehanizacije") && n.includes("sef")) return "Šef mehanizacije";
   if (n.includes("gradil") && (n.includes("sef") || n.includes("inzenjer"))) return "Šef gradilišta inženjer";
   if (n.includes("mehanicar") || n.includes("mehanicar")) return "Mehaničar";
@@ -1709,6 +1711,7 @@ function canonicalPersonFunction(value = "") {
 
 
 const ROLE_PERMISSION_PRESETS = {
+  "Vlasnik / Gazda": ["owner_dashboard", "view_reports", "excel_export"],
   "Vozač": ["vehicles", "materials", "fuel", "defects", "leave_request"],
   "Rukovaoc građevinskom mehanizacijom": ["machines", "fuel", "defects", "leave_request"],
   "Fizički radnik": ["workers", "leave_request"],
@@ -1899,6 +1902,7 @@ const WORKER_PREVIEW_SECTIONS = [
   { key: "desktop_panel", group: "layout", title: "Laptop prikaz", lines: ["Iste štiklirane rubrike", "Širi raspored za unos sa laptopa", "Ne daje dodatne dozvole"] },
   { key: "site_daily_log", group: "layout", title: "Dnevnik gradilišta", lines: ["Poseban laptop A4 dnevnik", "Zaposleni/radni sati, materijali, ture", "Potpis u app ili učitan potpisan dokument"] },
   { key: "mechanic_boss", group: "layout", title: "Šef mehanizacije", lines: ["Poseban panel za kvarove", "Novi / aktivni / rešeni kvarovi", "Preuzmi, U radu, Rešeno, napomena"] },
+  { key: "owner_dashboard", group: "office", title: "Gazda pregled firme", lines: ["Vlasnički pregled bez izmene podataka", "Radni sati, gorivo, materijal, kvarovi, gradilišta"] },
   { key: "view_reports", group: "office", title: "Pregled izveštaja", lines: ["Kancelarijsko ovlašćenje - nije polje u terenskom izveštaju"] },
   { key: "approve_reports", group: "office", title: "Odobravanje izveštaja", lines: ["Kancelarijsko ovlašćenje - odobravanje ili vraćanje izveštaja"] },
   { key: "excel_export", group: "office", title: "Izvoz u Excel", lines: ["Kancelarijsko ovlašćenje - priprema i preuzimanje Excel/CSV izvoza"] },
@@ -3582,6 +3586,8 @@ async function loadReports(options = {}) {
   officeFillSiteDatalists();
   if (document.getElementById("tabDailyLog")?.classList.contains("active")) renderDailyLogPreview();
   if (document.getElementById("tabCarnet")?.classList.contains("active")) renderCarnetPreview();
+  if (document.getElementById("tabMaterials")?.classList.contains("active")) renderMaterialOverview();
+  if (document.getElementById("tabOwner")?.classList.contains("active")) renderOwnerDashboard();
 }
 
 // === AskCreate v-karnet: Dnevnik rada + Karnet pregledi za Direkciju ===
@@ -3600,18 +3606,12 @@ function officePersonLabel(r = {}) {
 }
 
 function officeReportMatchesDateSite(r, from = "", to = "", site = "") {
-  if (!r || isArchivedReport(r)) return false;
-  const date = officeReportDate(r);
-  if (from && date && date < from) return false;
-  if (to && date && date > to) return false;
-  const siteQ = normalizeSearch(site || "");
-  if (siteQ && !normalizeSearch(officeReportSite(r)).includes(siteQ)) return false;
-  return true;
+  return officeReportMatchesDateSiteDeep(r, from, to, site);
 }
 
 function officeFillSiteDatalists() {
   const options = activeDirectorSites().map(s => exportOptionHtml(s.name, [s.location, "gradilište"].filter(Boolean).join(" · "))).join("");
-  ["dailyLogSiteList", "carnetSiteList"].forEach(id => {
+  ["dailyLogSiteList", "carnetSiteList", "materialOverviewSiteList", "ownerDashboardSiteList"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = options;
   });
@@ -3667,8 +3667,11 @@ function officeBuildDailyLogData(date, site) {
       workers.push([reportSite, reportEmployeeNumber(r) || "", reportPerson, r.company_users?.function_title || d.function_title || "", d.hours || "", d.description || ""]);
     }
 
-    (Array.isArray(d.machines) ? d.machines : []).forEach(m => machines.push([
-      reportSite,
+    (Array.isArray(d.machines) ? d.machines : []).forEach(m => {
+      if (!officeEntryMatchesSite(m, reportSite, site)) return;
+      const entrySite = officeEntrySiteName(m, reportSite) || reportSite;
+      machines.push([
+      entrySite,
       m.asset_code || m.machine_code || "",
       m.name || d.machine || "",
       reportPerson,
@@ -3677,10 +3680,14 @@ function officeBuildDailyLogData(date, site) {
       machineMtcTotal(m),
       machineKmTotal(m),
       m.work || ""
-    ]));
+    ]);
+    });
 
-    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => vehicles.push([
-      reportSite,
+    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
+      if (!officeEntryMatchesSite(v, reportSite, site)) return;
+      const entrySite = officeEntrySiteName(v, reportSite) || reportSite;
+      vehicles.push([
+      entrySite,
       v.asset_code || v.vehicle_code || "",
       v.name || v.vehicle || d.vehicle || "",
       v.registration || "",
@@ -3690,11 +3697,15 @@ function officeBuildDailyLogData(date, site) {
       v.route || d.route || "",
       v.tours || d.tours || "",
       v.cubic_m3 || v.cubic_auto || ""
-    ]));
+    ]);
+    });
 
     const ownFuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
-    ownFuels.forEach(f => fuels.push([
-      reportSite,
+    ownFuels.forEach(f => {
+      if (!officeEntryMatchesSite(f, reportSite, site)) return;
+      const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
+      fuels.push([
+      entrySite,
       f.asset_code || "",
       f.asset_name || f.machine || f.vehicle || f.other || "",
       f.liters || "",
@@ -3702,11 +3713,15 @@ function officeBuildDailyLogData(date, site) {
       f.mtc || f.current_mtc || "",
       f.by || reportPerson,
       f.receiver || d.fuel_receiver || ""
-    ]));
+    ]);
+    });
 
     const tankerFuels = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
-    tankerFuels.forEach(f => fuels.push([
-      f.site_name || reportSite,
+    tankerFuels.forEach(f => {
+      if (!officeEntryMatchesSite(f, reportSite, site)) return;
+      const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
+      fuels.push([
+      entrySite,
       f.asset_code || "",
       f.asset_name || f.machine || f.vehicle || f.other || "",
       f.liters || "",
@@ -3714,18 +3729,23 @@ function officeBuildDailyLogData(date, site) {
       f.mtc || f.current_mtc || "",
       f.tanker_asset_name || f.tanker_vehicle || f.cistern_vehicle || reportPerson,
       f.receiver || f.received_by || ""
-    ]));
+    ]);
+    });
 
     const mats = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
-    mats.forEach(m => materials.push([
-      reportSite,
+    mats.forEach(m => {
+      if (!officeEntryMatchesSite(m, reportSite, site)) return;
+      const entrySite = officeEntrySiteName(m, reportSite) || reportSite;
+      materials.push([
+      entrySite,
       m.action || m.material_action || "",
       m.material || m.name || "",
       m.tours || m.material_tours || "",
       materialQuantityValue(m),
       materialUnitValue(m),
       m.note || ""
-    ]));
+    ]);
+    });
 
     if (hasDefectData(r)) {
       defects.push([
@@ -3781,8 +3801,14 @@ function officeBuildCarnetData(from, to, site) {
       workerRows.push([date, reportSite, reportEmployeeNumber(r) || "", reportPerson, r.company_users?.function_title || d.function_title || "", d.hours || "", d.description || ""]);
     }
 
-    (Array.isArray(d.machines) ? d.machines : []).forEach(m => assetRows.push([date, reportSite, "Mašina", m.asset_code || m.machine_code || "", m.name || d.machine || "", reportPerson, machineMtcTotal(m), machineKmTotal(m), "", m.work || ""]));
-    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => assetRows.push([date, reportSite, "Vozilo", v.asset_code || v.vehicle_code || "", v.name || v.vehicle || d.vehicle || "", reportPerson, "", decimalDiffText(v.km_start, v.km_end), v.tours || d.tours || "", v.route || ""]));
+    (Array.isArray(d.machines) ? d.machines : []).forEach(m => {
+      if (!officeEntryMatchesSite(m, reportSite, site)) return;
+      assetRows.push([date, officeEntrySiteName(m, reportSite) || reportSite, "Mašina", m.asset_code || m.machine_code || "", m.name || d.machine || "", reportPerson, machineMtcTotal(m), machineKmTotal(m), "", m.work || ""]);
+    });
+    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
+      if (!officeEntryMatchesSite(v, reportSite, site)) return;
+      assetRows.push([date, officeEntrySiteName(v, reportSite) || reportSite, "Vozilo", v.asset_code || v.vehicle_code || "", v.name || v.vehicle || d.vehicle || "", reportPerson, "", decimalDiffText(v.km_start, v.km_end), v.tours || d.tours || "", v.route || ""]);
+    });
   });
   return { workerRows, assetRows };
 }
@@ -4103,6 +4129,222 @@ function renderFuelConsumptionAnalysis() {
     return;
   }
   box.innerHTML = `<div class="office-table-wrap"><table class="office-table"><thead><tr>${["Sredstvo","Tip","Gradilišta","MTČ","KM","Norma","Očekivano","Sipano","Razlika","Status"].map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${tableRows.map(row => `<tr>${row.map((v, idx) => idx === 9 ? `<td>${v}</td>` : `<td>${escapeHtml(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+
+
+// === AskCreate v5: Gazda pregled + materijal po gradilištu ===
+function officeEntrySiteName(entry = {}, fallback = "") {
+  return String(entry.site_name || entry.site || entry.site_label || entry.project_name || fallback || "").trim();
+}
+
+function officeEntryMatchesSite(entry = {}, fallback = "", site = "") {
+  const q = normalizeSearch(site || "");
+  if (!q) return true;
+  return normalizeSearch(officeEntrySiteName(entry, fallback)).includes(q);
+}
+
+function officeFirstMatchingSiteFromReport(r = {}, site = "") {
+  const d = r.data || {};
+  const fallback = officeReportSite(r);
+  const pools = [d.machines, d.vehicles, d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries, d.material_entries, d.material_movements, d.materials];
+  for (const arr of pools) {
+    if (!Array.isArray(arr)) continue;
+    const found = arr.find(x => officeEntryMatchesSite(x, fallback, site));
+    if (found) return officeEntrySiteName(found, fallback);
+  }
+  return fallback;
+}
+
+function officeReportMatchesDateSiteDeep(r, from = "", to = "", site = "") {
+  if (!r || isArchivedReport(r)) return false;
+  const date = officeReportDate(r);
+  if (from && date && date < from) return false;
+  if (to && date && date > to) return false;
+  const siteQ = normalizeSearch(site || "");
+  if (!siteQ) return true;
+  const d = r.data || {};
+  if (normalizeSearch(officeReportSite(r)).includes(siteQ)) return true;
+  const pools = [d.machines, d.vehicles, d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries, d.material_entries, d.material_movements, d.materials];
+  return pools.some(arr => Array.isArray(arr) && arr.some(item => officeEntryMatchesSite(item, "", site)));
+}
+
+function round2(n) {
+  const x = Number(n || 0);
+  return Math.round(x * 100) / 100;
+}
+
+function buildMaterialOverviewRows(from, to, site = "") {
+  const rows = [];
+  (directorReportsCache || []).filter(r => officeReportMatchesDateSiteDeep(r, from, to, site)).forEach(r => {
+    const d = r.data || {};
+    const date = officeReportDate(r);
+    const reportPerson = officePersonLabel(r);
+    const reportSite = officeReportSite(r) || "—";
+
+    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
+      if (!officeEntryMatchesSite(v, reportSite, site)) return;
+      const m3 = parseDecimalInput(v.cubic_m3 || v.cubic_auto || v.total_m3 || "");
+      rows.push({
+        date,
+        site: officeEntrySiteName(v, reportSite) || "—",
+        source: "Vozilo / ture",
+        material: v.material || v.material_name || "—",
+        action: v.direction || v.transport_direction || "—",
+        tours: parseDecimalInput(v.tours || ""),
+        quantity: m3,
+        unit: m3 ? "m³" : "",
+        worker: reportPerson,
+        asset: v.asset_code || v.vehicle_code || v.name || v.vehicle || "",
+        note: [v.load_location && `utovar: ${v.load_location}`, v.unload_location && `istovar: ${v.unload_location}`, v.route].filter(Boolean).join(" · ")
+      });
+    });
+
+    const mats = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
+    mats.forEach(m => {
+      if (!officeEntryMatchesSite(m, reportSite, site)) return;
+      rows.push({
+        date,
+        site: officeEntrySiteName(m, reportSite) || "—",
+        source: "Materijal / magacin",
+        material: m.material || m.name || m.material_name || "—",
+        action: m.action || m.material_action || "—",
+        tours: parseDecimalInput(m.tours || m.material_tours || ""),
+        quantity: parseDecimalInput(materialQuantityValue(m)),
+        unit: materialUnitValue(m) || m.unit || "",
+        worker: reportPerson,
+        asset: m.asset_code || "",
+        note: m.note || materialCalcText(m) || ""
+      });
+    });
+  });
+  return rows;
+}
+
+function buildMaterialTotals(rows = []) {
+  const bySite = new Map();
+  const byMaterial = new Map();
+  rows.forEach(r => {
+    const site = r.site || "—";
+    const mat = r.material || "—";
+    if (!bySite.has(site)) bySite.set(site, { site, tours: 0, m3: 0, qty: 0, rows: 0 });
+    const srow = bySite.get(site);
+    srow.tours += Number(r.tours || 0);
+    if (String(r.unit || "").toLowerCase().includes("m")) srow.m3 += Number(r.quantity || 0);
+    else srow.qty += Number(r.quantity || 0);
+    srow.rows += 1;
+
+    const key = `${mat}||${r.unit || ""}`;
+    if (!byMaterial.has(key)) byMaterial.set(key, { material: mat, unit: r.unit || "", tours: 0, quantity: 0, rows: 0 });
+    const mrow = byMaterial.get(key);
+    mrow.tours += Number(r.tours || 0);
+    mrow.quantity += Number(r.quantity || 0);
+    mrow.rows += 1;
+  });
+  return { bySite: Array.from(bySite.values()), byMaterial: Array.from(byMaterial.values()) };
+}
+
+function ensureOverviewDatalists() {
+  const options = activeDirectorSites().map(s => exportOptionHtml(s.name, [s.location, "gradilište"].filter(Boolean).join(" · "))).join("");
+  ["materialOverviewSiteList", "ownerDashboardSiteList"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = options;
+  });
+}
+
+function ensureOverviewDefaultDates(prefix) {
+  const fromEl = document.getElementById(`${prefix}From`);
+  const toEl = document.getElementById(`${prefix}To`);
+  const from = today().slice(0, 8) + "01";
+  const to = today();
+  if (fromEl && !fromEl.value) fromEl.value = from;
+  if (toEl && !toEl.value) toEl.value = to;
+}
+
+function renderMaterialOverview() {
+  ensureOverviewDatalists();
+  ensureOverviewDefaultDates("materialOverview");
+  const from = document.getElementById("materialOverviewFrom")?.value || today().slice(0, 8) + "01";
+  const to = document.getElementById("materialOverviewTo")?.value || today();
+  const site = document.getElementById("materialOverviewSite")?.value || "";
+  const rows = buildMaterialOverviewRows(from, to, site);
+  const totals = buildMaterialTotals(rows);
+  const box = document.getElementById("materialOverviewPreview");
+  if (!box) return;
+  const totalTours = round2(rows.reduce((s, r) => s + Number(r.tours || 0), 0));
+  const totalM3 = round2(rows.filter(r => String(r.unit || "").toLowerCase().includes("m")).reduce((s, r) => s + Number(r.quantity || 0), 0));
+  box.innerHTML = `
+    <div class="office-form-titlebar">
+      <div><b>Materijal po gradilištu</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
+      <div class="office-badges"><span>${rows.length} stavki</span><span>${totalTours} tura</span><span>${totalM3} m³</span></div>
+    </div>
+    <section><h4>🏗️ Ukupno po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], totals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
+    <section><h4>📦 Ukupno po materijalu</h4>${officeTable(["Materijal","Jedinica","Stavki","Ture","Količina"], totals.byMaterial.map(r => [r.material, r.unit, r.rows, round2(r.tours), round2(r.quantity)]))}</section>
+    <section><h4>📋 Detaljne stavke</h4>${officeTable(["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jed.","Radnik","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]))}</section>`;
+}
+
+function downloadMaterialOverviewCsv() {
+  ensureOverviewDefaultDates("materialOverview");
+  const from = document.getElementById("materialOverviewFrom")?.value || today().slice(0, 8) + "01";
+  const to = document.getElementById("materialOverviewTo")?.value || today();
+  const site = document.getElementById("materialOverviewSite")?.value || "";
+  const rows = buildMaterialOverviewRows(from, to, site);
+  if (!rows.length) return toast("Nema materijala za izabrani period.", true);
+  officeCsvDownload(`materijal_po_gradilistu_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.csv`, ["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jedinica","Radnik","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]));
+}
+
+function buildOwnerDashboardData(from, to, site = "") {
+  const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSiteDeep(r, from, to, site));
+  let hours = 0, mtc = 0, km = 0, tours = 0, fuel = 0;
+  reports.forEach(r => {
+    const d = r.data || {};
+    const reportSite = officeReportSite(r) || "";
+    const workerRows = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
+    workerRows.forEach(w => { hours += parseDecimalInput(w.hours || ""); });
+    if (!workerRows.length) hours += parseDecimalInput(d.hours || "");
+    (Array.isArray(d.machines) ? d.machines : []).forEach(m => { if (officeEntryMatchesSite(m, reportSite, site)) { mtc += parseDecimalInput(machineMtcTotal(m)); km += parseDecimalInput(machineKmTotal(m)); } });
+    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => { if (officeEntryMatchesSite(v, reportSite, site)) { km += parseDecimalInput(decimalDiffText(v.km_start, v.km_end) || v.km_total || ""); tours += parseDecimalInput(v.tours || ""); } });
+    (Array.isArray(d.fuel_entries) ? d.fuel_entries : []).forEach(f => { if (officeEntryMatchesSite(f, reportSite, site)) fuel += parseDecimalInput(f.liters || f.fuel_liters || ""); });
+    const tank = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+    tank.forEach(f => { if (officeEntryMatchesSite(f, reportSite, site)) fuel += parseDecimalInput(f.liters || f.fuel_liters || ""); });
+  });
+  const materials = buildMaterialOverviewRows(from, to, site);
+  const materialM3 = materials.filter(r => String(r.unit || "").toLowerCase().includes("m")).reduce((s, r) => s + Number(r.quantity || 0), 0);
+  const fuelRows = buildFuelConsumptionRows(from, to).filter(row => !site || [...row.sites].some(s => normalizeSearch(s).includes(normalizeSearch(site))));
+  const badFuel = fuelRows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad").length;
+  const defectCount = reports.filter(hasDefectData).length;
+  return { reports, hours, mtc, km, tours, fuel, materials, materialM3, fuelRows, badFuel, defectCount };
+}
+
+function renderOwnerDashboard() {
+  ensureOverviewDatalists();
+  ensureOverviewDefaultDates("ownerDashboard");
+  const from = document.getElementById("ownerDashboardFrom")?.value || today().slice(0, 8) + "01";
+  const to = document.getElementById("ownerDashboardTo")?.value || today();
+  const site = document.getElementById("ownerDashboardSite")?.value || "";
+  const data = buildOwnerDashboardData(from, to, site);
+  const box = document.getElementById("ownerDashboardPreview");
+  if (!box) return;
+  const materialTotals = buildMaterialTotals(data.materials);
+  const fuelBadRows = data.fuelRows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad").map(row => {
+    const expected = expectedFuelForRow(row);
+    return [row.label, formatAssetFuelNorm(row.asset) || "Nema norme", expected ? `${round2(expected)} L` : "—", row.liters ? `${round2(row.liters)} L` : "—", expected ? `${round2(row.liters - expected)} L` : "—", fuelConsumptionStatus(row).label];
+  });
+  box.innerHTML = `
+    <div class="office-form-titlebar">
+      <div><b>Gazda pregled firme</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
+      <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.defectCount} kvarova</span><span>${data.badFuel} povećane potrošnje</span></div>
+    </div>
+    <div class="owner-kpi-grid">
+      <div class="owner-kpi"><b>${round2(data.hours)} h</b><span>radni sati</span></div>
+      <div class="owner-kpi"><b>${round2(data.fuel)} L</b><span>gorivo</span></div>
+      <div class="owner-kpi"><b>${round2(data.mtc)} MTČ</b><span>rad mašina</span></div>
+      <div class="owner-kpi"><b>${round2(data.km)} km</b><span>kilometraža</span></div>
+      <div class="owner-kpi"><b>${round2(data.tours)}</b><span>ture</span></div>
+      <div class="owner-kpi"><b>${round2(data.materialM3)} m³</b><span>materijal m³</span></div>
+    </div>
+    <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
+    <section><h4>⛽ Povećana potrošnja</h4>${officeTable(["Sredstvo","Norma","Očekivano","Sipano","Razlika","Status"], fuelBadRows)}</section>`;
 }
 
 function renderFuelReportsList() {
@@ -11641,6 +11883,13 @@ function bindEvents() {
   if ($("#refreshFuelAnalysisBtn")) $("#refreshFuelAnalysisBtn").addEventListener("click", () => renderFuelConsumptionAnalysis());
   if ($("#fuelAnalysisFrom")) $("#fuelAnalysisFrom").addEventListener("change", () => renderFuelConsumptionAnalysis());
   if ($("#fuelAnalysisTo")) $("#fuelAnalysisTo").addEventListener("change", () => renderFuelConsumptionAnalysis());
+  if ($("#refreshMaterialOverviewBtn")) $("#refreshMaterialOverviewBtn").addEventListener("click", () => renderMaterialOverview());
+  if ($("#renderMaterialOverviewBtn")) $("#renderMaterialOverviewBtn").addEventListener("click", () => renderMaterialOverview());
+  if ($("#downloadMaterialOverviewCsvBtn")) $("#downloadMaterialOverviewCsvBtn").addEventListener("click", downloadMaterialOverviewCsv);
+  ["materialOverviewFrom", "materialOverviewTo", "materialOverviewSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", renderMaterialOverview); });
+  if ($("#refreshOwnerDashboardBtn")) $("#refreshOwnerDashboardBtn").addEventListener("click", () => renderOwnerDashboard());
+  if ($("#renderOwnerDashboardBtn")) $("#renderOwnerDashboardBtn").addEventListener("click", () => renderOwnerDashboard());
+  ["ownerDashboardFrom", "ownerDashboardTo", "ownerDashboardSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", renderOwnerDashboard); });
   if ($("#refreshDailyLogBtn")) $("#refreshDailyLogBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#refreshCarnetBtn")) $("#refreshCarnetBtn").addEventListener("click", manualDirectorRefresh);
   if ($("#renderDailyLogBtn")) $("#renderDailyLogBtn").addEventListener("click", renderDailyLogPreview);
@@ -11660,6 +11909,8 @@ function bindEvents() {
     if (btn.dataset.tab === "export") renderExportPanel();
     if (btn.dataset.tab === "defects") renderDefectsList();
     if (btn.dataset.tab === "fuel") { renderFuelReportsList(); renderFuelConsumptionAnalysis(); }
+    if (btn.dataset.tab === "materials") renderMaterialOverview();
+    if (btn.dataset.tab === "owner") renderOwnerDashboard();
     if (btn.dataset.tab === "archive") renderArchiveList();
     if (btn.dataset.tab === "dailyLog") renderDailyLogPreview();
     if (btn.dataset.tab === "carnet") renderCarnetPreview();
