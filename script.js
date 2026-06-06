@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.38.0";
+const APP_VERSION = "1.39.0";
 
 
 let sb = null;
@@ -3784,6 +3784,107 @@ function renderDailyLogPreview() {
     <section><h4>📦 Materijali</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
     <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis kvara","Hitnost","Status"], data.defects)}</section>
   `;
+}
+
+
+let siteBossOverviewCache = null;
+
+function siteBossMetricSet(data = null, loadingText = "—") {
+  const box = $("#siteBossOverviewMetrics");
+  if (!box) return;
+  if (!data) {
+    box.innerHTML = `<span>Izveštaji: ${escapeHtml(loadingText)}</span><span>Radnici: ${escapeHtml(loadingText)}</span><span>MTČ: ${escapeHtml(loadingText)}</span><span>KM: ${escapeHtml(loadingText)}</span><span>Gorivo: ${escapeHtml(loadingText)}</span><span>Materijal: ${escapeHtml(loadingText)}</span>`;
+    return;
+  }
+  const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
+  const totalMtc = data.machines.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
+  const totalKm = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(decimalDiffText(r[5], r[6])) + parseDecimalInput(r[6] && !r[5] ? r[6] : 0), 0);
+  const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
+  const totalM3 = data.materials.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0)
+    + data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[9]), 0);
+  box.innerHTML = `
+    <span>Izveštaji: ${data.reports.length}</span>
+    <span>Radnici: ${data.workers.length}${totalHours ? ` · ${Math.round(totalHours * 100) / 100} h` : ""}</span>
+    <span>MTČ: ${Math.round(totalMtc * 100) / 100}</span>
+    <span>KM: ${Math.round(totalKm * 100) / 100}</span>
+    <span>Gorivo: ${Math.round(totalFuel * 100) / 100} L</span>
+    <span>Materijal: ${Math.round(totalM3 * 100) / 100} m³</span>`;
+}
+
+function siteBossBuildOverviewFromReports(reports = [], date = today(), site = "") {
+  const previousCache = directorReportsCache;
+  try {
+    directorReportsCache = Array.isArray(reports) ? reports : [];
+    return officeBuildDailyLogData(date, site);
+  } finally {
+    directorReportsCache = previousCache;
+  }
+}
+
+function siteBossOverviewSummaryText(data = siteBossOverviewCache, date = $("#siteLogDate")?.value || today(), site = $("#siteLogSite")?.value || "") {
+  if (!data) return "";
+  const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
+  const totalMtc = data.machines.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
+  const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
+  const totalTours = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[8]), 0);
+  const parts = [];
+  parts.push(`Dana ${formatDateOnlyLocal(date) || date} na gradilištu ${site || "izabrano gradilište"} evidentirano je ${data.workers.length} radničkih stavki${totalHours ? ` sa ukupno ${Math.round(totalHours * 100) / 100} sati` : ""}.`);
+  if (data.machines.length) parts.push(`Angažovano je ${data.machines.length} mašinskih stavki${totalMtc ? ` sa ukupno ${Math.round(totalMtc * 100) / 100} MTČ` : ""}.`);
+  if (data.vehicles.length) parts.push(`Evidentirano je ${data.vehicles.length} voznih/kamionskih stavki${totalTours ? ` i ${Math.round(totalTours * 100) / 100} tura` : ""}.`);
+  if (data.fuels.length) parts.push(`Ukupno goriva po izveštajima: ${Math.round(totalFuel * 100) / 100} L.`);
+  if (data.materials.length) parts.push(`Materijalne stavke: ${data.materials.length}.`);
+  if (data.defects.length) parts.push(`Prijavljeni kvarovi/problemi: ${data.defects.length}.`);
+  return parts.join(" ");
+}
+
+function renderSiteBossOverview(data, date, site) {
+  const box = $("#siteBossOverviewBox");
+  if (!box) return;
+  siteBossOverviewCache = data;
+  siteBossMetricSet(data);
+  const header = `<div class="office-form-titlebar"><div><b>Pregled za šefa gradilišta</b><span>${escapeHtml(formatDateOnlyLocal(date) || date)} · ${escapeHtml(site || "Sva gradilišta")}</span></div><div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.defects.length} kvarova</span></div></div>`;
+  box.innerHTML = header + `
+    <section><h4>👷 Radnici i sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workers)}</section>
+    <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ poč.","MTČ kraj","Ukupno MTČ","KM","Rad"], data.machines)}</section>
+    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Vozilo","Reg.","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
+    <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], data.fuels)}</section>
+    <section><h4>📦 Materijal</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
+    <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], data.defects)}</section>`;
+}
+
+async function refreshSiteBossOverview() {
+  const box = $("#siteBossOverviewBox");
+  try {
+    if (!currentWorker?.company_id) throw new Error("Nema aktivne firme za ovog korisnika.");
+    const date = $("#siteLogDate")?.value || today();
+    const site = $("#siteLogSite")?.value || "";
+    if (box) box.innerHTML = `<p class="muted">Učitavam poslate izveštaje za ${escapeHtml(formatDateOnlyLocal(date) || date)}...</p>`;
+    siteBossMetricSet(null, "učitavam");
+    const { data, error } = await sb
+      .from("reports")
+      .select("id, company_id, report_date, status, data, submitted_at, created_at, updated_at")
+      .eq("company_id", currentWorker.company_id)
+      .eq("report_date", date)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    const clean = (Array.isArray(data) ? data : []).filter(r => !isArchivedReport(r));
+    const overview = siteBossBuildOverviewFromReports(clean, date, site);
+    renderSiteBossOverview(overview, date, site);
+  } catch (e) {
+    siteBossMetricSet(null, "nije dostupno");
+    if (box) box.innerHTML = `<div class="site-boss-warning"><b>Pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava šefu gradilišta da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za ovu ulogu. Dnevnik gradilišta i dalje može da se popuni ručno i pošalje Upravi.</span></div>`;
+  }
+}
+
+function copySiteBossSummaryToDailyLog() {
+  const text = siteBossOverviewSummaryText();
+  if (!text) return toast("Prvo osveži pregled gradilišta.", true);
+  const area = $("#siteLogDescription");
+  if (!area) return;
+  const existing = area.value.trim();
+  area.value = existing ? `${existing}\n\n${text}` : text;
+  toast("Kratak opis iz pregleda je ubačen u Dnevnik gradilišta.");
 }
 
 function officeBuildCarnetData(from, to, site) {
@@ -9573,6 +9674,12 @@ function initSiteLogPanel() {
   }); }
   const bind = (id, fn) => { const el = $(id); if (el && !el.dataset.bound) { el.dataset.bound = "1"; el.addEventListener("click", fn); } };
   bind("#siteLogSaveDraftBtn", saveSiteLogDraft); bind("#siteLogPreviewBtn", previewSiteLog); bind("#siteLogEditBtn", editSiteLog); bind("#siteLogPrintBtn", printSiteLog); bind("#siteLogDownloadBtn", downloadSiteLogA4); bind("#siteLogSubmitBtn", submitSiteLogToDirector);
+  bind("#siteBossRefreshOverviewBtn", refreshSiteBossOverview);
+  bind("#siteBossCopySummaryBtn", copySiteBossSummaryToDailyLog);
+  const siteLogDate = $("#siteLogDate");
+  if (siteLogDate && !siteLogDate.dataset.siteBossBound) { siteLogDate.dataset.siteBossBound = "1"; siteLogDate.addEventListener("change", () => { siteBossOverviewCache = null; siteBossMetricSet(null); }); }
+  const siteLogSite = $("#siteLogSite");
+  if (siteLogSite && !siteLogSite.dataset.siteBossBound) { siteLogSite.dataset.siteBossBound = "1"; siteLogSite.addEventListener("change", () => { siteBossOverviewCache = null; siteBossMetricSet(null); }); }
 }
 function hasSiteLogAnyContent(d) {
   return !!(d.site_name || d.today_work_description || d.tomorrow_work_plan || d.workers.length || d.material_in.length || d.material_out.length || d.materials_installed.length || d.materials_stock_on_site.length || d.truck_tours.length);

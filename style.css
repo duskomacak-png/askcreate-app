@@ -6548,3 +6548,64 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview .owner-kp
   color: #0f172a !important;
 }
 body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { color: #0f172a !important; }
+
+/* v7 - Šef gradilišta: pregled poslatih izveštaja za izabrano gradilište */
+.site-boss-overview {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid rgba(34, 197, 94, .22);
+  background: linear-gradient(135deg, rgba(15, 51, 34, .72), rgba(11, 23, 18, .92));
+  border-radius: 18px;
+}
+.site-boss-overview-head {
+  align-items: flex-start;
+  gap: 12px;
+}
+.site-boss-overview-head h4 { margin: 0 0 4px; }
+.site-boss-overview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.site-boss-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.site-boss-metrics span {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  background: rgba(255,255,255,.05);
+  color: #e9fff0;
+  font-size: .86rem;
+  font-weight: 800;
+}
+.site-boss-overview-box {
+  display: grid;
+  gap: 12px;
+}
+.site-boss-overview-box .office-table-wrap {
+  max-height: 340px;
+  overflow: auto;
+  border-radius: 14px;
+}
+.site-boss-overview-box .office-table th,
+.site-boss-overview-box .office-table td {
+  font-size: .82rem;
+}
+.site-boss-warning {
+  border: 1px solid rgba(245, 158, 11, .35);
+  background: rgba(245, 158, 11, .08);
+  color: #fff7dc;
+  padding: 12px;
+  border-radius: 14px;
+}
+@media (max-width: 760px) {
+  .site-boss-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-boss-overview-actions { justify-content: stretch; }
+  .site-boss-overview-actions button { flex: 1 1 100%; }
+}

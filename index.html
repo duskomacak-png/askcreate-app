@@ -1233,6 +1233,23 @@
           </div>
         </div>
 
+        <div class="site-boss-overview card-soft">
+          <div class="site-log-section-title site-boss-overview-head">
+            <div>
+              <h4>Pregled gradilišta iz poslatih izveštaja</h4>
+              <p class="hint tiny">Šef gradilišta ovde vidi šta su radnici, vozači i rukovaoci već poslali za izabrani datum i gradilište. Ovo služi kao kontrola pre potpisivanja dnevnika.</p>
+            </div>
+            <div class="site-boss-overview-actions">
+              <button id="siteBossRefreshOverviewBtn" class="secondary small-action" type="button">Osveži pregled</button>
+              <button id="siteBossCopySummaryBtn" class="secondary small-action" type="button">Ubaci kratak opis u dnevnik</button>
+            </div>
+          </div>
+          <div id="siteBossOverviewMetrics" class="site-boss-metrics">
+            <span>Izveštaji: —</span><span>Radnici: —</span><span>MTČ: —</span><span>KM: —</span><span>Gorivo: —</span><span>Materijal: —</span>
+          </div>
+          <div id="siteBossOverviewBox" class="site-boss-overview-box"><p class="muted">Izaberi datum i gradilište, pa klikni „Osveži pregled”.</p></div>
+        </div>
+
         <div class="site-log-section">
           <div class="site-log-section-title"><h4>Evidencija zaposlenih i radnih sati</h4><button class="secondary small-action" type="button" onclick="addSiteLogWorkerEntry()">+ Dodaj zaposlenog</button></div>
           <div id="siteLogWorkers" class="entry-list site-log-entry-list"></div>
