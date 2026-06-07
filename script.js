@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.70.5";
+const APP_VERSION = "1.70.6";
 
 
 let sb = null;
@@ -3832,20 +3832,16 @@ function vehicleTourOfficeRows(v = {}, reportSite = "") {
 
   const pushRow = (siteName, action, item, routeText, countAsCompanyTotal = true) => {
     const tours = item.tours || item.tour_count || "";
-    const m3 = officeVehicleM3({ ...v, tours });
     out.push({
       site_name: siteName || reportSite || "—",
       asset_code: assetCode,
       vehicle: baseVehicle,
       registration: v.registration || "",
-      capacity: v.capacity || v.vehicle_capacity || "",
       km_start: v.km_start || "",
       km_end: v.km_end || "",
       km_total: kmTotal,
       tours,
       material: item.material || item.material_name || "",
-      m3,
-      cubic_m3: m3,
       action,
       route: routeText || item.note || "",
       note: item.note || "",
@@ -3955,7 +3951,7 @@ function officeBuildDailyLogData(date, site) {
           row.km_end || "",
           row.route || "",
           row.tours || "",
-          row.m3 || ""
+          ""
         ]);
         if (row.material || row.tours) {
           materials.push([
@@ -3963,8 +3959,8 @@ function officeBuildDailyLogData(date, site) {
             row.action || "prevoz",
             row.material || "Materijal iz ture",
             row.tours || "",
-            row.m3 || "",
-            row.m3 ? "m³" : "",
+            "",
+            "",
             row.route || row.note || ""
           ]);
         }
@@ -4433,7 +4429,7 @@ function officeBuildCarnetData(from, to, site) {
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
       const rows = vehicleTourOfficeRows(v, reportSite).filter(row => vehicleTourMatchesFilter(row, site));
       rows.forEach(row => {
-        assetRows.push([date, row.site_name, "Vozilo", row.asset_code || "", row.vehicle || d.vehicle || "", reportPerson, "", row.km_total || "", row.tours || "", row.material || "", row.m3 || "", row.action ? `${row.action} · ${row.route || ""}` : (row.route || "")]);
+        assetRows.push([date, row.site_name, "Vozilo", row.asset_code || "", row.vehicle || d.vehicle || "", reportPerson, "", row.km_total || "", row.tours || "", row.material || "", "", row.action ? `${row.action} · ${row.route || ""}` : (row.route || "")]);
         if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, row.site_name, r, "Vožnja / ture", "");
       });
     });
@@ -4855,21 +4851,7 @@ function officeVehicleMaterialAction(v = {}) {
 }
 
 function officeVehicleM3(v = {}) {
-  const existing = v.cubic_m3 || v.cubic_auto || v.total_m3 || v.calculated_m3 || v.volume_m3 || "";
-  if (existing) return existing;
-
-  const capacityRaw = String(v.capacity || v.vehicle_capacity || "").trim();
-  const tours = parseDecimalInput(v.tours || v.total_tours || v.tour_count || "");
-  if (!capacityRaw || !tours) return "";
-
-  // Ako je kapacitet u litrima, ne računamo kao m³ materijala.
-  if (/\bL\b|litar|litara|liter|litre/i.test(capacityRaw) && !/m\s*(³|3)|kub/i.test(capacityRaw)) return "";
-
-  const capacity = parseDecimalInput(capacityRaw);
-  if (!capacity) return "";
-
-  const total = capacity * tours;
-  return Number.isInteger(total) ? String(total) : String(Math.round(total * 100) / 100);
+  return v.cubic_m3 || v.cubic_auto || v.total_m3 || v.calculated_m3 || v.volume_m3 || "";
 }
 
 function officeVehicleRouteText(v = {}) {
