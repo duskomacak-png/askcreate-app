@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.67.0";
+const APP_VERSION = "1.68.0";
 
 
 let sb = null;
@@ -7971,7 +7971,8 @@ function addVehicleTourRow(vehicleCard, values = {}) {
   const list = vehicleCard?.querySelector(".v-tour-items");
   if (!list) return;
   const idx = list.querySelectorAll(".vehicle-tour-row").length + 1;
-  const type = values.tour_type || values.type || values.direction_type || (values.direction === "interno" ? "site_to_site" : values.direction === "odvoz" ? "landfill" : "local");
+  const rawType = values.tour_type || values.type || values.direction_type || (values.direction === "interno" ? "site_to_site" : values.direction === "odvoz" ? "landfill" : "local");
+  const type = rawType === "external_in" ? "site_to_site" : rawType;
   const material = values.material || values.material_name || "";
   const div = document.createElement("div");
   div.className = "vehicle-tour-row truck-tour-card";
@@ -7988,12 +7989,22 @@ function addVehicleTourRow(vehicleCard, values = {}) {
           <option value="local" ${type === "local" ? "selected" : ""}>Lokal u krugu gradilišta</option>
           <option value="site_to_site" ${type === "site_to_site" ? "selected" : ""}>Sa gradilišta na gradilište</option>
           <option value="landfill" ${type === "landfill" ? "selected" : ""}>Odvoz na deponiju</option>
-          <option value="external_in" ${type === "external_in" ? "selected" : ""}>Dovoz spolja / dobavljač</option>
         </select>
       </div>
       <div>
-        <label>Materijal iz liste Direkcije</label>
+        <label>Materijal</label>
         <select class="tour-material">${buildWorkerMaterialOptionsHtml(material)}</select>
+      </div>
+    </div>
+
+    <div class="grid two tour-count-box">
+      <div>
+        <label>Broj tura</label>
+        <input class="tour-count" inputmode="decimal" placeholder="npr. 2" value="${escapeHtml(values.tours || values.tour_count || "")}" />
+      </div>
+      <div>
+        <label>Napomena</label>
+        <input class="tour-note" placeholder="kratka napomena" value="${escapeHtml(values.note || values.route || "")}" />
       </div>
     </div>
 
@@ -8001,10 +8012,6 @@ function addVehicleTourRow(vehicleCard, values = {}) {
       <div>
         <label>Gradilište</label>
         <select class="tour-site">${buildTruckTourSiteOptionsHtml(values.site_name || values.site || "")}</select>
-      </div>
-      <div>
-        <label>Broj tura</label>
-        <input class="tour-count" inputmode="decimal" placeholder="npr. 2" value="${escapeHtml(values.tours || values.tour_count || "")}" />
       </div>
     </div>
 
@@ -8025,37 +8032,30 @@ function addVehicleTourRow(vehicleCard, values = {}) {
         <select class="tour-source-site">${buildTruckTourSiteOptionsHtml(values.from_site || values.site_name || values.site || values.load_location || "")}</select>
       </div>
       <div>
-        <label>Deponija / lokacija</label>
+        <label>Deponija</label>
         <input class="tour-landfill" placeholder="npr. Deponija Surčin" value="${escapeHtml(values.landfill || values.unload_location || values.to_site || "")}" />
       </div>
     </div>
-
-    <div class="grid two tour-site-external">
-      <div>
-        <label>Dobavljač / kamenolom / polazak</label>
-        <input class="tour-external-source" placeholder="npr. kamenolom, baza, dobavljač" value="${escapeHtml(values.external_source || values.load_location || "")}" />
-      </div>
-      <div>
-        <label>Do gradilišta</label>
-        <select class="tour-external-to-site">${buildTruckTourSiteOptionsHtml(values.to_site || values.site_name || values.site || values.unload_location || "")}</select>
-      </div>
-    </div>
-
-    <label>Napomena</label>
-    <input class="tour-note" placeholder="kratka napomena ako treba" value="${escapeHtml(values.note || values.route || "")}" />
   `;
+  const setBlock = (selector, show) => {
+    const el = div.querySelector(selector);
+    if (!el) return;
+    el.style.display = show ? "grid" : "none";
+  };
   const refreshVisibility = () => {
     const t = div.querySelector(".tour-type")?.value || "local";
-    div.querySelector(".tour-site-local")?.classList.toggle("hidden", t !== "local");
-    div.querySelector(".tour-site-transfer")?.classList.toggle("hidden", t !== "site_to_site");
-    div.querySelector(".tour-site-landfill")?.classList.toggle("hidden", t !== "landfill");
-    div.querySelector(".tour-site-external")?.classList.toggle("hidden", t !== "external_in");
+    setBlock('.tour-site-local', t === 'local');
+    setBlock('.tour-site-transfer', t === 'site_to_site');
+    setBlock('.tour-site-landfill', t === 'landfill');
   };
   div.querySelector(".remove-entry")?.addEventListener("click", () => {
     div.remove();
     updateVehicleCubic(vehicleCard);
   });
-  div.querySelector(".tour-type")?.addEventListener("change", refreshVisibility);
+  div.querySelector(".tour-type")?.addEventListener("change", () => {
+    refreshVisibility();
+    updateVehicleCubic(vehicleCard);
+  });
   div.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(vehicleCard)));
   div.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(vehicleCard)));
   list.appendChild(div);
@@ -8196,22 +8196,12 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
         direction: "landfill"
       };
     }
-    if (type === "external_in") {
-      return {
-        ...base,
-        external_source: row.querySelector(".tour-external-source")?.value.trim() || "",
-        to_site: row.querySelector(".tour-external-to-site")?.value || "",
-        site_name: row.querySelector(".tour-external-to-site")?.value || "",
-        unload_location: row.querySelector(".tour-external-to-site")?.value || "",
-        direction: "external_in"
-      };
-    }
     return {
       ...base,
       site_name: row.querySelector(".tour-site")?.value || "",
       direction: "local"
     };
-  }).filter(x => x.tours || x.material || x.site_name || x.from_site || x.to_site || x.landfill || x.external_source || x.note);
+  }).filter(x => x.tours || x.material || x.site_name || x.from_site || x.to_site || x.landfill || x.note);
 }
 
 function getVehicleEntries() {

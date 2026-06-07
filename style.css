@@ -7996,3 +7996,8 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
     grid-template-columns: 1fr 1fr !important;
   }
 }
+
+
+/* v40 simplified worker tours */
+#viewWorkerForm.worker-mobile-panel .tour-count-box{display:grid !important;grid-template-columns:1fr !important;gap:10px !important;}
+#viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
