@@ -7467,3 +7467,53 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 .office-generated-archive-card{
   border-left:3px solid #000 !important;
 }
+
+
+/* === AskCreate v31: vozač ture/materijal po stavkama === */
+.truck-km-box{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin:10px 0;
+}
+.truck-km-box input[readonly]{
+  background:#f3f4f6 !important;
+  font-weight:800;
+}
+.truck-tour-explain{
+  border:1px solid #000;
+  background:#fff;
+  padding:9px 10px;
+  margin:10px 0;
+  display:grid;
+  gap:3px;
+}
+.truck-tour-explain b,
+.truck-tour-explain span{
+  color:#000 !important;
+}
+.vehicle-tour-row{
+  border:1px solid #000;
+  background:#fff;
+  padding:10px;
+  margin:8px 0;
+}
+.vehicle-tour-head{
+  margin-bottom:8px;
+}
+.truck-summary-line{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:10px;
+  border:1px solid #000;
+  padding:8px 10px;
+  background:#fff;
+}
+.truck-summary-line span,
+.truck-summary-line b{
+  color:#000 !important;
+}
+@media(max-width:700px){
+  .truck-km-box{grid-template-columns:1fr;}
+}

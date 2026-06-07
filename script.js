@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.58.0";
+const APP_VERSION = "1.59.0";
 
 
 let sb = null;
@@ -3822,6 +3822,71 @@ function fuelSourceText(entry = {}) {
 }
 
 
+
+function vehicleTourOfficeRows(v = {}, reportSite = "") {
+  const items = Array.isArray(v.tour_items) ? v.tour_items : [];
+  const baseVehicle = v.name || v.vehicle || "";
+  const assetCode = v.asset_code || v.vehicle_code || "";
+  const kmTotal = officeVehicleKmTotal(v) || v.km_total || decimalDiffText(v.km_start, v.km_end) || "";
+  const out = [];
+
+  const pushRow = (siteName, action, item, routeText, countAsCompanyTotal = true) => {
+    const tours = item.tours || item.tour_count || "";
+    out.push({
+      site_name: siteName || reportSite || "—",
+      asset_code: assetCode,
+      vehicle: baseVehicle,
+      registration: v.registration || "",
+      km_start: v.km_start || "",
+      km_end: v.km_end || "",
+      km_total: kmTotal,
+      tours,
+      material: item.material || item.material_name || "",
+      action,
+      route: routeText || item.note || "",
+      note: item.note || "",
+      count_company_total: countAsCompanyTotal
+    });
+  };
+
+  if (items.length) {
+    items.forEach(item => {
+      const type = item.tour_type || "local";
+      if (type === "site_to_site") {
+        const from = item.from_site || item.load_location || "";
+        const to = item.to_site || item.unload_location || "";
+        const route = `${from || "—"} → ${to || "—"}`;
+        pushRow(from, "izlaz ka " + (to || "drugom gradilištu"), item, route, true);
+        pushRow(to, "ulaz iz " + (from || "drugog gradilišta"), item, route, false);
+      } else if (type === "landfill") {
+        const from = item.from_site || item.site_name || item.site || "";
+        const landfill = item.landfill || item.unload_location || "deponija";
+        pushRow(from, "odvoz na deponiju", item, `${from || "—"} → ${landfill}`, true);
+      } else if (type === "external_in") {
+        const to = item.to_site || item.site_name || item.unload_location || "";
+        const src = item.external_source || item.load_location || "spolja";
+        pushRow(to, "ulaz spolja", item, `${src} → ${to || "—"}`, true);
+      } else {
+        const siteName = item.site_name || item.site || reportSite;
+        pushRow(siteName, "lokal u krugu gradilišta", item, `${siteName || "—"} · lokal`, true);
+      }
+    });
+    return out;
+  }
+
+  // Stari izveštaji bez tour_items ostaju kompatibilni.
+  pushRow(officeEntrySiteName(v, reportSite), officeVehicleMaterialAction(v) || "prevoz", {
+    tours: v.tours || "",
+    material: officeVehicleMaterialName(v)
+  }, officeVehicleRouteText(v), true);
+  return out;
+}
+
+function vehicleTourMatchesFilter(row = {}, site = "") {
+  if (!site) return true;
+  return normalizeSearch(row.site_name || "").includes(normalizeSearch(site));
+}
+
 function officeBuildDailyLogData(date, site) {
   const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSite(r, date, date, site));
   const workers = [];
@@ -3874,32 +3939,33 @@ function officeBuildDailyLogData(date, site) {
     });
 
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
-      if (!officeEntryMatchesSite(v, reportSite, site)) return;
-      const entrySite = officeEntrySiteName(v, reportSite) || reportSite;
-      vehicles.push([
-        entrySite,
-        v.asset_code || v.vehicle_code || "",
-        v.name || v.vehicle || d.vehicle || "",
-        v.registration || "",
-        reportPerson,
-        v.km_start || v.start_km || "",
-        v.km_end || v.end_km || "",
-        officeVehicleRouteText(v),
-        v.tours || d.tours || "",
-        officeVehicleM3(v)
-      ]);
-      if (officeVehicleMaterialName(v) || v.tours || officeVehicleM3(v)) {
-        materials.push([
-          entrySite,
-          officeVehicleMaterialAction(v) || "prevoz",
-          officeVehicleMaterialName(v) || "Materijal iz ture",
-          v.tours || "",
-          officeVehicleM3(v),
-          officeVehicleM3(v) ? "m³" : "",
-          officeVehicleRouteText(v) || v.note || ""
+      const rows = vehicleTourOfficeRows(v, reportSite).filter(row => vehicleTourMatchesFilter(row, site));
+      rows.forEach(row => {
+        vehicles.push([
+          row.site_name,
+          row.asset_code,
+          row.vehicle || d.vehicle || "",
+          row.registration || "",
+          reportPerson,
+          row.km_start || "",
+          row.km_end || "",
+          row.route || "",
+          row.tours || "",
+          ""
         ]);
-      }
-      if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, entrySite, r, "Vožnja / ture", "");
+        if (row.material || row.tours) {
+          materials.push([
+            row.site_name,
+            row.action || "prevoz",
+            row.material || "Materijal iz ture",
+            row.tours || "",
+            "",
+            "",
+            row.route || row.note || ""
+          ]);
+        }
+        if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, row.site_name, r, "Vožnja / ture", "");
+      });
     });
 
     officeLowloaderEntries(d).forEach(ll => {
@@ -4361,10 +4427,11 @@ function officeBuildCarnetData(from, to, site) {
     });
 
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
-      if (!officeEntryMatchesSite(v, reportSite, site)) return;
-      const entrySite = officeEntrySiteName(v, reportSite) || reportSite;
-      assetRows.push([date, entrySite, "Vozilo", v.asset_code || v.vehicle_code || "", v.name || v.vehicle || d.vehicle || "", reportPerson, "", officeVehicleKmTotal(v), v.tours || d.tours || "", officeVehicleMaterialName(v), officeVehicleM3(v), officeVehicleRouteText(v)]);
-      if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, entrySite, r, "Vožnja / ture", "");
+      const rows = vehicleTourOfficeRows(v, reportSite).filter(row => vehicleTourMatchesFilter(row, site));
+      rows.forEach(row => {
+        assetRows.push([date, row.site_name, "Vozilo", row.asset_code || "", row.vehicle || d.vehicle || "", reportPerson, "", row.km_total || "", row.tours || "", row.material || "", "", row.action ? `${row.action} · ${row.route || ""}` : (row.route || "")]);
+        if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, row.site_name, r, "Vožnja / ture", "");
+      });
     });
 
     officeLowloaderEntries(d).forEach(ll => {
@@ -4747,7 +4814,16 @@ function officeReportMatchesDateSiteDeep(r, from = "", to = "", site = "") {
   const d = r.data || {};
   if (normalizeSearch(officeReportSite(r)).includes(siteQ)) return true;
   const pools = [d.machines, d.vehicles, d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries, d.material_entries, d.material_movements, d.materials];
-  return pools.some(arr => Array.isArray(arr) && arr.some(item => officeEntryMatchesSite(item, "", site)));
+  return pools.some(arr => Array.isArray(arr) && arr.some(item => {
+    if (officeEntryMatchesSite(item, "", site)) return true;
+    if (Array.isArray(item.tour_items)) {
+      return item.tour_items.some(t => {
+        const text = [t.site_name, t.site, t.from_site, t.to_site, t.load_location, t.unload_location, t.landfill, t.external_source].filter(Boolean).join(" ");
+        return normalizeSearch(text).includes(siteQ);
+      });
+    }
+    return false;
+  }));
 }
 
 function round2(n) {
@@ -7779,20 +7855,55 @@ function calculateVehicleCubic(capacity, tours) {
   return Number.isInteger(total) ? String(total) : String(Math.round(total * 100) / 100);
 }
 
+
+function vehicleLastKmStorageKey(assetCode = "", assetId = "", name = "") {
+  const company = currentWorker?.company_id || currentWorker?.company_code || currentCompany?.id || currentCompany?.company_code || "no_company";
+  const key = assetCode || assetId || name || "no_vehicle";
+  return `askcreate_last_km_${company}_${normalizeSearch(key).replace(/[^a-z0-9]+/g, "_")}`;
+}
+
+function getStoredVehicleLastKm(selected = {}) {
+  const key = vehicleLastKmStorageKey(selected.asset_code, selected.asset_id, selected.name);
+  return localStorage.getItem(key) || "";
+}
+
+function setStoredVehicleLastKm(selected = {}, km = "") {
+  const val = String(km || "").trim();
+  if (!val) return;
+  const key = vehicleLastKmStorageKey(selected.asset_code, selected.asset_id, selected.name);
+  localStorage.setItem(key, val);
+}
+
+function applyVehicleLastKmToEntry(entryEl) {
+  const selected = getSelectedVehicleFromEntry(entryEl);
+  const startInput = entryEl?.querySelector(".v-km-start");
+  if (!startInput) return;
+  if (String(startInput.value || "").trim()) return;
+  const stored = getStoredVehicleLastKm(selected);
+  if (stored) startInput.value = stored;
+}
+
 function updateVehicleCubic(entryEl) {
   const selected = getSelectedVehicleFromEntry(entryEl);
-  const tours = entryEl.querySelector(".v-tours")?.value || "";
-  const auto = calculateVehicleCubic(selected.capacity, tours);
+  const tourTotal = Array.from(entryEl.querySelectorAll(".tour-count")).reduce((sum, input) => sum + parseDecimalInput(input.value), 0);
+  const totalEl = entryEl.querySelector(".v-total-tours");
+  if (totalEl) totalEl.textContent = tourTotal ? String(Math.round(tourTotal * 100) / 100) : "0";
+  const kmStart = entryEl.querySelector(".v-km-start")?.value || "";
+  const kmEnd = entryEl.querySelector(".v-km-end")?.value || "";
+  const kmTotal = decimalDiffText(kmStart, kmEnd) || "";
+  const kmEl = entryEl.querySelector(".v-total-km");
+  if (kmEl) kmEl.textContent = kmTotal || "—";
+  const legacyTours = entryEl.querySelector(".v-tours")?.value || "";
+  const auto = calculateVehicleCubic(selected.capacity, legacyTours || tourTotal);
   const autoEl = entryEl.querySelector(".v-cubic-auto");
   if (autoEl) autoEl.value = auto;
   const hint = entryEl.querySelector(".v-cubic-hint");
   if (hint) {
     hint.textContent = auto
-      ? `Automatski: ${selected.capacity || 0} m³ × ${tours || 0} tura = ${auto} m³`
-      : "Ako vozilo ima kapacitet i upišeš broj tura, aplikacija računa m³ automatski.";
+      ? `Automatski: ${selected.capacity || 0} × ${legacyTours || tourTotal || 0} tura = ${auto}`
+      : "Ture se vode po stavkama. Ukupna kilometraža je završna minus početna km.";
   }
 }
-
 
 function getWorkerSiteOptionPayload(select) {
   if (!select) return { site_id: null, site_name: "" };
@@ -7812,13 +7923,134 @@ function refreshDailyItemSiteSelectors() {
 }
 
 function summarizeSitesFromDailyItems(items = []) {
-  const names = Array.from(new Set((items || []).map(x => x.site_name || x.site || "").filter(Boolean)));
-  if (!names.length) return { site_id: null, site_name: "" };
-  if (names.length === 1) {
-    const first = (items || []).find(x => (x.site_name || x.site) === names[0]) || {};
-    return { site_id: first.site_id || null, site_name: names[0] };
+  const names = [];
+  const add = (v) => { const s = String(v || "").trim(); if (s) names.push(s); };
+  (items || []).forEach(x => {
+    add(x.site_name || x.site);
+    (Array.isArray(x.tour_items) ? x.tour_items : []).forEach(t => {
+      add(t.site_name || t.site);
+      add(t.from_site);
+      add(t.to_site);
+    });
+  });
+  const unique = Array.from(new Set(names));
+  if (!unique.length) return { site_id: null, site_name: "" };
+  if (unique.length === 1) {
+    const first = (items || []).find(x => (x.site_name || x.site) === unique[0]) || {};
+    return { site_id: first.site_id || null, site_name: unique[0] };
   }
-  return { site_id: null, site_name: `Više gradilišta (${names.length})` };
+  return { site_id: null, site_name: `Više gradilišta (${unique.length})` };
+}
+
+
+function buildTruckTourSiteOptionsHtml(selectedValue = "") {
+  return buildLowloaderSiteOptionsHtml(selectedValue || "");
+}
+
+function truckTourTypeLabel(value = "") {
+  const v = String(value || "").trim();
+  if (v === "local") return "Lokal u krugu gradilišta";
+  if (v === "site_to_site") return "Gradilište → gradilište";
+  if (v === "landfill") return "Odvoz na deponiju";
+  if (v === "external_in") return "Dovoz spolja / dobavljač";
+  return v || "—";
+}
+
+function addVehicleTourRow(vehicleCard, values = {}) {
+  const list = vehicleCard?.querySelector(".v-tour-items");
+  if (!list) return;
+  const idx = list.querySelectorAll(".vehicle-tour-row").length + 1;
+  const type = values.tour_type || values.type || values.direction_type || (values.direction === "interno" ? "site_to_site" : values.direction === "odvoz" ? "landfill" : "local");
+  const material = values.material || values.material_name || "";
+  const div = document.createElement("div");
+  div.className = "vehicle-tour-row";
+  div.innerHTML = `
+    <div class="entry-card-head vehicle-tour-head">
+      <strong>Tura stavka ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+
+    <div class="grid two">
+      <div>
+        <label>Vrsta ture</label>
+        <select class="tour-type">
+          <option value="local" ${type === "local" ? "selected" : ""}>Lokal u krugu gradilišta</option>
+          <option value="site_to_site" ${type === "site_to_site" ? "selected" : ""}>Sa gradilišta na gradilište</option>
+          <option value="landfill" ${type === "landfill" ? "selected" : ""}>Odvoz na deponiju</option>
+          <option value="external_in" ${type === "external_in" ? "selected" : ""}>Dovoz spolja / dobavljač</option>
+        </select>
+      </div>
+      <div>
+        <label>Materijal iz liste Direkcije</label>
+        <select class="tour-material">${buildWorkerMaterialOptionsHtml(material)}</select>
+      </div>
+    </div>
+
+    <div class="grid two tour-site-local">
+      <div>
+        <label>Gradilište</label>
+        <select class="tour-site">${buildTruckTourSiteOptionsHtml(values.site_name || values.site || "")}</select>
+      </div>
+      <div>
+        <label>Broj tura</label>
+        <input class="tour-count" inputmode="decimal" placeholder="npr. 2" value="${escapeHtml(values.tours || values.tour_count || "")}" />
+      </div>
+    </div>
+
+    <div class="grid two tour-site-transfer">
+      <div>
+        <label>Od gradilišta</label>
+        <select class="tour-from-site">${buildTruckTourSiteOptionsHtml(values.from_site || values.load_location || "")}</select>
+      </div>
+      <div>
+        <label>Do gradilišta</label>
+        <select class="tour-to-site">${buildTruckTourSiteOptionsHtml(values.to_site || values.unload_location || "")}</select>
+      </div>
+    </div>
+
+    <div class="grid two tour-site-landfill">
+      <div>
+        <label>Sa gradilišta</label>
+        <select class="tour-source-site">${buildTruckTourSiteOptionsHtml(values.from_site || values.site_name || values.site || values.load_location || "")}</select>
+      </div>
+      <div>
+        <label>Deponija / lokacija</label>
+        <input class="tour-landfill" placeholder="npr. Deponija Surčin" value="${escapeHtml(values.landfill || values.unload_location || values.to_site || "")}" />
+      </div>
+    </div>
+
+    <div class="grid two tour-site-external">
+      <div>
+        <label>Dobavljač / kamenolom / polazak</label>
+        <input class="tour-external-source" placeholder="npr. kamenolom, baza, dobavljač" value="${escapeHtml(values.external_source || values.load_location || "")}" />
+      </div>
+      <div>
+        <label>Do gradilišta</label>
+        <select class="tour-external-to-site">${buildTruckTourSiteOptionsHtml(values.to_site || values.site_name || values.site || values.unload_location || "")}</select>
+      </div>
+    </div>
+
+    <label>Napomena</label>
+    <input class="tour-note" placeholder="kratka napomena ako treba" value="${escapeHtml(values.note || values.route || "")}" />
+  `;
+  const refreshVisibility = () => {
+    const t = div.querySelector(".tour-type")?.value || "local";
+    div.querySelector(".tour-site-local")?.classList.toggle("hidden", t !== "local");
+    div.querySelector(".tour-site-transfer")?.classList.toggle("hidden", t !== "site_to_site");
+    div.querySelector(".tour-site-landfill")?.classList.toggle("hidden", t !== "landfill");
+    div.querySelector(".tour-site-external")?.classList.toggle("hidden", t !== "external_in");
+  };
+  div.querySelector(".remove-entry")?.addEventListener("click", () => {
+    div.remove();
+    updateVehicleCubic(vehicleCard);
+  });
+  div.querySelector(".tour-type")?.addEventListener("change", refreshVisibility);
+  div.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(vehicleCard)));
+  div.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(vehicleCard)));
+  list.appendChild(div);
+  preventNumberInputScrollChanges(div);
+  refreshVisibility();
+  updateVehicleCubic(vehicleCard);
 }
 
 function addVehicleEntry(values = {}) {
@@ -7828,10 +8060,10 @@ function addVehicleEntry(values = {}) {
   const selectedName = values.name || values.vehicle || values.asset_id || "";
   const initialSearch = values.asset_code || values.vehicle_code || values.code || values.custom || values.vehicle_custom || selectedName || values.registration || "";
   const div = document.createElement("div");
-  div.className = "entry-card vehicle-entry";
+  div.className = "entry-card vehicle-entry truck-daily-entry";
   div.innerHTML = `
     <div class="entry-card-head">
-      <strong>Vozilo ${idx}</strong>
+      <strong>Vozilo / kamion ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
@@ -7843,62 +8075,30 @@ function addVehicleEntry(values = {}) {
     <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
     <input class="v-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
 
-    <label>Gradilište za ovu stavku</label>
-    <select class="v-site entry-site-select">${buildLowloaderSiteOptionsHtml(values.site_name || values.site || "")}</select>
-    <p class="field-hint">Ako si danas radio na više gradilišta, dodaj novu stavku za svako gradilište. Direkcija će dobiti jedan izveštaj, a stavke će se razvrstati po gradilištu.</p>
-
-    <div class="mini-grid">
+    <div class="truck-km-box">
       <div>
-        <label>KM početak</label>
-        <input class="v-km-start" type="number" step="1" value="${escapeHtml(values.km_start || values.start || "")}" />
+        <label>Početna kilometraža</label>
+        <input class="v-km-start" inputmode="decimal" readonly value="${escapeHtml(values.km_start || values.start || values.last_km || "")}" placeholder="automatski / iz prethodnog stanja" />
+        <p class="field-hint">Početna km se ne menja ručno. Ako je pogrešna, Direkcija vraća izveštaj na ispravku.</p>
       </div>
       <div>
-        <label>KM kraj</label>
-        <input class="v-km-end" type="number" step="1" value="${escapeHtml(values.km_end || values.end || "")}" />
+        <label>Završna kilometraža</label>
+        <input class="v-km-end" inputmode="decimal" value="${escapeHtml(values.km_end || values.end || "")}" placeholder="npr. 100.180" />
       </div>
     </div>
 
-    <div class="grid two">
-      <div>
-        <label>Smer / tip prevoza</label>
-        <select class="v-direction">
-          <option value="" ${!values.direction && !values.transport_direction ? "selected" : ""}>Izaberi</option>
-          <option value="dovoz" ${(values.direction || values.transport_direction) === "dovoz" ? "selected" : ""}>Dovoz na gradilište</option>
-          <option value="odvoz" ${(values.direction || values.transport_direction) === "odvoz" ? "selected" : ""}>Odvoz sa gradilišta</option>
-          <option value="interno" ${(values.direction || values.transport_direction) === "interno" ? "selected" : ""}>Interno / između gradilišta</option>
-        </select>
-      </div>
-      <div>
-        <label>Materijal</label>
-        <input class="v-material" placeholder="zemlja, šut, tampon..." value="${escapeHtml(values.material || values.material_name || "")}" />
-      </div>
+    <div class="truck-tour-explain">
+      <b>Stavke tura</b>
+      <span>Vozač ne piše kilometre po turi. Upisuje materijal i broj tura, a aplikacija razdvaja lokal, ulaz, izlaz i deponiju po gradilištima.</span>
     </div>
 
-    <div class="grid two">
-      <div>
-        <label>Utovar / polazak</label>
-        <input class="v-load" placeholder="npr. Zemun Zmaj" value="${escapeHtml(values.load_location || values.from || "")}" />
-      </div>
-      <div>
-        <label>Istovar / dolazak</label>
-        <input class="v-unload" placeholder="npr. Makiš" value="${escapeHtml(values.unload_location || values.to || "")}" />
-      </div>
-    </div>
+    <div class="v-tour-items entry-list"></div>
+    <button type="button" class="secondary small-action add-tour-row">+ Dodaj turu / materijal</button>
 
-    <label>Relacija / napomena relacije</label>
-    <input class="v-route" placeholder="Od - do, ako treba dodatno objašnjenje" value="${escapeHtml(values.route || "")}" />
-
-    <div class="mini-grid">
-      <div>
-        <label>Broj izvršenih tura</label>
-        <input class="v-tours" type="number" step="0.5" value="${escapeHtml(values.tours || "")}" />
-      </div>
-      <div>
-        <label>Automatski m³</label>
-        <input class="v-cubic-auto" type="number" step="0.01" readonly value="${escapeHtml(values.cubic_auto || values.cubic_m3 || "")}" />
-      </div>
+    <div class="truck-summary-line">
+      <span>Ukupno tura: <b class="v-total-tours">0</b></span>
+      <span>Ukupno km: <b class="v-total-km">—</b></span>
     </div>
-    <p class="field-hint v-cubic-hint">Ako vozilo ima kapacitet i upišeš broj tura, aplikacija računa m³ automatski.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => {
@@ -7907,15 +8107,17 @@ function addVehicleEntry(values = {}) {
   });
   div.querySelector(".v-search").addEventListener("input", () => {
     refreshOneVehicleSelect(div);
+    applyVehicleLastKmToEntry(div);
     updateVehicleCubic(div);
   });
   div.querySelector(".v-name").addEventListener("change", () => {
+    applyVehicleLastKmToEntry(div);
     updateVehicleCubic(div);
     refreshFuelMachineOptions();
   });
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
-  div.querySelector(".v-tours").addEventListener("input", () => updateVehicleCubic(div));
-  div.querySelector(".v-site")?.addEventListener("change", () => updateVehicleCubic(div));
+  div.querySelector(".v-km-end")?.addEventListener("input", () => updateVehicleCubic(div));
+  div.querySelector(".add-tour-row")?.addEventListener("click", () => addVehicleTourRow(div, {}));
   const refreshVehiclesBtn = div.querySelector(".refresh-vehicle-assets");
   if (refreshVehiclesBtn) refreshVehiclesBtn.addEventListener("click", async () => {
     try {
@@ -7923,6 +8125,7 @@ function addVehicleEntry(values = {}) {
       refreshVehiclesBtn.textContent = "Učitavam...";
       await loadWorkerAssets();
       refreshOneVehicleSelect(div);
+      applyVehicleLastKmToEntry(div);
       updateVehicleCubic(div);
       toast(workerAssetOptions.length ? "Vozila iz Uprave su osvežena." : "Nema učitanih vozila. Proveri firmu zaposlenog i listu u Upravi.", !workerAssetOptions.length);
     } finally {
@@ -7933,17 +8136,80 @@ function addVehicleEntry(values = {}) {
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
   refreshOneVehicleSelect(div);
+  applyVehicleLastKmToEntry(div);
+
+  const items = Array.isArray(values.tour_items) ? values.tour_items : [];
+  if (items.length) items.forEach(item => addVehicleTourRow(div, item));
+  else if (values.tours || values.material || values.site_name || values.direction || values.load_location || values.unload_location || values.route) {
+    addVehicleTourRow(div, values);
+  } else {
+    addVehicleTourRow(div, {});
+  }
+
   updateVehicleCubic(div);
   refreshFuelMachineOptions();
+}
+
+function getVehicleTourItemsFromEntry(el, selected = {}) {
+  return Array.from(el.querySelectorAll(".vehicle-tour-row")).map((row, idx) => {
+    const type = row.querySelector(".tour-type")?.value || "local";
+    const material = row.querySelector(".tour-material")?.value.trim() || "";
+    const tours = row.querySelector(".tour-count")?.value.trim() || "";
+    const base = {
+      no: idx + 1,
+      tour_type: type,
+      tour_type_label: truckTourTypeLabel(type),
+      material,
+      material_name: material,
+      tours,
+      note: row.querySelector(".tour-note")?.value.trim() || ""
+    };
+    if (type === "site_to_site") {
+      return {
+        ...base,
+        from_site: row.querySelector(".tour-from-site")?.value || "",
+        to_site: row.querySelector(".tour-to-site")?.value || "",
+        load_location: row.querySelector(".tour-from-site")?.value || "",
+        unload_location: row.querySelector(".tour-to-site")?.value || "",
+        direction: "transfer"
+      };
+    }
+    if (type === "landfill") {
+      return {
+        ...base,
+        site_name: row.querySelector(".tour-source-site")?.value || "",
+        from_site: row.querySelector(".tour-source-site")?.value || "",
+        landfill: row.querySelector(".tour-landfill")?.value.trim() || "",
+        unload_location: row.querySelector(".tour-landfill")?.value.trim() || "",
+        direction: "landfill"
+      };
+    }
+    if (type === "external_in") {
+      return {
+        ...base,
+        external_source: row.querySelector(".tour-external-source")?.value.trim() || "",
+        to_site: row.querySelector(".tour-external-to-site")?.value || "",
+        site_name: row.querySelector(".tour-external-to-site")?.value || "",
+        unload_location: row.querySelector(".tour-external-to-site")?.value || "",
+        direction: "external_in"
+      };
+    }
+    return {
+      ...base,
+      site_name: row.querySelector(".tour-site")?.value || "",
+      direction: "local"
+    };
+  }).filter(x => x.tours || x.material || x.site_name || x.from_site || x.to_site || x.landfill || x.external_source || x.note);
 }
 
 function getVehicleEntries() {
   return $$("#vehicleEntries .vehicle-entry").map((el, i) => {
     const selected = getSelectedVehicleFromEntry(el);
-    const tours = el.querySelector(".v-tours")?.value || "";
-    const autoCubic = calculateVehicleCubic(selected.capacity, tours);
-    const manualCubic = "";
-    const finalCubic = autoCubic;
+    const tourItems = getVehicleTourItemsFromEntry(el, selected);
+    const tours = tourItems.reduce((sum, item) => sum + parseDecimalInput(item.tours), 0) || "";
+    const firstSite = summarizeSitesFromDailyItems(tourItems);
+    const kmStart = el.querySelector(".v-km-start")?.value || "";
+    const kmEnd = el.querySelector(".v-km-end")?.value || "";
     return {
       no: i + 1,
       asset_id: selected.asset_id,
@@ -7954,22 +8220,37 @@ function getVehicleEntries() {
       registration: selected.registration,
       capacity: selected.capacity,
       vehicle_custom: el.querySelector(".v-custom")?.value.trim() || "",
-      ...getWorkerSiteOptionPayload(el.querySelector(".v-site")),
-      direction: el.querySelector(".v-direction")?.value || "",
-      transport_direction: el.querySelector(".v-direction")?.value || "",
-      material: el.querySelector(".v-material")?.value.trim() || "",
-      material_name: el.querySelector(".v-material")?.value.trim() || "",
-      load_location: el.querySelector(".v-load")?.value.trim() || "",
-      unload_location: el.querySelector(".v-unload")?.value.trim() || "",
-      km_start: el.querySelector(".v-km-start")?.value || "",
-      km_end: el.querySelector(".v-km-end")?.value || "",
-      route: el.querySelector(".v-route")?.value.trim() || "",
+      site_id: firstSite.site_id || null,
+      site_name: firstSite.site_name || "",
+      km_start: kmStart,
+      km_end: kmEnd,
+      km_total: decimalDiffText(kmStart, kmEnd) || "",
+      route: tourItems.map(t => {
+        if (t.tour_type === "site_to_site") return `${t.from_site || "—"} → ${t.to_site || "—"}`;
+        if (t.tour_type === "landfill") return `${t.from_site || t.site_name || "—"} → ${t.landfill || "deponija"}`;
+        if (t.tour_type === "external_in") return `${t.external_source || "spolja"} → ${t.to_site || t.site_name || "—"}`;
+        return `${t.site_name || "—"} · lokal`;
+      }).join(" | "),
       tours,
-      cubic_auto: autoCubic,
-      cubic_manual: manualCubic,
-      cubic_m3: finalCubic
+      tour_items: tourItems,
+      material: tourItems.map(t => t.material).filter(Boolean).join(" | "),
+      material_name: tourItems.map(t => t.material).filter(Boolean).join(" | "),
+      direction: "tour_items",
+      transport_direction: "tour_items",
+      cubic_auto: "",
+      cubic_manual: "",
+      cubic_m3: ""
     };
-  }).filter(v => v.name || v.site_name || v.material || v.direction || v.load_location || v.unload_location || v.km_start || v.km_end || v.route || v.tours || v.cubic_m3);
+  }).filter(v => v.name || v.site_name || v.km_start || v.km_end || v.tours || (v.tour_items || []).length);
+}
+
+
+function rememberVehicleEndKilometersAfterSubmit(vehicles = []) {
+  (Array.isArray(vehicles) ? vehicles : []).forEach(v => {
+    const selected = { asset_code: v.asset_code || v.vehicle_code || "", asset_id: v.asset_id || "", name: v.name || v.vehicle || "" };
+    const kmEnd = v.km_end || "";
+    if (kmEnd) setStoredVehicleLastKm(selected, kmEnd);
+  });
 }
 
 async function loadWorkerSites(selectedName = "") {
@@ -13661,6 +13942,7 @@ function bindEvents() {
         p_data: data
       });
       if (error) throw error;
+      rememberVehicleEndKilometersAfterSubmit(data.vehicles || []);
       await verifyRecentlySubmittedReport(worker, reportDate);
       clearCurrentFieldTankerCistern();
       try {
