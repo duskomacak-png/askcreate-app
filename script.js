@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.51.0";
+const APP_VERSION = "1.52.0";
 
 
 let sb = null;
@@ -4030,7 +4030,7 @@ function renderDailyLogPreview() {
     <section><h4>🚚 Vozila / kamioni</h4>${officeTable(["Gradilište","Broj","Vozilo","Registracija","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
     <section><h4>🚛 Labudica / transport mašine</h4>${officeTable(["Gradilište","Tablice","Prevezena mašina","Vozač","Od","Do","KM poč.","KM kraj","Ukupno KM","Napomena"], data.lowloaders || [])}</section>
     <section><h4>💧 Cisterna za vodu</h4>${officeTable(["Gradilište","Broj","Cisterna","Vozač","KM poč.","KM kraj","Ukupno KM","Litara vode","Punjenja","Punjenje","Istovar/prskanje","Namena","Napomena"], data.waters || [])}</section>
-    <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj sredstva","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio","Izvor"], data.fuels)}</section>
+    <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj","Sredstvo","L","KM","MTČ","Sipao","Primio","Izvor"], data.fuels)}</section>
     <section><h4>📦 Materijali</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
     <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis kvara","Hitnost","Status"], data.defects)}</section>
   `;
@@ -5118,15 +5118,15 @@ function renderReportReadableDetails(d = {}, options = {}) {
 
   fuels.forEach((f, i) => {
     const row = `Gorivo ${i + 1}`;
-    addPreview("Evidencija goriva", row, "Tip sredstva", assetKindLabel(f.asset_kind));
-    addPreview("Evidencija goriva", row, "Broj sredstva", f.asset_code);
+    addPreview("Evidencija goriva", row, "Tip", assetKindLabel(f.asset_kind));
+    addPreview("Evidencija goriva", row, "Broj", f.asset_code);
     addPreview("Evidencija goriva", row, "Sredstvo", f.asset_name || f.machine || f.vehicle || f.other);
-    addPreview("Evidencija goriva", row, "Litara", f.liters);
+    addPreview("Evidencija goriva", row, "L", f.liters);
     addPreview("Evidencija goriva", row, "KM", f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : ""));
     addPreview("Evidencija goriva", row, "MTČ", f.mtc || f.current_mtc || (f.asset_kind === "machine" ? (f.reading || f.mtc_km) : ""));
     addPreview("Evidencija goriva", row, "Sipao", f.by);
     addPreview("Evidencija goriva", row, "Primio", f.receiver || d.fuel_receiver);
-    addPreview("Evidencija goriva", row, "Izvor goriva", fuelSourceText(f));
+    addPreview("Evidencija goriva", row, "Izvor", fuelSourceText(f));
   });
 
   fieldTankers.forEach((ft, i) => {

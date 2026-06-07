@@ -7271,3 +7271,76 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 @media (max-width:640px){
   .capacity-split-row{grid-template-columns:1fr 92px !important;}
 }
+
+
+/* === AskCreate v24: A4 tabele bez lomljenja slova jedno ispod drugog === */
+.report-document-center .report-paper-view{
+  width:210mm !important;
+  padding:10mm !important;
+}
+.report-document-center .report-mini-table{
+  table-layout:auto !important;
+  width:100% !important;
+}
+.report-document-center .paper-meta-table th,
+.report-document-center .paper-meta-table td,
+.report-document-center .report-mini-table th,
+.report-document-center .report-mini-table td{
+  word-break:normal !important;
+  overflow-wrap:normal !important;
+  hyphens:none !important;
+  white-space:normal !important;
+  font-size:10.5px !important;
+  line-height:1.22 !important;
+  padding:4px 5px !important;
+}
+.report-document-center .report-mini-table th{
+  white-space:nowrap !important;
+  text-align:left !important;
+}
+.report-document-center .report-mini-table td:nth-child(1),
+.report-document-center .report-mini-table th:nth-child(1){
+  width:28px !important;
+  text-align:center !important;
+}
+.report-document-center .report-mini-table td:nth-child(2),
+.report-document-center .report-mini-table th:nth-child(2),
+.report-document-center .report-mini-table td:nth-child(5),
+.report-document-center .report-mini-table th:nth-child(5),
+.report-document-center .report-mini-table td:nth-child(6),
+.report-document-center .report-mini-table th:nth-child(6){
+  width:42px !important;
+  white-space:nowrap !important;
+}
+.report-document-center .report-mini-table td:nth-child(7),
+.report-document-center .report-mini-table th:nth-child(7),
+.report-document-center .report-mini-table td:nth-child(8),
+.report-document-center .report-mini-table th:nth-child(8){
+  width:64px !important;
+}
+.report-document-center .report-mini-table td:nth-child(9),
+.report-document-center .report-mini-table th:nth-child(9){
+  width:82px !important;
+}
+.report-document-center .report-mini-table td{
+  vertical-align:top !important;
+}
+.report-document-center .report-mini-table td,
+.report-document-center .report-mini-table th{
+  max-width:160px;
+}
+@media print{
+  .report-document-center .report-paper-view{
+    width:100% !important;
+    padding:8mm !important;
+    box-shadow:none !important;
+    border:0 !important;
+  }
+  .report-document-center .paper-meta-table th,
+  .report-document-center .paper-meta-table td,
+  .report-document-center .report-mini-table th,
+  .report-document-center .report-mini-table td{
+    font-size:9.5px !important;
+    padding:3px 4px !important;
+  }
+}
