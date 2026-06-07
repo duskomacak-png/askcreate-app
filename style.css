@@ -7517,3 +7517,167 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 @media(max-width:700px){
   .truck-km-box{grid-template-columns:1fr;}
 }
+
+
+/* === AskCreate v32: Radnik beli prikaz, crni okviri, blago crvena dugmad === */
+#viewWorkerLogin,
+#viewWorkerForm{
+  background:#ffffff !important;
+  color:#000000 !important;
+}
+
+#viewWorkerLogin .card,
+#viewWorkerForm > .card,
+#viewWorkerForm .dyn-section,
+#viewWorkerForm .entry-card,
+#viewWorkerForm .returned-panel,
+#viewWorkerForm .fuel-memory-panel,
+#viewWorkerForm .worker-module-chooser,
+#viewWorkerForm .worker-module-card,
+#viewWorkerForm .truck-tour-explain,
+#viewWorkerForm .truck-summary-line,
+#viewWorkerForm .vehicle-tour-row,
+#viewWorkerForm .signature-pad-wrap,
+#viewWorkerForm .site-log-section,
+#viewWorkerForm .worker-install-box,
+#viewWorkerForm .worker-company-qr-notice{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  box-shadow:none !important;
+}
+
+#viewWorkerLogin h1,
+#viewWorkerLogin h2,
+#viewWorkerLogin h3,
+#viewWorkerLogin h4,
+#viewWorkerLogin h5,
+#viewWorkerForm h1,
+#viewWorkerForm h2,
+#viewWorkerForm h3,
+#viewWorkerForm h4,
+#viewWorkerForm h5,
+#viewWorkerForm strong,
+#viewWorkerForm b,
+#viewWorkerForm label,
+#viewWorkerLogin label,
+#viewWorkerLogin .hint,
+#viewWorkerForm .hint,
+#viewWorkerForm .field-hint,
+#viewWorkerForm .muted,
+#viewWorkerForm p,
+#viewWorkerForm span,
+#viewWorkerLogin p,
+#viewWorkerLogin span,
+#viewWorkerForm #workerHello,
+#viewWorkerForm #workerCompanyLabel,
+#viewWorkerForm .entry-card-head strong,
+#viewWorkerForm .asset-smart-result,
+#viewWorkerForm .worker-module-title,
+#viewWorkerForm .worker-module-desc,
+#viewWorkerForm .worker-module-meta,
+#viewWorkerForm .worker-module-note,
+#viewWorkerLogin .worker-install-box strong,
+#viewWorkerLogin .worker-install-box span,
+#viewWorkerLogin .worker-company-qr-notice strong,
+#viewWorkerLogin .worker-company-qr-notice span{
+  color:#000000 !important;
+}
+
+#viewWorkerForm input,
+#viewWorkerForm select,
+#viewWorkerForm textarea,
+#viewWorkerLogin input,
+#viewWorkerLogin select,
+#viewWorkerLogin textarea{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  box-shadow:none !important;
+}
+#viewWorkerForm input::placeholder,
+#viewWorkerForm textarea::placeholder,
+#viewWorkerLogin input::placeholder,
+#viewWorkerLogin textarea::placeholder{
+  color:#555555 !important;
+}
+#viewWorkerForm input:focus,
+#viewWorkerForm select:focus,
+#viewWorkerForm textarea:focus,
+#viewWorkerLogin input:focus,
+#viewWorkerLogin select:focus,
+#viewWorkerLogin textarea:focus{
+  outline:none !important;
+  border-color:#000000 !important;
+  box-shadow:0 0 0 1px #000000 !important;
+}
+
+#viewWorkerForm button,
+#viewWorkerForm .primary,
+#viewWorkerForm .secondary,
+#viewWorkerForm .danger-btn,
+#viewWorkerLogin button,
+#viewWorkerLogin .primary,
+#viewWorkerLogin .secondary,
+#viewWorkerLogin .danger-btn{
+  background:#efb0b0 !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  box-shadow:none !important;
+}
+#viewWorkerForm button:hover,
+#viewWorkerForm .primary:hover,
+#viewWorkerForm .secondary:hover,
+#viewWorkerForm .danger-btn:hover,
+#viewWorkerLogin button:hover,
+#viewWorkerLogin .primary:hover,
+#viewWorkerLogin .secondary:hover,
+#viewWorkerLogin .danger-btn:hover{
+  background:#e8a1a1 !important;
+  color:#000000 !important;
+}
+#viewWorkerForm button:disabled,
+#viewWorkerForm .primary:disabled,
+#viewWorkerForm .secondary:disabled,
+#viewWorkerLogin button:disabled,
+#viewWorkerLogin .primary:disabled,
+#viewWorkerLogin .secondary:disabled{
+  opacity:.75 !important;
+  color:#333333 !important;
+}
+
+#viewWorkerForm .dashboard-head,
+#viewWorkerForm .internal-header,
+#viewWorkerLogin .dashboard-head,
+#viewWorkerLogin .internal-header{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  box-shadow:none !important;
+}
+#viewWorkerForm .dashboard-head *,
+#viewWorkerForm .internal-header *,
+#viewWorkerLogin .dashboard-head *,
+#viewWorkerLogin .internal-header *{
+  color:#000000 !important;
+}
+
+#viewWorkerForm .entry-list,
+#viewWorkerForm .worker-module-grid,
+#viewWorkerForm .site-log-entry-list,
+#viewWorkerForm .signature-pad-wrap canvas{
+  background:#ffffff !important;
+}
+#viewWorkerForm .signature-pad-wrap canvas{
+  border:1px solid #000000 !important;
+}
+#viewWorkerForm .status-chip,
+#viewWorkerForm .badge,
+#viewWorkerForm .pill,
+#viewWorkerLogin .status-chip,
+#viewWorkerLogin .badge,
+#viewWorkerLogin .pill{
+  border:1px solid #000000 !important;
+  color:#000000 !important;
+  background:#ffffff !important;
+}
