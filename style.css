@@ -8003,7 +8003,7 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
 
 
-/* === v41: Vozač - minimalna tura, bez skrivenih 10 rubrika === */
+/* === v43: Vozač - minimalna tura, Direkcija login ostaje iz v40 === */
 #viewWorkerForm.worker-mobile-panel .tour-simple-grid{
   display:grid !important;
   grid-template-columns:1fr !important;

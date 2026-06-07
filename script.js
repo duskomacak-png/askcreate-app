@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.69.0";
+const APP_VERSION = "1.70.0-DIREKCIJA-OK-VOZAC-MINIMAL";
 
 
 let sb = null;
@@ -7971,6 +7971,7 @@ function renderVehicleTourDynamicFields(row, values = {}) {
   const box = row.querySelector(".tour-dynamic-fields");
   if (!box) return;
   const type = row.querySelector(".tour-type")?.value || "local";
+
   if (type === "site_to_site") {
     box.innerHTML = `
       <div>
@@ -8001,8 +8002,10 @@ function renderVehicleTourDynamicFields(row, values = {}) {
       </div>
     `;
   }
-  box.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(row.closest(".vehicle-entry"))));
-  box.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(row.closest(".vehicle-entry"))));
+
+  const vehicleCard = row.closest(".vehicle-entry");
+  box.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(vehicleCard)));
+  box.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(vehicleCard)));
 }
 
 function addVehicleTourRow(vehicleCard, values = {}) {
@@ -8029,12 +8032,10 @@ function addVehicleTourRow(vehicleCard, values = {}) {
           <option value="landfill" ${type === "landfill" ? "selected" : ""}>Deponija</option>
         </select>
       </div>
-
       <div>
         <label>Materijal</label>
         <select class="tour-material">${buildWorkerMaterialOptionsHtml(material)}</select>
       </div>
-
       <div>
         <label>Broj tura</label>
         <input class="tour-count" inputmode="decimal" placeholder="npr. 2" value="${escapeHtml(values.tours || values.tour_count || "")}" />
@@ -8061,11 +8062,108 @@ function addVehicleTourRow(vehicleCard, values = {}) {
 
   div.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(vehicleCard)));
   div.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(vehicleCard)));
-
   list.appendChild(div);
   renderVehicleTourDynamicFields(div, values);
   preventNumberInputScrollChanges(div);
   updateVehicleCubic(vehicleCard);
+}
+
+function addVehicleEntry(values = {}) {
+  const list = $("#vehicleEntries");
+  if (!list) return;
+  const idx = list.querySelectorAll(".vehicle-entry").length + 1;
+  const selectedName = values.name || values.vehicle || values.asset_id || "";
+  const initialSearch = values.asset_code || values.vehicle_code || values.code || values.custom || values.vehicle_custom || selectedName || values.registration || "";
+  const div = document.createElement("div");
+  div.className = "entry-card vehicle-entry truck-daily-entry worker-compact-card";
+  div.innerHTML = `
+    <div class="entry-card-head">
+      <strong>Vozilo / kamion ${idx}</strong>
+      <button type="button" class="remove-entry">Ukloni</button>
+    </div>
+
+    <label>Vozilo / interni broj</label>
+    <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
+    <div class="asset-smart-result v-picked">Pronadjeno vozilo će se pokazati ispod.</div>
+    <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Uprave</button>
+
+    <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
+    <input class="v-custom hidden-asset-custom" aria-hidden="true" tabindex="-1" value="${escapeHtml(values.custom || values.vehicle_custom || "")}" />
+
+    <div class="truck-km-box">
+      <div>
+        <label>Početna kilometraža</label>
+        <input class="v-km-start" inputmode="decimal" value="${escapeHtml(values.km_start || values.start || values.last_km || "")}" placeholder="prvi put upiši početnu km" />
+        
+      </div>
+      <div>
+        <label>Završna kilometraža</label>
+        <input class="v-km-end" inputmode="decimal" value="${escapeHtml(values.km_end || values.end || "")}" placeholder="npr. 100.180" />
+      </div>
+    </div>
+
+    <div class="truck-tour-explain">
+      <b>Ture i materijal</b>
+      <span></span>
+    </div>
+
+    <div class="v-tour-items entry-list"></div>
+    <button type="button" class="secondary small-action add-tour-row">+ Dodaj turu / materijal</button>
+
+    <div class="truck-summary-line">
+      <span>Ukupno tura: <b class="v-total-tours">0</b></span>
+      <span>Ukupno km: <b class="v-total-km">—</b></span>
+    </div>
+  `;
+
+  div.querySelector(".remove-entry").addEventListener("click", () => {
+    div.remove();
+    refreshFuelMachineOptions();
+  });
+  div.querySelector(".v-search").addEventListener("input", () => {
+    refreshOneVehicleSelect(div);
+    applyVehicleLastKmToEntry(div);
+    updateVehicleCubic(div);
+  });
+  div.querySelector(".v-name").addEventListener("change", () => {
+    applyVehicleLastKmToEntry(div);
+    updateVehicleCubic(div);
+    refreshFuelMachineOptions();
+  });
+  div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
+  div.querySelector(".v-km-start")?.addEventListener("input", () => updateVehicleCubic(div));
+  div.querySelector(".v-km-end")?.addEventListener("input", () => updateVehicleCubic(div));
+  div.querySelector(".add-tour-row")?.addEventListener("click", () => addVehicleTourRow(div, {}));
+  const refreshVehiclesBtn = div.querySelector(".refresh-vehicle-assets");
+  if (refreshVehiclesBtn) refreshVehiclesBtn.addEventListener("click", async () => {
+    try {
+      refreshVehiclesBtn.disabled = true;
+      refreshVehiclesBtn.textContent = "Učitavam...";
+      await loadWorkerAssets();
+      refreshOneVehicleSelect(div);
+      applyVehicleLastKmToEntry(div);
+      updateVehicleCubic(div);
+      toast(workerAssetOptions.length ? "Vozila iz Uprave su osvežena." : "Nema učitanih vozila. Proveri firmu zaposlenog i listu u Upravi.", !workerAssetOptions.length);
+    } finally {
+      refreshVehiclesBtn.disabled = false;
+      refreshVehiclesBtn.textContent = "Osveži vozila iz Uprave";
+    }
+  });
+  list.appendChild(div);
+  preventNumberInputScrollChanges(div);
+  refreshOneVehicleSelect(div);
+  applyVehicleLastKmToEntry(div);
+
+  const items = Array.isArray(values.tour_items) ? values.tour_items : [];
+  if (items.length) items.forEach(item => addVehicleTourRow(div, item));
+  else if (values.tours || values.material || values.site_name || values.direction || values.load_location || values.unload_location || values.route) {
+    addVehicleTourRow(div, values);
+  } else {
+    addVehicleTourRow(div, {});
+  }
+
+  updateVehicleCubic(div);
+  refreshFuelMachineOptions();
 }
 
 function getVehicleTourItemsFromEntry(el, selected = {}) {
@@ -8082,7 +8180,6 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
       tours,
       note: row.querySelector(".tour-note")?.value.trim() || ""
     };
-
     if (type === "site_to_site") {
       return {
         ...base,
@@ -8093,7 +8190,6 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
         direction: "transfer"
       };
     }
-
     if (type === "landfill") {
       return {
         ...base,
@@ -8104,7 +8200,6 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
         direction: "landfill"
       };
     }
-
     return {
       ...base,
       site_name: row.querySelector(".tour-site")?.value || "",
