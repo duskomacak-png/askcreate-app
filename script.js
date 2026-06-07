@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.47.0";
+const APP_VERSION = "1.48.0";
 
 
 let sb = null;
@@ -697,6 +697,18 @@ function buildWorkerCompanyLink(companyCode) {
   return url.toString();
 }
 
+function buildWorkerPersonalLink(companyCode, accessCode, target = "worker") {
+  const url = new URL(target === "mechanic" ? buildMechanicCompanyLink(companyCode) : buildWorkerCompanyLink(companyCode));
+  const code = String(accessCode || "").trim();
+  if (code) url.searchParams.set("kod", code);
+  return url.toString();
+}
+
+function getWorkerAccessCodeFromUrl() {
+  const params = new URLSearchParams(window.location.search || "");
+  return String(params.get("kod") || params.get("radnik") || params.get("access_code") || params.get("worker_code") || "").trim();
+}
+
 function buildMechanicCompanyLink(companyCode) {
   const url = new URL(getAppPublicBaseUrl());
   url.searchParams.set("ulaz", "mehanika");
@@ -931,18 +943,23 @@ function setWorkerCompanyQrContext(companyCode, source = "saved") {
   if (notice) {
     notice.classList.remove("hidden");
     const strong = notice.querySelector("strong");
-    if (strong) strong.textContent = source === "qr" ? "Firma je učitana preko QR koda." : "Firma je zapamćena na ovom uređaju.";
+    if (strong) strong.textContent = source === "direct" ? "Firma i pristupni kod su učitani preko linka." : (source === "qr" ? "Firma je učitana preko QR koda." : "Firma je zapamćena na ovom uređaju.");
   }
   return true;
 }
 
 function applyWorkerCompanyContextFromUrlOrStorage() {
   const fromUrl = getWorkerCompanyCodeFromUrl();
+  const workerCodeFromUrl = getWorkerAccessCodeFromUrl();
+  if (workerCodeFromUrl) {
+    const accessInput = $("#workerAccessCode");
+    if (accessInput && !accessInput.value) accessInput.value = workerCodeFromUrl;
+  }
   if (fromUrl) {
     localStorage.setItem("swp_worker_company_code", fromUrl);
     localStorage.setItem("swp_worker_entry_mode", getWorkerEntryModeFromUrl() === "mechanic" ? "mechanic" : "worker");
     updateWorkerEntryModeUi();
-    return setWorkerCompanyQrContext(fromUrl, "qr");
+    return setWorkerCompanyQrContext(fromUrl, workerCodeFromUrl ? "direct" : "qr");
   }
   const saved = localStorage.getItem("swp_worker_company_code") || "";
   return setWorkerCompanyQrContext(saved, "saved");
@@ -2494,18 +2511,66 @@ function renderPersonItem(p) {
   const rawFullName = `${p.first_name || ""} ${p.last_name || ""}`.trim();
   const fullName = escapeHtml(formatPersonNameWithEmployeeNumber(p, rawFullName));
   const employeeNumber = getPersonEmployeeNumber(p);
+  const safeId = escapeHtml(p.id);
+  const isMechanic = canonicalPersonFunction(p.function_title || "") === "Šef mehanizacije";
   return `
-    <div class="director-table-row person-card-v1116" data-person-id="${escapeHtml(p.id)}">
+    <div class="director-table-row person-card-v1116" data-person-id="${safeId}">
       <div class="dt-cell dt-name"><strong>${fullName}</strong><small>${employeeNumber ? `Broj radnika: ${escapeHtml(employeeNumber)} · ` : ""}Pristupni kod: ${escapeHtml(p.access_code || "—")}</small></div>
       <div class="dt-cell"><span>${escapeHtml(p.function_title || "—")}</span><small>Radno mesto</small></div>
       <div class="dt-cell"><span class="dt-status dt-ok">Aktivan</span><small>${permissionCount} rubrika</small></div>
       <div class="dt-actions person-actions-v1116">
-        <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Izmeni</button>
-        <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">Deaktiviraj</button>
+        <button class="secondary worker-link-btn" type="button" onclick="copyPersonWorkerLink('${safeId}')">🔗 Kopiraj link</button>
+        <button class="secondary worker-link-btn" type="button" onclick="openPersonWorkerLink('${safeId}')">Otvori</button>
+        ${isMechanic ? `<button class="secondary worker-link-btn" type="button" onclick="copyPersonWorkerLink('${safeId}', 'mechanic')">🔧 Link šefa</button>` : ""}
+        <button class="edit-btn" type="button" onclick="editPerson('${safeId}')">✏️ Izmeni</button>
+        <button class="delete-btn" type="button" onclick="deletePerson('${safeId}')">Deaktiviraj</button>
       </div>
     </div>
   `;
 }
+
+function findDirectorPersonById(id) {
+  return (directorPeopleCache || []).find(p => String(p.id) === String(id));
+}
+
+function getCompanyCodeForWorkerLinks() {
+  return currentCompany?.company_code || currentCompany?.code || getWorkerCompanyCodeFromUrl() || "";
+}
+
+function buildPersonWorkerLink(personId, target = "worker") {
+  const person = findDirectorPersonById(personId);
+  if (!person) throw new Error("Zaposleni nije pronađen u trenutnoj listi.");
+  const companyCode = getCompanyCodeForWorkerLinks();
+  if (!companyCode) throw new Error("Nema šifre firme za pravljenje linka.");
+  if (!person.access_code) throw new Error("Zaposleni nema pristupni kod.");
+  return buildWorkerPersonalLink(companyCode, person.access_code, target);
+}
+
+window.copyPersonWorkerLink = async (personId, target = "worker") => {
+  try {
+    const person = findDirectorPersonById(personId);
+    const link = buildPersonWorkerLink(personId, target);
+    const name = `${person?.first_name || ""} ${person?.last_name || ""}`.trim() || "zaposlenog";
+    const label = target === "mechanic" ? "link za šefa mehanizacije" : "radnički link";
+    try {
+      await navigator.clipboard.writeText(link);
+      toast(`Kopiran je ${label} za: ${name}.`);
+    } catch (e) {
+      window.prompt(`Kopiraj ${label} za ${name}:`, link);
+    }
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
+
+window.openPersonWorkerLink = (personId, target = "worker") => {
+  try {
+    const link = buildPersonWorkerLink(personId, target);
+    window.open(link, "_blank", "noopener");
+  } catch (e) {
+    toast(e.message, true);
+  }
+};
 
 function renderPeopleRegisterList() {
   const list = $("#peopleList");

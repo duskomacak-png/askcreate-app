@@ -6813,3 +6813,14 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { colo
   .defect-work-card{box-shadow:none!important;border:1px solid #999!important;border-left:5px solid #333!important;background:#fff!important;color:#111!important;}
   .defect-work-card p{background:#fff!important;border:1px solid #bbb!important;color:#111!important;}
 }
+
+/* v19: Direktni link za pojedinačnog zaposlenog uz QR kod */
+.worker-link-btn {
+  font-size: 0.82rem;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+.person-actions-v1116 {
+  gap: 6px;
+  flex-wrap: wrap;
+}

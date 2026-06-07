@@ -1,4 +1,4 @@
-const CACHE_NAME = "askcreate-app-v1470";
+const CACHE_NAME = "askcreate-app-v1480";
 const APP_SHELL = [
   "./",
   "./index.html",
