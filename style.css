@@ -7457,3 +7457,13 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
     line-height:1.05 !important;
   }
 }
+
+
+/* === AskCreate v29: Dnevnik/Karnet arhiva === */
+.office-archive-inline{
+  margin-left:4px !important;
+  white-space:nowrap !important;
+}
+.office-generated-archive-card{
+  border-left:3px solid #000 !important;
+}

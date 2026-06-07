@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.56.0";
+const APP_VERSION = "1.57.0";
 
 
 let sb = null;
@@ -4009,6 +4009,151 @@ function officeBuildDailyLogData(date, site) {
 }
 
 
+
+const OFFICE_ARCHIVE_STORAGE_KEY = "askcreate_office_generated_archive_v1";
+
+function officeArchiveCompanyKey() {
+  return String(currentCompany?.id || currentCompany?.company_code || currentCompany?.code || "no_company");
+}
+
+function loadOfficeGeneratedArchive() {
+  try {
+    const all = JSON.parse(localStorage.getItem(OFFICE_ARCHIVE_STORAGE_KEY) || "{}");
+    const list = all[officeArchiveCompanyKey()] || [];
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOfficeGeneratedArchive(list = []) {
+  try {
+    const all = JSON.parse(localStorage.getItem(OFFICE_ARCHIVE_STORAGE_KEY) || "{}");
+    all[officeArchiveCompanyKey()] = Array.isArray(list) ? list : [];
+    localStorage.setItem(OFFICE_ARCHIVE_STORAGE_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.warn("Ne mogu sačuvati kancelarijsku arhivu:", e);
+  }
+}
+
+function generatedOfficeArchiveId(kind, from, to, site) {
+  return `office_${kind}_${from || ""}_${to || ""}_${normalizeSearch(site || "sva").replace(/[^a-z0-9]+/g, "_")}_${Date.now()}`;
+}
+
+function generatedOfficeArchiveLabel(item = {}) {
+  const type = item.kind === "carnet" ? "Karnet stavki" : "Dnevnik rada";
+  const period = item.from && item.to && item.from !== item.to ? `${formatDateOnlyLocal(item.from)} — ${formatDateOnlyLocal(item.to)}` : formatDateOnlyLocal(item.from || item.date || "");
+  return `${type} · ${period || "bez datuma"} · ${item.site || "Sva gradilišta"}`;
+}
+
+function archiveGeneratedOfficePreview(kind, previewId, from, to, site) {
+  const box = document.getElementById(previewId);
+  if (!box || !box.innerHTML.trim()) return toast("Prvo prikaži pregled, pa ga pošalji u arhivu.", true);
+  const label = generatedOfficeArchiveLabel({ kind, from, to, site });
+  if (!confirm(`Poslati u arhivu?\n\n${label}`)) return;
+  const list = loadOfficeGeneratedArchive();
+  const item = {
+    id: generatedOfficeArchiveId(kind, from, to, site),
+    kind,
+    from,
+    to,
+    site: site || "Sva gradilišta",
+    label,
+    html: box.innerHTML,
+    created_at: new Date().toISOString(),
+    company_name: currentCompanyExportName()
+  };
+  list.unshift(item);
+  saveOfficeGeneratedArchive(list);
+  toast("Pregled je poslat u arhivu.");
+  renderArchiveList();
+}
+
+function archiveDailyLogPreview() {
+  const date = document.getElementById("dailyLogDate")?.value || today();
+  const site = document.getElementById("dailyLogSite")?.value || "";
+  archiveGeneratedOfficePreview("daily_log", "dailyLogPreview", date, date, site);
+}
+
+function archiveCarnetPreview() {
+  const from = document.getElementById("carnetFrom")?.value || today();
+  const to = document.getElementById("carnetTo")?.value || from;
+  const site = document.getElementById("carnetSite")?.value || "";
+  archiveGeneratedOfficePreview("carnet", "carnetPreview", from, to, site);
+}
+
+function officeGeneratedArchiveHtml(item = {}) {
+  return `
+    <article class="report-row-item report-document-card archive-report-card office-generated-archive-card">
+      <div class="report-list-grid archive-list-grid">
+        <div class="report-list-date">
+          <strong>${escapeHtml(item.from || "")}</strong>
+          <small>${escapeHtml(formatDateTimeLocal(item.created_at) || "")}</small>
+        </div>
+        <div class="report-list-site">
+          <strong>${escapeHtml(item.site || "Sva gradilišta")}</strong>
+          <small>${escapeHtml(item.kind === "carnet" ? "Karnet stavki" : "Dnevnik rada")}</small>
+        </div>
+        <div class="report-list-worker">
+          <strong>${escapeHtml(item.company_name || currentCompanyExportName())}</strong>
+          <small>${escapeHtml(item.label || "")}</small>
+        </div>
+        <div class="report-list-status">
+          <span class="status-chip status-archived">Arhivirano</span>
+          <small>kancelarijski pregled</small>
+        </div>
+      </div>
+      <div class="report-card-actions no-print report-row-actions">
+        <button class="secondary compact-doc-btn" type="button" onclick="openGeneratedOfficeArchive('${escapeHtml(item.id || "")}')">Otvori</button>
+        <button class="secondary compact-doc-btn" type="button" onclick="printGeneratedOfficeArchive('${escapeHtml(item.id || "")}')">Štampaj</button>
+        <button class="delete-btn compact-doc-btn" type="button" onclick="deleteGeneratedOfficeArchive('${escapeHtml(item.id || "")}')">Obriši trajno</button>
+      </div>
+    </article>`;
+}
+
+function findGeneratedOfficeArchive(id) {
+  return loadOfficeGeneratedArchive().find(x => String(x.id) === String(id)) || null;
+}
+
+function openGeneratedOfficeArchive(id) {
+  const item = findGeneratedOfficeArchive(id);
+  if (!item) return toast("Arhivirana stavka nije pronađena.", true);
+  const title = generatedOfficeArchiveLabel(item);
+  const win = window.open("", "_blank", "width=1200,height=850");
+  if (!win) return toast("Pregledač je blokirao prozor. Dozvoli popup.", true);
+  win.document.open();
+  win.document.write(`<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;margin:18px}h1{font-size:20px;margin:0 0 10px}.office-form-titlebar{display:flex;justify-content:space-between;gap:16px;border:1px solid #999;padding:10px;margin-bottom:12px}.office-form-titlebar b{display:block;font-size:18px}.office-form-titlebar span{font-size:12px}.office-badges{display:flex;gap:6px;flex-wrap:wrap}.office-badges span{border:1px solid #999;padding:4px 6px}h4{margin:14px 0 6px}.office-table{width:100%;border-collapse:collapse;font-size:10px}.office-table th,.office-table td{border:1px solid #777;padding:5px;vertical-align:top}.office-table th{background:#eee}.muted{color:#555}.office-empty{border:1px dashed #bbb;padding:8px}</style></head><body><h1>${escapeHtml(title)}</h1>${item.html || ""}</body></html>`);
+  win.document.close();
+}
+
+function printGeneratedOfficeArchive(id) {
+  const item = findGeneratedOfficeArchive(id);
+  if (!item) return toast("Arhivirana stavka nije pronađena.", true);
+  const title = generatedOfficeArchiveLabel(item);
+  const win = window.open("", "_blank", "width=1200,height=850");
+  if (!win) return toast("Pregledač je blokirao prozor za štampu. Dozvoli popup.", true);
+  win.document.open();
+  win.document.write(`<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;margin:18px}h1{font-size:20px;margin:0 0 10px}.office-form-titlebar{display:flex;justify-content:space-between;gap:16px;border:1px solid #999;padding:10px;margin-bottom:12px}.office-form-titlebar b{display:block;font-size:18px}.office-form-titlebar span{font-size:12px}.office-badges{display:flex;gap:6px;flex-wrap:wrap}.office-badges span{border:1px solid #999;padding:4px 6px}h4{margin:14px 0 6px}.office-table{width:100%;border-collapse:collapse;font-size:10px}.office-table th,.office-table td{border:1px solid #777;padding:5px;vertical-align:top}.office-table th{background:#eee}.muted{color:#555}.office-empty{border:1px dashed #bbb;padding:8px}</style></head><body><h1>${escapeHtml(title)}</h1>${item.html || ""}<script>window.onload=function(){setTimeout(function(){window.print()},250)};<\/script></body></html>`);
+  win.document.close();
+}
+
+function deleteGeneratedOfficeArchive(id) {
+  const list = loadOfficeGeneratedArchive();
+  const item = list.find(x => String(x.id) === String(id));
+  if (!item) return toast("Arhivirana stavka nije pronađena.", true);
+  const label = generatedOfficeArchiveLabel(item);
+  if (!confirm(`Da li ste sigurni da želite trajno obrisati ovu stavku?\n\n${label}\n\nOva radnja briše stavku iz arhive na ovom uređaju i ne može se vratiti.`)) return;
+  saveOfficeGeneratedArchive(list.filter(x => String(x.id) !== String(id)));
+  toast("Arhivirana stavka je trajno obrisana.");
+  renderArchiveList();
+}
+
+window.archiveDailyLogPreview = archiveDailyLogPreview;
+window.archiveCarnetPreview = archiveCarnetPreview;
+window.openGeneratedOfficeArchive = openGeneratedOfficeArchive;
+window.printGeneratedOfficeArchive = printGeneratedOfficeArchive;
+window.deleteGeneratedOfficeArchive = deleteGeneratedOfficeArchive;
+
 function renderDailyLogPreview() {
   officeEnsureDefaultDates();
   officeFillSiteDatalists();
@@ -4023,7 +4168,7 @@ function renderDailyLogPreview() {
   box.innerHTML = `
     <div class="office-form-titlebar">
       <div><b>Dnevnik rada</b><span>${escapeHtml(formatDateOnlyLocal(date))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
-      <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.workers.length} radnika</span><span>${totalHours || 0} h</span><span>${Math.round(totalFuel * 100) / 100} L goriva</span><span>${Math.round(totalWater * 100) / 100} L vode</span></div>
+      <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.workers.length} radnika</span><span>${totalHours || 0} h</span><span>${Math.round(totalFuel * 100) / 100} L goriva</span><span>${Math.round(totalWater * 100) / 100} L vode</span><button class="secondary small-action office-archive-inline" type="button" onclick="archiveDailyLogPreview()">📦 U arhivu</button></div>
     </div>
     <section><h4>👷 Radnici i radni sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis rada"], data.workers)}</section>
     <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ početak","MTČ kraj","Ukupno MTČ","Ukupno KM","Rad"], data.machines)}</section>
@@ -4208,7 +4353,7 @@ function renderCarnetPreview() {
   box.innerHTML = `
     <div class="office-form-titlebar">
       <div><b>Karnet radnika i mehanizacije</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
-      <div class="office-badges"><span>${data.workerRows.length} radnik-redova</span><span>${totalHours || 0} h</span><span>${data.assetRows.length} sredstava</span><span>${Math.round(totalMtc * 100) / 100} MTČ</span><span>${Math.round(totalKm * 100) / 100} km</span><span>${Math.round(totalTours * 100) / 100} tura/punjenja</span><span>${Math.round(totalWater * 100) / 100} L vode</span><span>${totalLowloader} transporta</span></div>
+      <div class="office-badges"><span>${data.workerRows.length} radnik-redova</span><span>${totalHours || 0} h</span><span>${data.assetRows.length} sredstava</span><span>${Math.round(totalMtc * 100) / 100} MTČ</span><span>${Math.round(totalKm * 100) / 100} km</span><span>${Math.round(totalTours * 100) / 100} tura/punjenja</span><span>${Math.round(totalWater * 100) / 100} L vode</span><span>${totalLowloader} transporta</span><button class="secondary small-action office-archive-inline" type="button" onclick="archiveCarnetPreview()">📦 U arhivu</button></div>
     </div>
     <section><h4>📒 Karnet radnika</h4>${officeTable(["Datum","Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workerRows)}</section>
     <section><h4>🚜 Karnet mehanizacije / vozila</h4>${officeTable(["Datum","Gradilište","Tip","Broj","Sredstvo","Rukovalac/vozač","MTČ","KM","Ture","Materijal","m³","Opis/relacija"], data.assetRows)}</section>
@@ -5006,7 +5151,12 @@ function renderArchiveList() {
   const box = $("#archiveReportsList");
   if (!box) return;
   const archived = directorReportsCache.filter(isArchivedReport);
-  box.innerHTML = archived.map(archiveReportHtml).join("") || `<p class="muted">Arhiva je prazna. Kada arhiviraš izveštaj, pojaviće se ovde.</p>`;
+  const generated = loadOfficeGeneratedArchive();
+  const html = [
+    ...archived.map(archiveReportHtml),
+    ...generated.map(officeGeneratedArchiveHtml)
+  ].join("");
+  box.innerHTML = html || `<p class="muted">Arhiva je prazna. Kada arhiviraš izveštaj, dnevnik rada ili karnet, pojaviće se ovde.</p>`;
 }
 
 
@@ -6716,10 +6866,14 @@ window.archiveAllApprovedReports = async () => {
 window.deleteAllArchivedReportsPermanently = async () => {
   if (directorBulkDeleteArchiveBusy) return toast("Brisanje arhive je već u toku. Sačekaj da se završi.", true);
   const archived = directorReportsCache.filter(isArchivedReport);
-  if (!archived.length) return toast("Arhiva je prazna.", true);
-  const sample = archived.slice(0, 8).map(r => `• ${reportActionLabel(r)}`).join("\n");
-  const more = archived.length > 8 ? `\n• ... i još ${archived.length - 8}` : "";
-  if (!confirm(`Da li ste sigurni da želite trajno obrisati SVE stavke iz arhive?\n\nUkupno: ${archived.length}\n\n${sample}${more}\n\nOva radnja briše stavke iz baze i ne može se vratiti.`)) return;
+  const generated = loadOfficeGeneratedArchive();
+  const total = archived.length + generated.length;
+  if (!total) return toast("Arhiva je prazna.", true);
+  const dbSample = archived.slice(0, 5).map(r => `• ${reportActionLabel(r)}`);
+  const genSample = generated.slice(0, 5).map(item => `• ${generatedOfficeArchiveLabel(item)}`);
+  const sampleAll = [...dbSample, ...genSample].slice(0, 8).join("\n");
+  const more = total > 8 ? `\n• ... i još ${total - 8}` : "";
+  if (!confirm(`Da li ste sigurni da želite trajno obrisati SVE stavke iz arhive?\n\nUkupno: ${total}\n\n${sampleAll}${more}\n\nOva radnja briše stavke iz arhive i ne može se vratiti.`)) return;
   directorBulkDeleteArchiveBusy = true;
   try {
     for (const r of archived) {
@@ -6732,7 +6886,8 @@ window.deleteAllArchivedReportsPermanently = async () => {
       removeLocalArchivedReport(r.id);
       directorReportsCache = directorReportsCache.filter(x => String(x.id) !== String(r.id));
     }
-    toast(`Trajno obrisano iz arhive: ${archived.length}.`);
+    saveOfficeGeneratedArchive([]);
+    toast(`Trajno obrisano iz arhive: ${total}.`);
     closeReportDocumentCenter?.();
     refreshDirectorReportViewsAfterBulk();
     await loadReports({ silent: true });
