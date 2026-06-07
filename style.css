@@ -8003,21 +8003,21 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
 
 
-/* === v43: Vozač - minimalna tura, Direkcija login ostaje iz v40 === */
-#viewWorkerForm.worker-mobile-panel .tour-simple-grid{
+/* === AskCreate v43: minimalna tura za vozača, samo potrebna polja === */
+#viewWorkerForm .tour-simple-grid{
   display:grid !important;
   grid-template-columns:1fr !important;
   gap:10px !important;
 }
-#viewWorkerForm.worker-mobile-panel .tour-dynamic-fields{
+#viewWorkerForm .tour-dynamic-fields{
   margin-top:10px !important;
 }
-#viewWorkerForm.worker-mobile-panel .truck-tour-card{
+#viewWorkerForm .truck-tour-card{
   padding:12px !important;
 }
-#viewWorkerForm.worker-mobile-panel .truck-tour-card > div{
+#viewWorkerForm .truck-tour-card > div{
   margin-bottom:10px !important;
 }
-#viewWorkerForm.worker-mobile-panel .truck-tour-card > div:last-child{
+#viewWorkerForm .truck-tour-card > div:last-child{
   margin-bottom:0 !important;
 }

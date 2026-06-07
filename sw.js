@@ -1,4 +1,4 @@
-const CACHE_NAME = "askcreate-app-v1700-direkcija-ok-vozac-minimal";
+const CACHE_NAME = "askcreate-app-v1702";
 const APP_SHELL = [
   "./",
   "./index.html",
