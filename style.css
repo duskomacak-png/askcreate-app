@@ -6814,13 +6814,230 @@ body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-fuel-overview h4 { colo
   .defect-work-card p{background:#fff!important;border:1px solid #bbb!important;color:#111!important;}
 }
 
-/* v19: Direktni link za pojedinačnog zaposlenog uz QR kod */
-.worker-link-btn {
-  font-size: 0.82rem;
-  padding: 7px 10px;
-  white-space: nowrap;
+/* === AskCreate v20: Excel-style clear black/white redesign ===
+   Cilj: maksimalna čitljivost za Direkciju / Vlasnika / Direktora.
+   Belo, crno, tanki okviri, bez zaobljenja i bez mutnih/dark kartica. */
+:root{
+  --bg:#ffffff !important;
+  --bg-soft:#ffffff !important;
+  --card:#ffffff !important;
+  --text:#000000 !important;
+  --muted:#222222 !important;
+  --border:#000000 !important;
+  --border-strong:#000000 !important;
+  --green:#000000 !important;
+  --green-2:#000000 !important;
+  --green-soft:#f3f3f3 !important;
+  --yellow:#ffffff !important;
+  --yellow-border:#000000 !important;
+  --danger:#000000 !important;
+  --danger-soft:#ffffff !important;
+  --warning:#000000 !important;
+  --warning-soft:#ffffff !important;
+  --shadow:none !important;
+  --radius:0px !important;
 }
-.person-actions-v1116 {
-  gap: 6px;
-  flex-wrap: wrap;
+html,body,
+body.worker-code-only-mode,
+body.worker-field-theme,
+body.owner-dashboard-mode,
+body.mechanic-boss-mode,
+body.in-app{
+  background:#ffffff !important;
+  color:#000000 !important;
+}
+body *{
+  color:inherit;
+}
+.topbar,
+.internal-header,
+.dashboard-head,
+.card,
+.hero,
+.narrow,
+.office-table-wrap,
+.export-preview-stage,
+.export-preview-paper,
+.smart-export-card,
+.material-overview-card,
+.owner-dashboard-card,
+.owner-public-card,
+.owner-panel-head,
+.owner-only-panel,
+.site-boss-overview,
+.test-workspace-card,
+.mechanic-ops-card,
+.company-qr-card,
+.company-qr-dialog,
+.preview-stage,
+.preview-desktop,
+.preview-phone,
+.preview-topbar,
+.preview-body,
+.worker-install-box,
+.worker-company-qr-notice,
+.admin-company-card,
+.company-card,
+.person-card,
+.asset-card,
+.report-card,
+.stabilization-card,
+.kpi-card,
+.business-kpi-card,
+.quick-action,
+.audit-person-card,
+.internal-summary-card,
+.summary-card,
+.info-card,
+.metric-card,
+.stat-card,
+.owner-kpi,
+.site-boss-metrics span,
+.site-boss-warning,
+.export-preview-summary,
+.export-preview-stamp,
+.office-table,
+.tab-panel,
+.view,
+.modal-card,
+.dialog-card{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+}
+.topbar,
+.internal-header{
+  position:sticky;
+  top:0;
+  border-bottom:1px solid #000000 !important;
+}
+.topbar h1,.topbar p,.topbar .brand-kicker,
+.internal-header strong,.internal-header small,
+.internal-brand-callout,.internal-brand-callout strong,.internal-brand-callout span,
+.preview-topbar h3,.preview-topbar p,
+.owner-kpi b,.owner-kpi span,
+.site-boss-overview h4,
+.site-boss-warning,
+.worker-install-box strong,
+.worker-install-box span,
+.worker-company-qr-notice strong,
+.worker-company-qr-notice span,
+.kpi-icon,
+.preview-worker-card label,
+.preview-note,
+.preview-kpis b,
+.preview-kpis strong,
+.preview-kpis small,
+.asset-consumption-note,
+.consumption-status-ok,
+.consumption-status-warn,
+.consumption-status-bad{
+  color:#000000 !important;
+}
+.owner-dashboard-mode,
+.owner-panel-head,
+.owner-public-card,
+.site-boss-overview,
+.worker-install-box,
+.worker-company-qr-notice,
+body.worker-code-only-mode #viewWorkerCodeEntry,
+body.worker-field-theme #viewWorkerForm,
+body.worker-field-theme #viewWorkerForm .card,
+body.worker-field-theme #viewWorkerForm .worker-section-card,
+body.worker-code-only-mode .card,
+body.worker-code-only-mode .worker-code-hero,
+body.mechanic-boss-mode #viewMechanicBossPanel .mechanic-ops-card,
+body.mechanic-boss-mode #viewMechanicBossPanel .owner-kpi{
+  background:#ffffff !important;
+  color:#000000 !important;
+}
+button,
+.primary,.secondary,.ghost,.back,.big-btn,.small-btn,.edit-btn,.delete-btn,.danger-btn,.danger-small,.archive-btn,.archive-report-btn,.hard-delete-report-btn,.btn-warning,.remove-entry,
+a.primary,a.secondary,a.ghost{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+button:hover,
+.primary:hover,.secondary:hover,.ghost:hover,.back:hover,.big-btn:hover,.small-btn:hover,.edit-btn:hover,.delete-btn:hover,.danger-btn:hover,.danger-small:hover,.archive-btn:hover,.archive-report-btn:hover,.hard-delete-report-btn:hover,.btn-warning:hover,.remove-entry:hover{
+  background:#f0f0f0 !important;
+  color:#000000 !important;
+}
+input,select,textarea,
+.unit-input input,
+.business-searchbar input,
+.preview-worker-card input,
+.preview-worker-card select,
+.preview-worker-card textarea{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+input::placeholder,textarea::placeholder{color:#555555 !important;}
+label,small,p,span,div,b,strong,h1,h2,h3,h4,h5,th,td,li{
+  color:#000000;
+}
+.table-wrap,.office-table-wrap,.export-preview-table-wrap{
+  border:1px solid #000000 !important;
+  border-radius:0 !important;
+}
+table, .office-table, .export-preview-table{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border-collapse:collapse !important;
+}
+th, td,
+.office-table th,.office-table td,
+.export-preview-table th,.export-preview-table td{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+}
+.export-preview-table th,
+.office-table th,
+#viewDirectorDashboard th{
+  background:#f2f2f2 !important;
+  color:#000000 !important;
+}
+.kpi-icon,
+.status-badge,
+.badge,
+.quick-status,
+.summary-chip,
+.export-preview-filters span{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  border-radius:0 !important;
+}
+body[class*="company-brand-"] .director-logo-box,
+body[class*="company-brand-"] .company-brand-badge,
+body[class*="company-brand-"] .director-stat-icon,
+body[class*="company-brand-"] .director-action,
+body[class*="company-brand-"] .director-kpi-card,
+body[class*="company-brand-"] .director-cta,
+body[class*="company-brand-"] .director-panel{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  box-shadow:none !important;
+}
+body[class*="company-brand-"] .primary,
+body[class*="company-brand-"] .secondary,
+body[class*="company-brand-"] .ghost,
+body[class*="company-brand-"] input[type="radio"]{
+  accent-color:#000000 !important;
+}
+canvas, img, iframe{border-radius:0 !important;}
+@media (max-width:760px){
+  .shell{padding:10px !important;}
+  .topbar,.internal-header{padding:8px 10px !important;}
+  .card,.dashboard-head,.owner-only-panel{padding:12px !important;}
 }
