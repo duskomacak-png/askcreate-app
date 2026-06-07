@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.72.0";
+const APP_VERSION = "1.73.0";
 
 
 let sb = null;
@@ -3874,11 +3874,15 @@ function vehicleTourOfficeRows(v = {}, reportSite = "") {
   const kmTotal = officeVehicleKmTotal(v) || v.km_total || decimalDiffText(v.km_start, v.km_end) || "";
   const out = [];
 
-  const pushRow = (siteName, action, item, routeText, countAsCompanyTotal = true) => {
+  const pushRow = (siteName, status, item, routeText, relatedSite = "", countAsCompanyTotal = true) => {
     const tours = item.tours || item.tour_count || "";
     const m3 = officeVehicleTourCapacityM3(v.capacity || v.vehicle_capacity || "", tours);
+    const material = item.material || item.material_name || "";
     out.push({
       site_name: siteName || reportSite || "—",
+      status: status || "Prevoz",
+      action: status || "Prevoz",
+      related_site: relatedSite || "",
       asset_code: assetCode,
       vehicle: baseVehicle,
       registration: v.registration || "",
@@ -3887,9 +3891,8 @@ function vehicleTourOfficeRows(v = {}, reportSite = "") {
       km_end: v.km_end || "",
       km_total: kmTotal,
       tours,
-      material: item.material || item.material_name || "",
+      material,
       m3,
-      action,
       route: routeText || item.note || "",
       note: item.note || "",
       count_company_total: countAsCompanyTotal
@@ -3903,29 +3906,32 @@ function vehicleTourOfficeRows(v = {}, reportSite = "") {
         const from = item.from_site || item.load_location || "";
         const to = item.to_site || item.unload_location || "";
         const route = `${from || "—"} → ${to || "—"}`;
-        pushRow(from, "izlaz ka " + (to || "drugom gradilištu"), item, route, true);
-        pushRow(to, "ulaz iz " + (from || "drugog gradilišta"), item, route, false);
+
+        // Direkcija i šefovi moraju videti značenje za svako gradilište:
+        // polazno gradilište = IZVOZ, odredišno gradilište = UVOZ.
+        pushRow(from, "IZVOZ", item, route, to || "drugo gradilište", true);
+        pushRow(to, "UVOZ", item, route, from || "drugo gradilište", false);
       } else if (type === "landfill") {
         const from = item.from_site || item.site_name || item.site || "";
         const landfill = item.landfill || item.unload_location || "deponija";
-        pushRow(from, "odvoz na deponiju", item, `${from || "—"} → ${landfill}`, true);
+        pushRow(from, "IZVOZ NA DEPONIJU", item, `${from || "—"} → ${landfill}`, landfill, true);
       } else if (type === "external_in") {
         const to = item.to_site || item.site_name || item.unload_location || "";
         const src = item.external_source || item.load_location || "spolja";
-        pushRow(to, "ulaz spolja", item, `${src} → ${to || "—"}`, true);
+        pushRow(to, "UVOZ", item, `${src} → ${to || "—"}`, src, true);
       } else {
         const siteName = item.site_name || item.site || reportSite;
-        pushRow(siteName, "lokal u krugu gradilišta", item, `${siteName || "—"} · lokal`, true);
+        pushRow(siteName, "LOKAL", item, `${siteName || "—"} · lokal`, siteName || "", true);
       }
     });
     return out;
   }
 
   // Stari izveštaji bez tour_items ostaju kompatibilni.
-  pushRow(officeEntrySiteName(v, reportSite), officeVehicleMaterialAction(v) || "prevoz", {
+  pushRow(officeEntrySiteName(v, reportSite), officeVehicleMaterialAction(v) || "PREVOZ", {
     tours: v.tours || "",
     material: officeVehicleMaterialName(v)
-  }, officeVehicleRouteText(v), true);
+  }, officeVehicleRouteText(v), "", true);
   return out;
 }
 
@@ -3990,6 +3996,9 @@ function officeBuildDailyLogData(date, site) {
       rows.forEach(row => {
         vehicles.push([
           row.site_name,
+          row.status || row.action || "",
+          row.related_site || "",
+          row.material || "",
           row.asset_code,
           row.vehicle || d.vehicle || "",
           row.registration || "",
@@ -4003,12 +4012,12 @@ function officeBuildDailyLogData(date, site) {
         if (row.material || row.tours) {
           materials.push([
             row.site_name,
-            row.action || "prevoz",
+            row.status || row.action || "prevoz",
             row.material || "Materijal iz ture",
             row.tours || "",
             row.m3 || "",
             row.m3 ? "m³" : "",
-            row.route || row.note || ""
+            row.related_site ? `${row.status || row.action || ""}: ${row.related_site} · ${row.route || ""}` : (row.route || row.note || "")
           ]);
         }
         if (!workerRows.length && !d.hours) officePushDailySyntheticWorker(workers, syntheticDailyWorkers, row.site_name, r, "Vožnja / ture", "");
@@ -4335,7 +4344,7 @@ function renderDailyLogPreview() {
     </div>
     <section><h4>👷 Radnici i radni sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis rada"], data.workers)}</section>
     <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ početak","MTČ kraj","Ukupno MTČ","Ukupno KM","Rad"], data.machines)}</section>
-    <section><h4>🚚 Vozila / kamioni</h4>${officeTable(["Gradilište","Broj","Vozilo","Registracija","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
+    <section><h4>🚚 Vozila / kamioni</h4>${officeTable(["Gradilište","Status","Povezano sa","Materijal","Broj","Vozilo","Registracija","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
     <section><h4>🚛 Labudica / transport mašine</h4>${officeTable(["Gradilište","Tablice","Prevezena mašina","Vozač","Od","Do","KM poč.","KM kraj","Ukupno KM","Napomena"], data.lowloaders || [])}</section>
     <section><h4>💧 Cisterna za vodu</h4>${officeTable(["Gradilište","Broj","Cisterna","Vozač","KM poč.","KM kraj","Ukupno KM","Litara vode","Punjenja","Punjenje","Istovar/prskanje","Namena","Napomena"], data.waters || [])}</section>
     <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj","Sredstvo","L","KM","MTČ","Sipao","Primio","Izvor"], data.fuels)}</section>
@@ -4357,10 +4366,10 @@ function siteBossMetricSet(data = null, loadingText = "—") {
   }
   const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
   const totalMtc = data.machines.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
-  const totalKm = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(decimalDiffText(r[5], r[6])) + parseDecimalInput(r[6] && !r[5] ? r[6] : 0), 0);
+  const totalKm = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(decimalDiffText(r[8], r[9])) + parseDecimalInput(r[9] && !r[8] ? r[9] : 0), 0);
   const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
   const totalM3 = data.materials.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0)
-    + data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[9]), 0);
+    + data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[12]), 0);
   box.innerHTML = `
     <span>Izveštaji: ${data.reports.length}</span>
     <span>Radnici: ${data.workers.length}${totalHours ? ` · ${Math.round(totalHours * 100) / 100} h` : ""}</span>
@@ -4385,7 +4394,7 @@ function siteBossOverviewSummaryText(data = siteBossOverviewCache, date = $("#si
   const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
   const totalMtc = data.machines.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
   const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
-  const totalTours = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[8]), 0);
+  const totalTours = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[11]), 0);
   const parts = [];
   parts.push(`Dana ${formatDateOnlyLocal(date) || date} na gradilištu ${site || "izabrano gradilište"} evidentirano je ${data.workers.length} radničkih stavki${totalHours ? ` sa ukupno ${Math.round(totalHours * 100) / 100} sati` : ""}.`);
   if (data.machines.length) parts.push(`Angažovano je ${data.machines.length} mašinskih stavki${totalMtc ? ` sa ukupno ${Math.round(totalMtc * 100) / 100} MTČ` : ""}.`);
@@ -4409,7 +4418,7 @@ function renderSiteBossOverview(data, date, site) {
   box.innerHTML = header + `
     <section><h4>👷 Radnici i sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workers)}</section>
     <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ poč.","MTČ kraj","Ukupno MTČ","KM","Rad"], data.machines)}</section>
-    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Vozilo","Reg.","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
+    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Status","Povezano sa","Materijal","Broj","Vozilo","Reg.","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
     <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], data.fuels)}</section>
     <section><h4>📦 Materijal</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
     <section><h4>📊 Zbir tura po materijalu</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture ukupno","m³ ukupno","Jed."], officeVehicleMaterialSummaryRows(data.materials))}</section>
@@ -4482,7 +4491,7 @@ function officeBuildCarnetData(from, to, site) {
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
       const rows = vehicleTourOfficeRows(v, reportSite).filter(row => vehicleTourMatchesFilter(row, site));
       rows.forEach(row => {
-        assetRows.push([date, row.site_name, "Vozilo", row.asset_code || "", row.vehicle || d.vehicle || "", reportPerson, "", row.km_total || "", row.tours || "", row.material || "", row.m3 || "", row.action ? `${row.action} · ${row.route || ""}` : (row.route || "")]);
+        assetRows.push([date, row.site_name, "Vozilo", row.asset_code || "", row.vehicle || d.vehicle || "", reportPerson, "", row.km_total || "", row.tours || "", row.material || "", row.m3 || "", `${row.status || row.action || ""}${row.related_site ? " · " + row.related_site : ""}${row.route ? " · " + row.route : ""}`]);
         if (!workerRowsRaw.length && !d.hours) officePushSyntheticWorker(workerRows, syntheticWorkers, date, row.site_name, r, "Vožnja / ture", "");
       });
     });
