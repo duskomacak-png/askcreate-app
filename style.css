@@ -8001,23 +8001,3 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 /* v40 simplified worker tours */
 #viewWorkerForm.worker-mobile-panel .tour-count-box{display:grid !important;grid-template-columns:1fr !important;gap:10px !important;}
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
-
-
-/* === AskCreate v43: minimalna tura za vozača, samo potrebna polja === */
-#viewWorkerForm .tour-simple-grid{
-  display:grid !important;
-  grid-template-columns:1fr !important;
-  gap:10px !important;
-}
-#viewWorkerForm .tour-dynamic-fields{
-  margin-top:10px !important;
-}
-#viewWorkerForm .truck-tour-card{
-  padding:12px !important;
-}
-#viewWorkerForm .truck-tour-card > div{
-  margin-bottom:10px !important;
-}
-#viewWorkerForm .truck-tour-card > div:last-child{
-  margin-bottom:0 !important;
-}
