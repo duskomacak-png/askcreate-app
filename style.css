@@ -7550,3 +7550,107 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm #workerLogoutBtn{
   min-width:170px !important;
 }
+
+
+/* === AskCreate v36: radnik mobilno kompaktno i čitljivo === */
+#viewWorkerForm .worker-simple-top label,
+#viewWorkerForm .worker-module-chooser-simple label{
+  color:#000 !important;
+  opacity:1 !important;
+}
+
+#viewWorkerForm .dyn-section > h4,
+#viewWorkerForm .dyn-section > p.hint,
+#viewWorkerForm .dyn-section > p.field-hint,
+#viewWorkerForm .truck-tour-explain,
+#viewWorkerForm .entry-card .field-hint{
+  display:none !important;
+}
+
+#viewWorkerForm .dyn-section label,
+#viewWorkerForm .entry-card label,
+#viewWorkerForm .entry-card-head strong,
+#viewWorkerForm .dyn-section h5,
+#viewWorkerForm .dyn-section h6,
+#viewWorkerForm .dyn-section .asset-smart-result,
+#viewWorkerForm .dyn-section .hint,
+#viewWorkerForm .truck-summary-line,
+#viewWorkerForm .truck-summary-line b,
+#viewWorkerForm .truck-summary-line span{
+  color:#f2f5fb !important;
+  opacity:1 !important;
+}
+#viewWorkerForm .dyn-section .asset-smart-result{
+  color:#d7f0d9 !important;
+  font-size:13px !important;
+}
+#viewWorkerForm .dyn-section input::placeholder,
+#viewWorkerForm .dyn-section textarea::placeholder{
+  color:#b9c6dd !important;
+  opacity:1 !important;
+}
+#viewWorkerForm .dyn-section select,
+#viewWorkerForm .dyn-section input,
+#viewWorkerForm .dyn-section textarea{
+  font-size:17px !important;
+}
+#viewWorkerForm .dyn-section .remove-entry,
+#viewWorkerForm .dyn-section .secondary,
+#viewWorkerForm .dyn-section .primary,
+#viewWorkerForm .dyn-section button{
+  padding:12px 14px !important;
+}
+#viewWorkerForm .dyn-section,
+#viewWorkerForm .entry-card{
+  margin-bottom:12px !important;
+}
+#viewWorkerForm .entry-card{
+  padding:14px !important;
+}
+#viewWorkerForm .entry-card-head{
+  margin-bottom:10px !important;
+}
+#viewWorkerForm .truck-summary-line{
+  margin-top:10px !important;
+  padding:10px 12px !important;
+}
+#viewWorkerForm .v-tour-items,
+#viewWorkerForm .entry-list{
+  gap:10px !important;
+}
+#viewWorkerForm .vehicle-tour-row{
+  padding:12px !important;
+}
+#viewWorkerForm .truck-km-box{
+  gap:10px !important;
+}
+#viewWorkerForm .worker-module-chooser-simple{
+  padding:0 !important;
+  margin-bottom:10px !important;
+}
+#viewWorkerForm #normalWorkerFormCard{
+  padding-top:14px !important;
+}
+#viewWorkerForm #normalWorkerFormCard > h3,
+#viewWorkerForm #normalWorkerFormCard > p.hint,
+#viewWorkerForm #wrModuleHint{
+  display:none !important;
+}
+
+@media (max-width: 640px){
+  #viewWorkerForm .dashboard-head{padding:16px !important;}
+  #viewWorkerForm .dashboard-head h2{font-size:24px !important; line-height:1.15 !important;}
+  #viewWorkerForm .dashboard-head p{font-size:16px !important;}
+  #viewWorkerForm .dyn-section{padding:14px !important;}
+  #viewWorkerForm .entry-card{padding:12px !important;}
+  #viewWorkerForm .row,
+  #viewWorkerForm .compact-row,
+  #viewWorkerForm .truck-km-box{gap:8px !important;}
+  #viewWorkerForm .compact-row > *,
+  #viewWorkerForm .row > *{min-width:0 !important;}
+  #viewWorkerForm .secondary.small-btn,
+  #viewWorkerForm .secondary.small-action,
+  #viewWorkerForm .remove-entry{
+    width:100% !important;
+  }
+}

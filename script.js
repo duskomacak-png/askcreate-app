@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.63.0";
+const APP_VERSION = "1.64.0";
 
 
 let sb = null;
@@ -7798,7 +7798,7 @@ function updateVehicleSmartResult(entryEl, asset, manualValue) {
     return;
   }
   result.className = "asset-smart-result v-picked";
-  result.textContent = "Upiši broj vozila, tablice ili naziv ako nije na listi.";
+  result.textContent = "Pronadjeno vozilo će se pokazati ispod.";
 }
 
 function refreshOneVehicleSelect(entryEl) {
@@ -8069,7 +8069,7 @@ function addVehicleEntry(values = {}) {
 
     <label>Vozilo / interni broj</label>
     <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
-    <div class="asset-smart-result v-picked">Upiši broj vozila, tablice ili naziv ako nije na listi.</div>
+    <div class="asset-smart-result v-picked">Pronadjeno vozilo će se pokazati ispod.</div>
     <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Uprave</button>
 
     <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
@@ -8079,7 +8079,7 @@ function addVehicleEntry(values = {}) {
       <div>
         <label>Početna kilometraža</label>
         <input class="v-km-start" inputmode="decimal" readonly value="${escapeHtml(values.km_start || values.start || values.last_km || "")}" placeholder="automatski / iz prethodnog stanja" />
-        <p class="field-hint">Početna km se ne menja ručno. Ako je pogrešna, Direkcija vraća izveštaj na ispravku.</p>
+        <p class="field-hint"></p>
       </div>
       <div>
         <label>Završna kilometraža</label>
@@ -8089,7 +8089,7 @@ function addVehicleEntry(values = {}) {
 
     <div class="truck-tour-explain">
       <b>Ture i materijal</b>
-      <span>Dodaj turu, materijal i broj tura.</span>
+      <span></span>
     </div>
 
     <div class="v-tour-items entry-list"></div>
@@ -10256,7 +10256,7 @@ function addFuelEntry(values = {}) {
     <label>Ko je sipao</label>
     <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
 
-    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. Primalac goriva je automatski prijavljeni zaposleni koji šalje izveštaj.</p>
+    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. </p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
