@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.66.0";
+const APP_VERSION = "1.67.0";
 
 
 let sb = null;
@@ -7974,10 +7974,10 @@ function addVehicleTourRow(vehicleCard, values = {}) {
   const type = values.tour_type || values.type || values.direction_type || (values.direction === "interno" ? "site_to_site" : values.direction === "odvoz" ? "landfill" : "local");
   const material = values.material || values.material_name || "";
   const div = document.createElement("div");
-  div.className = "vehicle-tour-row";
+  div.className = "vehicle-tour-row truck-tour-card";
   div.innerHTML = `
     <div class="entry-card-head vehicle-tour-head">
-      <strong>Tura stavka ${idx}</strong>
+      <strong>Tura ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
@@ -8071,7 +8071,7 @@ function addVehicleEntry(values = {}) {
   const selectedName = values.name || values.vehicle || values.asset_id || "";
   const initialSearch = values.asset_code || values.vehicle_code || values.code || values.custom || values.vehicle_custom || selectedName || values.registration || "";
   const div = document.createElement("div");
-  div.className = "entry-card vehicle-entry truck-daily-entry";
+  div.className = "entry-card vehicle-entry truck-daily-entry worker-compact-card";
   div.innerHTML = `
     <div class="entry-card-head">
       <strong>Vozilo / kamion ${idx}</strong>
