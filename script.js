@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.69.0";
+const APP_VERSION = "1.70.1";
 
 
 let sb = null;
@@ -7963,14 +7963,16 @@ function truckTourTypeLabel(value = "") {
   if (v === "local") return "Lokal u krugu gradilišta";
   if (v === "site_to_site") return "Gradilište → gradilište";
   if (v === "landfill") return "Odvoz na deponiju";
-  if (v === "external_in") return "Dovoz spolja / dobavljač";
+  if (v === "external_in") return "Gradilište → gradilište";
   return v || "—";
 }
 
 function renderVehicleTourDynamicFields(row, values = {}) {
   const box = row.querySelector(".tour-dynamic-fields");
   if (!box) return;
+
   const type = row.querySelector(".tour-type")?.value || "local";
+
   if (type === "site_to_site") {
     box.innerHTML = `
       <div>
@@ -8001,19 +8003,25 @@ function renderVehicleTourDynamicFields(row, values = {}) {
       </div>
     `;
   }
-  box.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(row.closest(".vehicle-entry"))));
-  box.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(row.closest(".vehicle-entry"))));
+
+  box.querySelectorAll("input, select").forEach(el => {
+    el.addEventListener("input", () => updateVehicleCubic(row.closest(".vehicle-entry")));
+    el.addEventListener("change", () => updateVehicleCubic(row.closest(".vehicle-entry")));
+  });
 }
 
 function addVehicleTourRow(vehicleCard, values = {}) {
   const list = vehicleCard?.querySelector(".v-tour-items");
   if (!list) return;
+
   const idx = list.querySelectorAll(".vehicle-tour-row").length + 1;
   const rawType = values.tour_type || values.type || values.direction_type || (values.direction === "interno" ? "site_to_site" : values.direction === "odvoz" ? "landfill" : "local");
   const type = rawType === "external_in" ? "site_to_site" : rawType;
   const material = values.material || values.material_name || "";
+
   const div = document.createElement("div");
   div.className = "vehicle-tour-row truck-tour-card";
+
   div.innerHTML = `
     <div class="entry-card-head vehicle-tour-head">
       <strong>Tura ${idx}</strong>
@@ -8059,8 +8067,10 @@ function addVehicleTourRow(vehicleCard, values = {}) {
     updateVehicleCubic(vehicleCard);
   });
 
-  div.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(vehicleCard)));
-  div.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(vehicleCard)));
+  div.querySelectorAll("input, select").forEach(el => {
+    el.addEventListener("input", () => updateVehicleCubic(vehicleCard));
+    el.addEventListener("change", () => updateVehicleCubic(vehicleCard));
+  });
 
   list.appendChild(div);
   renderVehicleTourDynamicFields(div, values);
@@ -8073,6 +8083,7 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
     const type = row.querySelector(".tour-type")?.value || "local";
     const material = row.querySelector(".tour-material")?.value.trim() || "";
     const tours = row.querySelector(".tour-count")?.value.trim() || "";
+
     const base = {
       no: idx + 1,
       tour_type: type,
