@@ -7041,3 +7041,167 @@ canvas, img, iframe{border-radius:0 !important;}
   .topbar,.internal-header{padding:8px 10px !important;}
   .card,.dashboard-head,.owner-only-panel{padding:12px !important;}
 }
+
+/* === AskCreate v21: vlasnik/direktor pregled čitkiji + kvarovi po statusu === */
+.owner-titlebar{margin-bottom:14px;}
+.owner-kpi-grid{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important;
+  gap:10px !important;
+  margin:12px 0 18px !important;
+}
+.owner-kpi{
+  min-height:84px !important;
+  padding:10px 12px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:space-between !important;
+  align-items:flex-start !important;
+  background:#fff !important;
+  border:1px solid #000 !important;
+  border-radius:0 !important;
+}
+.owner-kpi b{
+  display:block !important;
+  font-size:30px !important;
+  line-height:1 !important;
+  font-weight:900 !important;
+  color:#000 !important;
+  margin:0 0 8px 0 !important;
+}
+.owner-kpi span{
+  display:block !important;
+  font-size:14px !important;
+  line-height:1.25 !important;
+  font-weight:700 !important;
+  color:#000 !important;
+  opacity:1 !important;
+}
+.owner-kpi-status b{font-size:26px !important;}
+.owner-kpi-grid-defects{margin-top:8px !important;}
+.owner-panel-head,
+.owner-only-panel .card,
+.owner-only-panel .site-boss-warning,
+#viewOwnerDashboardPanel .card,
+#viewOwnerDashboardPanel .owner-public-card{
+  background:#fff !important;
+  color:#000 !important;
+  border:1px solid #000 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+#viewOwnerDashboardPanel h2,
+#viewOwnerDashboardPanel h3,
+#viewOwnerDashboardPanel h4,
+#viewOwnerDashboardPanel p,
+#viewOwnerDashboardPanel label,
+#viewOwnerDashboardPanel small,
+#viewOwnerDashboardPanel span,
+#viewOwnerDashboardPanel b,
+#viewOwnerDashboardPanel strong,
+#viewOwnerDashboardPanel .muted{
+  color:#000 !important;
+  opacity:1 !important;
+}
+#viewOwnerDashboardPanel .office-badges span{
+  background:#fff !important;
+  color:#000 !important;
+  border:1px solid #000 !important;
+  border-radius:0 !important;
+}
+#viewOwnerDashboardPanel .office-form-titlebar,
+#viewOwnerDashboardPanel section{
+  margin-bottom:14px !important;
+}
+#viewOwnerDashboardPanel .office-table-wrap{margin-top:8px !important;}
+#viewOwnerDashboardPanel .office-table td,
+#viewOwnerDashboardPanel .office-table th{font-size:14px !important;}
+#viewOwnerDashboardPanel .secondary,
+#viewOwnerDashboardPanel .primary,
+#viewOwnerDashboardPanel .ghost{
+  background:#fff !important;
+  color:#000 !important;
+  border:1px solid #000 !important;
+}
+
+/* === AskCreate v21: vlasnik/direktor pregled čitkiji + kvarovi po statusu === */
+.owner-titlebar{margin-bottom:14px;}
+.owner-kpi-grid{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important;
+  gap:10px !important;
+  margin:12px 0 18px !important;
+}
+.owner-kpi{
+  min-height:84px !important;
+  padding:10px 12px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:space-between !important;
+  align-items:flex-start !important;
+  background:#fff !important;
+  border:1px solid #000 !important;
+  border-radius:0 !important;
+}
+.owner-kpi b{
+  display:block !important;
+  font-size:30px !important;
+  line-height:1 !important;
+  font-weight:900 !important;
+  color:#000 !important;
+  margin:0 0 8px 0 !important;
+}
+.owner-kpi span{
+  display:block !important;
+  font-size:14px !important;
+  line-height:1.25 !important;
+  font-weight:700 !important;
+  color:#000 !important;
+  opacity:1 !important;
+}
+.owner-kpi-status b{font-size:26px !important;}
+.owner-kpi-grid-defects{margin-top:8px !important;}
+.owner-panel-head,
+.owner-only-panel .card,
+.owner-only-panel .site-boss-warning,
+#viewOwnerDashboardPanel .card,
+#viewOwnerDashboardPanel .owner-public-card{
+  background:#fff !important;
+  color:#000 !important;
+  border:1px solid #000 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+#viewOwnerDashboardPanel h2,
+#viewOwnerDashboardPanel h3,
+#viewOwnerDashboardPanel h4,
+#viewOwnerDashboardPanel p,
+#viewOwnerDashboardPanel label,
+#viewOwnerDashboardPanel small,
+#viewOwnerDashboardPanel span,
+#viewOwnerDashboardPanel b,
+#viewOwnerDashboardPanel strong,
+#viewOwnerDashboardPanel .muted{
+  color:#000 !important;
+  opacity:1 !important;
+}
+#viewOwnerDashboardPanel .office-badges span{
+  background:#fff !important;
+  color:#000 !important;
+  border:1px solid #000 !important;
+  border-radius:0 !important;
+}
+#viewOwnerDashboardPanel .office-form-titlebar,
+#viewOwnerDashboardPanel section{
+  margin-bottom:14px !important;
+}
+#viewOwnerDashboardPanel .office-table-wrap{margin-top:8px !important;}
+#viewOwnerDashboardPanel .office-table td,
+#viewOwnerDashboardPanel .office-table th{font-size:14px !important;}
+#viewOwnerDashboardPanel .secondary,
+#viewOwnerDashboardPanel .primary,
+#viewOwnerDashboardPanel .ghost{
+  background:#fff !important;
+  color:#000 !important;
+  border:1px solid #000 !important;
+}

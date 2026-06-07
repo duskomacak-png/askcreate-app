@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.48.0";
+const APP_VERSION = "1.49.0";
 
 
 let sb = null;
@@ -4670,6 +4670,19 @@ function downloadMaterialOverviewCsv() {
 
 function buildOwnerDashboardData(from, to, site = "") {
   const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSiteDeep(r, from, to, site));
+  const allMatchingReports = (directorReportsCache || []).filter(r => {
+    const date = officeReportDate(r);
+    if (from && date && date < from) return false;
+    if (to && date && date > to) return false;
+    const siteQ = normalizeSearch(site || "");
+    if (!siteQ) return true;
+    const d = r.data || {};
+    const reportSite = officeReportSite(r) || "";
+    if (normalizeSearch(reportSite).includes(siteQ)) return true;
+    if (normalizeSearch(d.defect_site_name || d.site_name || "").includes(siteQ)) return true;
+    const pools = [d.machines, d.vehicles, d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries, d.material_entries, d.material_movements, d.materials];
+    return pools.some(arr => Array.isArray(arr) && arr.some(item => officeEntryMatchesSite(item, reportSite, site)));
+  });
   let hours = 0, mtc = 0, km = 0, tours = 0, fuel = 0, water = 0, waterLoads = 0, lowloaderKm = 0, lowloaderCount = 0;
   reports.forEach(r => {
     const d = r.data || {};
@@ -4689,8 +4702,34 @@ function buildOwnerDashboardData(from, to, site = "") {
   const materialM3 = materials.filter(r => String(r.unit || "").toLowerCase().includes("m")).reduce((s, r) => s + Number(r.quantity || 0), 0);
   const fuelRows = buildFuelConsumptionRows(from, to).filter(row => !site || [...row.sites].some(s => normalizeSearch(s).includes(normalizeSearch(site))));
   const badFuel = fuelRows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad").length;
-  const defectCount = reports.filter(hasDefectData).length;
-  return { reports, hours, mtc, km, tours, fuel, water, waterLoads, lowloaderKm, lowloaderCount, materials, materialM3, fuelRows, badFuel, defectCount };
+
+  const defectReports = allMatchingReports.filter(hasDefectData);
+  const defectStatusCounts = { novo: 0, aktivno: 0, reseno: 0, arhivirano: 0 };
+  const defectRows = defectReports.map(r => {
+    const archived = isArchivedReport(r);
+    const group = archived ? "archived" : mechanicStatusGroup(r);
+    if (archived) defectStatusCounts.arhivirano += 1;
+    else if (group === "resolved") defectStatusCounts.reseno += 1;
+    else if (group === "active") defectStatusCounts.aktivno += 1;
+    else defectStatusCounts.novo += 1;
+    const d = r.data || {};
+    const lastChange = d.defect_resolved_at || d.defect_repair_started_at || d.defect_received_at || r.updated_at || "";
+    return {
+      sortTime: mechanicDefectTime(r) || lastChange || r.created_at || "",
+      row: [
+        mechanicDefectSiteName(r),
+        mechanicDefectAssetName(r),
+        mechanicDefectText(r),
+        mechanicDefectUrgency(r),
+        archived ? "Arhivirano" : mechanicStatusLabel(r),
+        formatDateTimeLocal(mechanicDefectTime(r) || ""),
+        formatDateTimeLocal(lastChange || "")
+      ]
+    };
+  }).sort((a, b) => String(b.sortTime).localeCompare(String(a.sortTime)));
+
+  const defectCount = defectReports.length;
+  return { reports, hours, mtc, km, tours, fuel, water, waterLoads, lowloaderKm, lowloaderCount, materials, materialM3, fuelRows, badFuel, defectCount, defectRows, defectStatusCounts };
 }
 
 function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
@@ -4707,21 +4746,33 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
     const expected = expectedFuelForRow(row);
     return [row.label, formatAssetFuelNorm(row.asset) || "Nema norme", expected ? `${round2(expected)} L` : "—", row.liters ? `${round2(row.liters)} L` : "—", expected ? `${round2(row.liters - expected)} L` : "—", fuelConsumptionStatus(row).label];
   });
+  const defectStatus = data.defectStatusCounts || { novo: 0, aktivno: 0, reseno: 0, arhivirano: 0 };
+  const defectTableRows = (data.defectRows || []).slice(0, 20).map(item => item.row);
   box.innerHTML = `
-    <div class="office-form-titlebar">
+    <div class="office-form-titlebar owner-titlebar">
       <div><b>Vlasnik/Direktor pregled firme</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
       <div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.defectCount} kvarova</span><span>${data.badFuel} povećane potrošnje</span></div>
     </div>
     <div class="owner-kpi-grid">
-      <div class="owner-kpi"><b>${round2(data.hours)} h</b><span>radni sati</span></div>
-      <div class="owner-kpi"><b>${round2(data.fuel)} L</b><span>gorivo</span></div>
-      <div class="owner-kpi"><b>${round2(data.mtc)} MTČ</b><span>rad mašina</span></div>
-      <div class="owner-kpi"><b>${round2(data.km)} km</b><span>kilometraža</span></div>
-      <div class="owner-kpi"><b>${round2(data.tours)}</b><span>ture</span></div>
-      <div class="owner-kpi"><b>${round2(data.materialM3)} m³</b><span>materijal m³</span></div>
-      <div class="owner-kpi"><b>${round2(data.water)} L</b><span>voda cisterna</span></div>
-      <div class="owner-kpi"><b>${round2(data.lowloaderCount)}</b><span>transport labudicom</span></div>
+      <div class="owner-kpi"><b>${round2(data.hours)} h</b><span>Radni sati</span></div>
+      <div class="owner-kpi"><b>${round2(data.fuel)} L</b><span>Gorivo</span></div>
+      <div class="owner-kpi"><b>${round2(data.mtc)} MTČ</b><span>Rad mašina</span></div>
+      <div class="owner-kpi"><b>${round2(data.km)} km</b><span>Kilometraža</span></div>
+      <div class="owner-kpi"><b>${round2(data.tours)}</b><span>Ture</span></div>
+      <div class="owner-kpi"><b>${round2(data.materialM3)} m³</b><span>Materijal</span></div>
+      <div class="owner-kpi"><b>${round2(data.water)} L</b><span>Voda cisterna</span></div>
+      <div class="owner-kpi"><b>${round2(data.lowloaderCount)}</b><span>Transport labudicom</span></div>
     </div>
+    <section>
+      <h4>🛠️ Kvarovi — pregled statusa</h4>
+      <div class="owner-kpi-grid owner-kpi-grid-defects">
+        <div class="owner-kpi owner-kpi-status"><b>${defectStatus.novo}</b><span>Novi kvarovi</span></div>
+        <div class="owner-kpi owner-kpi-status"><b>${defectStatus.aktivno}</b><span>Preuzeto / u radu</span></div>
+        <div class="owner-kpi owner-kpi-status"><b>${defectStatus.reseno}</b><span>Rešeni</span></div>
+        <div class="owner-kpi owner-kpi-status"><b>${defectStatus.arhivirano}</b><span>Arhivirani</span></div>
+      </div>
+      ${officeTable(["Lokacija/gradilište","Sredstvo","Opis kvara","Hitnost","Status","Prijavljen","Zadnja promena"], defectTableRows)}
+    </section>
     <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
     <section><h4>⛽ Povećana potrošnja</h4>${officeTable(["Sredstvo","Norma","Očekivano","Sipano","Razlika","Status"], fuelBadRows)}</section>`;
 }
