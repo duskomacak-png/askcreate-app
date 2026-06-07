@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.70.4";
+const APP_VERSION = "1.70.5";
 
 
 let sb = null;
@@ -4867,6 +4867,7 @@ function officeVehicleM3(v = {}) {
 
   const capacity = parseDecimalInput(capacityRaw);
   if (!capacity) return "";
+
   const total = capacity * tours;
   return Number.isInteger(total) ? String(total) : String(Math.round(total * 100) / 100);
 }

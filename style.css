@@ -8003,7 +8003,7 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
 
 
-/* === AskCreate v46: minimalna tura + m³ prikaz, bez diranja login/Direkcije === */
+/* === AskCreate v43: minimalna tura za vozača, samo potrebna polja === */
 #viewWorkerForm .tour-simple-grid{
   display:grid !important;
   grid-template-columns:1fr !important;
