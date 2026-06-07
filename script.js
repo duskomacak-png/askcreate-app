@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.55.0";
+const APP_VERSION = "1.56.0";
 
 
 let sb = null;
@@ -4733,8 +4733,61 @@ function downloadMaterialOverviewCsv() {
   officeCsvDownload(`materijal_po_gradilistu_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.csv`, ["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jedinica","Radnik","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]));
 }
 
+function ownerReportMatchesDateSiteAny(r, from = "", to = "", site = "") {
+  if (!r || isArchivedReport(r)) return false;
+  const date = officeReportDate(r);
+  if (from && date && date < from) return false;
+  if (to && date && date > to) return false;
+  const siteQ = normalizeSearch(site || "");
+  if (!siteQ) return true;
+  const d = r.data || {};
+  const directText = [
+    officeReportSite(r),
+    d.site_name,
+    d.site,
+    d.site_label,
+    d.project_name,
+    d.defect_site_name,
+    d.location,
+    d.route,
+    d.from_site,
+    d.to_site
+  ].filter(Boolean).join(" ");
+  if (normalizeSearch(directText).includes(siteQ)) return true;
+  const pools = [
+    d.workers, d.worker_entries,
+    d.machines, d.machine_entries,
+    d.vehicles, d.vehicle_entries,
+    d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries,
+    d.material_entries, d.material_movements, d.materials,
+    d.lowloader_entries, d.water_tanker_entries
+  ];
+  return pools.some(arr => Array.isArray(arr) && arr.some(item => officeEntryMatchesSite(item, officeReportSite(r), site)));
+}
+
+function ownerTopLevelNumber(d = {}, keys = []) {
+  for (const key of keys) {
+    const n = parseDecimalInput(d[key]);
+    if (n) return n;
+  }
+  return 0;
+}
+
+function ownerDiffNumber(d = {}, startKeys = [], endKeys = []) {
+  let start = 0, end = 0;
+  for (const k of startKeys) {
+    start = parseDecimalInput(d[k]);
+    if (start) break;
+  }
+  for (const k of endKeys) {
+    end = parseDecimalInput(d[k]);
+    if (end) break;
+  }
+  return end && start ? Math.max(0, end - start) : 0;
+}
+
 function buildOwnerDashboardData(from, to, site = "") {
-  const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSiteDeep(r, from, to, site));
+  const reports = (directorReportsCache || []).filter(r => ownerReportMatchesDateSiteAny(r, from, to, site));
   const allMatchingReports = (directorReportsCache || []).filter(r => {
     const date = officeReportDate(r);
     if (from && date && date < from) return false;
@@ -4745,24 +4798,86 @@ function buildOwnerDashboardData(from, to, site = "") {
     const reportSite = officeReportSite(r) || "";
     if (normalizeSearch(reportSite).includes(siteQ)) return true;
     if (normalizeSearch(d.defect_site_name || d.site_name || "").includes(siteQ)) return true;
-    const pools = [d.machines, d.vehicles, d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries, d.material_entries, d.material_movements, d.materials];
+    const pools = [d.machines, d.vehicles, d.fuel_entries, d.field_tanker_entries, d.tanker_fuel_entries, d.material_entries, d.material_movements, d.materials, d.worker_entries, d.machine_entries, d.vehicle_entries];
     return pools.some(arr => Array.isArray(arr) && arr.some(item => officeEntryMatchesSite(item, reportSite, site)));
   });
+
   let hours = 0, mtc = 0, km = 0, tours = 0, fuel = 0, water = 0, waterLoads = 0, lowloaderKm = 0, lowloaderCount = 0;
+
   reports.forEach(r => {
     const d = r.data || {};
     const reportSite = officeReportSite(r) || "";
+
     const workerRows = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
-    workerRows.forEach(w => { hours += parseDecimalInput(w.hours || ""); });
-    if (!workerRows.length) hours += parseDecimalInput(d.hours || "");
-    (Array.isArray(d.machines) ? d.machines : []).forEach(m => { if (officeEntryMatchesSite(m, reportSite, site)) { mtc += parseDecimalInput(machineMtcTotal(m)); km += parseDecimalInput(machineKmTotal(m)); } });
-    (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => { if (officeEntryMatchesSite(v, reportSite, site)) { km += parseDecimalInput(decimalDiffText(v.km_start, v.km_end) || v.km_total || ""); tours += parseDecimalInput(v.tours || ""); } });
-    officeLowloaderEntries(d).forEach(ll => { if (officeEntryMatchesSite({ site_name: lowloaderSiteLabel(ll, reportSite) }, reportSite, site)) { lowloaderCount += 1; lowloaderKm += parseDecimalInput(lowloaderKmTotal(ll)); km += parseDecimalInput(lowloaderKmTotal(ll)); } });
-    officeWaterEntries(d).forEach(wt => { if (officeEntryMatchesSite(wt, reportSite, site)) { water += waterTankerLiters(wt); waterLoads += waterTankerLoads(wt); km += parseDecimalInput(waterTankerKmTotal(wt)); } });
-    (Array.isArray(d.fuel_entries) ? d.fuel_entries : []).forEach(f => { if (officeEntryMatchesSite(f, reportSite, site)) fuel += parseDecimalInput(f.liters || f.fuel_liters || ""); });
+    if (workerRows.length) {
+      workerRows.forEach(w => {
+        if (!site || officeEntryMatchesSite(w, reportSite, site) || normalizeSearch(reportSite).includes(normalizeSearch(site))) {
+          hours += parseDecimalInput(w.hours || w.work_hours || w.total_hours || "");
+        }
+      });
+    } else {
+      hours += ownerTopLevelNumber(d, ["hours", "work_hours", "worker_hours", "workers_total_hours", "total_hours", "radni_sati"]);
+    }
+
+    const machineRows = Array.isArray(d.machines) ? d.machines : (Array.isArray(d.machine_entries) ? d.machine_entries : []);
+    if (machineRows.length) {
+      machineRows.forEach(m => {
+        if (!site || officeEntryMatchesSite(m, reportSite, site) || normalizeSearch(reportSite).includes(normalizeSearch(site))) {
+          mtc += parseDecimalInput(machineMtcTotal(m) || m.mtc_total || m.total_mtc || m.work_mtc || m.mtc || "");
+          km += parseDecimalInput(machineKmTotal(m) || m.km_total || m.total_km || "");
+        }
+      });
+    } else {
+      mtc += ownerTopLevelNumber(d, ["mtc_total", "total_mtc", "work_mtc", "machine_mtc", "mtc", "mtč", "machine_hours_mtc"]);
+      mtc += ownerDiffNumber(d, ["mtc_start", "machine_mtc_start", "start_mtc"], ["mtc_end", "machine_mtc_end", "end_mtc"]);
+      km += ownerTopLevelNumber(d, ["km_total", "total_km", "work_km", "machine_km", "vehicle_km", "kilometers", "kilometraza"]);
+      km += ownerDiffNumber(d, ["km_start", "vehicle_km_start", "start_km"], ["km_end", "vehicle_km_end", "end_km"]);
+    }
+
+    const vehicleRows = Array.isArray(d.vehicles) ? d.vehicles : (Array.isArray(d.vehicle_entries) ? d.vehicle_entries : []);
+    vehicleRows.forEach(v => {
+      if (!site || officeEntryMatchesSite(v, reportSite, site) || normalizeSearch(reportSite).includes(normalizeSearch(site))) {
+        km += parseDecimalInput(officeVehicleKmTotal(v) || decimalDiffText(v.km_start, v.km_end) || v.km_total || v.total_km || "");
+        tours += parseDecimalInput(v.tours || v.total_tours || v.tour_count || "");
+      }
+    });
+    if (!vehicleRows.length) {
+      tours += ownerTopLevelNumber(d, ["tours", "total_tours", "tour_count", "ture"]);
+    }
+
+    officeLowloaderEntries(d).forEach(ll => {
+      if (officeEntryMatchesSite({ site_name: lowloaderSiteLabel(ll, reportSite) }, reportSite, site) || !site) {
+        lowloaderCount += 1;
+        lowloaderKm += parseDecimalInput(lowloaderKmTotal(ll));
+        km += parseDecimalInput(lowloaderKmTotal(ll));
+      }
+    });
+
+    officeWaterEntries(d).forEach(wt => {
+      if (officeEntryMatchesSite(wt, reportSite, site) || !site) {
+        water += waterTankerLiters(wt);
+        waterLoads += waterTankerLoads(wt);
+        km += parseDecimalInput(waterTankerKmTotal(wt));
+      }
+    });
+
+    const fuelEntries = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+    fuelEntries.forEach(f => {
+      if (officeEntryMatchesSite(f, reportSite, site) || !site || normalizeSearch(reportSite).includes(normalizeSearch(site))) {
+        fuel += parseDecimalInput(f.liters || f.fuel_liters || "");
+      }
+    });
     const tank = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
-    tank.forEach(f => { if (officeEntryMatchesSite(f, reportSite, site)) fuel += parseDecimalInput(f.liters || f.fuel_liters || ""); });
+    tank.forEach(f => {
+      if (officeEntryMatchesSite(f, reportSite, site) || !site || normalizeSearch(reportSite).includes(normalizeSearch(site))) {
+        fuel += parseDecimalInput(f.liters || f.fuel_liters || "");
+      }
+    });
+    if (!fuelEntries.length && !tank.length) {
+      fuel += ownerTopLevelNumber(d, ["fuel_liters", "field_tanker_liters", "tanker_liters", "liters", "litara"]);
+    }
   });
+
   const materials = buildMaterialOverviewRows(from, to, site);
   const materialM3 = materials.filter(r => String(r.unit || "").toLowerCase().includes("m")).reduce((s, r) => s + Number(r.quantity || 0), 0);
   const fuelRows = buildFuelConsumptionRows(from, to).filter(row => !site || [...row.sites].some(s => normalizeSearch(s).includes(normalizeSearch(site))));
