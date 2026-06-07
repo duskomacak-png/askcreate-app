@@ -7344,3 +7344,116 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
     padding:3px 4px !important;
   }
 }
+
+
+/* === AskCreate v25: Gorivo na A4 kao čitljiv blok, ne široka tabela === */
+.report-document-center .paper-fuel-list{
+  display:grid !important;
+  gap:7px !important;
+}
+.report-document-center .paper-fuel-card{
+  border:1px solid #111827 !important;
+  background:#fff !important;
+  page-break-inside:avoid !important;
+}
+.report-document-center .paper-fuel-title{
+  display:flex !important;
+  justify-content:space-between !important;
+  gap:10px !important;
+  align-items:center !important;
+  padding:5px 7px !important;
+  border-bottom:1px solid #111827 !important;
+  background:#f3f4f6 !important;
+  font-size:11px !important;
+  font-weight:800 !important;
+}
+.report-document-center .paper-fuel-title b,
+.report-document-center .paper-fuel-title span{
+  color:#111827 !important;
+  white-space:nowrap !important;
+}
+.report-document-center .paper-fuel-grid{
+  display:grid !important;
+  grid-template-columns:24mm 1fr 22mm 1fr !important;
+  border-top:0 !important;
+}
+.report-document-center .paper-fuel-grid b,
+.report-document-center .paper-fuel-grid span{
+  border-right:1px solid #9ca3af !important;
+  border-bottom:1px solid #9ca3af !important;
+  padding:4px 5px !important;
+  font-size:10.5px !important;
+  line-height:1.2 !important;
+  min-height:20px !important;
+  word-break:normal !important;
+  overflow-wrap:break-word !important;
+  hyphens:none !important;
+  color:#111827 !important;
+}
+.report-document-center .paper-fuel-grid b{
+  background:#f9fafb !important;
+  font-weight:800 !important;
+  white-space:nowrap !important;
+}
+.report-document-center .paper-fuel-grid span{
+  background:#fff !important;
+}
+.report-document-center .paper-fuel-main{
+  font-weight:800 !important;
+}
+@media print{
+  .report-document-center .paper-fuel-grid{
+    grid-template-columns:22mm 1fr 20mm 1fr !important;
+  }
+  .report-document-center .paper-fuel-grid b,
+  .report-document-center .paper-fuel-grid span{
+    font-size:9.4px !important;
+    padding:3px 4px !important;
+  }
+}
+
+
+/* === AskCreate v26: Gorivo A4 ponovo vodoravno, ali mora stati === */
+.report-document-center .report-fuel-horizontal{
+  table-layout:fixed !important;
+  width:100% !important;
+  border-collapse:collapse !important;
+}
+.report-document-center .report-fuel-horizontal th,
+.report-document-center .report-fuel-horizontal td{
+  border:1px solid #111827 !important;
+  padding:3px 3px !important;
+  font-size:8.4px !important;
+  line-height:1.12 !important;
+  color:#111827 !important;
+  word-break:normal !important;
+  overflow-wrap:break-word !important;
+  hyphens:none !important;
+  vertical-align:middle !important;
+}
+.report-document-center .report-fuel-horizontal th{
+  background:#f3f4f6 !important;
+  font-weight:900 !important;
+  text-align:center !important;
+  white-space:nowrap !important;
+}
+.report-document-center .report-fuel-horizontal td:nth-child(1),
+.report-document-center .report-fuel-horizontal td:nth-child(2),
+.report-document-center .report-fuel-horizontal td:nth-child(3),
+.report-document-center .report-fuel-horizontal td:nth-child(5),
+.report-document-center .report-fuel-horizontal td:nth-child(6),
+.report-document-center .report-fuel-horizontal td:nth-child(7),
+.report-document-center .report-fuel-horizontal td:nth-child(8){
+  text-align:center !important;
+}
+.report-document-center .report-fuel-horizontal td:nth-child(4){
+  font-weight:800 !important;
+}
+@media print{
+  .report-document-center .report-fuel-horizontal th,
+  .report-document-center .report-fuel-horizontal td{
+    font-size:7.6px !important;
+    padding:2px 2px !important;
+    line-height:1.05 !important;
+  }
+}

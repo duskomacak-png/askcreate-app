@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.52.0";
+const APP_VERSION = "1.55.0";
 
 
 let sb = null;
@@ -5323,14 +5323,26 @@ function renderReportReadableDetails(d = {}, options = {}) {
     </table>` : `<p class="report-empty">Nema unete cisterne za vodu.</p>`;
 
   const fuelTable = fuels.length ? `
-    <table class="report-mini-table report-mini-table-fuel">
+    <table class="report-mini-table report-fuel-horizontal">
+      <colgroup>
+        <col style="width:4%">
+        <col style="width:8%">
+        <col style="width:8%">
+        <col style="width:20%">
+        <col style="width:7%">
+        <col style="width:7%">
+        <col style="width:8%">
+        <col style="width:12%">
+        <col style="width:13%">
+        <col style="width:13%">
+      </colgroup>
       <thead>
         <tr>
           <th>#</th>
-          <th>Tip sredstva</th>
-          <th>Broj sredstva</th>
-          <th>Mašina / vozilo / ostalo koje prima gorivo</th>
-          <th>Litara</th>
+          <th>Tip</th>
+          <th>Broj</th>
+          <th>Sredstvo</th>
+          <th>L</th>
           <th>KM</th>
           <th>MTČ</th>
           <th>Sipao</th>
@@ -5366,7 +5378,18 @@ function renderReportReadableDetails(d = {}, options = {}) {
   })();
 
   const fieldTankerTable = fieldTankers.length ? `
-    <table class="report-mini-table report-mini-table-tanker-clean">
+    <table class="report-mini-table report-fuel-horizontal">
+      <colgroup>
+        <col style="width:4%">
+        <col style="width:8%">
+        <col style="width:20%">
+        <col style="width:20%">
+        <col style="width:12%">
+        <col style="width:7%">
+        <col style="width:8%">
+        <col style="width:7%">
+        <col style="width:14%">
+      </colgroup>
       <thead>
         <tr>
           <th>#</th>
@@ -5376,9 +5399,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>Ostalo</th>
           <th>KM</th>
           <th>MTČ</th>
-          <th>Litara</th>
-          <th>Primio gorivo</th>
-          <th>Izvor</th>
+          <th>L</th>
+          <th>Primio / izvor</th>
         </tr>
       </thead>
       <tbody>
@@ -5386,14 +5408,13 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <tr>
             <td>${i + 1}</td>
             <td>${val(ft.asset_code)}</td>
-            <td>${assetNameForKind(ft, "machine")}</td>
-            <td>${assetNameForKind(ft, "vehicle")}</td>
-            <td>${assetNameForKind(ft, "other")}</td>
+            <td>${assetNameForKind(ft, "machine") || "<span class='report-empty'>—</span>"}</td>
+            <td>${assetNameForKind(ft, "vehicle") || "<span class='report-empty'>—</span>"}</td>
+            <td>${assetNameForKind(ft, "other") || "<span class='report-empty'>—</span>"}</td>
             <td>${val(fuelKmValue(ft))}</td>
             <td>${val(fuelMtcValue(ft))}</td>
             <td>${val(ft.liters)}</td>
-            <td>${val(ft.receiver || ft.received_by)}</td>
-            <td>${val(fuelSourceText(ft))}</td>
+            <td>${val([ft.receiver || ft.received_by, fuelSourceText(ft)].filter(Boolean).join(" / "))}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -11251,7 +11272,38 @@ function csvEscape(v) {
 }
 
 function parseDecimalInput(value) {
-  const cleaned = String(value ?? "").trim().replace(/\s/g, "").replace(",", ".");
+  const raw = String(value ?? "").trim();
+  if (!raw) return 0;
+  let cleaned = raw.replace(/\s/g, "");
+  const hasDot = cleaned.includes(".");
+  const hasComma = cleaned.includes(",");
+
+  // 100.000  -> 100000
+  // 100,000  -> 100000
+  // 100.000,50 -> 100000.50
+  // 100,000.50 -> 100000.50
+  if (hasDot && hasComma) {
+    const lastDot = cleaned.lastIndexOf('.');
+    const lastComma = cleaned.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+    } else {
+      cleaned = cleaned.replace(/,/g, '');
+    }
+  } else if (hasDot) {
+    const parts = cleaned.split('.');
+    if (parts.length > 1 && parts.slice(1).every(p => p.length === 3)) {
+      cleaned = parts.join('');
+    }
+  } else if (hasComma) {
+    const parts = cleaned.split(',');
+    if (parts.length > 1 && parts.slice(1).every(p => p.length === 3)) {
+      cleaned = parts.join('');
+    } else {
+      cleaned = cleaned.replace(',', '.');
+    }
+  }
+
   const n = Number.parseFloat(cleaned);
   return Number.isFinite(n) ? n : 0;
 }
@@ -11261,7 +11313,7 @@ function preventNumberInputScrollChanges(root = document) {
   // u Chrome/Edge može sam da promeni vrednost (npr. 4,5 -> 4,51) preko
   // točkića/trackpad-a ili strelica. Zato sva numerička polja zaključavamo
   // kao tekstualni unos sa decimalnom tastaturom. Parsiranje već podržava
-  // i zarez i tačku preko parseDecimalInput().
+  // i zarez i tačku, uključujući formate kao 100.000 ili 100,000.
   root.querySelectorAll('input[type="number"], input.numeric-text').forEach(input => {
     if (input.type === "number") {
       input.type = "text";
