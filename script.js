@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.50.0";
+const APP_VERSION = "1.51.0";
 
 
 let sb = null;
@@ -2341,6 +2341,8 @@ function clearAssetForm() {
     const el = document.querySelector("#" + id);
     if (el) el.value = "";
   });
+  const capacityUnit = document.querySelector("#assetCapacityUnit");
+  if (capacityUnit) capacityUnit.value = "m3";
   const type = document.querySelector("#assetType");
   if (type) type.value = "machine";
   const fuelUnit = document.querySelector("#assetFuelUnit");
@@ -2478,7 +2480,7 @@ window.editAsset = async (id) => {
     document.querySelector("#assetName").value = asset.name || "";
     document.querySelector("#assetType").value = asset.asset_type || "machine";
     document.querySelector("#assetReg").value = asset.registration || "";
-    document.querySelector("#assetCapacity").value = asset.capacity || "";
+    setAssetCapacityInputs(asset.capacity || "");
     if (document.querySelector("#assetFuelNorm")) document.querySelector("#assetFuelNorm").value = asset.fuel_norm || asset.consumption_norm || asset.fuel_consumption_norm || "";
     if (document.querySelector("#assetFuelUnit")) document.querySelector("#assetFuelUnit").value = asset.fuel_norm_unit || asset.consumption_unit || defaultFuelUnitForAssetType(asset.asset_type || "machine");
     if (document.querySelector("#assetFuelTolerance")) document.querySelector("#assetFuelTolerance").value = asset.fuel_tolerance_percent || asset.consumption_tolerance_percent || asset.tolerance_percent || "";
@@ -2499,7 +2501,9 @@ async function saveAssetForm() {
     const name = document.querySelector("#assetName").value.trim();
     const assetType = document.querySelector("#assetType").value;
     const registration = document.querySelector("#assetReg").value.trim();
-    const capacity = document.querySelector("#assetCapacity").value.trim();
+    const capacityValue = document.querySelector("#assetCapacity")?.value.trim() || "";
+    const capacityUnit = document.querySelector("#assetCapacityUnit")?.value || "m3";
+    const capacity = buildAssetCapacityText(capacityValue, capacityUnit);
     const fuelNorm = document.querySelector("#assetFuelNorm")?.value.trim() || "";
     const fuelNormUnit = document.querySelector("#assetFuelUnit")?.value || defaultFuelUnitForAssetType(assetType);
     const fuelTolerance = document.querySelector("#assetFuelTolerance")?.value.trim() || "";
@@ -10968,11 +10972,40 @@ function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
+function parseAssetCapacityParts(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return { value: "", unit: "m3" };
+  const lower = raw.toLowerCase();
+  const num = raw.replace(/[^0-9.,-]/g, "").replace(",", ".").trim();
+  let unit = "m3";
+  if (/\bl\b|litar|litara|liter|litre/.test(lower)) unit = "l";
+  if (/bez|none|kom|pcs/.test(lower)) unit = "none";
+  return { value: num || raw, unit };
+}
+
+function buildAssetCapacityText(value, unit) {
+  const v = String(value ?? "").trim();
+  const u = String(unit || "m3").trim();
+  if (!v) return "";
+  if (/[a-zA-ZčćšđžČĆŠĐŽ³]/.test(v)) return v;
+  if (u === "l") return `${v} L`;
+  if (u === "none") return v;
+  return `${v} m³`;
+}
+
 function formatCapacityM3(value) {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
-  if (/m\s*(³|3)|kub|kubic/i.test(raw)) return raw;
+  if (/m\s*(³|3)|kub|kubic|\bl\b|litar|litara|liter|litre/i.test(raw)) return raw;
   return `${raw} m³`;
+}
+
+function setAssetCapacityInputs(capacity) {
+  const parts = parseAssetCapacityParts(capacity);
+  const input = document.querySelector("#assetCapacity");
+  const unit = document.querySelector("#assetCapacityUnit");
+  if (input) input.value = parts.value || "";
+  if (unit) unit.value = parts.unit || "m3";
 }
 
 

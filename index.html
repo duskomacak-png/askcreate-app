@@ -688,11 +688,15 @@
             <label>Registracija / oznaka</label>
             <input id="assetReg" placeholder="BG-123-AA / interna oznaka" />
             <label>Kapacitet</label>
-            <div class="unit-input">
-              <input id="assetCapacity" inputmode="decimal" placeholder="npr. 18 m³, 8000 L ili 1000 L" />
-              <span class="unit-suffix">m³ / L</span>
+            <div class="capacity-split-row">
+              <input id="assetCapacity" inputmode="decimal" placeholder="npr. 20" />
+              <select id="assetCapacityUnit">
+                <option value="m3">m³</option>
+                <option value="l">L</option>
+                <option value="none">bez jedinice</option>
+              </select>
             </div>
-            <p class="field-hint">Za kiper upiši m³, za cisternu za vodu ili gorivo upiši litre. Labudica uglavnom nema kapacitet materijala.</p>
+            <p class="field-hint">Primer: za kiper upiši 20 i izaberi m³. Za cisternu upiši 8000 i izaberi L. Za labudicu uglavnom ostavi prazno.</p>
             <div class="asset-consumption-box">
               <label>Norma potrošnje goriva</label>
               <div class="asset-consumption-grid">

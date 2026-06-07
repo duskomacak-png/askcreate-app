@@ -7226,3 +7226,48 @@ canvas, img, iframe{border-radius:0 !important;}
   background:#f7f7f7 !important;
   border:1px solid #000 !important;
 }
+
+
+/* === AskCreate v23: kapacitet broj + jedinica; Vlasnik/Direktor bez tamne trake === */
+.capacity-split-row{
+  display:grid !important;
+  grid-template-columns:1fr 120px !important;
+  gap:8px !important;
+  align-items:center !important;
+}
+.capacity-split-row input,
+.capacity-split-row select{
+  width:100% !important;
+  background:#fff !important;
+  color:#000 !important;
+  border:1px solid #000 !important;
+  border-radius:0 !important;
+}
+body.owner-dashboard-mode .internal-header,
+body.owner-dashboard-mode .dashboard-head,
+body.owner-dashboard-mode .owner-panel-head,
+#viewOwnerDashboardPanel .dashboard-head,
+#viewOwnerDashboardPanel .owner-panel-head{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border:1px solid #000000 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+body.owner-dashboard-mode .internal-header *,
+body.owner-dashboard-mode .dashboard-head *,
+body.owner-dashboard-mode .owner-panel-head *,
+#viewOwnerDashboardPanel .dashboard-head *,
+#viewOwnerDashboardPanel .owner-panel-head *{
+  color:#000000 !important;
+  opacity:1 !important;
+}
+body.owner-dashboard-mode .internal-brand-callout::before,
+body.owner-dashboard-mode .internal-brand-callout::after,
+body.owner-dashboard-mode .internal-header.internal-collapsible::after{
+  background:#ffffff !important;
+  box-shadow:none !important;
+}
+@media (max-width:640px){
+  .capacity-split-row{grid-template-columns:1fr 92px !important;}
+}
