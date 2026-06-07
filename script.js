@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.70.2";
+const APP_VERSION = "1.70.3";
 
 
 let sb = null;
@@ -3832,7 +3832,7 @@ function vehicleTourOfficeRows(v = {}, reportSite = "") {
 
   const pushRow = (siteName, action, item, routeText, countAsCompanyTotal = true) => {
     const tours = item.tours || item.tour_count || "";
-    const m3 = calculateVehicleCubic(v.capacity || v.vehicle_capacity || "", tours);
+    const m3 = officeVehicleM3({ ...v, tours });
     out.push({
       site_name: siteName || reportSite || "—",
       asset_code: assetCode,
@@ -4855,7 +4855,20 @@ function officeVehicleMaterialAction(v = {}) {
 }
 
 function officeVehicleM3(v = {}) {
-  return v.cubic_m3 || v.cubic_auto || v.total_m3 || v.calculated_m3 || v.volume_m3 || "";
+  const existing = v.cubic_m3 || v.cubic_auto || v.total_m3 || v.calculated_m3 || v.volume_m3 || "";
+  if (existing) return existing;
+
+  const capacityRaw = String(v.capacity || v.vehicle_capacity || "").trim();
+  const tours = parseDecimalInput(v.tours || v.total_tours || v.tour_count || "");
+  if (!capacityRaw || !tours) return "";
+
+  // Ako je kapacitet u litrima, ne računamo kao m³ materijala.
+  if (/\bL\b|litar|litara|liter|litre/i.test(capacityRaw) && !/m\s*(³|3)|kub/i.test(capacityRaw)) return "";
+
+  const capacity = parseDecimalInput(capacityRaw);
+  if (!capacity) return "";
+  const total = capacity * tours;
+  return Number.isInteger(total) ? String(total) : String(Math.round(total * 100) / 100);
 }
 
 function officeVehicleRouteText(v = {}) {
@@ -7851,25 +7864,12 @@ function parseDecimal(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function vehicleCapacityM3Value(capacity) {
-  const raw = String(capacity || "").trim();
-  if (!raw) return 0;
-  // Ako je kapacitet u litrima, ne sabiramo ga u m³ materijala.
-  if (/\bL\b|litar|litara|liter|litre/i.test(raw) && !/m\s*(³|3)|kub/i.test(raw)) return 0;
-  return parseDecimal(raw);
-}
-
 function calculateVehicleCubic(capacity, tours) {
-  const cap = vehicleCapacityM3Value(capacity);
+  const cap = parseDecimal(capacity);
   const t = parseDecimal(tours);
   if (!cap || !t) return "";
   const total = cap * t;
   return Number.isInteger(total) ? String(total) : String(Math.round(total * 100) / 100);
-}
-
-function sumVehicleTourM3(capacity, tourItems = []) {
-  const totalTours = (Array.isArray(tourItems) ? tourItems : []).reduce((sum, item) => sum + parseDecimal(item.tours || item.tour_count || ""), 0);
-  return calculateVehicleCubic(capacity, totalTours);
 }
 
 
@@ -8149,7 +8149,6 @@ function getVehicleEntries() {
     const firstSite = summarizeSitesFromDailyItems(tourItems);
     const kmStart = el.querySelector(".v-km-start")?.value || "";
     const kmEnd = el.querySelector(".v-km-end")?.value || "";
-    const totalM3 = sumVehicleTourM3(selected.capacity, tourItems);
     return {
       no: i + 1,
       asset_id: selected.asset_id,
@@ -8159,7 +8158,6 @@ function getVehicleEntries() {
       vehicle_code: selected.asset_code,
       registration: selected.registration,
       capacity: selected.capacity,
-      vehicle_capacity: selected.capacity,
       vehicle_custom: el.querySelector(".v-custom")?.value.trim() || "",
       site_id: firstSite.site_id || null,
       site_name: firstSite.site_name || "",
@@ -8178,9 +8176,9 @@ function getVehicleEntries() {
       material_name: tourItems.map(t => t.material).filter(Boolean).join(" | "),
       direction: "tour_items",
       transport_direction: "tour_items",
-      cubic_auto: totalM3,
+      cubic_auto: "",
       cubic_manual: "",
-      cubic_m3: totalM3
+      cubic_m3: ""
     };
   }).filter(v => v.name || v.site_name || v.km_start || v.km_end || v.tours || (v.tour_items || []).length);
 }
