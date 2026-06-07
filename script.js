@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.64.0";
+const APP_VERSION = "1.66.0";
 
 
 let sb = null;
@@ -7878,9 +7878,20 @@ function applyVehicleLastKmToEntry(entryEl) {
   const selected = getSelectedVehicleFromEntry(entryEl);
   const startInput = entryEl?.querySelector(".v-km-start");
   if (!startInput) return;
-  if (String(startInput.value || "").trim()) return;
   const stored = getStoredVehicleLastKm(selected);
-  if (stored) startInput.value = stored;
+  if (stored) {
+    startInput.value = stored;
+    startInput.readOnly = true;
+    startInput.classList.add("km-start-locked");
+    startInput.placeholder = "preuzeto iz prethodne završne km";
+  } else {
+    const current = String(startInput.value || "").trim();
+    startInput.readOnly = false;
+    startInput.classList.remove("km-start-locked");
+    if (!current) startInput.value = "";
+    startInput.placeholder = "prvi put upiši početnu km";
+  }
+  updateVehicleCubic(entryEl);
 }
 
 function updateVehicleCubic(entryEl) {
@@ -8078,8 +8089,8 @@ function addVehicleEntry(values = {}) {
     <div class="truck-km-box">
       <div>
         <label>Početna kilometraža</label>
-        <input class="v-km-start" inputmode="decimal" readonly value="${escapeHtml(values.km_start || values.start || values.last_km || "")}" placeholder="automatski / iz prethodnog stanja" />
-        <p class="field-hint"></p>
+        <input class="v-km-start" inputmode="decimal" value="${escapeHtml(values.km_start || values.start || values.last_km || "")}" placeholder="prvi put upiši početnu km" />
+        
       </div>
       <div>
         <label>Završna kilometraža</label>
@@ -8116,6 +8127,7 @@ function addVehicleEntry(values = {}) {
     refreshFuelMachineOptions();
   });
   div.querySelector(".v-custom").addEventListener("input", refreshFuelMachineOptions);
+  div.querySelector(".v-km-start")?.addEventListener("input", () => updateVehicleCubic(div));
   div.querySelector(".v-km-end")?.addEventListener("input", () => updateVehicleCubic(div));
   div.querySelector(".add-tour-row")?.addEventListener("click", () => addVehicleTourRow(div, {}));
   const refreshVehiclesBtn = div.querySelector(".refresh-vehicle-assets");
@@ -8792,11 +8804,7 @@ function refreshWorkerModuleSelector(perms = {}) {
   if (allowed.length === 1) select.value = allowed[0].value;
   else if (allowed.some(m => m.value === previous)) select.value = previous;
   else select.value = "";
-  if (hint) {
-    hint.textContent = allowed.length
-      ? "Direkcija ti je dozvolila ove rubrike. Izaberi samo ono što danas popunjavaš."
-      : "Ovom profilu Direkcija još nije dodelila nijednu radničku rubriku.";
-  }
+  if (hint) hint.textContent = "";
   applyWorkerModuleSelection({ addDefaults: false });
 }
 
@@ -8805,7 +8813,7 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   workerSetSections(perms);
   const module = getSelectedWorkerModule();
   const hint = $("#wrModuleHint");
-  if (hint && module) hint.textContent = `Otvoren je obrazac: ${module.label}. Ostali obrasci su sakriveni da se podaci ne mešaju.`;
+  if (hint && module) hint.textContent = "";
   if (!module || !addDefaults) return;
   if (module.value === "worker_hours" && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
   if (module.value === "machine_work" && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();

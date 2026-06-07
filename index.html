@@ -1456,52 +1456,44 @@
 
         <div id="secWorkers" class="dyn-section">
           <h4>Zaposleni / radni sati po zaposlenom</h4>
-          <p class="hint">Ovu rubriku Uprava uključuje za odgovorno lice ili osobu koja vodi ekipu. Dodaj svakog zaposlenog posebno i upiši koliko je sati radio taj dan.</p>
           <div id="workerEntries" class="entry-list"></div>
           <button id="addWorkerEntryBtn" class="secondary" type="button" onclick="addWorkerEntry()">+ Dodaj novog zaposlenog</button>
         </div>
 
         <div id="secMachines" class="dyn-section">
           <h4>Evidencija rada mašine</h4>
-          <p class="hint">Sredstva dodaje Uprava. Zaposleni unosi interni broj ili naziv; aplikacija automatski prepoznaje sredstvo ako postoji u evidenciji.</p>
           <div id="machineEntries" class="entry-list"></div>
           <button id="addMachineBtn" class="secondary" type="button" onclick="addMachineEntry()">+ Dodaj mašinu</button>
         </div>
 
         <div id="secVehicles" class="dyn-section">
           <h4>Evidencija rada vozila</h4>
-          <p class="hint">Vozila dodaje Uprava. Zaposleni unosi interni broj, tablice ili naziv; aplikacija automatski prepoznaje vozilo ako postoji u evidenciji.</p>
           <div id="vehicleEntries" class="entry-list"></div>
           <button id="addVehicleBtn" class="secondary" type="button" onclick="addVehicleEntry()">+ Dodaj vozilo</button>
         </div>
 
         <div id="secLowloader" class="dyn-section">
           <h4>Transport mašine labudicom</h4>
-          <p class="hint">Ova rubrika se koristi za evidentiranje transporta mašina labudicom. Svaki transport se unosi posebno.</p>
           <div id="lowloaderEntries" class="entry-list"></div>
           <button id="addLowloaderBtn" class="secondary" type="button" onclick="addLowloaderEntry()">+ Dodaj selidbu mašine</button>
         </div>
 
         <div id="secWaterTanker" class="dyn-section">
           <h4>Cisterna za vodu</h4>
-          <p class="hint">Za vodu se ne računaju m³ materijala. Unosi se vozilo/cisterna, litri vode, punjenje, istovar/prskanje i gradilište.</p>
           <div id="waterTankerEntries" class="entry-list"></div>
           <button id="addWaterTankerBtn" class="secondary" type="button" onclick="addWaterTankerEntry()">+ Dodaj rad cisterne za vodu</button>
         </div>
 
         <div id="secFuel" class="dyn-section">
           <h4>Sipanje goriva</h4>
-          <p class="hint">Možeš evidentirati više sipanja goriva i povezati svako sipanje sa konkretnim sredstvom.</p>
           <div id="fuelEntries" class="entry-list"></div>
           <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
-          <p class="hint">Primalac goriva je automatski prijavljeni zaposleni koji šalje izveštaj.</p>
         </div>
 
 
 
         <div id="secFieldTanker" class="dyn-section">
           <h4>Evidencija goriva – cisterna</h4>
-          <p class="hint">Prvo upiši tablice / cisternu koja sipa gorivo. Aplikacija ih pamti za ovaj dnevni izveštaj dok ga ne pošalješ Upravi.</p>
           <div id="fieldTankerCisternBox" class="entry-card field-tanker-cistern-box">
             <label>Izvor goriva</label>
             <select id="fieldTankerSourceType">
@@ -1516,30 +1508,25 @@
             <div id="fieldTankerCisternPicked" class="asset-smart-result">Upiši tablice, interni broj ili naziv cisterne iz Direkcije.</div>
             <select id="fieldTankerCisternSelect" class="hidden-asset-select" aria-hidden="true" tabindex="-1"></select>
             <input id="fieldTankerCisternCustom" class="hidden-asset-custom" type="hidden" />
-            <p class="field-hint">Ovo se unosi jednom za ceo izveštaj. Svako sipanje ispod automatski koristi iste tablice cisterne.</p>
           </div>
           <div id="fieldTankerEntries" class="entry-list"></div>
           <button id="addFieldTankerBtn" class="secondary" type="button" onclick="addFieldTankerEntry()">+ Dodaj sipanje</button>
 
           <div class="fuel-memory-panel">
             <h5>Memoriši sipanje goriva</h5>
-            <p class="hint">Za operatera goriva: svako sipanje može se sačuvati lokalno na telefonu, a na kraju dana poslati Upravi kao jedan dnevni izveštaj.</p>
             <div class="row compact-row">
               <button id="memorizeFieldTankerBtn" class="secondary" type="button">💾 Memoriši trenutna sipanja</button>
               <button id="sendStoredFieldTankerBtn" class="primary" type="button">📤 Pošalji sva memorišana</button>
               <button id="clearStoredFieldTankerBtn" class="danger-btn" type="button">Obriši memoriju</button>
             </div>
             <div id="storedFieldTankerList" class="stored-fuel-list"></div>
-            <p class="hint">Memorisana sipanja se ne brišu dok Supabase ne potvrdi uspešno slanje.</p>
           </div>
         </div>
 
         <div id="secMaterials" class="dyn-section">
           <h4>Materijal</h4>
-          <p class="hint">Uprava dodaje listu materijala. Za svaki unos bira se da li je ulaz, izlaz ili ugradnja materijala.</p>
           <div id="materialEntries" class="entry-list"></div>
           <button id="addWorkerMaterialEntryBtn" class="secondary" type="button" onclick="addMaterialEntry()">+ Dodaj materijal</button>
-          <p class="field-hint">Ako materijal nije u evidenciji, možeš upisati naziv materijala.</p>
         </div>
 
 

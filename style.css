@@ -7654,3 +7654,45 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
     width:100% !important;
   }
 }
+
+
+/* === AskCreate v37: radnik bez biblije teksta === */
+#viewWorkerForm .dyn-section > p.hint:empty,
+#viewWorkerForm .dyn-section > p.field-hint:empty,
+#viewWorkerForm p.hint:empty,
+#viewWorkerForm p.field-hint:empty,
+#viewWorkerForm #wrModuleHint {
+  display:none !important;
+}
+#viewWorkerForm .dyn-section > p.hint,
+#viewWorkerForm .dyn-section > p.field-hint {
+  display:none !important;
+}
+#viewWorkerForm .entry-card .field-hint,
+#viewWorkerForm .entry-card .hint {
+  display:none !important;
+}
+#viewWorkerForm .dyn-section h4 {
+  margin-bottom:10px !important;
+}
+#viewWorkerForm .entry-card {
+  margin-bottom:10px !important;
+}
+#viewWorkerForm .entry-card-head {
+  margin-bottom:8px !important;
+}
+#viewWorkerForm .truck-summary-line {
+  margin-top:8px !important;
+}
+#viewWorkerForm #workerModuleChooser {
+  margin-bottom:12px !important;
+}
+
+
+/* === AskCreate v38: početna kilometraža prvi put ručno, posle automatski === */
+#viewWorkerForm .v-km-start:not(.km-start-locked){
+  background:#ffffff !important;
+}
+#viewWorkerForm .v-km-start.km-start-locked{
+  opacity:0.95 !important;
+}
