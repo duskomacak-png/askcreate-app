@@ -947,6 +947,8 @@
           <p class="muted">Ovde se prikazuju samo kvarovi koje zaposleni prijave. Kvarovi se ne mešaju sa dnevnim izveštajima.</p>
           <div class="row report-export-toolbar">
             <button id="refreshDefectsBtn" class="secondary" type="button">🔄 Osveži kvarove</button>
+            <button class="secondary" type="button" onclick="markAllDefectsReceived()">Označi sve nove kao primljeno</button>
+            <button class="archive-report-btn" type="button" onclick="archiveResolvedDefects()">Arhiviraj rešene kvarove</button>
           </div>
           <div id="defectsList" class="list"></div>
         </div>

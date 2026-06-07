@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.46.0";
+const APP_VERSION = "1.47.0";
 
 
 let sb = null;
@@ -3372,6 +3372,16 @@ function hasDefectData(r) {
     !!d.defect_machine;
 }
 
+function isActiveDefectReport(r) {
+  return hasDefectData(r) && !isArchivedReport(r);
+}
+
+function isResolvedDefectReport(r) {
+  const d = r?.data || {};
+  const status = String(d.mechanic_status || d.defect_status || r?.status || "").toLowerCase();
+  return ["reseno", "rešeno", "resolved", "zavrseno", "završeno"].includes(status);
+}
+
 function hasFieldTankerFuelData(r) {
   const d = r?.data || {};
   const fieldTankers = Array.isArray(d.field_tanker_entries)
@@ -4195,7 +4205,7 @@ window.printCarnetPreview = () => printOfficePreview("Karnet", "carnetPreview");
 function renderDirectorDefectNoticeInReports() {
   const listBox = $("#reportsList");
   if (!listBox) return;
-  const defects = directorReportsCache.filter(hasDefectData);
+  const defects = directorReportsCache.filter(isActiveDefectReport);
   if (!defects.length) return;
   const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
   const notice = document.createElement("div");
@@ -4214,7 +4224,7 @@ function defectHtml(r) {
   const assetName = [d.defect_asset_code, d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || (Array.isArray(d.machines) && d.machines[0]?.name) || (Array.isArray(d.vehicles) && d.vehicles[0]?.name)].filter(Boolean).join(" · ") || "—";
 
   return `
-    <div class="item report-item defect-item">
+    <div class="item report-item defect-item defect-work-card">
       <strong>🚨 KVAR · ${escapeHtml(d.defect_urgency || "prijavljen")}</strong>
       ${d.sent_immediately ? `<span class="pill danger-pill">Evidentirano odmah · vidi Direkcija i Šef mehanizacije</span>` : ""}
       <small>${escapeHtml([employeeNumber ? `broj ${employeeNumber}` : "", person, r.company_users?.function_title || d.function_title || "", r.report_date || ""].filter(Boolean).join(" · "))}</small><br/>
@@ -4233,12 +4243,13 @@ function defectHtml(r) {
         <b>Početak popravke</b><span>${escapeHtml(formatDateTimeLocal(d.defect_repair_started_at))}</span>
         <b>Rešeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_resolved_at))}</span>
       </div>
-      <div class="actions">
+      <div class="actions defect-actions no-print">
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
         <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
-        <button class="secondary" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
-        <button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj kvar</button>
+        <button class="primary" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
+        <button class="secondary" onclick="printReportDocument('${r.id}')">Štampaj kvar</button>
+        ${isArchivedReport(r) ? `<span class="pill">Arhivirano</span>` : `<button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj kvar</button>`}
       </div>
     </div>`;
 }
@@ -4246,8 +4257,10 @@ function defectHtml(r) {
 function renderDefectsList() {
   const box = $("#defectsList");
   if (!box) return;
-  const defects = directorReportsCache.filter(hasDefectData);
-  box.innerHTML = defects.map(defectHtml).join("") || `<p class="muted">Nema prijavljenih kvarova.</p>`;
+  const defects = directorReportsCache.filter(isActiveDefectReport);
+  const archivedDefects = directorReportsCache.filter(r => hasDefectData(r) && isArchivedReport(r));
+  const summary = `<div class="defects-summary no-print"><b>Aktivni kvarovi: ${defects.length}</b><span>Arhivirani kvarovi: ${archivedDefects.length}</span><span>Za štampu otvori kvar ili klikni “Štampaj kvar”.</span></div>`;
+  box.innerHTML = summary + (defects.map(defectHtml).join("") || `<p class="muted">Nema aktivnih prijavljenih kvarova. Arhivirani kvarovi su u kartici Arhiva.</p>`);
 }
 
 function fuelReportHtml(r) {
@@ -5313,8 +5326,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
     ])}
   </div>` : "";
 
-  const showDefectSection = options.showDefect === true;
-  const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status));
+  const showDefectSection = options.showDefect !== false;
+  const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status) || safe(d.defect_asset_name) || safe(d.defect_asset_code));
   const hasMaterialEntries = materialEntries.some(entry => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
   const hasMaterial = hasMaterialEntries || safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
   const hasLeaveRequest = safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || (leaveRequest && Object.values(leaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
@@ -5613,17 +5626,21 @@ function buildReportPaperHtml(r, paperIdPrefix = "paper") {
   const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
   const statusText = r.status || "novo";
   const statusLabel = reportStatusLabel(statusText);
+  const primaryLocation = reportPrimaryLocationLabel(r);
+  const paperSubtitle = isDefectOnlyReport(r)
+    ? "Papirni pregled prijave kvara za mehanizaciju, Direkciju, štampu i arhivu"
+    : "Papirni pregled dnevnog izveštaja za kontrolu, potpis, štampu i arhivu";
   return `
     <section class="report-paper-view document-center-paper" id="${paperIdPrefix}-${r.id}" style="--report-zoom:1">
       <div class="paper-title-block">
         <h3>${escapeHtml(title)}</h3>
-        <p>Papirni pregled dnevnog izveštaja za kontrolu, potpis, štampu i arhivu</p>
+        <p>${escapeHtml(paperSubtitle)}</p>
       </div>
 
       <table class="paper-meta-table">
         <tbody>
           <tr><th>Datum izveštaja</th><td>${escapeHtml(formatDateOnlyLocal(r.report_date || d.report_date_manual || d.report_date || ""))}</td><th>Status</th><td>${escapeHtml(statusLabel)}</td></tr>
-          <tr><th>Gradilište</th><td>${escapeHtml(d.site_name || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
+          <tr><th>Gradilište / lokacija</th><td>${escapeHtml(primaryLocation || "—")}</td><th>Vreme slanja</th><td>${escapeHtml(submitted || "—")}</td></tr>
           <tr><th>Broj radnika</th><td>${escapeHtml(reportEmployeeNumber(r) || "—")}</td><th>Zaposleni / odgovorno lice</th><td>${escapeHtml(person)}</td></tr>
           <tr><th>Radno mesto</th><td colspan="3">${escapeHtml(r.company_users?.function_title || d.function_title || "—")}</td></tr>
           <tr><th>Firma</th><td>${escapeHtml(currentCompany?.company_name || currentCompany?.name || "—")}</td><th>Broj dokumenta</th><td>${escapeHtml(reportDocumentNumber(r))}</td></tr>
@@ -5632,7 +5649,7 @@ function buildReportPaperHtml(r, paperIdPrefix = "paper") {
 
       ${r.returned_reason ? `<div class="paper-returned-reason"><b>Razlog vraćanja na ispravku:</b> ${escapeHtml(r.returned_reason)}</div>` : ""}
 
-      ${renderReportReadableDetails(d)}
+      ${renderReportReadableDetails(d, { showDefect: true })}
 
       <div class="paper-footer-note">
         Pregled pripremljen u AskCreate.app · ${escapeHtml(formatDateTimeLocal(new Date().toISOString()))}
@@ -5710,7 +5727,7 @@ window.openReportDocumentCenter = function(id) {
         <div>
           <small>Centar dokumenata izveštaja</small>
           <h2>${escapeHtml(title)}</h2>
-          <p>${escapeHtml(person)} · ${escapeHtml(d.site_name || "Bez gradilišta")} · ${escapeHtml(r.report_date || "")}</p>
+          <p>${escapeHtml(person)} · ${escapeHtml(reportPrimaryLocationLabel(r))} · ${escapeHtml(r.report_date || "")}</p>
         </div>
         <button class="secondary report-doc-close" type="button" onclick="closeReportDocumentCenter()">Nazad</button>
       </header>
@@ -6259,7 +6276,23 @@ window.exportSingleReportToExcel = function(id) {
 
 function reportPrimaryLocationLabel(r = {}) {
   const d = r.data || {};
-  return d.site_name || d.request_title || d.report_type_label || d.report_label || "Bez gradilišta";
+  const multiSites = []
+    .concat(Array.isArray(d.machines) ? d.machines.map(x => x && (x.site_name || x.site)) : [])
+    .concat(Array.isArray(d.vehicles) ? d.vehicles.map(x => x && (x.site_name || x.site)) : [])
+    .filter(Boolean);
+  const uniqueSites = [...new Set(multiSites)];
+  return d.site_name ||
+    d.defect_site_name ||
+    d.location ||
+    d.defect_location ||
+    d.water_site_name ||
+    d.lowloader_to_site ||
+    d.lowloader_from_site ||
+    (uniqueSites.length === 1 ? uniqueSites[0] : (uniqueSites.length > 1 ? `Više gradilišta (${uniqueSites.length})` : "")) ||
+    d.request_title ||
+    d.report_type_label ||
+    d.report_label ||
+    "Bez gradilišta";
 }
 
 function reportHtml(r) {
@@ -6315,8 +6348,9 @@ window.setReportStatus = async (id, status) => {
 };
 
 window.archiveReport = async (id) => {
-  if (!confirm("Arhivirati izveštaj?\n\nIzveštaj ostaje u bazi, ali se sklanja iz aktivne liste i prelazi u karticu Arhiva.")) return;
   const existingReport = directorReportsCache.find(r => String(r.id) === String(id));
+  const label = reportActionLabel(existingReport);
+  if (!confirm(`Arhivirati ovu stavku?\n\n${label}\n\nStavka ostaje u bazi, ali se sklanja iz aktivne liste i prelazi u karticu Arhiva.`)) return;
   try {
     await directorRpcArchiveReport(id);
   } catch (error) {
@@ -6470,7 +6504,48 @@ window.returnReport = async (id) => {
   if (typeof openReportDocumentCenter === "function") openReportDocumentCenter(id);
 };
 
-window.setDefectRecordStatus = async (id, newStatus) => {
+
+window.markAllDefectsReceived = async () => {
+  const defects = directorReportsCache.filter(isActiveDefectReport).filter(r => {
+    const d = r.data || {};
+    const st = String(d.defect_status || d.mechanic_status || "").toLowerCase();
+    return !["primljeno", "u_popravci", "reseno", "rešeno"].includes(st);
+  });
+  if (!defects.length) return toast("Nema novih kvarova za označavanje kao primljeno.", true);
+  if (!confirm(`Označiti kao PRIMLJENO sve nove kvarove?\n\nUkupno: ${defects.length}`)) return;
+  for (const r of defects) {
+    await setDefectRecordStatus(r.id, "primljeno", { silent: true, skipReload: true });
+  }
+  toast(`Kvarovi označeni kao primljeno: ${defects.length}.`);
+  await loadReports({ silent: true });
+};
+
+window.archiveResolvedDefects = async () => {
+  const defects = directorReportsCache.filter(isActiveDefectReport).filter(isResolvedDefectReport);
+  if (!defects.length) return toast("Nema rešenih kvarova za arhiviranje.", true);
+  const sample = defects.slice(0, 6).map(r => `• ${reportActionLabel(r)}`).join("\n");
+  const more = defects.length > 6 ? `\n• ... i još ${defects.length - 6}` : "";
+  if (!confirm(`Arhivirati sve rešene kvarove?\n\nUkupno: ${defects.length}\n\n${sample}${more}`)) return;
+  for (const r of defects) {
+    try {
+      await directorRpcArchiveReport(r.id);
+    } catch (error) {
+      const { error: directError } = await sb
+        .from("reports")
+        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .eq("id", r.id)
+        .eq("company_id", currentCompany.id);
+      if (directError) throw directError;
+    }
+    saveLocalArchivedReport(r);
+    directorReportsCache = directorReportsCache.map(x => String(x.id) === String(r.id) ? { ...x, status: "archived", updated_at: new Date().toISOString() } : x);
+  }
+  toast(`Rešeni kvarovi arhivirani: ${defects.length}.`);
+  refreshDirectorReportViewsAfterBulk();
+  await loadReports({ silent: true });
+};
+
+window.setDefectRecordStatus = async (id, newStatus, options = {}) => {
   const { data: row, error: readError } = await sb.from("reports").select("data").eq("id", id).eq("company_id", currentCompany.id).maybeSingle();
   if (readError) return toast(readError.message, true);
   const d = row?.data || {};
@@ -6479,9 +6554,12 @@ window.setDefectRecordStatus = async (id, newStatus) => {
   if (newStatus === "u_popravci") d.defect_repair_started_at = new Date().toISOString();
   if (newStatus === "reseno") d.defect_resolved_at = new Date().toISOString();
   const { error } = await sb.from("reports").update({ data: d }).eq("id", id).eq("company_id", currentCompany.id);
-  if (error) return toast(error.message, true);
-  toast("Status kvara promenjen.");
-  loadReports();
+  if (error) {
+    if (!options.silent) return toast(error.message, true);
+    throw error;
+  }
+  if (!options.silent) toast("Status kvara promenjen.");
+  if (!options.skipReload) await loadReports();
 };
 
 function collectPermissions() {
