@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.61.0";
+const APP_VERSION = "1.62.0";
 
 
 let sb = null;
@@ -8088,8 +8088,8 @@ function addVehicleEntry(values = {}) {
     </div>
 
     <div class="truck-tour-explain">
-      <b>Stavke tura</b>
-      <span>Vozač ne piše kilometre po turi. Upisuje materijal i broj tura, a aplikacija razdvaja lokal, ulaz, izlaz i deponiju po gradilištima.</span>
+      <b>Ture i materijal</b>
+      <span>Dodaj turu, materijal i broj tura.</span>
     </div>
 
     <div class="v-tour-items entry-list"></div>

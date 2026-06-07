@@ -7718,3 +7718,129 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm #workerLogoutBtn{
   min-width:170px !important;
 }
+
+
+/* === AskCreate v34: potpuni beli/čitljiv worker form fix === */
+#viewWorkerForm,
+#viewWorkerForm *{
+  color:#000000;
+}
+
+#viewWorkerForm .dyn-section,
+#viewWorkerForm .entry-card,
+#viewWorkerForm .vehicle-entry,
+#viewWorkerForm .truck-daily-entry,
+#viewWorkerForm .vehicle-tour-row,
+#viewWorkerForm .worker-module-chooser,
+#viewWorkerForm .truck-tour-explain,
+#viewWorkerForm .truck-summary-line,
+#viewWorkerForm .signature-pad-wrap,
+#viewWorkerForm .returned-panel,
+#viewWorkerForm .fuel-memory-panel,
+#viewWorkerForm .card,
+#viewWorkerForm .card-soft,
+#viewWorkerForm .site-log-subsection,
+#viewWorkerForm .site-log-section,
+#viewWorkerForm .site-log-panel,
+#viewWorkerForm .entry-list{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border-color:#000000 !important;
+  box-shadow:none !important;
+}
+
+#viewWorkerForm .entry-card-head,
+#viewWorkerForm .vehicle-tour-head,
+#viewWorkerForm .site-log-head,
+#viewWorkerForm .dashboard-head{
+  background:#ffffff !important;
+  color:#000000 !important;
+  border-color:#000000 !important;
+}
+
+#viewWorkerForm h1,
+#viewWorkerForm h2,
+#viewWorkerForm h3,
+#viewWorkerForm h4,
+#viewWorkerForm h5,
+#viewWorkerForm h6,
+#viewWorkerForm p,
+#viewWorkerForm span,
+#viewWorkerForm b,
+#viewWorkerForm strong,
+#viewWorkerForm label,
+#viewWorkerForm .hint,
+#viewWorkerForm .tiny,
+#viewWorkerForm .muted,
+#viewWorkerForm .field-hint,
+#viewWorkerForm .entry-card-head strong,
+#viewWorkerForm .asset-smart-result,
+#viewWorkerForm .truck-summary-line span,
+#viewWorkerForm .truck-summary-line b,
+#viewWorkerForm .truck-tour-explain b,
+#viewWorkerForm .truck-tour-explain span,
+#viewWorkerForm .worker-module-chooser label,
+#viewWorkerForm .worker-simple-top label,
+#viewWorkerForm .site-log-subtitle,
+#viewWorkerForm .site-log-section-title,
+#viewWorkerForm .site-log-section-title h4{
+  color:#000000 !important;
+  opacity:1 !important;
+}
+
+#viewWorkerForm input,
+#viewWorkerForm select,
+#viewWorkerForm textarea{
+  background:#ffffff !important;
+  color:#000000 !important;
+  -webkit-text-fill-color:#000000 !important;
+  border:1px solid #000000 !important;
+  box-shadow:none !important;
+}
+#viewWorkerForm input::placeholder,
+#viewWorkerForm textarea::placeholder{
+  color:#666666 !important;
+  opacity:1 !important;
+}
+#viewWorkerForm select option{
+  color:#000000 !important;
+  background:#ffffff !important;
+}
+
+#viewWorkerForm .remove-entry,
+#viewWorkerForm .primary,
+#viewWorkerForm .secondary,
+#viewWorkerForm .danger-btn,
+#viewWorkerForm button{
+  background:#ef5a5a !important;
+  color:#000000 !important;
+  -webkit-text-fill-color:#000000 !important;
+  border:1px solid #000000 !important;
+  box-shadow:none !important;
+}
+#viewWorkerForm .remove-entry:hover,
+#viewWorkerForm .primary:hover,
+#viewWorkerForm .secondary:hover,
+#viewWorkerForm .danger-btn:hover,
+#viewWorkerForm button:hover{
+  background:#e14a4a !important;
+  color:#000000 !important;
+}
+
+#viewWorkerForm .truck-tour-explain{
+  padding:12px !important;
+}
+#viewWorkerForm .truck-tour-explain span{
+  font-size:14px !important;
+}
+#viewWorkerForm .vehicle-tour-row,
+#viewWorkerForm .truck-daily-entry{
+  padding:12px !important;
+}
+#viewWorkerForm .truck-summary-line{
+  display:grid !important;
+  gap:8px !important;
+}
+#viewWorkerForm .hidden{
+  display:none !important;
+}
