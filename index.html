@@ -1191,7 +1191,7 @@
         </div>
         <div class="owner-panel-actions">
           <button id="ownerPanelRefreshBtn" class="secondary" type="button">Osveži pregled</button>
-          <button id="ownerPanelLogoutBtn" class="secondary" type="button">Odjavi uređaj</button>
+          <button id="ownerPanelLogoutBtn" class="secondary" type="button">Zatvori app</button>
         </div>
       </div>
 
@@ -1423,17 +1423,16 @@
       </div>
 
       <div id="normalWorkerFormCard" class="card">
-        <h3>Terenski radni unos</h3>
-        <p class="hint">Uprava određuje koje funkcije imaš, a ti iz menija biraš samo ono što danas popunjavaš. Tako se kvar, gorivo, godišnji i radni izveštaj više ne mešaju.</p>
-        <label>Datum / godina</label>
-        <input id="wrDate" type="date" />
+        <div class="worker-simple-top">
+          <label>Datum</label>
+          <input id="wrDate" type="date" />
+        </div>
 
-        <div id="workerModuleChooser" class="worker-module-chooser">
-          <label>Šta danas popunjavaš?</label>
+        <div id="workerModuleChooser" class="worker-module-chooser worker-module-chooser-simple">
+          <label>Odaberi rubriku</label>
           <select id="wrModuleSelect">
             <option value="">Izaberi rubriku...</option>
           </select>
-          <p id="wrModuleHint" class="hint">Prikazaće se samo obrazac koji izabereš. Ostale dozvoljene rubrike ostaju sakrivene dok ih ne izabereš.</p>
         </div>
 
         <div id="secWorkerSite" class="dyn-section">

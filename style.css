@@ -7681,3 +7681,40 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
   color:#000000 !important;
   background:#ffffff !important;
 }
+
+
+/* === AskCreate v33: Radnik vidi samo dobrodošlicu + zatvori app + rubriku === */
+#viewWorkerForm #normalWorkerFormCard{
+  padding-top:18px !important;
+}
+#viewWorkerForm #normalWorkerFormCard > h3,
+#viewWorkerForm #normalWorkerFormCard > p.hint,
+#viewWorkerForm #wrModuleHint{
+  display:none !important;
+}
+#viewWorkerForm .worker-simple-top,
+#viewWorkerForm .worker-module-chooser-simple{
+  background:#ffffff !important;
+  border:0 !important;
+  padding:0 !important;
+  margin:0 0 14px 0 !important;
+  box-shadow:none !important;
+}
+#viewWorkerForm .worker-simple-top label,
+#viewWorkerForm .worker-module-chooser-simple label{
+  font-size:15px !important;
+  font-weight:900 !important;
+  color:#000 !important;
+  margin-bottom:6px !important;
+  display:block !important;
+}
+#viewWorkerForm .worker-module-chooser-simple select,
+#viewWorkerForm .worker-simple-top input{
+  margin-bottom:0 !important;
+}
+#viewWorkerForm .dashboard-head{
+  align-items:flex-start !important;
+}
+#viewWorkerForm #workerLogoutBtn{
+  min-width:170px !important;
+}
