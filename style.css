@@ -7205,3 +7205,24 @@ canvas, img, iframe{border-radius:0 !important;}
   color:#000 !important;
   border:1px solid #000 !important;
 }
+
+
+/* === AskCreate v22: vidljivi linkovi za ulaz zaposlenih === */
+.person-actions-v1116{
+  gap:6px !important;
+  flex-wrap:wrap !important;
+}
+.person-actions-v1116 .small-action,
+.person-actions-v1116 button{
+  min-height:34px !important;
+  padding:7px 9px !important;
+  font-size:13px !important;
+  border:1px solid #000 !important;
+  background:#fff !important;
+  color:#000 !important;
+  border-radius:0 !important;
+}
+.locked-company-code{
+  background:#f7f7f7 !important;
+  border:1px solid #000 !important;
+}

@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.49.0";
+const APP_VERSION = "1.50.0";
 
 
 let sb = null;
@@ -704,6 +704,41 @@ function buildMechanicCompanyLink(companyCode) {
   return url.toString();
 }
 
+function buildWorkerPersonalLink(person = {}, mode = "worker") {
+  const companyCode = String(currentCompany?.company_code || currentCompany?.code || person.company_code || "").trim();
+  const accessCode = String(person?.access_code || "").trim();
+  const url = new URL(getAppPublicBaseUrl());
+  url.searchParams.set("ulaz", mode === "mechanic" ? "mehanika" : "radnik");
+  if (companyCode) url.searchParams.set("firma", companyCode);
+  if (accessCode) url.searchParams.set("kod", accessCode);
+  return url.toString();
+}
+
+function findDirectorPersonById(personId) {
+  return (directorPeopleCache || []).find(p => String(p.id) === String(personId)) || null;
+}
+
+async function copyDirectorPersonLink(personId, mode = "worker") {
+  const p = findDirectorPersonById(personId);
+  if (!p) return toast("Zaposleni nije pronađen.", true);
+  const link = buildWorkerPersonalLink(p, mode);
+  try {
+    await navigator.clipboard.writeText(link);
+    toast(mode === "mechanic" ? "Link šefa mehanizacije je kopiran." : "Radnički link je kopiran.");
+  } catch (e) {
+    window.prompt(mode === "mechanic" ? "Kopiraj link šefa mehanizacije:" : "Kopiraj radnički link:", link);
+  }
+}
+
+function openDirectorPersonLink(personId, mode = "worker") {
+  const p = findDirectorPersonById(personId);
+  if (!p) return toast("Zaposleni nije pronađen.", true);
+  window.open(buildWorkerPersonalLink(p, mode), "_blank", "noopener");
+}
+
+window.copyDirectorPersonLink = copyDirectorPersonLink;
+window.openDirectorPersonLink = openDirectorPersonLink;
+
 function getWorkerEntryModeFromUrl() {
   const params = new URLSearchParams(window.location.search || "");
   const mode = String(params.get("ulaz") || "").toLowerCase();
@@ -722,6 +757,21 @@ function buildCompanyQrImageUrl(link, size = 380) {
 function getWorkerCompanyCodeFromUrl() {
   const params = new URLSearchParams(window.location.search || "");
   return String(params.get("firma") || params.get("sw_company") || params.get("company") || params.get("company_code") || "").trim();
+}
+
+function getWorkerAccessCodeFromUrl() {
+  const params = new URLSearchParams(window.location.search || "");
+  return String(params.get("kod") || params.get("code") || params.get("access_code") || params.get("radnik") || "").trim();
+}
+
+function applyWorkerAccessCodeFromUrl() {
+  const code = getWorkerAccessCodeFromUrl();
+  const input = document.getElementById("workerAccessCode");
+  if (code && input) {
+    input.value = code;
+    input.classList.add("locked-company-code");
+  }
+  return !!code;
 }
 
 function isWorkerQrEntrance() {
@@ -938,6 +988,7 @@ function setWorkerCompanyQrContext(companyCode, source = "saved") {
 
 function applyWorkerCompanyContextFromUrlOrStorage() {
   const fromUrl = getWorkerCompanyCodeFromUrl();
+  applyWorkerAccessCodeFromUrl();
   if (fromUrl) {
     localStorage.setItem("swp_worker_company_code", fromUrl);
     localStorage.setItem("swp_worker_entry_mode", getWorkerEntryModeFromUrl() === "mechanic" ? "mechanic" : "worker");
@@ -2489,6 +2540,13 @@ async function saveAssetForm() {
   }
 }
 
+
+function isMechanicBossPerson(p = {}) {
+  const title = String(p.function_title || "").toLowerCase();
+  const perms = p.permissions || {};
+  return !!(perms.mechanic_boss || perms.mechanicBoss || title.includes("šef mehanizacije") || title.includes("sef mehanizacije"));
+}
+
 function renderPersonItem(p) {
   const permissionCount = Object.keys(p.permissions || {}).filter(k => p.permissions[k]).length;
   const rawFullName = `${p.first_name || ""} ${p.last_name || ""}`.trim();
@@ -2500,6 +2558,9 @@ function renderPersonItem(p) {
       <div class="dt-cell"><span>${escapeHtml(p.function_title || "—")}</span><small>Radno mesto</small></div>
       <div class="dt-cell"><span class="dt-status dt-ok">Aktivan</span><small>${permissionCount} rubrika</small></div>
       <div class="dt-actions person-actions-v1116">
+        <button class="secondary small-action" type="button" onclick="copyDirectorPersonLink('${p.id}','worker')">🔗 Kopiraj link</button>
+        <button class="secondary small-action" type="button" onclick="openDirectorPersonLink('${p.id}','worker')">Otvori</button>
+        ${isMechanicBossPerson(p) ? `<button class="secondary small-action" type="button" onclick="copyDirectorPersonLink('${p.id}','mechanic')">🔧 Link šefa</button>` : ""}
         <button class="edit-btn" type="button" onclick="editPerson('${p.id}')">✏️ Izmeni</button>
         <button class="delete-btn" type="button" onclick="deletePerson('${p.id}')">Deaktiviraj</button>
       </div>
@@ -3179,7 +3240,7 @@ async function runDirectorGlobalSearch(showEmptyMessage = true) {
         type:"Zaposleni / osoba",
         title:formatPersonNameWithEmployeeNumber(p),
         subtitle:`${employeeNumber ? `broj radnika: ${employeeNumber} · ` : ""}${p.function_title} · kod: ${p.access_code} · ${p.active ? "aktivan" : "neaktivan"}`,
-        actions:`${p.active ? `<button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Izmeni</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši sa spiska</button>` : `<span class="pill">sklonjeno iz aktivnog spiska</span>`}`
+        actions:`${p.active ? `<button class="secondary small-action" onclick="copyDirectorPersonLink('${p.id}','worker')">🔗 Kopiraj link</button><button class="edit-btn" onclick="editPerson('${p.id}')">✏️ Izmeni</button><button class="delete-btn" onclick="deletePerson('${p.id}')">❌ Obriši sa spiska</button>` : `<span class="pill">sklonjeno iz aktivnog spiska</span>`}`
       });
     });
 
