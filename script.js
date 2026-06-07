@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.57.0";
+const APP_VERSION = "1.58.0";
 
 
 let sb = null;
@@ -4046,27 +4046,59 @@ function generatedOfficeArchiveLabel(item = {}) {
   return `${type} · ${period || "bez datuma"} · ${item.site || "Sva gradilišta"}`;
 }
 
-function archiveGeneratedOfficePreview(kind, previewId, from, to, site) {
+async function archiveReportSilentlyForOfficeArchive(reportId) {
+  const existingReport = directorReportsCache.find(r => String(r.id) === String(reportId));
+  try {
+    await directorRpcArchiveReport(reportId);
+  } catch (error) {
+    const { error: directError } = await sb
+      .from("reports")
+      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .eq("id", reportId)
+      .eq("company_id", currentCompany.id);
+    if (directError) throw (error || directError);
+  }
+  if (existingReport) saveLocalArchivedReport(existingReport);
+  directorReportsCache = directorReportsCache.map(r => String(r.id) === String(reportId) ? { ...r, status: "archived", updated_at: new Date().toISOString() } : r);
+}
+
+async function archiveGeneratedOfficePreview(kind, previewId, from, to, site) {
   const box = document.getElementById(previewId);
   if (!box || !box.innerHTML.trim()) return toast("Prvo prikaži pregled, pa ga pošalji u arhivu.", true);
   const label = generatedOfficeArchiveLabel({ kind, from, to, site });
-  if (!confirm(`Poslati u arhivu?\n\n${label}`)) return;
-  const list = loadOfficeGeneratedArchive();
-  const item = {
-    id: generatedOfficeArchiveId(kind, from, to, site),
-    kind,
-    from,
-    to,
-    site: site || "Sva gradilišta",
-    label,
-    html: box.innerHTML,
-    created_at: new Date().toISOString(),
-    company_name: currentCompanyExportName()
-  };
-  list.unshift(item);
-  saveOfficeGeneratedArchive(list);
-  toast("Pregled je poslat u arhivu.");
-  renderArchiveList();
+  const sourceReports = kind === "carnet"
+    ? officeBuildCarnetData(from, to, site).reports
+    : officeBuildDailyLogData(from, site).reports;
+  const sourceIds = [...new Set((sourceReports || []).map(r => r.id).filter(Boolean))];
+  if (!sourceIds.length) return toast("Nema izvornih izveštaja za arhiviranje.", true);
+  if (!confirm(`Poslati u arhivu?\n\n${label}\n\nBiće arhivirano i sklonjeno iz aktivnog Dnevnika/Karneta: ${sourceIds.length} izveštaja.`)) return;
+  try {
+    for (const id of sourceIds) {
+      await archiveReportSilentlyForOfficeArchive(id);
+    }
+    const list = loadOfficeGeneratedArchive();
+    const item = {
+      id: generatedOfficeArchiveId(kind, from, to, site),
+      kind,
+      from,
+      to,
+      site: site || "Sva gradilišta",
+      label,
+      html: box.innerHTML,
+      source_report_ids: sourceIds,
+      created_at: new Date().toISOString(),
+      company_name: currentCompanyExportName()
+    };
+    list.unshift(item);
+    saveOfficeGeneratedArchive(list);
+    toast(`Pregled je poslat u arhivu. Arhivirano izveštaja: ${sourceIds.length}.`);
+    if (kind === "carnet") renderCarnetPreview();
+    else renderDailyLogPreview();
+    renderArchiveList();
+    businessUpdateReportsMetrics(directorReportsCache);
+  } catch (e) {
+    toast(e.message || String(e), true);
+  }
 }
 
 function archiveDailyLogPreview() {
@@ -4137,15 +4169,33 @@ function printGeneratedOfficeArchive(id) {
   win.document.close();
 }
 
-function deleteGeneratedOfficeArchive(id) {
+async function deleteGeneratedOfficeArchive(id) {
   const list = loadOfficeGeneratedArchive();
   const item = list.find(x => String(x.id) === String(id));
   if (!item) return toast("Arhivirana stavka nije pronađena.", true);
   const label = generatedOfficeArchiveLabel(item);
-  if (!confirm(`Da li ste sigurni da želite trajno obrisati ovu stavku?\n\n${label}\n\nOva radnja briše stavku iz arhive na ovom uređaju i ne može se vratiti.`)) return;
-  saveOfficeGeneratedArchive(list.filter(x => String(x.id) !== String(id)));
-  toast("Arhivirana stavka je trajno obrisana.");
-  renderArchiveList();
+  const sourceIds = Array.isArray(item.source_report_ids) ? item.source_report_ids.filter(Boolean) : [];
+  if (!confirm(`Da li ste sigurni da želite trajno obrisati ovu stavku?\n\n${label}\n\nBiće trajno obrisani i povezani izveštaji: ${sourceIds.length}.\n\nOva radnja briše stavke iz baze i ne može se vratiti.`)) return;
+  try {
+    for (const reportId of sourceIds) {
+      const { error } = await sb
+        .from("reports")
+        .delete()
+        .eq("id", reportId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
+      removeLocalArchivedReport(reportId);
+      directorReportsCache = directorReportsCache.filter(r => String(r.id) !== String(reportId));
+    }
+    saveOfficeGeneratedArchive(list.filter(x => String(x.id) !== String(id)));
+    toast("Arhivirana stavka i povezani izveštaji su trajno obrisani.");
+    renderArchiveList();
+    if (item.kind === "carnet") renderCarnetPreview?.();
+    else renderDailyLogPreview?.();
+    businessUpdateReportsMetrics(directorReportsCache);
+  } catch (e) {
+    toast(e.message || String(e), true);
+  }
 }
 
 window.archiveDailyLogPreview = archiveDailyLogPreview;
@@ -6885,6 +6935,17 @@ window.deleteAllArchivedReportsPermanently = async () => {
       if (error) throw error;
       removeLocalArchivedReport(r.id);
       directorReportsCache = directorReportsCache.filter(x => String(x.id) !== String(r.id));
+    }
+    const generatedSourceIds = [...new Set(generated.flatMap(item => Array.isArray(item.source_report_ids) ? item.source_report_ids : []).filter(Boolean))];
+    for (const reportId of generatedSourceIds) {
+      if (directorReportsCache.some(r => String(r.id) === String(reportId))) continue;
+      const { error } = await sb
+        .from("reports")
+        .delete()
+        .eq("id", reportId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
+      removeLocalArchivedReport(reportId);
     }
     saveOfficeGeneratedArchive([]);
     toast(`Trajno obrisano iz arhive: ${total}.`);
