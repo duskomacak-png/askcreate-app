@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.8";
+const APP_VERSION = "1.68.9";
 
 
 let sb = null;
@@ -3652,10 +3652,17 @@ function writeLocalArchivedReports(list) {
 
 function saveLocalArchivedReport(report) {
   if (!report?.id || !currentCompany?.id) return;
+  const archivedAt = new Date().toISOString();
   const archivedReport = {
     ...report,
     status: "archived",
-    updated_at: new Date().toISOString()
+    updated_at: archivedAt,
+    data: {
+      ...(report?.data || {}),
+      archived: true,
+      archived_from_direction: true,
+      archived_at: archivedAt
+    }
   };
   const map = new Map(loadLocalArchivedReports().map(r => [String(r.id), r]));
   map.set(String(archivedReport.id), archivedReport);
@@ -3752,7 +3759,8 @@ function isFuelDashboardOnlyReport(r) {
 
 function isArchivedReport(r) {
   const status = String(r?.status || "").toLowerCase();
-  return status === "archived" || status === "arhivirano";
+  const d = r?.data || {};
+  return status === "archived" || status === "arhivirano" || d.archived === true || d.archived_from_direction === true || !!d.archived_at;
 }
 
 function isPendingDirectorReport(r) {
@@ -3969,11 +3977,8 @@ async function loadReports(options = {}) {
     const archivedReports = filterVisibleReportsAfterPermanentDelete(await directorDirectListArchivedReports());
     const remoteReports = mergeReportsById(activeReports, archivedReports);
 
-    // Lokalna arhiva je samo pomoćni prikaz za Arhivu. Ne sme vraćati stare izveštaje
-    // nazad u Direktor/Šef mehanizacije analitiku ako je baza već prazna ili očišćena.
-    if (!remoteReports.length && loadLocalArchivedReports().length) {
-      writeLocalArchivedReports([]);
-    }
+    // Lokalna arhiva je pomoćni prikaz za karticu Arhiva kada RLS/RPC ne vrati arhivirane redove.
+    // NE SME se čistiti samo zato što aktivni remoteReports nema stavki — time bi arhivirani kvar nestao iz Arhive.
     data = remoteReports;
   } catch (error) {
     if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
@@ -7168,13 +7173,28 @@ window.archiveReport = async (id) => {
   const existingReport = directorReportsCache.find(r => String(r.id) === String(id));
   const label = reportActionLabel(existingReport);
   if (!confirm(`Arhivirati ovu stavku?\n\n${label}\n\nStavka ostaje u bazi, ali se sklanja iz aktivne liste i prelazi u karticu Arhiva.`)) return;
+  const archivedAt = new Date().toISOString();
+  const nextData = {
+    ...(existingReport?.data || {}),
+    archived: true,
+    archived_from_direction: true,
+    archived_at: archivedAt
+  };
   try {
     await directorRpcArchiveReport(id);
+    // I posle uspešnog RPC-a forsiramo isti status/podatke. Ovo štiti slučaj da stara RPC funkcija
+    // samo skloni iz aktivnog pregleda, ali ne vrati stavku u karticu Arhiva.
+    const { error: directArchiveError } = await sb
+      .from("reports")
+      .update({ status: "archived", data: nextData, updated_at: archivedAt })
+      .eq("id", id)
+      .eq("company_id", currentCompany.id);
+    if (directArchiveError) console.warn("AskCreate.app: direktno potvrđivanje arhive nije uspelo, koristim lokalnu arhivu:", directArchiveError.message);
   } catch (error) {
     try {
       const { error: directError } = await sb
         .from("reports")
-        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .update({ status: "archived", data: nextData, updated_at: archivedAt })
         .eq("id", id)
         .eq("company_id", currentCompany.id);
       if (directError) throw directError;
@@ -7184,8 +7204,8 @@ window.archiveReport = async (id) => {
   }
 
   if (existingReport) {
-    saveLocalArchivedReport(existingReport);
-    directorReportsCache = directorReportsCache.map(r => String(r.id) === String(id) ? { ...r, status: "archived", updated_at: new Date().toISOString() } : r);
+    saveLocalArchivedReport({ ...existingReport, status: "archived", data: nextData, updated_at: archivedAt });
+    directorReportsCache = directorReportsCache.map(r => String(r.id) === String(id) ? { ...r, status: "archived", data: { ...(r.data || {}), ...nextData }, updated_at: archivedAt } : r);
     businessUpdateReportsMetrics(directorReportsCache);
     renderFuelReportsList();
     renderFuelConsumptionAnalysis();
@@ -7473,18 +7493,26 @@ window.archiveResolvedDefects = async () => {
   const more = defects.length > 6 ? `\n• ... i još ${defects.length - 6}` : "";
   if (!confirm(`Arhivirati sve rešene kvarove?\n\nUkupno: ${defects.length}\n\n${sample}${more}`)) return;
   for (const r of defects) {
+    const archivedAt = new Date().toISOString();
+    const nextData = { ...(r.data || {}), archived: true, archived_from_direction: true, archived_at: archivedAt };
     try {
       await directorRpcArchiveReport(r.id);
+      const { error: confirmError } = await sb
+        .from("reports")
+        .update({ status: "archived", data: nextData, updated_at: archivedAt })
+        .eq("id", r.id)
+        .eq("company_id", currentCompany.id);
+      if (confirmError) console.warn("AskCreate.app: potvrda arhive kvara nije uspela:", confirmError.message);
     } catch (error) {
       const { error: directError } = await sb
         .from("reports")
-        .update({ status: "archived", updated_at: new Date().toISOString() })
+        .update({ status: "archived", data: nextData, updated_at: archivedAt })
         .eq("id", r.id)
         .eq("company_id", currentCompany.id);
       if (directError) throw directError;
     }
-    saveLocalArchivedReport(r);
-    directorReportsCache = directorReportsCache.map(x => String(x.id) === String(r.id) ? { ...x, status: "archived", updated_at: new Date().toISOString() } : x);
+    saveLocalArchivedReport({ ...r, status: "archived", data: nextData, updated_at: archivedAt });
+    directorReportsCache = directorReportsCache.map(x => String(x.id) === String(r.id) ? { ...x, status: "archived", data: nextData, updated_at: archivedAt } : x);
   }
   toast(`Rešeni kvarovi arhivirani: ${defects.length}.`);
   refreshDirectorReportViewsAfterBulk();
