@@ -1,4 +1,4 @@
-// v1.68.2_WORKER_PERSON_LINK_GUARD - lični link nosi ID radnika i login ne sme otvoriti pogrešan panel
+// v1.68.4_REPORT_ANALYTICS_CLEANUP - obrisani/arhivirani izveštaji ne hrane direktora i šefa mehanizacije
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.3";
+const APP_VERSION = "1.68.4";
 
 
 let sb = null;
@@ -3423,6 +3423,20 @@ function filterVisibleReportsAfterPermanentDelete(reports = []) {
   });
 }
 
+// v1.68.4 — ista baza može imati stare arhivirane/obrisane zapise.
+// Ti zapisi smeju da postoje za dokumentaciju/arhivu, ali ne smeju više hraniti
+// Direktor pregled, Šef mehanizacije gorivo/potrošnju, dnevnik, karnet i KPI brojeve.
+function isReportOperationalForAnalytics(r) {
+  if (!r?.id) return false;
+  if (isPermanentlyDeletedReport(r)) return false;
+  if (isArchivedReport(r)) return false;
+  return true;
+}
+
+function filterOperationalReportsForAnalytics(reports = []) {
+  return filterVisibleReportsAfterPermanentDelete(reports).filter(isReportOperationalForAnalytics);
+}
+
 async function permanentlyDeleteReportInDatabase(reportId) {
   if (!currentCompany?.id) throw new Error("Firma nije učitana.");
   const { error: deleteError } = await sb
@@ -3787,10 +3801,16 @@ async function loadReports(options = {}) {
 
   let data = [];
   try {
-    const activeReports = await directorRpcListReports();
-    const archivedReports = await directorDirectListArchivedReports();
-    const localArchivedReports = loadLocalArchivedReports();
-    data = filterVisibleReportsAfterPermanentDelete(mergeReportsById(mergeReportsById(activeReports, archivedReports), localArchivedReports));
+    const activeReports = filterVisibleReportsAfterPermanentDelete(await directorRpcListReports());
+    const archivedReports = filterVisibleReportsAfterPermanentDelete(await directorDirectListArchivedReports());
+    const remoteReports = mergeReportsById(activeReports, archivedReports);
+
+    // Lokalna arhiva je samo pomoćni prikaz za Arhivu. Ne sme vraćati stare izveštaje
+    // nazad u Direktor/Šef mehanizacije analitiku ako je baza već prazna ili očišćena.
+    if (!remoteReports.length && loadLocalArchivedReports().length) {
+      writeLocalArchivedReports([]);
+    }
+    data = remoteReports;
   } catch (error) {
     if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
     else toast(error.message, true);
@@ -4480,7 +4500,7 @@ async function refreshSiteBossOverview() {
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw error;
-    const clean = filterVisibleReportsAfterPermanentDelete(Array.isArray(data) ? data : []).filter(r => !isArchivedReport(r));
+    const clean = (Array.isArray(data) ? data : []).filter(r => !isArchivedReport(r));
     const overview = siteBossBuildOverviewFromReports(clean, date, site);
     renderSiteBossOverview(overview, date, site);
   } catch (e) {
@@ -4837,7 +4857,7 @@ function fuelConsumptionStatus(row) {
 
 function buildFuelConsumptionRows(from, to) {
   const rows = { map: new Map(), lookup: buildDirectorAssetLookup() };
-  (directorReportsCache || []).filter(r => reportDateInRange(r, from, to)).forEach(r => {
+  filterOperationalReportsForAnalytics(directorReportsCache || []).filter(r => reportDateInRange(r, from, to)).forEach(r => {
     const d = r.data || {};
     (Array.isArray(d.machines) ? d.machines : []).forEach(m => addFuelAnalysisWork(rows, m, "machine"));
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => addFuelAnalysisWork(rows, v, "vehicle"));
@@ -5159,8 +5179,9 @@ function ownerDiffNumber(d = {}, startKeys = [], endKeys = []) {
 }
 
 function buildOwnerDashboardData(from, to, site = "") {
-  const reports = (directorReportsCache || []).filter(r => ownerReportMatchesDateSiteAny(r, from, to, site));
-  const allMatchingReports = (directorReportsCache || []).filter(r => {
+  const analyticsReports = filterOperationalReportsForAnalytics(directorReportsCache || []);
+  const reports = analyticsReports.filter(r => ownerReportMatchesDateSiteAny(r, from, to, site));
+  const allMatchingReports = analyticsReports.filter(r => {
     const date = officeReportDate(r);
     if (from && date && date < from) return false;
     if (to && date && date > to) return false;
@@ -5377,7 +5398,10 @@ function archiveReportHtml(r) {
 function renderArchiveList() {
   const box = $("#archiveReportsList");
   if (!box) return;
-  const archived = directorReportsCache.filter(isArchivedReport);
+  const archived = mergeReportsById(
+    filterVisibleReportsAfterPermanentDelete(directorReportsCache || []).filter(isArchivedReport),
+    filterVisibleReportsAfterPermanentDelete(loadLocalArchivedReports()).filter(isArchivedReport)
+  );
   const generated = loadOfficeGeneratedArchive();
   const html = [
     ...archived.map(archiveReportHtml),
@@ -7104,8 +7128,12 @@ window.deleteAllArchivedReportsPermanently = async () => {
   directorBulkDeleteArchiveBusy = true;
   try {
     for (const r of archived) {
-      await permanentlyDeleteReportInDatabase(r.id);
-      rememberLocalPermanentlyDeletedReport(r.id);
+      const { error } = await sb
+        .from("reports")
+        .delete()
+        .eq("id", r.id)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
       removeLocalArchivedReport(r.id);
       directorReportsCache = directorReportsCache.filter(x => String(x.id) !== String(r.id));
     }
@@ -14158,7 +14186,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1683", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1684", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -14500,7 +14528,7 @@ async function mechanicListDefectsSafe() {
       p_company_code: currentWorker.company_code,
       p_access_code: currentWorker.access_code
     });
-    if (!error) return data || [];
+    if (!error) return filterOperationalReportsForAnalytics(data || []);
     const msg = String(error.message || "").toLowerCase();
     if (!msg.includes("mechanic_list_defects") && !msg.includes("function") && !msg.includes("schema cache")) {
       throw error;
@@ -14520,7 +14548,7 @@ async function mechanicListDefectsSafe() {
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .limit(200);
   if (error) throw error;
-  return filterVisibleReportsAfterPermanentDelete(data || []).filter(hasDefectData);
+  return filterOperationalReportsForAnalytics(data || []).filter(hasDefectData);
 }
 
 
@@ -14551,8 +14579,8 @@ async function mechanicListCompanyReportsSafe() {
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .limit(500);
   if (error) throw error;
-  const visible = filterVisibleReportsAfterPermanentDelete(data || []);
-  return attachReportUsersFallback ? await attachReportUsersFallback(visible) : visible;
+  const clean = filterOperationalReportsForAnalytics(data || []);
+  return attachReportUsersFallback ? await attachReportUsersFallback(clean) : clean;
 }
 
 async function mechanicListAssetsSafe() {
