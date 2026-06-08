@@ -4522,15 +4522,8 @@ body.in-app #viewDirectorDashboard.director-business-page,
 }
 #viewDirectorDashboard #directorCompanyLabel{color:#334155!important;}
 #viewDirectorDashboard #directorCompanyLabel::after{
-  content:"";
-  display:inline-block;
-  width:7px;
-  height:7px;
-  margin-left:8px;
-  border-radius:50%;
-  background:var(--excel-green);
-  box-shadow:0 0 0 4px rgba(33,115,70,.12);
-  vertical-align:middle;
+  content:none!important;
+  display:none!important;
 }
 #viewDirectorDashboard .director-layout-note{color:#52645a!important;}
 #viewDirectorDashboard .director-hero-actions .secondary,
