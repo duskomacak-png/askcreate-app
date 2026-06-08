@@ -8002,7 +8002,7 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm.worker-mobile-panel .tour-count-box{display:grid !important;grid-template-columns:1fr !important;gap:10px !important;}
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
 
-/* v1.69.4 — uredna status lampica gore desno, bez smetanja tabelama */
+/* v1.69.5 — pomerljiva status lampica, pozicija se pamti u browseru */
 .auto-refresh-lamp {
   position: fixed;
   top: 74px;
@@ -8023,6 +8023,18 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
   font-size: 11px;
   font-weight: 800;
   line-height: 1.15;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.auto-refresh-lamp.is-dragging{
+  cursor: grabbing;
+  opacity: .92;
+  transform: scale(.98);
+}
+.auto-refresh-lamp.is-custom-position{
+  right: auto;
+  bottom: auto;
 }
 .auto-refresh-lamp.hidden { display: none; }
 .auto-refresh-dot {

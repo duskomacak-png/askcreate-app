@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1694";
+const CACHE_NAME = "askcreate-app-v1695";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1694",
-  "./script.js?v=1694",
-  "./manifest.json?v=1694",
+  "./style.css?v=1695",
+  "./script.js?v=1695",
+  "./manifest.json?v=1695",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

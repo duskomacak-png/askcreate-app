@@ -1,4 +1,4 @@
-// v1.69.4_AUTO_REFRESH_COMPACT_BADGE - uredna status lampica gore desno
+// v1.69.5_DRAGGABLE_AUTO_REFRESH_LAMP - status lampica moze da se prevuce
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -3920,14 +3920,119 @@ function formatRefreshTime(date = new Date()) {
   return date.toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+const AUTO_REFRESH_LAMP_POS_KEY = "askcreate_auto_refresh_lamp_pos_v1";
+
+function applySavedAutoRefreshLampPosition(lamp) {
+  if (!lamp || lamp.dataset.positionApplied === "1") return;
+  lamp.dataset.positionApplied = "1";
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTO_REFRESH_LAMP_POS_KEY) || "null");
+    if (!saved || typeof saved.x !== "number" || typeof saved.y !== "number") return;
+    const margin = 8;
+    const maxX = Math.max(margin, window.innerWidth - lamp.offsetWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - lamp.offsetHeight - margin);
+    const x = Math.min(Math.max(saved.x, margin), maxX);
+    const y = Math.min(Math.max(saved.y, margin), maxY);
+    lamp.style.left = `${x}px`;
+    lamp.style.top = `${y}px`;
+    lamp.style.right = "auto";
+    lamp.style.bottom = "auto";
+    lamp.classList.add("is-custom-position");
+  } catch (_) {}
+}
+
+function saveAutoRefreshLampPosition(lamp) {
+  if (!lamp) return;
+  const rect = lamp.getBoundingClientRect();
+  try {
+    localStorage.setItem(AUTO_REFRESH_LAMP_POS_KEY, JSON.stringify({ x: Math.round(rect.left), y: Math.round(rect.top) }));
+  } catch (_) {}
+}
+
+function makeAutoRefreshLampDraggable(lamp) {
+  if (!lamp || lamp.dataset.dragReady === "1") return;
+  lamp.dataset.dragReady = "1";
+  lamp.title = lamp.title || "Možeš me prevući gde ti odgovara";
+
+  let dragging = false;
+  let moved = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  const moveTo = (clientX, clientY) => {
+    const margin = 8;
+    const nextLeft = startLeft + (clientX - startX);
+    const nextTop = startTop + (clientY - startY);
+    const maxLeft = Math.max(margin, window.innerWidth - lamp.offsetWidth - margin);
+    const maxTop = Math.max(margin, window.innerHeight - lamp.offsetHeight - margin);
+    const left = Math.min(Math.max(nextLeft, margin), maxLeft);
+    const top = Math.min(Math.max(nextTop, margin), maxTop);
+    lamp.style.left = `${left}px`;
+    lamp.style.top = `${top}px`;
+    lamp.style.right = "auto";
+    lamp.style.bottom = "auto";
+    lamp.classList.add("is-custom-position", "is-dragging");
+  };
+
+  lamp.addEventListener("pointerdown", (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    dragging = true;
+    moved = false;
+    const rect = lamp.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+    lamp.setPointerCapture?.(e.pointerId);
+    lamp.classList.add("is-dragging");
+    e.preventDefault();
+  });
+
+  lamp.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    if (Math.abs(e.clientX - startX) > 2 || Math.abs(e.clientY - startY) > 2) moved = true;
+    moveTo(e.clientX, e.clientY);
+  });
+
+  const stopDrag = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    lamp.classList.remove("is-dragging");
+    lamp.releasePointerCapture?.(e.pointerId);
+    if (moved) saveAutoRefreshLampPosition(lamp);
+  };
+
+  lamp.addEventListener("pointerup", stopDrag);
+  lamp.addEventListener("pointercancel", stopDrag);
+
+  window.addEventListener("resize", () => {
+    const rect = lamp.getBoundingClientRect();
+    const margin = 8;
+    const maxLeft = Math.max(margin, window.innerWidth - lamp.offsetWidth - margin);
+    const maxTop = Math.max(margin, window.innerHeight - lamp.offsetHeight - margin);
+    const left = Math.min(Math.max(rect.left, margin), maxLeft);
+    const top = Math.min(Math.max(rect.top, margin), maxTop);
+    lamp.style.left = `${left}px`;
+    lamp.style.top = `${top}px`;
+    lamp.style.right = "auto";
+    lamp.style.bottom = "auto";
+    saveAutoRefreshLampPosition(lamp);
+  });
+}
+
 function ensureAutoRefreshLamp() {
   let lamp = document.getElementById("autoRefreshLamp");
-  if (lamp) return lamp;
-  lamp = document.createElement("div");
-  lamp.id = "autoRefreshLamp";
-  lamp.className = "auto-refresh-lamp hidden is-offline";
-  lamp.innerHTML = `<span class="auto-refresh-dot"></span><span class="auto-refresh-text">Online · osvežava 10s</span>`;
-  document.body.appendChild(lamp);
+  if (!lamp) {
+    lamp = document.createElement("div");
+    lamp.id = "autoRefreshLamp";
+    lamp.className = "auto-refresh-lamp hidden is-offline";
+    lamp.innerHTML = `<span class="auto-refresh-dot"></span><span class="auto-refresh-text">Online · osvežava 10s</span>`;
+    document.body.appendChild(lamp);
+  }
+  makeAutoRefreshLampDraggable(lamp);
+  setTimeout(() => applySavedAutoRefreshLampPosition(lamp), 0);
   return lamp;
 }
 
@@ -3969,7 +4074,7 @@ function setAutoRefreshStatus(scope = "panel", ok = true, message = "") {
     ? `${scope} · online · ${message || "osveženo " + formatRefreshTime() + " · na svakih 10 sekundi"}`
     : `${scope} · proverite internet konekciju · trenutno ste offline`;
   if (text) text.textContent = shortLabel;
-  lamp.title = fullLabel;
+  lamp.title = `${fullLabel} · prevuci lampicu mišem gde ti odgovara`;
   document.querySelectorAll("[data-auto-refresh-status]").forEach(el => {
     el.textContent = fullLabel;
   });
