@@ -1,4 +1,4 @@
-// v1.68.7_DB_PURGE_BY_CODE - reset pokušava brisanje iz baze i po company_id i po company_code
+// v1.69.3_AUTO_REFRESH_REAL_STATUS - stvarna online/offline provera + sklonjena ručna osvežavanja
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.69.1";
+const APP_VERSION = "1.69.3";
 
 
 let sb = null;
@@ -26,8 +26,16 @@ let workerSiteOptions = [];
 let workerMaterialOptions = [];
 let deferredPwaInstallPrompt = null;
 let pwaInstallPromptReadyAt = 0;
+const AUTO_REFRESH_INTERVAL_MS = 10000;
 let directorAutoRefreshTimer = null;
 let directorAutoRefreshBusy = false;
+let mechanicBossAutoRefreshBusy = false;
+let ownerAutoRefreshTimer = null;
+let ownerAutoRefreshBusy = false;
+let autoRefreshHeartbeatTimer = null;
+let autoRefreshHeartbeatScope = "panel";
+let autoRefreshProbeBusy = false;
+let autoRefreshLastOk = null;
 let directorKnownReportIds = new Set();
 let workerReportSubmitBusy = false;
 let fieldTankerMemorySubmitBusy = false;
@@ -3912,6 +3920,123 @@ function formatRefreshTime(date = new Date()) {
   return date.toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function ensureAutoRefreshLamp() {
+  let lamp = document.getElementById("autoRefreshLamp");
+  if (lamp) return lamp;
+  lamp = document.createElement("div");
+  lamp.id = "autoRefreshLamp";
+  lamp.className = "auto-refresh-lamp hidden is-offline";
+  lamp.innerHTML = `<span class="auto-refresh-dot"></span><span class="auto-refresh-text">Auto osvežavanje</span>`;
+  document.body.appendChild(lamp);
+  return lamp;
+}
+
+function hideAutoRefreshManualButtons() {
+  const ids = [
+    "directorManualRefreshBtn", "refreshDailyLogBtn", "refreshCarnetBtn",
+    "refreshFuelReportsBtn", "refreshFuelAnalysisBtn", "refreshMaterialOverviewBtn",
+    "refreshOwnerDashboardBtn", "refreshArchiveBtn", "refreshDefectsBtn",
+    "ownerPanelRefreshBtn", "refreshMechanicDefectsBtn", "refreshMechanicOpsBtn",
+    "refreshDirectorBtn"
+  ];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.display = "none";
+      el.hidden = true;
+      el.setAttribute("aria-hidden", "true");
+    }
+  });
+  document.querySelectorAll('button[onclick="manualDirectorRefresh()"], .manual-refresh-btn').forEach(el => {
+    el.style.display = "none";
+    el.hidden = true;
+    el.setAttribute("aria-hidden", "true");
+  });
+}
+
+function setAutoRefreshStatus(scope = "panel", ok = true, message = "") {
+  const lamp = ensureAutoRefreshLamp();
+  hideAutoRefreshManualButtons();
+  const online = !!ok;
+  autoRefreshLastOk = online;
+  lamp.classList.remove("hidden", "is-online", "is-offline");
+  lamp.classList.add(online ? "is-online" : "is-offline");
+  const text = lamp.querySelector(".auto-refresh-text");
+  const label = online
+    ? `${scope} · online · ${message || "osveženo " + formatRefreshTime() + " · na svakih 10 sekundi"}`
+    : `${scope} · proverite internet konekciju · trenutno ste offline`;
+  if (text) text.textContent = label;
+  document.querySelectorAll("[data-auto-refresh-status]").forEach(el => {
+    el.textContent = label;
+  });
+}
+
+async function probeRealConnection() {
+  if (navigator.onLine === false) return false;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return navigator.onLine !== false;
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 4500);
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/companies?select=id&limit=1&_ac_ping=${Date.now()}`;
+    await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Cache-Control": "no-cache"
+      }
+    });
+    return true;
+  } catch (e) {
+    return false;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function autoRefreshConnectionHeartbeat(scope = autoRefreshHeartbeatScope) {
+  if (autoRefreshProbeBusy) return autoRefreshLastOk !== false;
+  autoRefreshProbeBusy = true;
+  try {
+    const ok = await probeRealConnection();
+    if (ok) {
+      setAutoRefreshStatus(scope, true, `veza proverena ${formatRefreshTime()} · osvežava na 10 sekundi`);
+    } else {
+      setAutoRefreshStatus(scope, false);
+    }
+    return ok;
+  } finally {
+    autoRefreshProbeBusy = false;
+  }
+}
+
+function startAutoRefreshHeartbeat(scope = "panel") {
+  autoRefreshHeartbeatScope = scope;
+  hideAutoRefreshManualButtons();
+  ensureAutoRefreshLamp();
+  if (autoRefreshHeartbeatTimer) clearInterval(autoRefreshHeartbeatTimer);
+  autoRefreshConnectionHeartbeat(scope);
+  autoRefreshHeartbeatTimer = setInterval(() => autoRefreshConnectionHeartbeat(autoRefreshHeartbeatScope), 2500);
+}
+
+function stopAutoRefreshHeartbeat() {
+  if (autoRefreshHeartbeatTimer) clearInterval(autoRefreshHeartbeatTimer);
+  autoRefreshHeartbeatTimer = null;
+}
+
+function markAutoRefreshOnline(scope = "panel") {
+  setAutoRefreshStatus(scope, true, `osveženo ${formatRefreshTime()} · na svakih 10 sekundi`);
+}
+
+function markAutoRefreshOffline(scope = "panel", err = null) {
+  setAutoRefreshStatus(scope, false, err?.message || "proverite internet konekciju");
+}
+
+window.addEventListener("online", () => autoRefreshConnectionHeartbeat(autoRefreshHeartbeatScope || "Veza"));
+window.addEventListener("offline", () => markAutoRefreshOffline(autoRefreshHeartbeatScope || "Veza"));
+
 function updateDirectorRefreshStatus(text) {
   document.querySelectorAll("[data-auto-refresh-status]").forEach(el => {
     el.textContent = text;
@@ -3931,9 +4056,17 @@ async function directorAutoRefreshTick() {
   if (!currentCompany || directorAutoRefreshBusy) return;
   const dashboard = document.getElementById("viewDirectorDashboard");
   if (!dashboard || !dashboard.classList.contains("active")) return;
+  const connectionOk = await probeRealConnection();
+  if (!connectionOk) {
+    markAutoRefreshOffline("Direkcija");
+    return;
+  }
   directorAutoRefreshBusy = true;
   try {
     await loadReports({ silent: true, auto: true });
+    markAutoRefreshOnline("Direkcija");
+  } catch (e) {
+    markAutoRefreshOffline("Direkcija", e);
   } finally {
     directorAutoRefreshBusy = false;
   }
@@ -3941,8 +4074,9 @@ async function directorAutoRefreshTick() {
 
 function startDirectorAutoRefresh() {
   stopDirectorAutoRefresh();
-  updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
-  directorAutoRefreshTimer = setInterval(directorAutoRefreshTick, 30000);
+  startAutoRefreshHeartbeat("Direkcija");
+  directorAutoRefreshTick();
+  directorAutoRefreshTimer = setInterval(directorAutoRefreshTick, AUTO_REFRESH_INTERVAL_MS);
 }
 
 function stopDirectorAutoRefresh() {
@@ -3983,13 +4117,13 @@ async function loadReports(options = {}) {
   } catch (error) {
     if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
     else toast(error.message, true);
-    updateDirectorRefreshStatus(`Greška pri osvežavanju · ${formatRefreshTime()}`);
+    markAutoRefreshOffline("Direkcija", error);
     return;
   }
 
   directorReportsCache = await enrichReportsWithUsers(data || []);
   updateDirectorKnownReports(directorReportsCache, silent);
-  updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
+  markAutoRefreshOnline("Direkcija");
   businessUpdateReportsMetrics(directorReportsCache);
   const dailyReports = directorReportsCache.filter(isPendingDirectorReport);
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
@@ -14206,7 +14340,7 @@ function bindEvents() {
   if ($("#downloadCarnetCsvBtn")) $("#downloadCarnetCsvBtn").addEventListener("click", downloadCarnetCsv);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
-  if ($("#ownerPanelRefreshBtn")) $("#ownerPanelRefreshBtn").addEventListener("click", refreshOwnerDashboardPanel);
+  if ($("#ownerPanelRefreshBtn")) $("#ownerPanelRefreshBtn").addEventListener("click", () => refreshOwnerDashboardPanel({ silent: false }));
   if ($("#ownerPanelRenderBtn")) $("#ownerPanelRenderBtn").addEventListener("click", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview"));
   if ($("#ownerPanelLogoutBtn")) $("#ownerPanelLogoutBtn").addEventListener("click", logoutOwnerDashboardPanel);
   ["ownerPanelDashboardFrom", "ownerPanelDashboardTo", "ownerPanelDashboardSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview")); });
@@ -14466,19 +14600,49 @@ async function loadOwnerPanelData() {
   ensureOverviewDatalists();
 }
 
-async function refreshOwnerDashboardPanel() {
+async function refreshOwnerDashboardPanel({ silent = false } = {}) {
   try {
+    const connectionOk = await probeRealConnection();
+    if (!connectionOk) throw new Error("Proverite internet konekciju. Trenutno ste offline.");
     await loadOwnerPanelData();
     renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview");
+    markAutoRefreshOnline("Direktor");
   } catch (e) {
+    markAutoRefreshOffline("Direktor", e);
     const box = document.getElementById("ownerPanelDashboardPreview");
-    if (box) box.innerHTML = `<div class="site-boss-warning"><b>Vlasnik/Direktor pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava vlasniku da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za vlasnički pregled.</span></div>`;
-    toast(e.message || "Vlasnik/Direktor pregled nije učitan.", true);
+    if (box && !silent) box.innerHTML = `<div class="site-boss-warning"><b>Vlasnik/Direktor pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava vlasniku da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za vlasnički pregled.</span></div>`;
+    if (!silent) toast(e.message || "Vlasnik/Direktor pregled nije učitan.", true);
   }
+}
+
+async function ownerAutoRefreshTick() {
+  if (!currentWorker?.company_id || ownerAutoRefreshBusy) return;
+  const panel = document.getElementById("viewOwnerDashboardPanel");
+  if (!panel || !panel.classList.contains("active")) return;
+  ownerAutoRefreshBusy = true;
+  try {
+    await refreshOwnerDashboardPanel({ silent: true });
+  } finally {
+    ownerAutoRefreshBusy = false;
+  }
+}
+
+function startOwnerAutoRefresh() {
+  stopOwnerAutoRefresh();
+  startAutoRefreshHeartbeat("Direktor");
+  ownerAutoRefreshTick();
+  ownerAutoRefreshTimer = setInterval(ownerAutoRefreshTick, AUTO_REFRESH_INTERVAL_MS);
+}
+
+function stopOwnerAutoRefresh() {
+  if (ownerAutoRefreshTimer) clearInterval(ownerAutoRefreshTimer);
+  ownerAutoRefreshTimer = null;
+  ownerAutoRefreshBusy = false;
 }
 
 async function openOwnerDashboardPanel() {
   stopMechanicBossWatcher();
+  stopDirectorAutoRefresh();
   await applyWorkerCompanyBrand();
   setInternalHeader("Vlasnik/Direktor pregled", `${currentWorker?.full_name || "Vlasnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   const name = document.getElementById("ownerPanelName");
@@ -14486,10 +14650,12 @@ async function openOwnerDashboardPanel() {
   if (name) name.textContent = currentWorker?.full_name || "Vlasnik / Direktor";
   if (label) label.textContent = `${currentWorker?.company_name || "Firma"} · pregled bez izmena`;
   show("OwnerDashboardPanel");
-  await refreshOwnerDashboardPanel();
+  await refreshOwnerDashboardPanel({ silent: true });
+  startOwnerAutoRefresh();
 }
 
 function logoutOwnerDashboardPanel() {
+  stopOwnerAutoRefresh();
   localStorage.removeItem("swp_worker");
   currentWorker = null;
   clearCompanyBrandFromBody();
@@ -14500,12 +14666,13 @@ function logoutOwnerDashboardPanel() {
 function stopMechanicBossWatcher() {
   if (mechanicBossTimer) clearInterval(mechanicBossTimer);
   mechanicBossTimer = null;
+  mechanicBossAutoRefreshBusy = false;
 }
 
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1687", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1693", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -14990,9 +15157,11 @@ async function loadMechanicBossOperations({ silent = false } = {}) {
     mechanicBossAllReportsCache = reports || [];
     mechanicBossAssetsCache = assets || [];
     renderMechanicFuelAnalysis();
+    markAutoRefreshOnline("Šef mehanizacije");
     if (!silent) toast("Potrošnja i sredstva su osveženi.");
   } catch (e) {
     const box = document.getElementById("mechanicFuelOverview");
+    markAutoRefreshOffline("Šef mehanizacije", e);
     if (box) box.innerHTML = `<p class="muted">Ne mogu učitati potrošnju: ${escapeHtml(e.message || String(e))}</p>`;
     if (!silent) toast(e.message || "Ne mogu učitati potrošnju.", true);
   }
@@ -15059,9 +15228,11 @@ async function loadMechanicBossDefects({ silent = false } = {}) {
     mechanicBossLastSignature = signature;
     mechanicBossLastNewCount = newReports.length;
     renderMechanicBossDefects();
+    markAutoRefreshOnline("Šef mehanizacije");
     if (!silent) toast("Kvarovi su osveženi.");
   } catch (e) {
     console.warn("Ne mogu učitati kvarove za šefa mehanizacije:", e);
+    markAutoRefreshOffline("Šef mehanizacije", e);
     renderMechanicBossError(e.message || "Ne mogu učitati kvarove. Ako se ovo ponavlja, treba dodati mechanic_list_defects SQL RPC.");
     if (!silent) toast(e.message || "Ne mogu učitati kvarove.", true);
   }
@@ -15091,7 +15262,28 @@ function showMechanicNewDefectSignal() {
   toast("Novi kvar prijavljen 🚨");
 }
 
+async function mechanicBossAutoRefreshTick() {
+  if (!currentWorker?.company_id || mechanicBossAutoRefreshBusy) return;
+  const panel = document.getElementById("viewMechanicBossPanel");
+  if (!panel || !panel.classList.contains("active")) return;
+  const connectionOk = await probeRealConnection();
+  if (!connectionOk) {
+    markAutoRefreshOffline("Šef mehanizacije");
+    return;
+  }
+  mechanicBossAutoRefreshBusy = true;
+  try {
+    await loadMechanicBossDefects({ silent: true });
+    await loadMechanicBossOperations({ silent: true });
+    markAutoRefreshOnline("Šef mehanizacije");
+  } finally {
+    mechanicBossAutoRefreshBusy = false;
+  }
+}
+
 async function openMechanicBossPanel() {
+  stopOwnerAutoRefresh();
+  stopDirectorAutoRefresh();
   stopMechanicBossWatcher();
   await applyWorkerCompanyBrand();
   setInternalHeader("Šef mehanizacije", `${currentWorker?.full_name || "Zaposleni"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
@@ -15103,7 +15295,9 @@ async function openMechanicBossPanel() {
   await loadMechanicBossDefects({ silent: true });
   await loadMechanicBossOperations({ silent: true });
   refreshMechanicPushUi();
-  mechanicBossTimer = setInterval(() => loadMechanicBossDefects({ silent: true }), 30000);
+  startAutoRefreshHeartbeat("Šef mehanizacije");
+  mechanicBossAutoRefreshTick();
+  mechanicBossTimer = setInterval(mechanicBossAutoRefreshTick, AUTO_REFRESH_INTERVAL_MS);
 }
 
 window.updateMechanicDefectStatus = async (id, newStatus) => {
@@ -15289,6 +15483,7 @@ async function openWorkerForm() {
 async function boot() {
   installNavigationFallback();
   bindEvents();
+  hideAutoRefreshManualButtons();
   initSupabase();
   loadPublicHomeVisualSettings().catch(() => {});
   $("#wrDate").value = today();

@@ -8001,3 +8001,65 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 /* v40 simplified worker tours */
 #viewWorkerForm.worker-mobile-panel .tour-count-box{display:grid !important;grid-template-columns:1fr !important;gap:10px !important;}
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
+
+/* v1.69.3 — automatsko osvežavanje panela + real online/offline status */
+.auto-refresh-lamp {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 28px));
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(10, 12, 16, .86);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 32px rgba(0,0,0,.30);
+  color: #f5f5f5;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.auto-refresh-lamp.hidden { display: none; }
+.auto-refresh-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: #ff3b30;
+  box-shadow: 0 0 0 4px rgba(255,59,48,.16), 0 0 16px rgba(255,59,48,.75);
+}
+.auto-refresh-lamp.is-online .auto-refresh-dot {
+  background: #24d366;
+  box-shadow: 0 0 0 4px rgba(36,211,102,.16), 0 0 16px rgba(36,211,102,.85);
+}
+.auto-refresh-lamp.is-offline {
+  border-color: rgba(255,59,48,.42);
+}
+.auto-refresh-text { white-space: normal; }
+
+#directorManualRefreshBtn,
+#refreshDailyLogBtn,
+#refreshCarnetBtn,
+#refreshFuelReportsBtn,
+#refreshFuelAnalysisBtn,
+#refreshMaterialOverviewBtn,
+#refreshOwnerDashboardBtn,
+#refreshArchiveBtn,
+#refreshDefectsBtn,
+#ownerPanelRefreshBtn,
+#refreshMechanicDefectsBtn,
+#refreshMechanicOpsBtn,
+button[onclick="manualDirectorRefresh()"] {
+  display: none !important;
+}
+
+/* v1.69.3 dodatna zaštita: ručna osvežavanja sakrivena i ako stari HTML ostane u cache-u */
+#refreshDirectorBtn,
+#ownerPanelRefreshBtn,
+#refreshMechanicDefectsBtn,
+#refreshMechanicOpsBtn,
+#directorManualRefreshBtn,
+#refreshDefectsBtn { display: none !important; }
