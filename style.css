@@ -398,13 +398,13 @@ th{background:var(--green-soft);font-weight:850;color:#24432d}
   position:fixed;
   right:18px;
   bottom:18px;
-  z-index:100;
+  z-index:10000;
   background:#173b24;
   color:#fff;
   border:1px solid rgba(255,255,255,.18);
-  border-radius:16px;
-  padding:14px 16px;
-  max-width:380px;
+  border-radius:14px;
+  padding:10px 13px;
+  max-width:340px;
   box-shadow:0 14px 38px rgba(0,0,0,.22);
 }
 .footer{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px;padding:18px 24px;border-top:1px solid var(--border);background:#f7faf7}
@@ -8002,30 +8002,32 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm.worker-mobile-panel .tour-count-box{display:grid !important;grid-template-columns:1fr !important;gap:10px !important;}
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
 
-/* v1.69.3 — automatsko osvežavanje panela + real online/offline status */
+/* v1.69.4 — uredna status lampica gore desno, bez smetanja tabelama */
 .auto-refresh-lamp {
   position: fixed;
+  top: 74px;
   right: 14px;
-  bottom: 14px;
+  bottom: auto;
   z-index: 9999;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  max-width: min(360px, calc(100vw - 28px));
-  padding: 9px 12px;
+  gap: 7px;
+  max-width: min(250px, calc(100vw - 28px));
+  padding: 7px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(10, 12, 16, .86);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 12px 32px rgba(0,0,0,.30);
-  color: #f5f5f5;
-  font-size: 12px;
-  line-height: 1.2;
+  border: 1px solid rgba(36,211,102,.22);
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 22px rgba(15,23,42,.16);
+  color: #173b24;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
 }
 .auto-refresh-lamp.hidden { display: none; }
 .auto-refresh-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
   flex: 0 0 auto;
   background: #ff3b30;
@@ -8037,8 +8039,20 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 }
 .auto-refresh-lamp.is-offline {
   border-color: rgba(255,59,48,.42);
+  background: rgba(255,241,242,.95);
+  color: #7f1d1d;
 }
-.auto-refresh-text { white-space: normal; }
+.auto-refresh-text { white-space: nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media(max-width:700px){
+  .auto-refresh-lamp{
+    top: 58px;
+    right: 10px;
+    max-width: calc(100vw - 20px);
+    font-size: 10.5px;
+    padding: 6px 9px;
+  }
+}
+
 
 #directorManualRefreshBtn,
 #refreshDailyLogBtn,

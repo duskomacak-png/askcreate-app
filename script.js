@@ -1,4 +1,4 @@
-// v1.69.3_AUTO_REFRESH_REAL_STATUS - stvarna online/offline provera + sklonjena ručna osvežavanja
+// v1.69.4_AUTO_REFRESH_COMPACT_BADGE - uredna status lampica gore desno
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.69.3";
+const APP_VERSION = "1.69.4";
 
 
 let sb = null;
@@ -3926,7 +3926,7 @@ function ensureAutoRefreshLamp() {
   lamp = document.createElement("div");
   lamp.id = "autoRefreshLamp";
   lamp.className = "auto-refresh-lamp hidden is-offline";
-  lamp.innerHTML = `<span class="auto-refresh-dot"></span><span class="auto-refresh-text">Auto osvežavanje</span>`;
+  lamp.innerHTML = `<span class="auto-refresh-dot"></span><span class="auto-refresh-text">Online · osvežava 10s</span>`;
   document.body.appendChild(lamp);
   return lamp;
 }
@@ -3962,12 +3962,16 @@ function setAutoRefreshStatus(scope = "panel", ok = true, message = "") {
   lamp.classList.remove("hidden", "is-online", "is-offline");
   lamp.classList.add(online ? "is-online" : "is-offline");
   const text = lamp.querySelector(".auto-refresh-text");
-  const label = online
+  const shortLabel = online
+    ? `Online · osvežava 10s · ${formatRefreshTime()}`
+    : `Offline · proverite internet`;
+  const fullLabel = online
     ? `${scope} · online · ${message || "osveženo " + formatRefreshTime() + " · na svakih 10 sekundi"}`
     : `${scope} · proverite internet konekciju · trenutno ste offline`;
-  if (text) text.textContent = label;
+  if (text) text.textContent = shortLabel;
+  lamp.title = fullLabel;
   document.querySelectorAll("[data-auto-refresh-status]").forEach(el => {
-    el.textContent = label;
+    el.textContent = fullLabel;
   });
 }
 
