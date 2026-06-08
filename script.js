@@ -1,4 +1,4 @@
-// v1.68.4_REPORT_ANALYTICS_CLEANUP - obrisani/arhivirani izveštaji ne hrane direktora i šefa mehanizacije
+// v1.68.5_FULL_REPORT_RESET - direktor/vlasnik i šef mehanizacije više ne čitaju stare obrisane test izveštaje
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.4";
+const APP_VERSION = "1.68.5";
 
 
 let sb = null;
@@ -7128,12 +7128,8 @@ window.deleteAllArchivedReportsPermanently = async () => {
   directorBulkDeleteArchiveBusy = true;
   try {
     for (const r of archived) {
-      const { error } = await sb
-        .from("reports")
-        .delete()
-        .eq("id", r.id)
-        .eq("company_id", currentCompany.id);
-      if (error) throw error;
+      await permanentlyDeleteReportInDatabase(r.id);
+      rememberLocalPermanentlyDeletedReport(r.id);
       removeLocalArchivedReport(r.id);
       directorReportsCache = directorReportsCache.filter(x => String(x.id) !== String(r.id));
     }
@@ -7148,6 +7144,61 @@ window.deleteAllArchivedReportsPermanently = async () => {
     toast(`Trajno obrisano iz arhive: ${total}.`);
     closeReportDocumentCenter?.();
     refreshDirectorReportViewsAfterBulk();
+    await loadReports({ silent: true });
+  } catch (e) {
+    toast(e.message || String(e), true);
+  } finally {
+    directorBulkDeleteArchiveBusy = false;
+  }
+};
+
+
+window.resetAllCompanyReportsForTesting = async () => {
+  if (directorBulkDeleteArchiveBusy) return toast("Reset izveštaja je već u toku. Sačekaj da se završi.", true);
+  if (!currentCompany?.id || !sb) return toast("Nema aktivne firme za reset izveštaja.", true);
+  const codeConfirm = prompt(
+    "OPREZ: Ovo nulira SVE izveštaje firme za testiranje.\n\n" +
+    "Izveštaji će biti označeni kao deleted i više neće hraniti Direkciju, Direktora, Šefa mehanizacije, gorivo, potrošnju, Dnevnik, Karnet ni Arhivu.\n\n" +
+    "Za potvrdu upiši: NULIRAJ"
+  );
+  if (String(codeConfirm || "").trim().toUpperCase() !== "NULIRAJ") return toast("Reset nije pokrenut.");
+  directorBulkDeleteArchiveBusy = true;
+  try {
+    const { data, error } = await sb
+      .from("reports")
+      .select("id, company_id, status, data")
+      .eq("company_id", currentCompany.id)
+      .limit(2000);
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data : [];
+    if (!rows.length) {
+      directorReportsCache = [];
+      writeLocalArchivedReports([]);
+      saveOfficeGeneratedArchive([]);
+      refreshDirectorReportViewsAfterBulk();
+      businessUpdateReportsMetrics([]);
+      renderOwnerDashboard?.();
+      return toast("Baza već nema izveštaje za ovu firmu. Lokalni prikazi su očišćeni.");
+    }
+    let ok = 0;
+    for (const r of rows) {
+      try {
+        await permanentlyDeleteReportInDatabase(r.id);
+        rememberLocalPermanentlyDeletedReport(r.id);
+        removeLocalArchivedReport(r.id);
+        ok += 1;
+      } catch (e) {
+        console.warn("Ne mogu označiti izveštaj kao deleted:", r.id, e?.message || e);
+      }
+    }
+    directorReportsCache = [];
+    writeLocalArchivedReports([]);
+    saveOfficeGeneratedArchive([]);
+    closeReportDocumentCenter?.();
+    refreshDirectorReportViewsAfterBulk();
+    businessUpdateReportsMetrics([]);
+    renderOwnerDashboard?.();
+    toast(`Nulirano izveštaja: ${ok}/${rows.length}. Sada direktor i šef mehanizacije treba da budu na nuli.`);
     await loadReports({ silent: true });
   } catch (e) {
     toast(e.message || String(e), true);
@@ -14137,7 +14188,7 @@ async function loadOwnerPanelData() {
   directorPeopleCache = people.filter(p => p.active !== false);
   directorSitesCache = sites.filter(x => x.active !== false);
   directorAssetsCache = assets.filter(x => x.active !== false);
-  directorReportsCache = await attachReportUsersFallback(filterVisibleReportsAfterPermanentDelete((reports || []).filter(r => !isArchivedReport(r))));
+  directorReportsCache = await attachReportUsersFallback(filterOperationalReportsForAnalytics(reports || []));
   try {
     const { data, error } = await sb.rpc("director_list_materials", { p_company_id: currentWorker.company_id });
     if (!error) directorMaterialsCache = data || [];
