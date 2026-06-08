@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.69.0";
+const APP_VERSION = "1.69.1";
 
 
 let sb = null;
@@ -4861,9 +4861,6 @@ function defectHtml(r) {
         <b>Rešeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_resolved_at))}</span>
       </div>
       <div class="actions defect-actions no-print">
-        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
-        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
-        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
         <button class="primary" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
         <button class="secondary" onclick="printReportDocument('${r.id}')">Štampaj kvar</button>
         ${isArchivedReport(r) ? `<span class="pill">Arhivirano</span>` : `<button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj kvar</button>`}
