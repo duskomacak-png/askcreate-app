@@ -1,4 +1,4 @@
-// v1.68.5_FULL_REPORT_RESET - direktor/vlasnik i šef mehanizacije više ne čitaju stare obrisane test izveštaje
+// v1.68.6_HARD_DB_PURGE - trajno brisanje/reset pokušava pravi DELETE/RPC purge iz Supabase baze
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.5";
+const APP_VERSION = "1.68.6";
 
 
 let sb = null;
@@ -3437,8 +3437,63 @@ function filterOperationalReportsForAnalytics(reports = []) {
   return filterVisibleReportsAfterPermanentDelete(reports).filter(isReportOperationalForAnalytics);
 }
 
+function isMissingSupabaseRpc(error, rpcName = "") {
+  const msg = String(error?.message || error || "").toLowerCase();
+  return !!(msg.includes("function") || msg.includes("schema cache") || (rpcName && msg.includes(String(rpcName).toLowerCase())));
+}
+
+function clearLocalReportStateForCompany() {
+  try { writeLocalArchivedReports([]); } catch (_) {}
+  try { saveOfficeGeneratedArchive([]); } catch (_) {}
+  try {
+    localStorage.removeItem(directorArchiveLocalKey());
+    localStorage.removeItem(directorDeletedReportsLocalKey());
+    localStorage.removeItem("swp_returned_report_id");
+    localStorage.removeItem("swp_returned_report_type");
+  } catch (_) {}
+}
+
+async function callHardDeleteReportRpc(reportId) {
+  if (!currentCompany?.id || !sb) return false;
+  try {
+    const { error } = await sb.rpc("director_permanently_delete_report", {
+      p_company_id: currentCompany.id,
+      p_report_id: reportId
+    });
+    if (error) throw error;
+    return true;
+  } catch (e) {
+    if (!isMissingSupabaseRpc(e, "director_permanently_delete_report")) {
+      console.warn("director_permanently_delete_report RPC nije uspeo, pokušavam direktan DELETE:", e?.message || e);
+    }
+    return false;
+  }
+}
+
+async function callHardPurgeCompanyReportsRpc() {
+  if (!currentCompany?.id || !sb) return null;
+  try {
+    const { data, error } = await sb.rpc("askcreate_purge_company_reports", {
+      p_company_id: currentCompany.id
+    });
+    if (error) throw error;
+    return data ?? true;
+  } catch (e) {
+    if (!isMissingSupabaseRpc(e, "askcreate_purge_company_reports")) {
+      console.warn("askcreate_purge_company_reports RPC nije uspeo, pokušavam direktan DELETE:", e?.message || e);
+    }
+    return null;
+  }
+}
+
 async function permanentlyDeleteReportInDatabase(reportId) {
   if (!currentCompany?.id) throw new Error("Firma nije učitana.");
+
+  // v1.68.6: prvo pokušavamo SECURITY DEFINER RPC koji zaista briše red iz Supabase baze.
+  // Ovo je jedini ispravan put za oslobađanje baze kada RLS ne dozvoli browser-u direktan DELETE.
+  const rpcDeleted = await callHardDeleteReportRpc(reportId);
+  if (rpcDeleted) return "deleted_rpc";
+
   const { error: deleteError } = await sb
     .from("reports")
     .delete()
@@ -3447,8 +3502,8 @@ async function permanentlyDeleteReportInDatabase(reportId) {
 
   if (!deleteError) return "deleted";
 
-  // Ako Supabase/RLS ne dozvoli pravi DELETE iz browsera, radimo sigurni fallback:
-  // izveštaj dobija status `deleted` i svi prikazi ga filtriraju kao trajno obrisanog.
+  // Fallback ostaje samo kao zaštita prikaza ako SQL/RPC još nije dodat.
+  // VAŽNO: ovo NE oslobađa bazu. Za pravo čišćenje treba pokrenuti SQL koji šaljem u chatu.
   const existing = directorReportsCache.find(r => String(r.id) === String(reportId)) || loadLocalArchivedReports().find(r => String(r.id) === String(reportId));
   const nextData = {
     ...(existing?.data || {}),
@@ -3461,7 +3516,10 @@ async function permanentlyDeleteReportInDatabase(reportId) {
     .update({ status: "deleted", data: nextData, updated_at: new Date().toISOString() })
     .eq("id", reportId)
     .eq("company_id", currentCompany.id);
-  if (updateError) throw deleteError;
+  if (updateError) {
+    const msg = "Supabase nije dozvolio trajno brisanje iz browsera. Pokreni SQL za askcreate_purge_company_reports / director_permanently_delete_report.";
+    throw new Error(`${msg} Detalj: ${deleteError.message || deleteError}`);
+  }
   return "marked_deleted";
 }
 
@@ -7164,6 +7222,36 @@ window.resetAllCompanyReportsForTesting = async () => {
   if (String(codeConfirm || "").trim().toUpperCase() !== "NULIRAJ") return toast("Reset nije pokrenut.");
   directorBulkDeleteArchiveBusy = true;
   try {
+    const purgeResult = await callHardPurgeCompanyReportsRpc();
+    if (purgeResult !== null) {
+      directorReportsCache = [];
+      clearLocalReportStateForCompany();
+      closeReportDocumentCenter?.();
+      refreshDirectorReportViewsAfterBulk();
+      businessUpdateReportsMetrics([]);
+      renderOwnerDashboard?.();
+      toast("Svi izveštaji firme su trajno obrisani iz Supabase baze. Direktor i šef mehanizacije su na nuli.");
+      await loadReports({ silent: true });
+      return;
+    }
+
+    // Ako SQL RPC još nije dodat, pokušavamo direktan bulk DELETE.
+    const { error: bulkDeleteError } = await sb
+      .from("reports")
+      .delete()
+      .eq("company_id", currentCompany.id);
+    if (!bulkDeleteError) {
+      directorReportsCache = [];
+      clearLocalReportStateForCompany();
+      closeReportDocumentCenter?.();
+      refreshDirectorReportViewsAfterBulk();
+      businessUpdateReportsMetrics([]);
+      renderOwnerDashboard?.();
+      toast("Svi izveštaji firme su obrisani direktno iz baze.");
+      await loadReports({ silent: true });
+      return;
+    }
+
     const { data, error } = await sb
       .from("reports")
       .select("id, company_id, status, data")
@@ -7173,8 +7261,7 @@ window.resetAllCompanyReportsForTesting = async () => {
     const rows = Array.isArray(data) ? data : [];
     if (!rows.length) {
       directorReportsCache = [];
-      writeLocalArchivedReports([]);
-      saveOfficeGeneratedArchive([]);
+      clearLocalReportStateForCompany();
       refreshDirectorReportViewsAfterBulk();
       businessUpdateReportsMetrics([]);
       renderOwnerDashboard?.();
@@ -7188,17 +7275,20 @@ window.resetAllCompanyReportsForTesting = async () => {
         removeLocalArchivedReport(r.id);
         ok += 1;
       } catch (e) {
-        console.warn("Ne mogu označiti izveštaj kao deleted:", r.id, e?.message || e);
+        console.warn("Ne mogu trajno obrisati izveštaj:", r.id, e?.message || e);
       }
     }
     directorReportsCache = [];
-    writeLocalArchivedReports([]);
-    saveOfficeGeneratedArchive([]);
+    clearLocalReportStateForCompany();
     closeReportDocumentCenter?.();
     refreshDirectorReportViewsAfterBulk();
     businessUpdateReportsMetrics([]);
     renderOwnerDashboard?.();
-    toast(`Nulirano izveštaja: ${ok}/${rows.length}. Sada direktor i šef mehanizacije treba da budu na nuli.`);
+    if (ok < rows.length) {
+      toast(`Nije obrisano sve iz baze (${ok}/${rows.length}). Pokreni SQL iz chata, pa opet klikni Nuliraj.`, true);
+    } else {
+      toast(`Nulirano izveštaja: ${ok}/${rows.length}. Sada direktor i šef mehanizacije treba da budu na nuli.`);
+    }
     await loadReports({ silent: true });
   } catch (e) {
     toast(e.message || String(e), true);
@@ -14161,9 +14251,20 @@ function isOwnerDashboardWorker(worker = currentWorker) {
 async function safeOwnerSelect(table, select = "*") {
   try {
     if (!currentWorker?.company_id || !sb) return [];
+    if (table === "reports") {
+      // Vlasnik/Direktor ne sme više da vuče stare arhivirane/deleted redove direktno.
+      // Ako postoji RPC za Direkciju, koristi njega; ako ne, direktan select pa strogi filter.
+      try {
+        const oldCompany = currentCompany;
+        currentCompany = currentCompany || { id: currentWorker.company_id };
+        const rpcReports = await directorRpcListReports();
+        currentCompany = oldCompany || currentCompany;
+        return filterOperationalReportsForAnalytics(rpcReports || []);
+      } catch (_) {}
+    }
     const { data, error } = await sb.from(table).select(select).eq("company_id", currentWorker.company_id);
     if (error) throw error;
-    return data || [];
+    return table === "reports" ? filterOperationalReportsForAnalytics(data || []) : (data || []);
   } catch (e) {
     console.warn(`Vlasnik/Direktor panel: ${table} nije učitan`, e?.message || e);
     return [];
