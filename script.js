@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.7";
+const APP_VERSION = "1.68.8";
 
 
 let sb = null;
@@ -3529,6 +3529,63 @@ async function callHardDeleteReportByCodeRpc(reportId) {
       console.warn("askcreate_delete_report_by_company_code RPC nije uspeo:", e?.message || e);
     }
     return false;
+  }
+}
+
+
+// v1.68.8 — najčvršći put za radničke linkove: brisanje i čitanje izveštaja preko stvarno prijavljenog korisnika.
+// Ovo rešava slučaj kada company_code/currentCompany.id nisu isti izvor koji koriste Direktor/Šef mehanizacije linkovi.
+async function callHardPurgeReportsForLoggedWorkerRpc() {
+  if (!currentWorker?.id || !currentWorker?.access_code || !sb) return null;
+  try {
+    const { data, error } = await sb.rpc("askcreate_purge_reports_for_logged_worker", {
+      p_worker_id: currentWorker.id,
+      p_access_code: currentWorker.access_code
+    });
+    if (error) throw error;
+    return data ?? 0;
+  } catch (e) {
+    if (!isMissingSupabaseRpc(e, "askcreate_purge_reports_for_logged_worker")) {
+      console.warn("askcreate_purge_reports_for_logged_worker RPC nije uspeo:", e?.message || e);
+    }
+    return null;
+  }
+}
+
+async function listActiveReportsForLoggedWorkerRpc() {
+  if (!currentWorker?.id || !currentWorker?.access_code || !sb) return null;
+  try {
+    const { data, error } = await sb.rpc("askcreate_list_active_reports_for_logged_worker", {
+      p_worker_id: currentWorker.id,
+      p_access_code: currentWorker.access_code
+    });
+    if (error) throw error;
+    return filterOperationalReportsForAnalytics(data || []);
+  } catch (e) {
+    if (!isMissingSupabaseRpc(e, "askcreate_list_active_reports_for_logged_worker")) {
+      console.warn("askcreate_list_active_reports_for_logged_worker RPC nije uspeo:", e?.message || e);
+    }
+    return null;
+  }
+}
+
+async function debugLoggedWorkerReportsSource(label = "reports-debug") {
+  try {
+    const viaRpc = await listActiveReportsForLoggedWorkerRpc();
+    const direct = currentWorker?.company_id && sb
+      ? await sb.from("reports").select("id, company_id, user_id, report_date, status, submitted_at, created_at, data").eq("company_id", currentWorker.company_id).limit(50)
+      : { data: [], error: null };
+    console.log(`AskCreate ${label}:`, {
+      worker_id: currentWorker?.id,
+      worker_company_id: currentWorker?.company_id,
+      worker_company_code: currentWorker?.company_code,
+      rpc_count: Array.isArray(viaRpc) ? viaRpc.length : null,
+      direct_count: Array.isArray(direct?.data) ? direct.data.length : null,
+      direct_error: direct?.error?.message || null,
+      direct_sample: direct?.data || []
+    });
+  } catch (e) {
+    console.warn("AskCreate reports debug nije uspeo:", e?.message || e);
   }
 }
 
@@ -7271,7 +7328,26 @@ window.resetAllCompanyReportsForTesting = async () => {
   if (String(codeConfirm || "").trim().toUpperCase() !== "NULIRAJ") return toast("Reset nije pokrenut.");
   directorBulkDeleteArchiveBusy = true;
   try {
-    // v1.68.7: prvo brišemo po šifri firme, jer radnički/direktor/mehanika linkovi sigurno nose company_code.
+    // v1.68.8: najpre brišemo po trenutno prijavljenom korisniku/linku.
+    // Direktor i Šef mehanizacije se otvaraju preko radničkog linka, zato je ovo najtačnije mapiranje na company_id.
+    const purgeByWorkerResult = await callHardPurgeReportsForLoggedWorkerRpc();
+    if (purgeByWorkerResult !== null) {
+      directorReportsCache = [];
+      mechanicBossAllReportsCache = [];
+      mechanicBossReportsCache = [];
+      clearLocalReportStateForCompany();
+      closeReportDocumentCenter?.();
+      refreshDirectorReportViewsAfterBulk();
+      businessUpdateReportsMetrics([]);
+      renderOwnerDashboard?.();
+      renderMechanicFuelAnalysis?.();
+      renderMechanicBossDefects?.();
+      toast(`Svi izveštaji firme su trajno obrisani iz Supabase baze po prijavljenom korisniku. Obrisano: ${purgeByWorkerResult}.`);
+      await loadReports({ silent: true });
+      return;
+    }
+
+    // v1.68.7: zatim brišemo po šifri firme, jer radnički/direktor/mehanika linkovi nose company_code.
     // Ovo rešava slučaj kada currentCompany.id nije isti izvor koji koristi reports.company_id.
     const purgeByCodeResult = await callHardPurgeCompanyReportsByCodeRpc();
     if (purgeByCodeResult !== null) {
@@ -14316,8 +14392,10 @@ async function safeOwnerSelect(table, select = "*") {
   try {
     if (!currentWorker?.company_id || !sb) return [];
     if (table === "reports") {
-      // Vlasnik/Direktor ne sme više da vuče stare arhivirane/deleted redove direktno.
-      // Ako postoji RPC za Direkciju, koristi njega; ako ne, direktan select pa strogi filter.
+      // Vlasnik/Direktor: najpre čitaj aktivne izveštaje preko stvarno prijavljenog linka.
+      const workerReports = await listActiveReportsForLoggedWorkerRpc();
+      if (Array.isArray(workerReports)) return workerReports;
+      // Ako SQL još nije dodat, pokušaj stari Direkcija RPC pa direktan select sa strogim filterom.
       try {
         const oldCompany = currentCompany;
         currentCompany = currentCompany || { id: currentWorker.company_id };
@@ -14757,6 +14835,9 @@ async function mechanicListDefectsSafe() {
     }
   }
 
+  const rpcReports = await listActiveReportsForLoggedWorkerRpc();
+  if (Array.isArray(rpcReports)) return rpcReports.filter(hasDefectData);
+
   const { data, error } = await sb
     .from("reports")
     .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
@@ -14788,6 +14869,10 @@ function setMechanicSectionCount(id, count, suffix = "") {
 
 async function mechanicListCompanyReportsSafe() {
   if (!currentWorker?.company_id || !sb) return [];
+  const rpcReports = await listActiveReportsForLoggedWorkerRpc();
+  if (Array.isArray(rpcReports)) {
+    return attachReportUsersFallback ? await attachReportUsersFallback(rpcReports) : rpcReports;
+  }
   const { data, error } = await sb
     .from("reports")
     .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
