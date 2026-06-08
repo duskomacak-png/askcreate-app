@@ -1,4 +1,4 @@
-// v1.68.1_MECHANIC_HIDE_RESOLVED - šef mehanizacije može skloniti rešeni kvar samo iz svog panela
+// v1.68.2_WORKER_PERSON_LINK_GUARD - lični link nosi ID radnika i login ne sme otvoriti pogrešan panel
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.1";
+const APP_VERSION = "1.68.2";
 
 
 let sb = null;
@@ -135,6 +135,31 @@ function readRpcSingleRow(data) {
   if (Array.isArray(data)) return data[0] || null;
   if (data && typeof data === "object") return data;
   return null;
+}
+
+function normalizeWorkerLoginValue(value) {
+  return normalizeLoginCode(String(value || ""));
+}
+
+function workerRowMatchesLogin(row = {}, companyCode = "", accessCode = "", expectedPersonId = "") {
+  const expectedCompany = normalizeWorkerLoginValue(companyCode);
+  const expectedCode = normalizeWorkerLoginValue(accessCode);
+  const expectedId = String(expectedPersonId || "").trim();
+  const rowCompany = normalizeWorkerLoginValue(row.company_code || row.code || row.company || row.company_slug);
+  const rowAccess = normalizeWorkerLoginValue(row.access_code || row.worker_code || row.personal_code || row.pin);
+  const rowIds = [row.user_id, row.id, row.person_id, row.worker_id, row.company_user_id].map(v => String(v || "").trim()).filter(Boolean);
+  const companyOk = !expectedCompany || !rowCompany || rowCompany === expectedCompany;
+  const codeOk = !expectedCode || !rowAccess || rowAccess === expectedCode;
+  const idOk = !expectedId || rowIds.includes(expectedId);
+  return companyOk && codeOk && idOk;
+}
+
+function selectWorkerLoginRow(data, companyCode = "", accessCode = "", expectedPersonId = "") {
+  const rows = Array.isArray(data) ? data : (data && typeof data === "object" ? [data] : []);
+  if (!rows.length) return null;
+  const exact = rows.find(row => workerRowMatchesLogin(row, companyCode, accessCode, expectedPersonId));
+  if (exact) return exact;
+  return rows.length === 1 && workerRowMatchesLogin(rows[0], companyCode, accessCode, "") ? rows[0] : null;
 }
 
 let internalHeaderCollapseTimer = null;
@@ -711,6 +736,7 @@ function buildWorkerPersonalLink(person = {}, mode = "worker") {
   url.searchParams.set("ulaz", mode === "mechanic" ? "mehanika" : "radnik");
   if (companyCode) url.searchParams.set("firma", companyCode);
   if (accessCode) url.searchParams.set("kod", accessCode);
+  if (person?.id) url.searchParams.set("osoba", String(person.id));
   return url.toString();
 }
 
@@ -762,6 +788,11 @@ function getWorkerCompanyCodeFromUrl() {
 function getWorkerAccessCodeFromUrl() {
   const params = new URLSearchParams(window.location.search || "");
   return String(params.get("kod") || params.get("code") || params.get("access_code") || params.get("radnik") || "").trim();
+}
+
+function getWorkerPersonIdFromUrl() {
+  const params = new URLSearchParams(window.location.search || "");
+  return String(params.get("osoba") || params.get("person") || params.get("person_id") || params.get("user_id") || "").trim();
 }
 
 function applyWorkerAccessCodeFromUrl() {
@@ -13470,9 +13501,16 @@ async function loginWorkerByCode() {
       throw new Error("Worker login SQL nije aktivan ili je star. Pokreni SQL ispravku iz ZIP-a, pa probaj opet. Detalj: " + error.message);
     }
 
-    const row = readRpcSingleRow(data);
+    const expectedPersonId = getWorkerPersonIdFromUrl();
+    const row = selectWorkerLoginRow(data, companyCode, accessCode, expectedPersonId);
     if (!row || !row.user_id || !row.company_id) {
-      throw new Error("Neispravna šifra firme ili šifra zaposlenog. Proveri da je zaposleni AKTIVAN i da unosiš baš šifru firme + šifru zaposlenog.");
+      throw new Error("Neispravna šifra firme ili šifra zaposlenog. Link ne odgovara ovoj osobi ili je SQL vratio pogrešan nalog. Proveri da je zaposleni AKTIVAN i da koristi svoj lični link/kod.");
+    }
+    if (expectedPersonId) {
+      const returnedIds = [row.user_id, row.id, row.person_id, row.worker_id, row.company_user_id].map(v => String(v || "").trim()).filter(Boolean);
+      if (!returnedIds.includes(expectedPersonId)) {
+        throw new Error("Zaštita login-a: ovaj link pripada drugoj osobi. Aplikacija neće otvoriti pogrešan panel.");
+      }
     }
 
     currentWorker = {
