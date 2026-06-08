@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.9";
+const APP_VERSION = "1.69.0";
 
 
 let sb = null;
@@ -3619,7 +3619,7 @@ async function permanentlyDeleteReportInDatabase(reportId) {
   };
   const { error: updateError } = await sb
     .from("reports")
-    .update({ status: "deleted", data: nextData, updated_at: new Date().toISOString() })
+    .update({ status: "deleted", data: nextData })
     .eq("id", reportId)
     .eq("company_id", currentCompany.id);
   if (updateError) {
@@ -4412,7 +4412,7 @@ async function archiveReportSilentlyForOfficeArchive(reportId) {
   } catch (error) {
     const { error: directError } = await sb
       .from("reports")
-      .update({ status: "archived", updated_at: new Date().toISOString() })
+      .update({ status: "archived" })
       .eq("id", reportId)
       .eq("company_id", currentCompany.id);
     if (directError) throw (error || directError);
@@ -4663,7 +4663,7 @@ async function refreshSiteBossOverview() {
     siteBossMetricSet(null, "učitavam");
     const { data, error } = await sb
       .from("reports")
-      .select("id, company_id, report_date, status, data, submitted_at, created_at, updated_at")
+      .select("id, company_id, report_date, status, data, submitted_at, created_at")
       .eq("company_id", currentWorker.company_id)
       .eq("report_date", date)
       .order("created_at", { ascending: false })
@@ -7186,7 +7186,7 @@ window.archiveReport = async (id) => {
     // samo skloni iz aktivnog pregleda, ali ne vrati stavku u karticu Arhiva.
     const { error: directArchiveError } = await sb
       .from("reports")
-      .update({ status: "archived", data: nextData, updated_at: archivedAt })
+      .update({ status: "archived", data: nextData })
       .eq("id", id)
       .eq("company_id", currentCompany.id);
     if (directArchiveError) console.warn("AskCreate.app: direktno potvrđivanje arhive nije uspelo, koristim lokalnu arhivu:", directArchiveError.message);
@@ -7194,7 +7194,7 @@ window.archiveReport = async (id) => {
     try {
       const { error: directError } = await sb
         .from("reports")
-        .update({ status: "archived", data: nextData, updated_at: archivedAt })
+        .update({ status: "archived", data: nextData })
         .eq("id", id)
         .eq("company_id", currentCompany.id);
       if (directError) throw directError;
@@ -7280,7 +7280,7 @@ window.archiveAllApprovedReports = async () => {
       } catch (rpcError) {
         const { error: directError } = await sb
           .from("reports")
-          .update({ status: "archived", updated_at: new Date().toISOString() })
+          .update({ status: "archived" })
           .eq("id", r.id)
           .eq("company_id", currentCompany.id);
         if (directError) throw rpcError || directError;
@@ -7499,14 +7499,14 @@ window.archiveResolvedDefects = async () => {
       await directorRpcArchiveReport(r.id);
       const { error: confirmError } = await sb
         .from("reports")
-        .update({ status: "archived", data: nextData, updated_at: archivedAt })
+        .update({ status: "archived", data: nextData })
         .eq("id", r.id)
         .eq("company_id", currentCompany.id);
       if (confirmError) console.warn("AskCreate.app: potvrda arhive kvara nije uspela:", confirmError.message);
     } catch (error) {
       const { error: directError } = await sb
         .from("reports")
-        .update({ status: "archived", data: nextData, updated_at: archivedAt })
+        .update({ status: "archived", data: nextData })
         .eq("id", r.id)
         .eq("company_id", currentCompany.id);
       if (directError) throw directError;
