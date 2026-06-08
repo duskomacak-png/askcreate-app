@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.2";
+const APP_VERSION = "1.68.3";
 
 
 let sb = null;
@@ -2271,16 +2271,11 @@ window.deleteReportPermanently = async (id) => {
     const existingReport = directorReportsCache.find(r => String(r.id) === String(id)) || loadLocalArchivedReports().find(r => String(r.id) === String(id));
     if (!confirmPermanentDeleteReport(existingReport || { id, data: { report_type_label: "Arhivirani izveštaj" } })) return;
 
-    const { error } = await sb
-      .from("reports")
-      .delete()
-      .eq("id", id)
-      .eq("company_id", currentCompany.id);
-    if (error) throw error;
-
+    const deleteMode = await permanentlyDeleteReportInDatabase(id);
+    rememberLocalPermanentlyDeletedReport(id);
     removeLocalArchivedReport(id);
     directorReportsCache = directorReportsCache.filter(r => String(r.id) !== String(id));
-    toast("Izveštaj je trajno obrisan iz baze.");
+    toast(deleteMode === "deleted" ? "Izveštaj je trajno obrisan iz baze." : "Izveštaj je sklonjen iz svih prikaza kao trajno obrisan. SQL/RLS nije dozvolio pravi DELETE, pa je označen kao deleted.");
     closeReportDocumentCenter?.();
     renderArchiveList();
     businessUpdateReportsMetrics(directorReportsCache);
@@ -3378,6 +3373,84 @@ function directorArchiveLocalKey() {
   return `askcreate_archived_reports_${currentCompany?.id || "no_company"}`;
 }
 
+function directorDeletedReportsLocalKey() {
+  return `askcreate_permanently_deleted_reports_${currentCompany?.id || currentWorker?.company_id || "no_company"}`;
+}
+
+function loadLocalPermanentlyDeletedReportIds() {
+  try {
+    const raw = localStorage.getItem(directorDeletedReportsLocalKey());
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function rememberLocalPermanentlyDeletedReport(id) {
+  if (!id) return;
+  try {
+    const ids = loadLocalPermanentlyDeletedReportIds();
+    ids.add(String(id));
+    localStorage.setItem(directorDeletedReportsLocalKey(), JSON.stringify(Array.from(ids).slice(-1000)));
+  } catch (e) {
+    console.warn("AskCreate.app: ne mogu upisati lokalnu listu trajno obrisanih izveštaja:", e.message);
+  }
+}
+
+function forgetLocalPermanentlyDeletedReport(id) {
+  if (!id) return;
+  try {
+    const ids = loadLocalPermanentlyDeletedReportIds();
+    ids.delete(String(id));
+    localStorage.setItem(directorDeletedReportsLocalKey(), JSON.stringify(Array.from(ids)));
+  } catch (_) {}
+}
+
+function isPermanentlyDeletedReport(r) {
+  const status = String(r?.status || "").toLowerCase();
+  const d = r?.data || {};
+  return status === "deleted" || status === "permanently_deleted" || d.permanently_deleted === true || d.deleted_from_archive === true;
+}
+
+function filterVisibleReportsAfterPermanentDelete(reports = []) {
+  const deletedIds = loadLocalPermanentlyDeletedReportIds();
+  return (Array.isArray(reports) ? reports : []).filter(r => {
+    if (!r?.id) return false;
+    if (deletedIds.has(String(r.id))) return false;
+    if (isPermanentlyDeletedReport(r)) return false;
+    return true;
+  });
+}
+
+async function permanentlyDeleteReportInDatabase(reportId) {
+  if (!currentCompany?.id) throw new Error("Firma nije učitana.");
+  const { error: deleteError } = await sb
+    .from("reports")
+    .delete()
+    .eq("id", reportId)
+    .eq("company_id", currentCompany.id);
+
+  if (!deleteError) return "deleted";
+
+  // Ako Supabase/RLS ne dozvoli pravi DELETE iz browsera, radimo sigurni fallback:
+  // izveštaj dobija status `deleted` i svi prikazi ga filtriraju kao trajno obrisanog.
+  const existing = directorReportsCache.find(r => String(r.id) === String(reportId)) || loadLocalArchivedReports().find(r => String(r.id) === String(reportId));
+  const nextData = {
+    ...(existing?.data || {}),
+    permanently_deleted: true,
+    deleted_from_archive: true,
+    permanently_deleted_at: new Date().toISOString()
+  };
+  const { error: updateError } = await sb
+    .from("reports")
+    .update({ status: "deleted", data: nextData, updated_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .eq("company_id", currentCompany.id);
+  if (updateError) throw deleteError;
+  return "marked_deleted";
+}
+
 function loadLocalArchivedReports() {
   if (!currentCompany?.id) return [];
   try {
@@ -3717,7 +3790,7 @@ async function loadReports(options = {}) {
     const activeReports = await directorRpcListReports();
     const archivedReports = await directorDirectListArchivedReports();
     const localArchivedReports = loadLocalArchivedReports();
-    data = mergeReportsById(mergeReportsById(activeReports, archivedReports), localArchivedReports);
+    data = filterVisibleReportsAfterPermanentDelete(mergeReportsById(mergeReportsById(activeReports, archivedReports), localArchivedReports));
   } catch (error) {
     if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
     else toast(error.message, true);
@@ -4275,12 +4348,8 @@ async function deleteGeneratedOfficeArchive(id) {
   if (!confirm(`Da li ste sigurni da želite trajno obrisati ovu stavku?\n\n${label}\n\nBiće trajno obrisani i povezani izveštaji: ${sourceIds.length}.\n\nOva radnja briše stavke iz baze i ne može se vratiti.`)) return;
   try {
     for (const reportId of sourceIds) {
-      const { error } = await sb
-        .from("reports")
-        .delete()
-        .eq("id", reportId)
-        .eq("company_id", currentCompany.id);
-      if (error) throw error;
+      await permanentlyDeleteReportInDatabase(reportId);
+      rememberLocalPermanentlyDeletedReport(reportId);
       removeLocalArchivedReport(reportId);
       directorReportsCache = directorReportsCache.filter(r => String(r.id) !== String(reportId));
     }
@@ -4289,6 +4358,7 @@ async function deleteGeneratedOfficeArchive(id) {
     renderArchiveList();
     if (item.kind === "carnet") renderCarnetPreview?.();
     else renderDailyLogPreview?.();
+    if (document.getElementById("tabOwner")?.classList.contains("active")) renderOwnerDashboard();
     businessUpdateReportsMetrics(directorReportsCache);
   } catch (e) {
     toast(e.message || String(e), true);
@@ -4410,7 +4480,7 @@ async function refreshSiteBossOverview() {
       .order("created_at", { ascending: false })
       .limit(500);
     if (error) throw error;
-    const clean = (Array.isArray(data) ? data : []).filter(r => !isArchivedReport(r));
+    const clean = filterVisibleReportsAfterPermanentDelete(Array.isArray(data) ? data : []).filter(r => !isArchivedReport(r));
     const overview = siteBossBuildOverviewFromReports(clean, date, site);
     renderSiteBossOverview(overview, date, site);
   } catch (e) {
@@ -7034,24 +7104,16 @@ window.deleteAllArchivedReportsPermanently = async () => {
   directorBulkDeleteArchiveBusy = true;
   try {
     for (const r of archived) {
-      const { error } = await sb
-        .from("reports")
-        .delete()
-        .eq("id", r.id)
-        .eq("company_id", currentCompany.id);
-      if (error) throw error;
+      await permanentlyDeleteReportInDatabase(r.id);
+      rememberLocalPermanentlyDeletedReport(r.id);
       removeLocalArchivedReport(r.id);
       directorReportsCache = directorReportsCache.filter(x => String(x.id) !== String(r.id));
     }
     const generatedSourceIds = [...new Set(generated.flatMap(item => Array.isArray(item.source_report_ids) ? item.source_report_ids : []).filter(Boolean))];
     for (const reportId of generatedSourceIds) {
       if (directorReportsCache.some(r => String(r.id) === String(reportId))) continue;
-      const { error } = await sb
-        .from("reports")
-        .delete()
-        .eq("id", reportId)
-        .eq("company_id", currentCompany.id);
-      if (error) throw error;
+      await permanentlyDeleteReportInDatabase(reportId);
+      rememberLocalPermanentlyDeletedReport(reportId);
       removeLocalArchivedReport(reportId);
     }
     saveOfficeGeneratedArchive([]);
@@ -14047,7 +14109,7 @@ async function loadOwnerPanelData() {
   directorPeopleCache = people.filter(p => p.active !== false);
   directorSitesCache = sites.filter(x => x.active !== false);
   directorAssetsCache = assets.filter(x => x.active !== false);
-  directorReportsCache = await attachReportUsersFallback((reports || []).filter(r => !isArchivedReport(r)));
+  directorReportsCache = await attachReportUsersFallback(filterVisibleReportsAfterPermanentDelete((reports || []).filter(r => !isArchivedReport(r))));
   try {
     const { data, error } = await sb.rpc("director_list_materials", { p_company_id: currentWorker.company_id });
     if (!error) directorMaterialsCache = data || [];
@@ -14096,7 +14158,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1681", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1683", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -14458,7 +14520,7 @@ async function mechanicListDefectsSafe() {
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .limit(200);
   if (error) throw error;
-  return (data || []).filter(hasDefectData);
+  return filterVisibleReportsAfterPermanentDelete(data || []).filter(hasDefectData);
 }
 
 
@@ -14489,7 +14551,8 @@ async function mechanicListCompanyReportsSafe() {
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .limit(500);
   if (error) throw error;
-  return attachReportUsersFallback ? await attachReportUsersFallback(data || []) : (data || []);
+  const visible = filterVisibleReportsAfterPermanentDelete(data || []);
+  return attachReportUsersFallback ? await attachReportUsersFallback(visible) : visible;
 }
 
 async function mechanicListAssetsSafe() {
