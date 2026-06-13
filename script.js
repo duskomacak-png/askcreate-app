@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.68.1";
+const APP_VERSION = "1.68.2-kvarovi-slike-fix";
 
 
 let sb = null;
@@ -4564,6 +4564,7 @@ function defectHtml(r) {
       ${d.defect_work_impact ? `<span class="pill">Uticaj na rad: ${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact)}</span>` : ""}
       ${d.called_mechanic_by_phone ? `<span class="pill">Odgovorno lice mehanizacije pozvano: ${escapeHtml(d.called_mechanic_by_phone)}</span>` : ""}
       <p>${escapeHtml(d.defect || "Bez opisa kvara")}</p>
+      ${renderDefectImagesHtml(d)}
       <div class="report-kv">
         <b>Status mehanizacije</b><span>${escapeHtml(d.mechanic_status || d.defect_status || "novo")}</span>
         <b>Šef mehanizacije</b><span>${escapeHtml(d.mechanic_updated_by || "—")}</span>
@@ -10154,17 +10155,30 @@ function formatBytes(bytes) {
 }
 
 function normalizeDefectImageList(list) {
+  // Slike kvara moraju biti otporne na stare i nove oblike podataka.
+  // Podržavamo: niz objekata, niz stringova, JSON string, data_url/dataUrl/src/url/base64.
+  if (typeof list === "string") {
+    try { list = JSON.parse(list); }
+    catch (e) { list = list ? [list] : []; }
+  }
   return (Array.isArray(list) ? list : [])
-    .filter(img => img && (img.data_url || img.url))
-    .slice(0, 5)
-    .map((img, index) => ({
-      id: img.id || makeDefectImageId(),
-      name: img.name || `kvar-slika-${index + 1}.jpg`,
-      type: img.type || "image/jpeg",
-      size: Number(img.size || 0) || 0,
-      data_url: img.data_url || img.url || "",
-      created_at: img.created_at || new Date().toISOString()
-    }));
+    .map((raw, index) => {
+      const img = typeof raw === "string" ? { data_url: raw } : (raw || {});
+      let dataUrl = img.data_url || img.dataUrl || img.src || img.url || img.public_url || img.publicUrl || img.base64 || "";
+      if (dataUrl && !String(dataUrl).startsWith("data:") && String(dataUrl).match(/^[A-Za-z0-9+/=]+$/)) {
+        dataUrl = "data:image/jpeg;base64," + dataUrl;
+      }
+      return {
+        id: img.id || makeDefectImageId(),
+        name: img.name || img.file_name || img.filename || `kvar-slika-${index + 1}.jpg`,
+        type: img.type || img.mime_type || "image/jpeg",
+        size: Number(img.size || img.size_bytes || 0) || 0,
+        data_url: dataUrl,
+        created_at: img.created_at || img.createdAt || new Date().toISOString()
+      };
+    })
+    .filter(img => img && img.data_url)
+    .slice(0, 5);
 }
 
 function getDefectImagesPayload() {
@@ -10255,7 +10269,15 @@ function bindDefectImagesInput() {
 }
 
 function defectImagesFromData(d = {}) {
-  return normalizeDefectImageList(d.defect_images || d.defectImages || d.defect_photos || d.defectPhotos || []);
+  return normalizeDefectImageList(
+    d.defect_images ||
+    d.defectImages ||
+    d.defect_photos ||
+    d.defectPhotos ||
+    d.defect_images_json ||
+    d.defectImagesJson ||
+    []
+  );
 }
 
 function defectImageCount(d = {}) {
@@ -11610,6 +11632,8 @@ function collectWorkerData() {
     defect_urgency: canDefects ? $("#wrDefectUrgency").value : "",
     called_mechanic_by_phone: canDefects ? ($("#wrDefectCalledMechanic")?.value || "") : "",
     defect_images: canDefects ? getDefectImagesPayload() : [],
+    defectImages: canDefects ? getDefectImagesPayload() : [],
+    defect_photos: canDefects ? getDefectImagesPayload() : [],
     defect_images_count: canDefects ? getDefectImagesPayload().length : 0
   };
 }
@@ -12136,7 +12160,7 @@ function runLocalAppCheck() {
   );
 
   const versionText = typeof APP_VERSION !== "undefined" ? APP_VERSION : "nepoznato";
-  addCheck("ok", "Verzija aplikacije", `Učitana verzija: ${versionText}. Test link za ovu verziju: ?v=1235&t=1`);
+  addCheck("ok", "Verzija aplikacije", `Učitana verzija: ${versionText}. Test link za ovu verziju: ?v=1682-kvarovi-slike-fix&t=1`);
 
   const now = new Date();
   addCheck("ok", "Vreme provere", now.toLocaleString("sr-RS"));
@@ -13718,6 +13742,8 @@ async function sendDefectNow() {
       function_title: worker.function_title,
       called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
       defect_images: getDefectImagesPayload(),
+      defectImages: getDefectImagesPayload(),
+      defect_photos: getDefectImagesPayload(),
       defect_images_count: getDefectImagesPayload().length
     };
 
