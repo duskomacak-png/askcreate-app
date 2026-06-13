@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1707-ispravka-kvara-tok";
+const CACHE_NAME = "askcreate-app-v1708-ispravka-samo-direkcija";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1707-ispravka-kvara-tok",
-  "./script.js?v=1707-ispravka-kvara-tok",
-  "./manifest.json?v=1707-ispravka-kvara-tok",
+  "./style.css?v=1708-ispravka-samo-direkcija",
+  "./script.js?v=1708-ispravka-samo-direkcija",
+  "./manifest.json?v=1708-ispravka-samo-direkcija",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

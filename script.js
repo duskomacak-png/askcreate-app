@@ -6086,7 +6086,7 @@ function printOwnerDefectsReport(prefix = "ownerDashboard") {
   const html = buildOwnerDefectsReportHtml(prefix);
   const win = window.open("", "_blank");
   if (!win) { toast("Popup je blokiran. Dozvoli otvaranje prozora za štampu.", true); return; }
-  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1707-ispravka-kvara-tok"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
+  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1708-ispravka-samo-direkcija"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
   win.document.close();
 }
 window.printOwnerDefectsReport = printOwnerDefectsReport;
@@ -12318,8 +12318,11 @@ function mergeCorrectionHistoryForResubmit(reportData = {}, returnedReport = nul
   ];
   reportData.returned_reason = reason;
   reportData.resubmitted_after_correction = true;
+  reportData.waiting_director_review = true;
+  reportData.director_review_required = true;
   reportData.resubmitted_at = new Date().toISOString();
-  reportData.defect_status = reportData.defect_status || "ponovo_poslato";
+  reportData.defect_status = "ponovo_poslato";
+  reportData.mechanic_status = "ponovo_poslato";
   return reportData;
 }
 
@@ -15634,10 +15637,46 @@ function isMechanicDefectHiddenForCurrentWorker(report) {
   return (!!id && localList.includes(id)) || (!!workerKey && dbList.includes(workerKey));
 }
 
+function isDefectCorrectionWaitingDirectorReview(report) {
+  const d = report?.data || {};
+  const status = String(d.defect_status || d.mechanic_status || report?.status || "").toLowerCase().trim().replace(/\s+/g, "_");
+  const correctionStatuses = [
+    "ponovo_poslato",
+    "ponovo_poslat",
+    "ispravljeno",
+    "ispravljen",
+    "resubmitted",
+    "resubmitted_after_correction",
+    "correction_resubmitted",
+    "returned_resubmitted"
+  ];
+  return !!(
+    d.resubmitted_after_correction === true ||
+    d.waiting_director_review === true ||
+    d.director_review_required === true ||
+    correctionStatuses.includes(status)
+  );
+}
+
+function mechanicShouldShowDefect(report) {
+  if (!report || !hasDefectData(report) || isArchivedReport(report)) return false;
+  if (isMechanicDefectHiddenForCurrentWorker(report)) return false;
+  // Kada radnik pošalje ispravljen kvar posle vraćanja, taj izveštaj ide prvo Direkciji na proveru.
+  // Šef mehanizacije ga ne obrađuje ponovo dok Direkcija ne odluči šta dalje, da se ne meša tok ispravke sa aktivnim kvarovima.
+  if (isDefectCorrectionWaitingDirectorReview(report)) return false;
+  return true;
+}
+
 function mechanicActionButtonsHtml(r) {
   const id = escapeHtml(r.id);
   const group = mechanicStatusGroup(r);
   const buttons = [];
+
+  if (isDefectCorrectionWaitingDirectorReview(r)) {
+    buttons.push(`<button class="secondary small-action mechanic-hide-btn" type="button" onclick="hideMechanicDefectFromPanel('${id}')">Skloni kod mene</button>`);
+    return `<div class="mechanic-actions"><small class="muted">Ispravka čeka proveru Direkcije.</small>${buttons.join("")}</div>`;
+  }
+
   if (group === "new") {
     buttons.push(`<button class="secondary small-action" type="button" onclick="updateMechanicDefectStatus('${id}','preuzeto')">Preuzmi kvar</button>`);
   } else if (mechanicStatusRaw(r).replace(/\s+/g, "_") === "preuzeto" || mechanicStatusRaw(r) === "primljeno") {
@@ -15646,7 +15685,7 @@ function mechanicActionButtonsHtml(r) {
   if (group !== "resolved") {
     buttons.push(`<button class="primary small-action" type="button" onclick="updateMechanicDefectStatus('${id}','reseno')">Rešeno</button>`);
   } else {
-    buttons.push(`<button class="secondary small-action mechanic-hide-btn" type="button" onclick="hideResolvedMechanicDefect('${id}')">Skloni kod mene</button>`);
+    buttons.push(`<button class="secondary small-action mechanic-hide-btn" type="button" onclick="hideMechanicDefectFromPanel('${id}')">Skloni kod mene</button>`);
   }
   buttons.push(`<button class="secondary small-action" type="button" onclick="addMechanicDefectNote('${id}')">Napomena</button>`);
   return `<div class="mechanic-actions">${buttons.join("")}</div>`;
@@ -15918,7 +15957,7 @@ async function loadMechanicBossDefects({ silent = false } = {}) {
   if (!currentWorker?.company_id || !sb) return;
   try {
     const defects = await mechanicListDefectsSafe();
-    mechanicBossReportsCache = dedupeMechanicDefects(await attachReportUsersFallback(defects)).filter(r => !isMechanicDefectHiddenForCurrentWorker(r));
+    mechanicBossReportsCache = dedupeMechanicDefects(await attachReportUsersFallback(defects)).filter(mechanicShouldShowDefect);
     const newReports = mechanicBossReportsCache.filter(r => mechanicStatusGroup(r) === "new");
     const signature = newReports.map(r => r.id).join("|");
     if (signature && mechanicBossLastSignature && signature !== mechanicBossLastSignature && newReports.length >= mechanicBossLastNewCount) {
@@ -16069,19 +16108,25 @@ window.addMechanicDefectNote = async (id) => {
   }
 };
 
-window.hideResolvedMechanicDefect = async (id) => {
+window.hideMechanicDefectFromPanel = async (id) => {
   try {
     if (!currentWorker?.company_id) throw new Error("Šef mehanizacije nije prijavljen.");
     const current = mechanicBossReportsCache.find(r => String(r.id) === String(id));
-    if (!current || mechanicStatusGroup(current) !== "resolved") {
-      return toast("Samo rešeni kvar može da se skloni iz panela šefa mehanizacije.", true);
-    }
-    const label = mechanicDefectAssetName(current) || "rešeni kvar";
-    if (!confirm(`Skloniti ovaj rešeni kvar samo iz panela šefa mehanizacije?
+    if (!current) return toast("Kvar nije pronađen u panelu šefa mehanizacije.", true);
+    const label = mechanicDefectAssetName(current) || "kvar";
+    const isCorrection = isDefectCorrectionWaitingDirectorReview(current);
+    const msg = isCorrection
+      ? `Skloniti ovu ISPRAVKU samo iz panela šefa mehanizacije?
 
 ${label}
 
-Kvar ostaje vidljiv Direkciji i ostaje za Arhivu.`)) return;
+Ispravka ostaje kod Direkcije na proveri.`
+      : `Skloniti ovaj kvar samo iz panela šefa mehanizacije?
+
+${label}
+
+Kvar ostaje vidljiv Direkciji i Direktor ga vidi dok Direkcija ne klikne Arhiviraj.`;
+    if (!confirm(msg)) return;
 
     const workerKey = mechanicHiddenWorkerKey();
     try {
@@ -16112,11 +16157,13 @@ Kvar ostaje vidljiv Direkciji i ostaje za Arhivu.`)) return;
 
     mechanicBossReportsCache = mechanicBossReportsCache.filter(r => String(r.id) !== String(id));
     renderMechanicBossDefects();
-    toast("Rešeni kvar je sklonjen iz panela šefa mehanizacije. Direkcija i Arhiva ostaju sačuvane.");
+    toast(isCorrection ? "Ispravka je sklonjena iz panela šefa mehanizacije. Direkcija je i dalje vidi." : "Kvar je sklonjen iz panela šefa mehanizacije. Direkcija i Arhiva ostaju sačuvane.");
   } catch(e) {
     toast(e.message || String(e), true);
   }
 };
+
+window.hideResolvedMechanicDefect = window.hideMechanicDefectFromPanel;
 
 function logoutMechanicBoss() {
   stopMechanicBossWatcher();
