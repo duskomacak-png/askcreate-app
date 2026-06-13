@@ -5961,7 +5961,7 @@ function printOwnerDefectsReport(prefix = "ownerDashboard") {
   const html = buildOwnerDefectsReportHtml(prefix);
   const win = window.open("", "_blank");
   if (!win) { toast("Popup je blokiran. Dozvoli otvaranje prozora za štampu.", true); return; }
-  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1702-kvarovi-slike-zoom"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
+  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1703-direktor-arhiva"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
   win.document.close();
 }
 window.printOwnerDefectsReport = printOwnerDefectsReport;
@@ -6075,6 +6075,38 @@ function renderArchiveList() {
   box.innerHTML = html || `<p class="muted">Arhiva je prazna. Kada arhiviraš izveštaj, dnevnik rada ili karnet, pojaviće se ovde.</p>`;
 }
 
+
+
+function renderOwnerPanelArchiveList() {
+  const box = document.getElementById("ownerPanelArchiveList");
+  const wrap = document.getElementById("ownerPanelArchiveBox");
+  if (!box || !wrap) return;
+  const archived = mergeReportsById(
+    filterVisibleReportsAfterPermanentDelete(directorReportsCache || []).filter(isArchivedReport),
+    filterVisibleReportsAfterPermanentDelete(loadLocalArchivedReports()).filter(isArchivedReport)
+  );
+  const generated = loadOfficeGeneratedArchive();
+  const html = [
+    ...archived.map(archiveReportHtml),
+    ...generated.map(officeGeneratedArchiveHtml)
+  ].join("");
+  box.innerHTML = html || `<p class="muted">Arhiva je prazna. Kada Direkcija arhivira izveštaj ili kvar, direktor će ga videti ovde.</p>`;
+}
+
+async function openOwnerPanelArchive() {
+  const wrap = document.getElementById("ownerPanelArchiveBox");
+  if (!wrap) return;
+  try {
+    if (!directorReportsCache?.length) await loadOwnerPanelData();
+  } catch (e) {
+    // Ako osvežavanje ne uspe, ipak prikaži ono što je već u kešu/lokalnoj arhivi.
+  }
+  wrap.classList.remove("hidden");
+  renderOwnerPanelArchiveList();
+  wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+window.openOwnerPanelArchive = openOwnerPanelArchive;
 
 function renderReportReadableDetails(d = {}, options = {}) {
   const esc = escapeHtml;
@@ -14727,6 +14759,9 @@ function bindEvents() {
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
   if ($("#ownerPanelRefreshBtn")) $("#ownerPanelRefreshBtn").addEventListener("click", () => refreshOwnerDashboardPanel({ silent: false }));
   if ($("#ownerPanelRenderBtn")) $("#ownerPanelRenderBtn").addEventListener("click", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview"));
+  if ($("#ownerPanelArchiveBtn")) $("#ownerPanelArchiveBtn").addEventListener("click", openOwnerPanelArchive);
+  if ($("#ownerPanelArchiveRefreshBtn")) $("#ownerPanelArchiveRefreshBtn").addEventListener("click", openOwnerPanelArchive);
+  if ($("#ownerPanelDefectsReportBtn")) $("#ownerPanelDefectsReportBtn").addEventListener("click", () => printOwnerDefectsReport("ownerPanelDashboard"));
   if ($("#ownerPanelLogoutBtn")) $("#ownerPanelLogoutBtn").addEventListener("click", logoutOwnerDashboardPanel);
   ["ownerPanelDashboardFrom", "ownerPanelDashboardTo", "ownerPanelDashboardSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview")); });
 
@@ -14993,6 +15028,7 @@ async function refreshOwnerDashboardPanel({ silent = false } = {}) {
     if (!connectionOk) throw new Error("Proverite internet konekciju. Trenutno ste offline.");
     await loadOwnerPanelData();
     renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview");
+    if (!document.getElementById("ownerPanelArchiveBox")?.classList.contains("hidden")) renderOwnerPanelArchiveList();
     markAutoRefreshOnline("Direktor");
   } catch (e) {
     markAutoRefreshOffline("Direktor", e);

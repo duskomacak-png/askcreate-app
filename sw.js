@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1702-kvarovi-slike-zoom";
+const CACHE_NAME = "askcreate-app-v1703-direktor-arhiva";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1702-kvarovi-slike-zoom",
-  "./script.js?v=1702-kvarovi-slike-zoom",
-  "./manifest.json?v=1702-kvarovi-slike-zoom",
+  "./style.css?v=1703-direktor-arhiva",
+  "./script.js?v=1703-direktor-arhiva",
+  "./manifest.json?v=1703-direktor-arhiva",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1702-kvarovi-slike-zoom" />
+  <link rel="stylesheet" href="style.css?v=1703-direktor-arhiva" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -906,6 +906,7 @@
             <datalist id="ownerDashboardSiteList"></datalist>
             <button id="renderOwnerDashboardBtn" class="primary" type="button">Prikaži pregled</button>
             <button id="printOwnerDefectsReportBtn" class="secondary" type="button">Štampaj izveštaj kvarova</button>
+            <button class="secondary" type="button" data-business-tab="archive">🗄️ Arhiva</button>
           </div>
           <div id="ownerDashboardPreview" class="office-form-preview owner-dashboard-preview"></div>
         </div>
@@ -1210,9 +1211,22 @@
           <label>Gradilište <input id="ownerPanelDashboardSite" list="ownerPanelDashboardSiteList" placeholder="Sva gradilišta ili izaberi jedno" /></label>
           <datalist id="ownerPanelDashboardSiteList"></datalist>
           <button id="ownerPanelRenderBtn" class="primary" type="button">Prikaži</button>
+          <button id="ownerPanelArchiveBtn" class="secondary" type="button">🗄️ Arhiva</button>
+          <button id="ownerPanelDefectsReportBtn" class="secondary" type="button">Štampaj kvarove</button>
         </div>
         <div id="ownerPanelDashboardPreview" class="office-form-preview owner-dashboard-preview">
           <p class="muted">Pregled će se učitati kada se vlasnik prijavi.</p>
+        </div>
+        <div id="ownerPanelArchiveBox" class="office-form-preview owner-dashboard-preview owner-panel-archive-box hidden">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Arhiva</p>
+              <h3>🗄️ Arhivirani izveštaji</h3>
+              <p class="muted">Direktor ovde može da otvori i štampa arhivirane izveštaje bez ulaska u Direkciju.</p>
+            </div>
+            <button id="ownerPanelArchiveRefreshBtn" class="secondary small-action" type="button">Osveži arhivu</button>
+          </div>
+          <div id="ownerPanelArchiveList" class="list"></div>
         </div>
       </div>
     </section>
@@ -1649,6 +1663,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1702-kvarovi-slike-zoom"></script>
+  <script src="script.js?v=1703-direktor-arhiva"></script>
 </body>
 </html>
