@@ -7,11 +7,11 @@
   <meta name="theme-color" content="#39b54a" />
   <meta name="description" content="AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju: terenski izveštaji, dnevnik rada, karnet, radnici, mašine, vozila, materijal, voda, labudica, gorivo, norme potrošnje i upozorenja na povećanu potrošnju po mašini ili vozilu, uz Excel izvoz i arhivu." />
   <meta name="keywords" content="AskCreate.app, aplikacija za građevinske firme, niskogradnja, terenski izveštaji, dnevnik rada, karnet radnika, karnet mehanizacije, evidencija goriva, potrošnja goriva po mašini, potrošnja goriva po vozilu, norma potrošnje goriva, velika potrošnja goriva, kvarovi mašina, građevinska mehanizacija, materijal po gradilištu, labudica, cisterna za vodu, Excel izvoz" />
-  <link rel="manifest" href="manifest.json?v=1682" />
+  <link rel="manifest" href="manifest.json?v=1336" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1682" />
+  <link rel="stylesheet" href="style.css?v=1701-kvarovi-slike" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -794,7 +794,7 @@
           <p class="muted">Klikni na konkretan izveštaj da otvoriš detalje i postojeća dugmad za dalji rad.</p>
           <div class="director-live-refresh-line">
             <span class="live-dot"></span>
-            <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</span>
+            <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 10 sekundi.</span>
             <button id="directorManualRefreshBtn" class="secondary small-action" type="button">Osveži odmah</button>
           </div>
           <div class="bulk-report-actions no-print">
@@ -905,6 +905,7 @@
             <label>Gradilište <input id="ownerDashboardSite" list="ownerDashboardSiteList" placeholder="Sva gradilišta ili izaberi jedno" /></label>
             <datalist id="ownerDashboardSiteList"></datalist>
             <button id="renderOwnerDashboardBtn" class="primary" type="button">Prikaži pregled</button>
+            <button id="printOwnerDefectsReportBtn" class="secondary" type="button">Štampaj izveštaj kvarova</button>
           </div>
           <div id="ownerDashboardPreview" class="office-form-preview owner-dashboard-preview"></div>
         </div>
@@ -937,6 +938,7 @@
             </div>
             <div class="archive-head-actions no-print">
               <button id="refreshArchiveBtn" class="secondary small-action" type="button">Osveži arhivu</button>
+              <button class="secondary small-action" type="button" onclick="resetAllCompanyReportsForTesting()">Nuliraj sve izveštaje za test</button>
               <button class="delete-btn small-action" type="button" onclick="deleteAllArchivedReportsPermanently()">Obriši svu arhivu trajno</button>
             </div>
           </div>
@@ -951,7 +953,6 @@
           <p class="muted">Ovde se prikazuju samo kvarovi koje zaposleni prijave. Kvarovi se ne mešaju sa dnevnim izveštajima.</p>
           <div class="row report-export-toolbar">
             <button id="refreshDefectsBtn" class="secondary" type="button">🔄 Osveži kvarove</button>
-            <button class="secondary" type="button" onclick="markAllDefectsReceived()">Označi sve nove kao primljeno</button>
             <button class="archive-report-btn" type="button" onclick="archiveResolvedDefects()">Arhiviraj rešene kvarove</button>
           </div>
           <div id="defectsList" class="list"></div>
@@ -1114,7 +1115,7 @@
             </div>
             <div class="support-status-box">
               <span class="live-dot"></span>
-              <b data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</b>
+              <b data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 10 sekundi.</b>
             </div>
           </div>
 
@@ -1134,7 +1135,7 @@
             </div>
             <div class="support-contact-card">
               <h4>Rad aplikacije</h4>
-              <p>Uprava firme može držati panel otvoren. Inbox izveštaja se osvežava u pozadini na svakih 30 sekundi, kako bi se novi izveštaji sa gradilišta prikazali bez ručnog osvežavanja stranice.</p>
+              <p>Uprava firme može držati panel otvoren. Inbox izveštaja se osvežava u pozadini na svakih 10 sekundi, kako bi se novi izveštaji sa gradilišta prikazali bez ručnog osvežavanja stranice.</p>
               <button class="secondary small-action" type="button" onclick="manualDirectorRefresh()">Osveži izveštaje sada</button>
             </div>
           </div>
@@ -1604,14 +1605,10 @@
           <label>Opis kvara</label>
           <textarea id="wrDefect" placeholder="npr. puklo crevo, curi ulje, ne pali..."></textarea>
 
-          <label>Slike kvara <span class="muted">(opciono, najviše 5)</span></label>
+          <label>Slike kvara / oštećenja <span id="wrDefectImagesCount" class="muted">0/5 slika</span></label>
           <input id="wrDefectImages" type="file" accept="image/*" multiple />
-          <div class="defect-images-toolbar">
-            <span id="wrDefectImagesCount">0/5 slika dodato</span>
-            <small>Svaku sliku možeš obrisati pre slanja ako je pogrešna.</small>
-          </div>
-          <div id="wrDefectImagesPreview" class="defect-images-preview"></div>
-          <p class="hint">Slike se automatski smanjuju pre čuvanja. U izveštaju će se prikazati uz prijavu kvara.</p>
+          <div id="wrDefectImagesPreview" class="defect-images-preview"><p class="muted tiny">Nema dodatih slika kvara.</p></div>
+          <p class="hint">Možeš dodati najviše 5 slika. Ako ubaciš pogrešnu sliku, obriši samo nju pre slanja i dodaj drugu.</p>
 
           <label>Uticaj kvara na rad</label>
           <select id="wrDefectStopsWork">
@@ -1652,6 +1649,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1682-kvarovi-slike-fix"></script>
+  <script src="script.js?v=1701-kvarovi-slike"></script>
 </body>
 </html>
