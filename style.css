@@ -8148,3 +8148,84 @@ button[onclick="manualDirectorRefresh()"] {
   .defect-images-block { background: #fff; border-color: #ddd; }
   .defect-image-link img { max-height: 260px; object-fit: contain; background: #fff; }
 }
+
+/* === AskCreate v1702: klik za uvećanje slika kvarova === */
+.defect-image-zoom-btn{
+  position:relative;
+  display:block;
+  width:100%;
+  padding:0;
+  margin:0;
+  background:transparent!important;
+  border:1px solid #000!important;
+  cursor:pointer;
+  overflow:hidden;
+}
+.defect-image-zoom-btn img{display:block;width:100%;height:100%;object-fit:cover;}
+.defect-image-zoom-label{
+  position:absolute;
+  right:6px;
+  bottom:6px;
+  background:#fff!important;
+  border:1px solid #000;
+  padding:2px 6px;
+  font-size:11px;
+  line-height:1.2;
+}
+.defect-image-viewer-modal.hidden{display:none!important;}
+.defect-image-viewer-modal{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+.defect-image-viewer-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.78)!important;
+}
+.defect-image-viewer-dialog{
+  position:relative;
+  width:min(1100px,96vw);
+  max-height:94vh;
+  background:#fff!important;
+  color:#000!important;
+  border:2px solid #000!important;
+  box-shadow:0 20px 80px rgba(0,0,0,.35)!important;
+  display:flex;
+  flex-direction:column;
+}
+.defect-image-viewer-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border-bottom:1px solid #000;
+  background:#fff!important;
+}
+.defect-image-viewer-body{
+  padding:10px;
+  overflow:auto;
+  background:#111!important;
+  text-align:center;
+}
+.defect-image-viewer-body img{
+  max-width:100%;
+  max-height:78vh;
+  object-fit:contain;
+  background:#fff;
+}
+body.defect-image-viewer-open{overflow:hidden;}
+.owner-defect-images-inline{margin-top:14px;border-top:1px solid #000;padding-top:12px;}
+.owner-defect-image-preview-list{display:grid;gap:12px;}
+.owner-defect-report-card-compact{padding:10px;margin:0 0 10px;}
+.owner-defect-report-card-compact .report-kv{font-size:12px;}
+.owner-defect-report-card-compact .defect-images-block{margin-top:8px;}
+@media print{
+  .defect-image-viewer-modal,.defect-image-zoom-label{display:none!important;}
+  .defect-image-zoom-btn{border:0!important;page-break-inside:avoid;break-inside:avoid;}
+}

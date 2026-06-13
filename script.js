@@ -604,16 +604,67 @@ async function handleDefectImagesInput(event) {
   }
 }
 
+function openDefectImageViewer(src, title = "Slika kvara") {
+  if (!src) return;
+  let modal = document.getElementById("defectImageViewerModal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "defectImageViewerModal";
+    modal.className = "defect-image-viewer-modal hidden";
+    modal.setAttribute("aria-hidden", "true");
+    modal.innerHTML = `
+      <div class="defect-image-viewer-backdrop" onclick="closeDefectImageViewer()"></div>
+      <div class="defect-image-viewer-dialog" role="dialog" aria-modal="true" aria-label="Uvećana slika kvara">
+        <div class="defect-image-viewer-top">
+          <strong id="defectImageViewerTitle">Slika kvara</strong>
+          <button class="secondary small-action" type="button" onclick="closeDefectImageViewer()">Zatvori</button>
+        </div>
+        <div class="defect-image-viewer-body">
+          <img id="defectImageViewerImg" alt="Uvećana slika kvara" />
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  const img = document.getElementById("defectImageViewerImg");
+  const ttl = document.getElementById("defectImageViewerTitle");
+  if (img) img.src = src;
+  if (ttl) ttl.textContent = title || "Slika kvara";
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("defect-image-viewer-open");
+}
+window.openDefectImageViewer = openDefectImageViewer;
+
+function closeDefectImageViewer() {
+  const modal = document.getElementById("defectImageViewerModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+  document.body.classList.remove("defect-image-viewer-open");
+}
+window.closeDefectImageViewer = closeDefectImageViewer;
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeDefectImageViewer();
+});
+
 function defectImagesHtml(dataOrReport = {}, options = {}) {
   const images = normalizeDefectImages(dataOrReport);
   if (!images.length) return "";
   const title = options.title || "Fotografije kvara";
+  const safeTitle = escapeHtml(title);
   return `<div class="defect-images-block ${options.compact ? "defect-images-compact" : ""}">
-    <h5>${escapeHtml(title)} <span>${images.length}</span></h5>
+    <h5>${safeTitle} <span>${images.length}</span></h5>
     <div class="defect-images-grid">
-      ${images.map((img, index) => `<a class="defect-image-link" href="${escapeHtml(img.data_url)}" target="_blank" rel="noopener">
-        <img src="${escapeHtml(img.data_url)}" alt="Slika kvara ${index + 1}" loading="lazy" />
-      </a>`).join("")}
+      ${images.map((img, index) => {
+        const src = escapeHtml(img.data_url);
+        const imageTitle = `${title} ${index + 1}`;
+        return `<button class="defect-image-link defect-image-zoom-btn" type="button" onclick="openDefectImageViewer('${src}', '${escapeHtml(imageTitle)}')" title="Klikni za uvećanje slike">
+          <img src="${src}" alt="Slika kvara ${index + 1}" loading="lazy" />
+          <span class="defect-image-zoom-label no-print">Uvećaj</span>
+        </button>`;
+      }).join("")}
     </div>
   </div>`;
 }
@@ -5846,7 +5897,7 @@ function buildOwnerDashboardData(from, to, site = "") {
 }
 
 
-function buildOwnerDefectsReportHtml(prefix = "ownerDashboard") {
+function getOwnerFilteredDefectReports(prefix = "ownerDashboard") {
   ensureOverviewDatalists();
   ensureOverviewDefaultDates(prefix);
   const from = document.getElementById(`${prefix}From`)?.value || today().slice(0, 8) + "01";
@@ -5863,26 +5914,39 @@ function buildOwnerDefectsReportHtml(prefix = "ownerDashboard") {
       return normalizeSearch(mechanicDefectSiteName(r)).includes(normalizedSite);
     })
     .sort((a, b) => String(mechanicDefectTime(b) || b.created_at || "").localeCompare(String(mechanicDefectTime(a) || a.created_at || "")));
+  return { from, to, site, reports };
+}
 
-  const cards = reports.map(r => {
-    const d = r.data || {};
-    return `<article class="owner-defect-report-card">
-      <h4>🚨 Kvar — ${escapeHtml(mechanicDefectAssetName(r))}</h4>
-      <div class="report-kv">
-        <b>Datum prijave</b><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || r.report_date || "—")}</span>
-        <b>Prijavio</b><span>${escapeHtml(mechanicDefectReporter(r))}</span>
-        <b>Gradilište/lokacija</b><span>${escapeHtml(mechanicDefectSiteName(r))}</span>
-        <b>Sredstvo</b><span>${escapeHtml(mechanicDefectAssetName(r))}</span>
-        <b>Opis kvara</b><span>${escapeHtml(mechanicDefectText(r))}</span>
-        <b>Hitnost</b><span>${escapeHtml(mechanicDefectUrgency(r))}</span>
-        <b>Uticaj na rad</b><span>${escapeHtml(mechanicDefectImpact(r))}</span>
-        <b>Status</b><span>${escapeHtml(isArchivedReport(r) ? "Arhivirano" : mechanicStatusLabel(r))}</span>
-        <b>Napomena šefa mehanizacije</b><span>${escapeHtml(d.mechanic_note || "—")}</span>
-        <b>Broj slika</b><span>${normalizeDefectImages(d).length}</span>
-      </div>
-      ${defectImagesHtml(d)}
-    </article>`;
-  }).join("") || `<p class="muted">Nema kvarova za izabrani period.</p>`;
+function ownerDefectReportCardHtml(r, options = {}) {
+  const d = r.data || {};
+  return `<article class="owner-defect-report-card ${options.compact ? "owner-defect-report-card-compact" : ""}">
+    <h4>🚨 Kvar — ${escapeHtml(mechanicDefectAssetName(r))}</h4>
+    <div class="report-kv">
+      <b>Datum prijave</b><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || r.report_date || "—")}</span>
+      <b>Prijavio</b><span>${escapeHtml(mechanicDefectReporter(r))}</span>
+      <b>Gradilište/lokacija</b><span>${escapeHtml(mechanicDefectSiteName(r))}</span>
+      <b>Sredstvo</b><span>${escapeHtml(mechanicDefectAssetName(r))}</span>
+      <b>Opis kvara</b><span>${escapeHtml(mechanicDefectText(r))}</span>
+      <b>Hitnost</b><span>${escapeHtml(mechanicDefectUrgency(r))}</span>
+      <b>Uticaj na rad</b><span>${escapeHtml(mechanicDefectImpact(r))}</span>
+      <b>Status</b><span>${escapeHtml(isArchivedReport(r) ? "Arhivirano" : mechanicStatusLabel(r))}</span>
+      <b>Napomena šefa mehanizacije</b><span>${escapeHtml(d.mechanic_note || "—")}</span>
+      <b>Broj slika</b><span>${normalizeDefectImages(d).length}</span>
+    </div>
+    ${defectImagesHtml(d, { compact: options.compact, title: "Fotografije kvara" })}
+  </article>`;
+}
+
+function ownerDashboardDefectImagesPreviewHtml(prefix = "ownerDashboard") {
+  const { reports } = getOwnerFilteredDefectReports(prefix);
+  const withImages = reports.filter(r => normalizeDefectImages(r.data || r).length).slice(0, 12);
+  if (!withImages.length) return `<p class="muted tiny">Za izabrani period nema slika uz kvarove.</p>`;
+  return `<div class="owner-defect-image-preview-list">${withImages.map(r => ownerDefectReportCardHtml(r, { compact: true })).join("")}</div>`;
+}
+
+function buildOwnerDefectsReportHtml(prefix = "ownerDashboard") {
+  const { from, to, site, reports } = getOwnerFilteredDefectReports(prefix);
+  const cards = reports.map(r => ownerDefectReportCardHtml(r)).join("") || `<p class="muted">Nema kvarova za izabrani period.</p>`;
 
   return `<div class="office-form-titlebar owner-titlebar"><div><b>Izveštaj kvarova</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div><div class="office-badges"><span>${reports.length} kvarova</span></div></div>${cards}`;
 }
@@ -5897,7 +5961,7 @@ function printOwnerDefectsReport(prefix = "ownerDashboard") {
   const html = buildOwnerDefectsReportHtml(prefix);
   const win = window.open("", "_blank");
   if (!win) { toast("Popup je blokiran. Dozvoli otvaranje prozora za štampu.", true); return; }
-  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1701-kvarovi-slike"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
+  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1702-kvarovi-slike-zoom"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
   win.document.close();
 }
 window.printOwnerDefectsReport = printOwnerDefectsReport;
@@ -5942,6 +6006,10 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.arhivirano}</b><span>Arhivirani</span></div>
       </div>
       ${officeTable(["Lokacija/gradilište","Sredstvo","Opis kvara","Hitnost","Slike","Status","Prijavljen","Zadnja promena"], defectTableRows)}
+      <div class="owner-defect-images-inline">
+        <h4>📸 Slike kvarova</h4>
+        ${ownerDashboardDefectImagesPreviewHtml(prefix)}
+      </div>
     </section>
     <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
     <section><h4>⛽ Povećana potrošnja</h4>${officeTable(["Sredstvo","Norma","Očekivano","Sipano","Razlika","Status"], fuelBadRows)}</section>`;
