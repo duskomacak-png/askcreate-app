@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1697" />
+  <link rel="stylesheet" href="style.css?v=1460" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -794,7 +794,7 @@
           <p class="muted">Klikni na konkretan izveštaj da otvoriš detalje i postojeća dugmad za dalji rad.</p>
           <div class="director-live-refresh-line">
             <span class="live-dot"></span>
-            <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 10 sekundi.</span>
+            <span data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</span>
             <button id="directorManualRefreshBtn" class="secondary small-action" type="button">Osveži odmah</button>
           </div>
           <div class="bulk-report-actions no-print">
@@ -937,7 +937,6 @@
             </div>
             <div class="archive-head-actions no-print">
               <button id="refreshArchiveBtn" class="secondary small-action" type="button">Osveži arhivu</button>
-              <button class="secondary small-action" type="button" onclick="resetAllCompanyReportsForTesting()">Nuliraj sve izveštaje za test</button>
               <button class="delete-btn small-action" type="button" onclick="deleteAllArchivedReportsPermanently()">Obriši svu arhivu trajno</button>
             </div>
           </div>
@@ -952,6 +951,7 @@
           <p class="muted">Ovde se prikazuju samo kvarovi koje zaposleni prijave. Kvarovi se ne mešaju sa dnevnim izveštajima.</p>
           <div class="row report-export-toolbar">
             <button id="refreshDefectsBtn" class="secondary" type="button">🔄 Osveži kvarove</button>
+            <button class="secondary" type="button" onclick="markAllDefectsReceived()">Označi sve nove kao primljeno</button>
             <button class="archive-report-btn" type="button" onclick="archiveResolvedDefects()">Arhiviraj rešene kvarove</button>
           </div>
           <div id="defectsList" class="list"></div>
@@ -1114,7 +1114,7 @@
             </div>
             <div class="support-status-box">
               <span class="live-dot"></span>
-              <b data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 10 sekundi.</b>
+              <b data-auto-refresh-status>Automatsko osvežavanje izveštaja je uključeno na 30 sekundi.</b>
             </div>
           </div>
 
@@ -1134,7 +1134,7 @@
             </div>
             <div class="support-contact-card">
               <h4>Rad aplikacije</h4>
-              <p>Uprava firme može držati panel otvoren. Inbox izveštaja se osvežava u pozadini na svakih 10 sekundi, kako bi se novi izveštaji sa gradilišta prikazali bez ručnog osvežavanja stranice.</p>
+              <p>Uprava firme može držati panel otvoren. Inbox izveštaja se osvežava u pozadini na svakih 30 sekundi, kako bi se novi izveštaji sa gradilišta prikazali bez ručnog osvežavanja stranice.</p>
               <button class="secondary small-action" type="button" onclick="manualDirectorRefresh()">Osveži izveštaje sada</button>
             </div>
           </div>
@@ -1604,6 +1604,15 @@
           <label>Opis kvara</label>
           <textarea id="wrDefect" placeholder="npr. puklo crevo, curi ulje, ne pali..."></textarea>
 
+          <label>Slike kvara <span class="muted">(opciono, najviše 5)</span></label>
+          <input id="wrDefectImages" type="file" accept="image/*" multiple />
+          <div class="defect-images-toolbar">
+            <span id="wrDefectImagesCount">0/5 slika dodato</span>
+            <small>Svaku sliku možeš obrisati pre slanja ako je pogrešna.</small>
+          </div>
+          <div id="wrDefectImagesPreview" class="defect-images-preview"></div>
+          <p class="hint">Slike se automatski smanjuju pre čuvanja. U izveštaju će se prikazati uz prijavu kvara.</p>
+
           <label>Uticaj kvara na rad</label>
           <select id="wrDefectStopsWork">
             <option value="">-- izaberi --</option>
@@ -1643,6 +1652,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1697"></script>
+  <script src="script.js?v=1420"></script>
 </body>
 </html>

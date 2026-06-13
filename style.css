@@ -398,13 +398,13 @@ th{background:var(--green-soft);font-weight:850;color:#24432d}
   position:fixed;
   right:18px;
   bottom:18px;
-  z-index:10000;
+  z-index:100;
   background:#173b24;
   color:#fff;
   border:1px solid rgba(255,255,255,.18);
-  border-radius:14px;
-  padding:10px 13px;
-  max-width:340px;
+  border-radius:16px;
+  padding:14px 16px;
+  max-width:380px;
   box-shadow:0 14px 38px rgba(0,0,0,.22);
 }
 .footer{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px;padding:18px 24px;border-top:1px solid var(--border);background:#f7faf7}
@@ -4522,8 +4522,15 @@ body.in-app #viewDirectorDashboard.director-business-page,
 }
 #viewDirectorDashboard #directorCompanyLabel{color:#334155!important;}
 #viewDirectorDashboard #directorCompanyLabel::after{
-  content:none!important;
-  display:none!important;
+  content:"";
+  display:inline-block;
+  width:7px;
+  height:7px;
+  margin-left:8px;
+  border-radius:50%;
+  background:var(--excel-green);
+  box-shadow:0 0 0 4px rgba(33,115,70,.12);
+  vertical-align:middle;
 }
 #viewDirectorDashboard .director-layout-note{color:#52645a!important;}
 #viewDirectorDashboard .director-hero-actions .secondary,
@@ -7995,90 +8002,174 @@ body.owner-dashboard-mode .internal-header.internal-collapsible::after{
 #viewWorkerForm.worker-mobile-panel .tour-count-box{display:grid !important;grid-template-columns:1fr !important;gap:10px !important;}
 #viewWorkerForm.worker-mobile-panel .tour-site-local{grid-template-columns:1fr !important;}
 
-/* v1.69.5 — pomerljiva status lampica, pozicija se pamti u browseru */
-.auto-refresh-lamp {
-  position: fixed;
-  top: 74px;
-  right: 14px;
-  bottom: auto;
-  z-index: 9999;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  max-width: min(250px, calc(100vw - 28px));
-  padding: 7px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(36,211,102,.22);
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 22px rgba(15,23,42,.16);
-  color: #173b24;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.15;
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
+
+/* v1.68.1 — Kvarovi: slike uz prijavu kvara */
+.defect-images-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:8px 0 10px;
+  color:var(--muted);
+  font-size:.9rem;
 }
-.auto-refresh-lamp.is-dragging{
-  cursor: grabbing;
-  opacity: .92;
-  transform: scale(.98);
+.defect-images-toolbar span{
+  font-weight:900;
+  color:var(--text);
+  background:rgba(245,185,66,.12);
+  border:1px solid rgba(245,185,66,.28);
+  border-radius:999px;
+  padding:6px 10px;
 }
-.auto-refresh-lamp.is-custom-position{
-  right: auto;
-  bottom: auto;
+.defect-images-preview{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
+  gap:10px;
+  margin:10px 0 6px;
 }
-.auto-refresh-lamp.hidden { display: none; }
-.auto-refresh-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  flex: 0 0 auto;
-  background: #ff3b30;
-  box-shadow: 0 0 0 4px rgba(255,59,48,.16), 0 0 16px rgba(255,59,48,.75);
+.defect-images-empty{
+  grid-column:1/-1;
+  margin:0;
+  padding:12px;
+  border:1px dashed var(--border);
+  border-radius:14px;
+  color:var(--muted);
+  background:rgba(255,255,255,.03);
 }
-.auto-refresh-lamp.is-online .auto-refresh-dot {
-  background: #24d366;
-  box-shadow: 0 0 0 4px rgba(36,211,102,.16), 0 0 16px rgba(36,211,102,.85);
+.defect-image-draft,
+.defect-image-item{
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  background:rgba(255,255,255,.04);
 }
-.auto-refresh-lamp.is-offline {
-  border-color: rgba(255,59,48,.42);
-  background: rgba(255,241,242,.95);
-  color: #7f1d1d;
+.defect-image-draft img,
+.defect-image-item img{
+  width:100%;
+  aspect-ratio:4/3;
+  object-fit:cover;
+  display:block;
+  background:#111827;
 }
-.auto-refresh-text { white-space: nowrap; overflow:hidden; text-overflow:ellipsis; }
-@media(max-width:700px){
-  .auto-refresh-lamp{
-    top: 58px;
-    right: 10px;
-    max-width: calc(100vw - 20px);
-    font-size: 10.5px;
-    padding: 6px 9px;
-  }
+.defect-image-draft-meta{
+  padding:8px 9px 5px;
+}
+.defect-image-draft-meta b,
+.defect-image-draft-meta small{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.defect-image-draft-meta small{ color:var(--muted); margin-top:2px; }
+.defect-image-remove{
+  width:calc(100% - 14px);
+  margin:0 7px 8px;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid rgba(239,68,68,.45);
+  background:rgba(127,29,29,.35);
+  color:#fecaca;
+  font-weight:900;
+}
+.defect-images-block{
+  margin-top:12px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  background:rgba(15,23,42,.04);
+}
+.defect-images-block h4{
+  margin:0 0 10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.defect-images-block h4 span{
+  font-size:.8rem;
+  color:var(--muted);
+}
+.defect-images-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:10px;
+}
+.defect-image-item{ margin:0; }
+.defect-image-item figcaption{
+  padding:7px 8px;
+  font-size:.78rem;
+  color:var(--muted);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.report-paper-view .defect-images-block,
+.defect-images-print{
+  background:#fff;
+  border-color:#d1d5db;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.report-paper-view .defect-images-grid,
+.defect-images-print .defect-images-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.report-paper-view .defect-image-item img,
+.defect-images-print .defect-image-item img{
+  max-height:260px;
+  object-fit:contain;
+  background:#f3f4f6;
+}
+@media print{
+  .defect-images-block{ break-inside:avoid; page-break-inside:avoid; }
+  .defect-images-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .defect-image-item img{ max-height:260px; object-fit:contain; }
 }
 
-
-#directorManualRefreshBtn,
-#refreshDailyLogBtn,
-#refreshCarnetBtn,
-#refreshFuelReportsBtn,
-#refreshFuelAnalysisBtn,
-#refreshMaterialOverviewBtn,
-#refreshOwnerDashboardBtn,
-#refreshArchiveBtn,
-#refreshDefectsBtn,
-#ownerPanelRefreshBtn,
-#refreshMechanicDefectsBtn,
-#refreshMechanicOpsBtn,
-button[onclick="manualDirectorRefresh()"] {
-  display: none !important;
+/* v1.68.2 — Direktor: poseban izveštaj kvarova za pregled pre štampe */
+.owner-defect-report-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin:10px 0 12px;
 }
-
-/* v1.69.3 dodatna zaštita: ručna osvežavanja sakrivena i ako stari HTML ostane u cache-u */
-#refreshDirectorBtn,
-#ownerPanelRefreshBtn,
-#refreshMechanicDefectsBtn,
-#refreshMechanicOpsBtn,
-#directorManualRefreshBtn,
-#refreshDefectsBtn { display: none !important; }
+.director-defects-report{
+  background:#fff;
+  color:#111827;
+}
+.director-defect-report-card{
+  border:1px solid #d1d5db;
+  border-radius:14px;
+  margin:12px 0;
+  padding:12px;
+  background:#fff;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.director-defect-report-card-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  border-bottom:1px solid #e5e7eb;
+  background:#f9fafb;
+  margin:-12px -12px 12px;
+  padding:10px 12px;
+  border-radius:14px 14px 0 0;
+}
+.director-defect-report-card-head b,
+.director-defect-report-card-head span{ display:block; }
+.director-defect-report-card-head > span{
+  border:1px solid #d1d5db;
+  border-radius:999px;
+  padding:5px 9px;
+  font-weight:800;
+  white-space:nowrap;
+}
+@media print{
+  .owner-defect-report-actions{ display:none!important; }
+  .director-defect-report-card{ break-inside:avoid; page-break-inside:avoid; }
+}

@@ -1,4 +1,4 @@
-// v1.69.5_DRAGGABLE_AUTO_REFRESH_LAMP - status lampica moze da se prevuce
+// v1.22.0_UI_CLEANUP - jedno dugme odjave i uklonjena kontrola sistema
 /* ASKCREATE.APP by AskCreate - AskCreate.app
    VAŽNO:
    1) SUPABASE_URL je već upisan.
@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.69.7";
+const APP_VERSION = "1.68.1";
 
 
 let sb = null;
@@ -26,18 +26,12 @@ let workerSiteOptions = [];
 let workerMaterialOptions = [];
 let deferredPwaInstallPrompt = null;
 let pwaInstallPromptReadyAt = 0;
-const AUTO_REFRESH_INTERVAL_MS = 10000;
 let directorAutoRefreshTimer = null;
 let directorAutoRefreshBusy = false;
-let mechanicBossAutoRefreshBusy = false;
-let ownerAutoRefreshTimer = null;
-let ownerAutoRefreshBusy = false;
-let autoRefreshHeartbeatTimer = null;
-let autoRefreshHeartbeatScope = "panel";
-let autoRefreshProbeBusy = false;
-let autoRefreshLastOk = null;
 let directorKnownReportIds = new Set();
 let workerReportSubmitBusy = false;
+let defectImmediateSubmitBusy = false;
+let defectImagesDraft = [];
 let fieldTankerMemorySubmitBusy = false;
 let adminCompanySaveBusy = false;
 let directorBulkApproveBusy = false;
@@ -143,31 +137,6 @@ function readRpcSingleRow(data) {
   if (Array.isArray(data)) return data[0] || null;
   if (data && typeof data === "object") return data;
   return null;
-}
-
-function normalizeWorkerLoginValue(value) {
-  return normalizeLoginCode(String(value || ""));
-}
-
-function workerRowMatchesLogin(row = {}, companyCode = "", accessCode = "", expectedPersonId = "") {
-  const expectedCompany = normalizeWorkerLoginValue(companyCode);
-  const expectedCode = normalizeWorkerLoginValue(accessCode);
-  const expectedId = String(expectedPersonId || "").trim();
-  const rowCompany = normalizeWorkerLoginValue(row.company_code || row.code || row.company || row.company_slug);
-  const rowAccess = normalizeWorkerLoginValue(row.access_code || row.worker_code || row.personal_code || row.pin);
-  const rowIds = [row.user_id, row.id, row.person_id, row.worker_id, row.company_user_id].map(v => String(v || "").trim()).filter(Boolean);
-  const companyOk = !expectedCompany || !rowCompany || rowCompany === expectedCompany;
-  const codeOk = !expectedCode || !rowAccess || rowAccess === expectedCode;
-  const idOk = !expectedId || rowIds.includes(expectedId);
-  return companyOk && codeOk && idOk;
-}
-
-function selectWorkerLoginRow(data, companyCode = "", accessCode = "", expectedPersonId = "") {
-  const rows = Array.isArray(data) ? data : (data && typeof data === "object" ? [data] : []);
-  if (!rows.length) return null;
-  const exact = rows.find(row => workerRowMatchesLogin(row, companyCode, accessCode, expectedPersonId));
-  if (exact) return exact;
-  return rows.length === 1 && workerRowMatchesLogin(rows[0], companyCode, accessCode, "") ? rows[0] : null;
 }
 
 let internalHeaderCollapseTimer = null;
@@ -744,7 +713,6 @@ function buildWorkerPersonalLink(person = {}, mode = "worker") {
   url.searchParams.set("ulaz", mode === "mechanic" ? "mehanika" : "radnik");
   if (companyCode) url.searchParams.set("firma", companyCode);
   if (accessCode) url.searchParams.set("kod", accessCode);
-  if (person?.id) url.searchParams.set("osoba", String(person.id));
   return url.toString();
 }
 
@@ -796,11 +764,6 @@ function getWorkerCompanyCodeFromUrl() {
 function getWorkerAccessCodeFromUrl() {
   const params = new URLSearchParams(window.location.search || "");
   return String(params.get("kod") || params.get("code") || params.get("access_code") || params.get("radnik") || "").trim();
-}
-
-function getWorkerPersonIdFromUrl() {
-  const params = new URLSearchParams(window.location.search || "");
-  return String(params.get("osoba") || params.get("person") || params.get("person_id") || params.get("user_id") || "").trim();
 }
 
 function applyWorkerAccessCodeFromUrl() {
@@ -1744,7 +1707,7 @@ async function loadDirectorCompany() {
   const effectiveBrandColor = data.brand_color || approvedSource?.brand_color || "green";
   currentCompany = { ...data, brand_color: effectiveBrandColor };
   applyCompanyBrandToBody(effectiveBrandColor);
-  $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code}`;
+  $("#directorCompanyLabel").textContent = `${data.name} · ${data.company_code} · ${data.status}`;
   businessUpdateCompanyName();
   setInternalHeader("Uprava", "", true);
   show("DirectorDashboard");
@@ -2279,11 +2242,16 @@ window.deleteReportPermanently = async (id) => {
     const existingReport = directorReportsCache.find(r => String(r.id) === String(id)) || loadLocalArchivedReports().find(r => String(r.id) === String(id));
     if (!confirmPermanentDeleteReport(existingReport || { id, data: { report_type_label: "Arhivirani izveštaj" } })) return;
 
-    const deleteMode = await permanentlyDeleteReportInDatabase(id);
-    rememberLocalPermanentlyDeletedReport(id);
+    const { error } = await sb
+      .from("reports")
+      .delete()
+      .eq("id", id)
+      .eq("company_id", currentCompany.id);
+    if (error) throw error;
+
     removeLocalArchivedReport(id);
     directorReportsCache = directorReportsCache.filter(r => String(r.id) !== String(id));
-    toast(deleteMode === "deleted" ? "Izveštaj je trajno obrisan iz baze." : "Izveštaj je sklonjen iz svih prikaza kao trajno obrisan. SQL/RLS nije dozvolio pravi DELETE, pa je označen kao deleted.");
+    toast("Izveštaj je trajno obrisan iz baze.");
     closeReportDocumentCenter?.();
     renderArchiveList();
     businessUpdateReportsMetrics(directorReportsCache);
@@ -3381,262 +3349,6 @@ function directorArchiveLocalKey() {
   return `askcreate_archived_reports_${currentCompany?.id || "no_company"}`;
 }
 
-function directorDeletedReportsLocalKey() {
-  return `askcreate_permanently_deleted_reports_${currentCompany?.id || currentWorker?.company_id || "no_company"}`;
-}
-
-function loadLocalPermanentlyDeletedReportIds() {
-  try {
-    const raw = localStorage.getItem(directorDeletedReportsLocalKey());
-    const parsed = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
-  } catch (_) {
-    return new Set();
-  }
-}
-
-function rememberLocalPermanentlyDeletedReport(id) {
-  if (!id) return;
-  try {
-    const ids = loadLocalPermanentlyDeletedReportIds();
-    ids.add(String(id));
-    localStorage.setItem(directorDeletedReportsLocalKey(), JSON.stringify(Array.from(ids).slice(-1000)));
-  } catch (e) {
-    console.warn("AskCreate.app: ne mogu upisati lokalnu listu trajno obrisanih izveštaja:", e.message);
-  }
-}
-
-function forgetLocalPermanentlyDeletedReport(id) {
-  if (!id) return;
-  try {
-    const ids = loadLocalPermanentlyDeletedReportIds();
-    ids.delete(String(id));
-    localStorage.setItem(directorDeletedReportsLocalKey(), JSON.stringify(Array.from(ids)));
-  } catch (_) {}
-}
-
-function isPermanentlyDeletedReport(r) {
-  const status = String(r?.status || "").toLowerCase();
-  const d = r?.data || {};
-  return status === "deleted" || status === "permanently_deleted" || d.permanently_deleted === true || d.deleted_from_archive === true;
-}
-
-function filterVisibleReportsAfterPermanentDelete(reports = []) {
-  const deletedIds = loadLocalPermanentlyDeletedReportIds();
-  return (Array.isArray(reports) ? reports : []).filter(r => {
-    if (!r?.id) return false;
-    if (deletedIds.has(String(r.id))) return false;
-    if (isPermanentlyDeletedReport(r)) return false;
-    return true;
-  });
-}
-
-// v1.68.4 — ista baza može imati stare arhivirane/obrisane zapise.
-// Ti zapisi smeju da postoje za dokumentaciju/arhivu, ali ne smeju više hraniti
-// Direktor pregled, Šef mehanizacije gorivo/potrošnju, dnevnik, karnet i KPI brojeve.
-function isReportOperationalForAnalytics(r) {
-  if (!r?.id) return false;
-  if (isPermanentlyDeletedReport(r)) return false;
-  if (isArchivedReport(r)) return false;
-  return true;
-}
-
-function filterOperationalReportsForAnalytics(reports = []) {
-  return filterVisibleReportsAfterPermanentDelete(reports).filter(isReportOperationalForAnalytics);
-}
-
-function isMissingSupabaseRpc(error, rpcName = "") {
-  const msg = String(error?.message || error || "").toLowerCase();
-  return !!(msg.includes("function") || msg.includes("schema cache") || (rpcName && msg.includes(String(rpcName).toLowerCase())));
-}
-
-function clearLocalReportStateForCompany() {
-  try { writeLocalArchivedReports([]); } catch (_) {}
-  try { saveOfficeGeneratedArchive([]); } catch (_) {}
-  try {
-    localStorage.removeItem(directorArchiveLocalKey());
-    localStorage.removeItem(directorDeletedReportsLocalKey());
-    localStorage.removeItem("swp_returned_report_id");
-    localStorage.removeItem("swp_returned_report_type");
-  } catch (_) {}
-}
-
-async function callHardDeleteReportRpc(reportId) {
-  if (!currentCompany?.id || !sb) return false;
-  try {
-    const { error } = await sb.rpc("director_permanently_delete_report", {
-      p_company_id: currentCompany.id,
-      p_report_id: reportId
-    });
-    if (error) throw error;
-    return true;
-  } catch (e) {
-    if (!isMissingSupabaseRpc(e, "director_permanently_delete_report")) {
-      console.warn("director_permanently_delete_report RPC nije uspeo, pokušavam direktan DELETE:", e?.message || e);
-    }
-    return false;
-  }
-}
-
-async function callHardPurgeCompanyReportsRpc() {
-  if (!currentCompany?.id || !sb) return null;
-  try {
-    const { data, error } = await sb.rpc("askcreate_purge_company_reports", {
-      p_company_id: currentCompany.id
-    });
-    if (error) throw error;
-    return data ?? true;
-  } catch (e) {
-    if (!isMissingSupabaseRpc(e, "askcreate_purge_company_reports")) {
-      console.warn("askcreate_purge_company_reports RPC nije uspeo, pokušavam direktan DELETE:", e?.message || e);
-    }
-    return null;
-  }
-}
-
-
-function currentCompanyCodeForPurge() {
-  return String(
-    currentCompany?.company_code ||
-    currentCompany?.code ||
-    currentWorker?.company_code ||
-    localStorage.getItem("swp_worker_company_code") ||
-    ""
-  ).trim();
-}
-
-async function callHardPurgeCompanyReportsByCodeRpc() {
-  const companyCode = currentCompanyCodeForPurge();
-  if (!companyCode || !sb) return null;
-  try {
-    const { data, error } = await sb.rpc("askcreate_purge_company_reports_by_code", {
-      p_company_code: companyCode
-    });
-    if (error) throw error;
-    return data ?? true;
-  } catch (e) {
-    if (!isMissingSupabaseRpc(e, "askcreate_purge_company_reports_by_code")) {
-      console.warn("askcreate_purge_company_reports_by_code RPC nije uspeo:", e?.message || e);
-    }
-    return null;
-  }
-}
-
-async function callHardDeleteReportByCodeRpc(reportId) {
-  const companyCode = currentCompanyCodeForPurge();
-  if (!companyCode || !reportId || !sb) return false;
-  try {
-    const { data, error } = await sb.rpc("askcreate_delete_report_by_company_code", {
-      p_company_code: companyCode,
-      p_report_id: reportId
-    });
-    if (error) throw error;
-    return data === true || Number(data || 0) > 0;
-  } catch (e) {
-    if (!isMissingSupabaseRpc(e, "askcreate_delete_report_by_company_code")) {
-      console.warn("askcreate_delete_report_by_company_code RPC nije uspeo:", e?.message || e);
-    }
-    return false;
-  }
-}
-
-
-// v1.68.8 — najčvršći put za radničke linkove: brisanje i čitanje izveštaja preko stvarno prijavljenog korisnika.
-// Ovo rešava slučaj kada company_code/currentCompany.id nisu isti izvor koji koriste Direktor/Šef mehanizacije linkovi.
-async function callHardPurgeReportsForLoggedWorkerRpc() {
-  if (!currentWorker?.id || !currentWorker?.access_code || !sb) return null;
-  try {
-    const { data, error } = await sb.rpc("askcreate_purge_reports_for_logged_worker", {
-      p_worker_id: currentWorker.id,
-      p_access_code: currentWorker.access_code
-    });
-    if (error) throw error;
-    return data ?? 0;
-  } catch (e) {
-    if (!isMissingSupabaseRpc(e, "askcreate_purge_reports_for_logged_worker")) {
-      console.warn("askcreate_purge_reports_for_logged_worker RPC nije uspeo:", e?.message || e);
-    }
-    return null;
-  }
-}
-
-async function listActiveReportsForLoggedWorkerRpc() {
-  if (!currentWorker?.id || !currentWorker?.access_code || !sb) return null;
-  try {
-    const { data, error } = await sb.rpc("askcreate_list_active_reports_for_logged_worker", {
-      p_worker_id: currentWorker.id,
-      p_access_code: currentWorker.access_code
-    });
-    if (error) throw error;
-    return filterOperationalReportsForAnalytics(data || []);
-  } catch (e) {
-    if (!isMissingSupabaseRpc(e, "askcreate_list_active_reports_for_logged_worker")) {
-      console.warn("askcreate_list_active_reports_for_logged_worker RPC nije uspeo:", e?.message || e);
-    }
-    return null;
-  }
-}
-
-async function debugLoggedWorkerReportsSource(label = "reports-debug") {
-  try {
-    const viaRpc = await listActiveReportsForLoggedWorkerRpc();
-    const direct = currentWorker?.company_id && sb
-      ? await sb.from("reports").select("id, company_id, user_id, report_date, status, submitted_at, created_at, data").eq("company_id", currentWorker.company_id).limit(50)
-      : { data: [], error: null };
-    console.log(`AskCreate ${label}:`, {
-      worker_id: currentWorker?.id,
-      worker_company_id: currentWorker?.company_id,
-      worker_company_code: currentWorker?.company_code,
-      rpc_count: Array.isArray(viaRpc) ? viaRpc.length : null,
-      direct_count: Array.isArray(direct?.data) ? direct.data.length : null,
-      direct_error: direct?.error?.message || null,
-      direct_sample: direct?.data || []
-    });
-  } catch (e) {
-    console.warn("AskCreate reports debug nije uspeo:", e?.message || e);
-  }
-}
-
-async function permanentlyDeleteReportInDatabase(reportId) {
-  if (!currentCompany?.id) throw new Error("Firma nije učitana.");
-
-  // v1.68.6: prvo pokušavamo SECURITY DEFINER RPC koji zaista briše red iz Supabase baze.
-  // Ovo je jedini ispravan put za oslobađanje baze kada RLS ne dozvoli browser-u direktan DELETE.
-  const rpcDeleted = await callHardDeleteReportRpc(reportId);
-  if (rpcDeleted) return "deleted_rpc";
-
-  const rpcDeletedByCode = await callHardDeleteReportByCodeRpc(reportId);
-  if (rpcDeletedByCode) return "deleted_rpc_by_code";
-
-  const { error: deleteError } = await sb
-    .from("reports")
-    .delete()
-    .eq("id", reportId)
-    .eq("company_id", currentCompany.id);
-
-  if (!deleteError) return "deleted";
-
-  // Fallback ostaje samo kao zaštita prikaza ako SQL/RPC još nije dodat.
-  // VAŽNO: ovo NE oslobađa bazu. Za pravo čišćenje treba pokrenuti SQL koji šaljem u chatu.
-  const existing = directorReportsCache.find(r => String(r.id) === String(reportId)) || loadLocalArchivedReports().find(r => String(r.id) === String(reportId));
-  const nextData = {
-    ...(existing?.data || {}),
-    permanently_deleted: true,
-    deleted_from_archive: true,
-    permanently_deleted_at: new Date().toISOString()
-  };
-  const { error: updateError } = await sb
-    .from("reports")
-    .update({ status: "deleted", data: nextData })
-    .eq("id", reportId)
-    .eq("company_id", currentCompany.id);
-  if (updateError) {
-    const msg = "Supabase nije dozvolio trajno brisanje iz browsera. Pokreni SQL za askcreate_purge_company_reports / director_permanently_delete_report.";
-    throw new Error(`${msg} Detalj: ${deleteError.message || deleteError}`);
-  }
-  return "marked_deleted";
-}
-
 function loadLocalArchivedReports() {
   if (!currentCompany?.id) return [];
   try {
@@ -3660,17 +3372,10 @@ function writeLocalArchivedReports(list) {
 
 function saveLocalArchivedReport(report) {
   if (!report?.id || !currentCompany?.id) return;
-  const archivedAt = new Date().toISOString();
   const archivedReport = {
     ...report,
     status: "archived",
-    updated_at: archivedAt,
-    data: {
-      ...(report?.data || {}),
-      archived: true,
-      archived_from_direction: true,
-      archived_at: archivedAt
-    }
+    updated_at: new Date().toISOString()
   };
   const map = new Map(loadLocalArchivedReports().map(r => [String(r.id), r]));
   map.set(String(archivedReport.id), archivedReport);
@@ -3767,8 +3472,7 @@ function isFuelDashboardOnlyReport(r) {
 
 function isArchivedReport(r) {
   const status = String(r?.status || "").toLowerCase();
-  const d = r?.data || {};
-  return status === "archived" || status === "arhivirano" || d.archived === true || d.archived_from_direction === true || !!d.archived_at;
+  return status === "archived" || status === "arhivirano";
 }
 
 function isPendingDirectorReport(r) {
@@ -3920,232 +3624,6 @@ function formatRefreshTime(date = new Date()) {
   return date.toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-const AUTO_REFRESH_LAMP_POS_KEY = "askcreate_auto_refresh_lamp_pos_v1";
-
-function applySavedAutoRefreshLampPosition(lamp) {
-  if (!lamp || lamp.dataset.positionApplied === "1") return;
-  lamp.dataset.positionApplied = "1";
-  try {
-    const saved = JSON.parse(localStorage.getItem(AUTO_REFRESH_LAMP_POS_KEY) || "null");
-    if (!saved || typeof saved.x !== "number" || typeof saved.y !== "number") return;
-    const margin = 8;
-    const maxX = Math.max(margin, window.innerWidth - lamp.offsetWidth - margin);
-    const maxY = Math.max(margin, window.innerHeight - lamp.offsetHeight - margin);
-    const x = Math.min(Math.max(saved.x, margin), maxX);
-    const y = Math.min(Math.max(saved.y, margin), maxY);
-    lamp.style.left = `${x}px`;
-    lamp.style.top = `${y}px`;
-    lamp.style.right = "auto";
-    lamp.style.bottom = "auto";
-    lamp.classList.add("is-custom-position");
-  } catch (_) {}
-}
-
-function saveAutoRefreshLampPosition(lamp) {
-  if (!lamp) return;
-  const rect = lamp.getBoundingClientRect();
-  try {
-    localStorage.setItem(AUTO_REFRESH_LAMP_POS_KEY, JSON.stringify({ x: Math.round(rect.left), y: Math.round(rect.top) }));
-  } catch (_) {}
-}
-
-function makeAutoRefreshLampDraggable(lamp) {
-  if (!lamp || lamp.dataset.dragReady === "1") return;
-  lamp.dataset.dragReady = "1";
-  lamp.title = lamp.title || "Možeš me prevući gde ti odgovara";
-
-  let dragging = false;
-  let moved = false;
-  let startX = 0;
-  let startY = 0;
-  let startLeft = 0;
-  let startTop = 0;
-
-  const moveTo = (clientX, clientY) => {
-    const margin = 8;
-    const nextLeft = startLeft + (clientX - startX);
-    const nextTop = startTop + (clientY - startY);
-    const maxLeft = Math.max(margin, window.innerWidth - lamp.offsetWidth - margin);
-    const maxTop = Math.max(margin, window.innerHeight - lamp.offsetHeight - margin);
-    const left = Math.min(Math.max(nextLeft, margin), maxLeft);
-    const top = Math.min(Math.max(nextTop, margin), maxTop);
-    lamp.style.left = `${left}px`;
-    lamp.style.top = `${top}px`;
-    lamp.style.right = "auto";
-    lamp.style.bottom = "auto";
-    lamp.classList.add("is-custom-position", "is-dragging");
-  };
-
-  lamp.addEventListener("pointerdown", (e) => {
-    if (e.button !== undefined && e.button !== 0) return;
-    dragging = true;
-    moved = false;
-    const rect = lamp.getBoundingClientRect();
-    startX = e.clientX;
-    startY = e.clientY;
-    startLeft = rect.left;
-    startTop = rect.top;
-    lamp.setPointerCapture?.(e.pointerId);
-    lamp.classList.add("is-dragging");
-    e.preventDefault();
-  });
-
-  lamp.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    if (Math.abs(e.clientX - startX) > 2 || Math.abs(e.clientY - startY) > 2) moved = true;
-    moveTo(e.clientX, e.clientY);
-  });
-
-  const stopDrag = (e) => {
-    if (!dragging) return;
-    dragging = false;
-    lamp.classList.remove("is-dragging");
-    lamp.releasePointerCapture?.(e.pointerId);
-    if (moved) saveAutoRefreshLampPosition(lamp);
-  };
-
-  lamp.addEventListener("pointerup", stopDrag);
-  lamp.addEventListener("pointercancel", stopDrag);
-
-  window.addEventListener("resize", () => {
-    const rect = lamp.getBoundingClientRect();
-    const margin = 8;
-    const maxLeft = Math.max(margin, window.innerWidth - lamp.offsetWidth - margin);
-    const maxTop = Math.max(margin, window.innerHeight - lamp.offsetHeight - margin);
-    const left = Math.min(Math.max(rect.left, margin), maxLeft);
-    const top = Math.min(Math.max(rect.top, margin), maxTop);
-    lamp.style.left = `${left}px`;
-    lamp.style.top = `${top}px`;
-    lamp.style.right = "auto";
-    lamp.style.bottom = "auto";
-    saveAutoRefreshLampPosition(lamp);
-  });
-}
-
-function ensureAutoRefreshLamp() {
-  let lamp = document.getElementById("autoRefreshLamp");
-  if (!lamp) {
-    lamp = document.createElement("div");
-    lamp.id = "autoRefreshLamp";
-    lamp.className = "auto-refresh-lamp hidden is-offline";
-    lamp.innerHTML = `<span class="auto-refresh-dot"></span><span class="auto-refresh-text">Online · osvežava 10s</span>`;
-    document.body.appendChild(lamp);
-  }
-  makeAutoRefreshLampDraggable(lamp);
-  setTimeout(() => applySavedAutoRefreshLampPosition(lamp), 0);
-  return lamp;
-}
-
-function hideAutoRefreshManualButtons() {
-  const ids = [
-    "directorManualRefreshBtn", "refreshDailyLogBtn", "refreshCarnetBtn",
-    "refreshFuelReportsBtn", "refreshFuelAnalysisBtn", "refreshMaterialOverviewBtn",
-    "refreshOwnerDashboardBtn", "refreshArchiveBtn", "refreshDefectsBtn",
-    "ownerPanelRefreshBtn", "refreshMechanicDefectsBtn", "refreshMechanicOpsBtn",
-    "refreshDirectorBtn"
-  ];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.style.display = "none";
-      el.hidden = true;
-      el.setAttribute("aria-hidden", "true");
-    }
-  });
-  document.querySelectorAll('button[onclick="manualDirectorRefresh()"], .manual-refresh-btn').forEach(el => {
-    el.style.display = "none";
-    el.hidden = true;
-    el.setAttribute("aria-hidden", "true");
-  });
-}
-
-function setAutoRefreshStatus(scope = "panel", ok = true, message = "") {
-  const lamp = ensureAutoRefreshLamp();
-  hideAutoRefreshManualButtons();
-  const online = !!ok;
-  autoRefreshLastOk = online;
-  lamp.classList.remove("hidden", "is-online", "is-offline");
-  lamp.classList.add(online ? "is-online" : "is-offline");
-  const text = lamp.querySelector(".auto-refresh-text");
-  const shortLabel = online
-    ? `Online · osvežava 10s · ${formatRefreshTime()}`
-    : `Offline · proverite internet`;
-  const fullLabel = online
-    ? `${scope} · online · ${message || "osveženo " + formatRefreshTime() + " · na svakih 10 sekundi"}`
-    : `${scope} · proverite internet konekciju · trenutno ste offline`;
-  if (text) text.textContent = shortLabel;
-  lamp.title = `${fullLabel} · prevuci lampicu mišem gde ti odgovara`;
-  document.querySelectorAll("[data-auto-refresh-status]").forEach(el => {
-    el.textContent = fullLabel;
-  });
-}
-
-async function probeRealConnection() {
-  if (navigator.onLine === false) return false;
-  if (!SUPABASE_URL || !SUPABASE_KEY) return navigator.onLine !== false;
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 4500);
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/companies?select=id&limit=1&_ac_ping=${Date.now()}`;
-    await fetch(url, {
-      method: "GET",
-      cache: "no-store",
-      signal: controller.signal,
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        "Cache-Control": "no-cache"
-      }
-    });
-    return true;
-  } catch (e) {
-    return false;
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-async function autoRefreshConnectionHeartbeat(scope = autoRefreshHeartbeatScope) {
-  if (autoRefreshProbeBusy) return autoRefreshLastOk !== false;
-  autoRefreshProbeBusy = true;
-  try {
-    const ok = await probeRealConnection();
-    if (ok) {
-      setAutoRefreshStatus(scope, true, `veza proverena ${formatRefreshTime()} · osvežava na 10 sekundi`);
-    } else {
-      setAutoRefreshStatus(scope, false);
-    }
-    return ok;
-  } finally {
-    autoRefreshProbeBusy = false;
-  }
-}
-
-function startAutoRefreshHeartbeat(scope = "panel") {
-  autoRefreshHeartbeatScope = scope;
-  hideAutoRefreshManualButtons();
-  ensureAutoRefreshLamp();
-  if (autoRefreshHeartbeatTimer) clearInterval(autoRefreshHeartbeatTimer);
-  autoRefreshConnectionHeartbeat(scope);
-  autoRefreshHeartbeatTimer = setInterval(() => autoRefreshConnectionHeartbeat(autoRefreshHeartbeatScope), 2500);
-}
-
-function stopAutoRefreshHeartbeat() {
-  if (autoRefreshHeartbeatTimer) clearInterval(autoRefreshHeartbeatTimer);
-  autoRefreshHeartbeatTimer = null;
-}
-
-function markAutoRefreshOnline(scope = "panel") {
-  setAutoRefreshStatus(scope, true, `osveženo ${formatRefreshTime()} · na svakih 10 sekundi`);
-}
-
-function markAutoRefreshOffline(scope = "panel", err = null) {
-  setAutoRefreshStatus(scope, false, err?.message || "proverite internet konekciju");
-}
-
-window.addEventListener("online", () => autoRefreshConnectionHeartbeat(autoRefreshHeartbeatScope || "Veza"));
-window.addEventListener("offline", () => markAutoRefreshOffline(autoRefreshHeartbeatScope || "Veza"));
-
 function updateDirectorRefreshStatus(text) {
   document.querySelectorAll("[data-auto-refresh-status]").forEach(el => {
     el.textContent = text;
@@ -4165,17 +3643,9 @@ async function directorAutoRefreshTick() {
   if (!currentCompany || directorAutoRefreshBusy) return;
   const dashboard = document.getElementById("viewDirectorDashboard");
   if (!dashboard || !dashboard.classList.contains("active")) return;
-  const connectionOk = await probeRealConnection();
-  if (!connectionOk) {
-    markAutoRefreshOffline("Direkcija");
-    return;
-  }
   directorAutoRefreshBusy = true;
   try {
     await loadReports({ silent: true, auto: true });
-    markAutoRefreshOnline("Direkcija");
-  } catch (e) {
-    markAutoRefreshOffline("Direkcija", e);
   } finally {
     directorAutoRefreshBusy = false;
   }
@@ -4183,9 +3653,8 @@ async function directorAutoRefreshTick() {
 
 function startDirectorAutoRefresh() {
   stopDirectorAutoRefresh();
-  startAutoRefreshHeartbeat("Direkcija");
-  directorAutoRefreshTick();
-  directorAutoRefreshTimer = setInterval(directorAutoRefreshTick, AUTO_REFRESH_INTERVAL_MS);
+  updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
+  directorAutoRefreshTimer = setInterval(directorAutoRefreshTick, 30000);
 }
 
 function stopDirectorAutoRefresh() {
@@ -4216,23 +3685,20 @@ async function loadReports(options = {}) {
 
   let data = [];
   try {
-    const activeReports = filterVisibleReportsAfterPermanentDelete(await directorRpcListReports());
-    const archivedReports = filterVisibleReportsAfterPermanentDelete(await directorDirectListArchivedReports());
-    const remoteReports = mergeReportsById(activeReports, archivedReports);
-
-    // Lokalna arhiva je pomoćni prikaz za karticu Arhiva kada RLS/RPC ne vrati arhivirane redove.
-    // NE SME se čistiti samo zato što aktivni remoteReports nema stavki — time bi arhivirani kvar nestao iz Arhive.
-    data = remoteReports;
+    const activeReports = await directorRpcListReports();
+    const archivedReports = await directorDirectListArchivedReports();
+    const localArchivedReports = loadLocalArchivedReports();
+    data = mergeReportsById(mergeReportsById(activeReports, archivedReports), localArchivedReports);
   } catch (error) {
     if (silent) console.warn("Automatsko osvežavanje izveštaja preko RPC nije uspelo:", error.message);
     else toast(error.message, true);
-    markAutoRefreshOffline("Direkcija", error);
+    updateDirectorRefreshStatus(`Greška pri osvežavanju · ${formatRefreshTime()}`);
     return;
   }
 
   directorReportsCache = await enrichReportsWithUsers(data || []);
   updateDirectorKnownReports(directorReportsCache, silent);
-  markAutoRefreshOnline("Direkcija");
+  updateDirectorRefreshStatus(`Automatsko osvežavanje uključeno · poslednja provera ${formatRefreshTime()}`);
   businessUpdateReportsMetrics(directorReportsCache);
   const dailyReports = directorReportsCache.filter(isPendingDirectorReport);
   $("#reportsList").innerHTML = dailyReports.map(r => reportHtml(r)).join("") || `<p class="muted">Nema dnevnih izveštaja koji čekaju odobrenje.</p>`;
@@ -4655,7 +4121,7 @@ async function archiveReportSilentlyForOfficeArchive(reportId) {
   } catch (error) {
     const { error: directError } = await sb
       .from("reports")
-      .update({ status: "archived" })
+      .update({ status: "archived", updated_at: new Date().toISOString() })
       .eq("id", reportId)
       .eq("company_id", currentCompany.id);
     if (directError) throw (error || directError);
@@ -4780,8 +4246,12 @@ async function deleteGeneratedOfficeArchive(id) {
   if (!confirm(`Da li ste sigurni da želite trajno obrisati ovu stavku?\n\n${label}\n\nBiće trajno obrisani i povezani izveštaji: ${sourceIds.length}.\n\nOva radnja briše stavke iz baze i ne može se vratiti.`)) return;
   try {
     for (const reportId of sourceIds) {
-      await permanentlyDeleteReportInDatabase(reportId);
-      rememberLocalPermanentlyDeletedReport(reportId);
+      const { error } = await sb
+        .from("reports")
+        .delete()
+        .eq("id", reportId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
       removeLocalArchivedReport(reportId);
       directorReportsCache = directorReportsCache.filter(r => String(r.id) !== String(reportId));
     }
@@ -4790,7 +4260,6 @@ async function deleteGeneratedOfficeArchive(id) {
     renderArchiveList();
     if (item.kind === "carnet") renderCarnetPreview?.();
     else renderDailyLogPreview?.();
-    if (document.getElementById("tabOwner")?.classList.contains("active")) renderOwnerDashboard();
     businessUpdateReportsMetrics(directorReportsCache);
   } catch (e) {
     toast(e.message || String(e), true);
@@ -4906,7 +4375,7 @@ async function refreshSiteBossOverview() {
     siteBossMetricSet(null, "učitavam");
     const { data, error } = await sb
       .from("reports")
-      .select("id, company_id, report_date, status, data, submitted_at, created_at")
+      .select("id, company_id, report_date, status, data, submitted_at, created_at, updated_at")
       .eq("company_id", currentWorker.company_id)
       .eq("report_date", date)
       .order("created_at", { ascending: false })
@@ -5104,6 +4573,9 @@ function defectHtml(r) {
         <b>Rešeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_resolved_at))}</span>
       </div>
       <div class="actions defect-actions no-print">
+        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','primljeno')">Primljeno</button>
+        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','u_popravci')">U popravci</button>
+        <button class="secondary" onclick="setDefectRecordStatus('${r.id}','reseno')">Rešeno</button>
         <button class="primary" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
         <button class="secondary" onclick="printReportDocument('${r.id}')">Štampaj kvar</button>
         ${isArchivedReport(r) ? `<span class="pill">Arhivirano</span>` : `<button class="archive-report-btn" onclick="archiveReport('${r.id}')">📦 Arhiviraj kvar</button>`}
@@ -5116,7 +4588,7 @@ function renderDefectsList() {
   if (!box) return;
   const defects = directorReportsCache.filter(isActiveDefectReport);
   const archivedDefects = directorReportsCache.filter(r => hasDefectData(r) && isArchivedReport(r));
-  const summary = `<div class="defects-summary no-print"><b>Aktivni kvarovi: ${defects.length}</b><span>Arhivirani kvarovi: ${archivedDefects.length}</span><span>Za štampu otvori kvar ili klikni “Štampaj kvar”.</span></div>`;
+  const summary = `<div class="defects-summary no-print"><b>Aktivni kvarovi: ${defects.length}</b><span>Arhivirani kvarovi: ${archivedDefects.length}</span><span>Za štampu otvori kvar ili klikni “Štampaj kvar”.</span><button class="secondary small-action" type="button" onclick="openDirectorDefectsReport('ownerDashboard')">Otvori izveštaj kvarova</button></div>`;
   box.innerHTML = summary + (defects.map(defectHtml).join("") || `<p class="muted">Nema aktivnih prijavljenih kvarova. Arhivirani kvarovi su u kartici Arhiva.</p>`);
 }
 
@@ -5266,7 +4738,7 @@ function fuelConsumptionStatus(row) {
 
 function buildFuelConsumptionRows(from, to) {
   const rows = { map: new Map(), lookup: buildDirectorAssetLookup() };
-  filterOperationalReportsForAnalytics(directorReportsCache || []).filter(r => reportDateInRange(r, from, to)).forEach(r => {
+  (directorReportsCache || []).filter(r => reportDateInRange(r, from, to)).forEach(r => {
     const d = r.data || {};
     (Array.isArray(d.machines) ? d.machines : []).forEach(m => addFuelAnalysisWork(rows, m, "machine"));
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => addFuelAnalysisWork(rows, v, "vehicle"));
@@ -5588,9 +5060,8 @@ function ownerDiffNumber(d = {}, startKeys = [], endKeys = []) {
 }
 
 function buildOwnerDashboardData(from, to, site = "") {
-  const analyticsReports = filterOperationalReportsForAnalytics(directorReportsCache || []);
-  const reports = analyticsReports.filter(r => ownerReportMatchesDateSiteAny(r, from, to, site));
-  const allMatchingReports = analyticsReports.filter(r => {
+  const reports = (directorReportsCache || []).filter(r => ownerReportMatchesDateSiteAny(r, from, to, site));
+  const allMatchingReports = (directorReportsCache || []).filter(r => {
     const date = officeReportDate(r);
     if (from && date && date < from) return false;
     if (to && date && date > to) return false;
@@ -5714,6 +5185,137 @@ function buildOwnerDashboardData(from, to, site = "") {
   return { reports, hours, mtc, km, tours, fuel, water, waterLoads, lowloaderKm, lowloaderCount, materials, materialM3, fuelRows, badFuel, defectCount, defectRows, defectStatusCounts };
 }
 
+
+function directorDefectReportFilters(prefix = "ownerDashboard") {
+  ensureOverviewDatalists();
+  ensureOverviewDefaultDates(prefix);
+  const from = document.getElementById(`${prefix}From`)?.value || today().slice(0, 8) + "01";
+  const to = document.getElementById(`${prefix}To`)?.value || today();
+  const site = document.getElementById(`${prefix}Site`)?.value || "";
+  return { from, to, site };
+}
+
+function directorDefectReportList(prefix = "ownerDashboard") {
+  const { from, to, site } = directorDefectReportFilters(prefix);
+  const siteQ = normalizeSearch(site || "");
+  const list = (directorReportsCache || [])
+    .filter(r => hasDefectData(r) && reportDateInRange(r, from, to))
+    .filter(r => !siteQ || normalizeSearch(mechanicDefectSiteName(r) || reportPrimaryLocationLabel(r) || "").includes(siteQ))
+    .sort((a, b) => String(mechanicDefectTime(b) || b.updated_at || b.created_at || "").localeCompare(String(mechanicDefectTime(a) || a.updated_at || a.created_at || "")));
+  return { from, to, site, list };
+}
+
+function directorDefectReportStatusCounts(list = []) {
+  const counts = { novo: 0, aktivno: 0, reseno: 0, arhivirano: 0 };
+  list.forEach(r => {
+    if (isArchivedReport(r)) counts.arhivirano += 1;
+    else {
+      const group = mechanicStatusGroup(r);
+      if (group === "resolved") counts.reseno += 1;
+      else if (group === "active") counts.aktivno += 1;
+      else counts.novo += 1;
+    }
+  });
+  return counts;
+}
+
+function buildDirectorDefectsReportHtml(prefix = "ownerDashboard", options = {}) {
+  const { from, to, site, list } = directorDefectReportList(prefix);
+  const counts = directorDefectReportStatusCounts(list);
+  const rows = list.map(r => {
+    const d = r.data || {};
+    return [
+      formatDateTimeLocal(mechanicDefectTime(r) || r.submitted_at || r.created_at || ""),
+      reportDocumentPerson(r),
+      reportEmployeeNumber(r) || "",
+      mechanicDefectSiteName(r),
+      mechanicDefectAssetName(r),
+      mechanicDefectText(r),
+      mechanicDefectUrgency(r),
+      isArchivedReport(r) ? "Arhivirano" : mechanicStatusLabel(r),
+      String(defectImageCount(d) || 0)
+    ];
+  });
+  const cards = list.map((r, index) => {
+    const d = r.data || {};
+    const person = reportDocumentPerson(r);
+    const status = isArchivedReport(r) ? "Arhivirano" : mechanicStatusLabel(r);
+    return `<article class="director-defect-report-card">
+      <div class="director-defect-report-card-head">
+        <div><b>${index + 1}. ${escapeHtml(mechanicDefectAssetName(r) || "Sredstvo u kvaru")}</b><span>${escapeHtml(mechanicDefectSiteName(r) || "Bez lokacije")}</span></div>
+        <span>${escapeHtml(status)}</span>
+      </div>
+      <div class="report-kv">
+        <b>Prijavio</b><span>${escapeHtml(person || "—")}</span>
+        <b>Broj radnika</b><span>${escapeHtml(reportEmployeeNumber(r) || "—")}</span>
+        <b>Vreme prijave</b><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r) || r.submitted_at || r.created_at || ""))}</span>
+        <b>Hitnost</b><span>${escapeHtml(mechanicDefectUrgency(r) || "—")}</span>
+        <b>Uticaj na rad</b><span>${escapeHtml(d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : (d.defect_work_impact || "—"))}</span>
+        <b>Opis kvara</b><span>${escapeHtml(mechanicDefectText(r) || "—")}</span>
+        <b>Napomena mehanizacije</b><span>${escapeHtml(d.mechanic_note || "—")}</span>
+        <b>Zadnja promena</b><span>${escapeHtml(formatDateTimeLocal(d.defect_resolved_at || d.defect_repair_started_at || d.defect_received_at || r.updated_at || ""))}</span>
+      </div>
+      ${renderDefectImagesHtml(d, { print: true, title: "Fotografije kvara" })}
+    </article>`;
+  }).join("");
+
+  return `<div class="director-defects-report paper-report-printable">
+    <div class="office-form-titlebar owner-titlebar">
+      <div><b>Izveštaj kvarova</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
+      <div class="office-badges"><span>${list.length} kvarova</span><span>${counts.novo} novih</span><span>${counts.aktivno} u radu</span><span>${counts.reseno} rešenih</span><span>${counts.arhivirano} arhiviranih</span></div>
+    </div>
+    <section>
+      <h4>🛠️ Pregled kvarova za Direktora</h4>
+      ${officeTable(["Prijavljen","Prijavio","Broj radnika","Lokacija","Sredstvo","Opis","Hitnost","Status","Slike"], rows)}
+    </section>
+    <section>
+      <h4>Detalji kvarova i fotografije</h4>
+      ${cards || `<p class="office-empty">Nema kvarova za izabrani period / gradilište.</p>`}
+    </section>
+    <div class="paper-footer-note">AskCreate.app · izveštaj pripremljen ${escapeHtml(formatDateTimeLocal(new Date().toISOString()))}</div>
+  </div>`;
+}
+
+window.openDirectorDefectsReport = function(prefix = "ownerDashboard") {
+  const html = buildDirectorDefectsReportHtml(prefix);
+  let modal = document.getElementById("directorDefectsReportCenter");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "directorDefectsReportCenter";
+    modal.className = "report-document-center hidden";
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div class="report-doc-shell">
+    <header class="report-doc-top no-print">
+      <div><small>Direktor · pre štampe</small><h2>Izveštaj kvarova</h2><p>Pregledaj kvarove, slike i statuse pre štampanja.</p></div>
+      <button class="secondary report-doc-close" type="button" onclick="closeDirectorDefectsReport()">Nazad</button>
+    </header>
+    <div class="report-doc-actions no-print">
+      <button class="secondary" type="button" onclick="printDirectorDefectsReport('${escapeHtml(prefix)}')">Štampaj izveštaj kvarova</button>
+    </div>
+    <main class="report-doc-paper-wrap">${html}</main>
+  </div>`;
+  modal.classList.remove("hidden");
+  document.body.classList.add("report-doc-open");
+};
+
+window.closeDirectorDefectsReport = function() {
+  const modal = document.getElementById("directorDefectsReportCenter");
+  if (modal) modal.classList.add("hidden");
+  document.body.classList.remove("report-doc-open");
+};
+
+window.printDirectorDefectsReport = function(prefix = "ownerDashboard") {
+  const html = buildDirectorDefectsReportHtml(prefix);
+  const title = `${currentCompanyExportName ? currentCompanyExportName() : "AskCreate"} · Izveštaj kvarova`;
+  const win = window.open("", "_blank");
+  if (!win) return toast("Browser je blokirao otvaranje štampe. Dozvoli popup za ovu aplikaciju.", true);
+  win.document.write(`<!doctype html><html lang="sr"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+    @page{size:A4 portrait;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111827;background:#fff;margin:0;font-size:11px}h4{margin:12px 0 6px;font-size:13px;text-transform:uppercase;border-bottom:1px solid #9ca3af;padding-bottom:5px}.office-form-titlebar{display:flex;justify-content:space-between;gap:12px;border:1px solid #9ca3af;padding:10px;margin-bottom:10px}.office-form-titlebar b{display:block;font-size:18px}.office-form-titlebar span{font-size:11px;color:#374151}.office-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.office-badges span{border:1px solid #9ca3af;padding:4px 6px;border-radius:12px}.office-table{width:100%;border-collapse:collapse;font-size:9.5px}.office-table th,.office-table td{border:1px solid #9ca3af;padding:4px;vertical-align:top;overflow-wrap:anywhere}.office-table th{background:#f3f4f6}.director-defect-report-card{border:1px solid #9ca3af;margin:10px 0;padding:8px;break-inside:avoid;page-break-inside:avoid}.director-defect-report-card-head{display:flex;justify-content:space-between;gap:10px;background:#f3f4f6;margin:-8px -8px 8px;padding:8px;border-bottom:1px solid #9ca3af}.director-defect-report-card-head b{display:block}.director-defect-report-card-head span{font-size:10px;color:#374151}.report-kv{display:grid;grid-template-columns:42mm 1fr;border:1px solid #9ca3af}.report-kv b,.report-kv span{border-bottom:1px solid #d1d5db;padding:5px 6px}.report-kv b{background:#f9fafb}.defect-images-block{margin-top:8px;border:1px solid #d1d5db;padding:8px;break-inside:avoid;page-break-inside:avoid}.defect-images-block h4{display:flex;justify-content:space-between;gap:10px;margin:0 0 7px}.defect-images-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.defect-image-item{margin:0;border:1px solid #d1d5db}.defect-image-item img{width:100%;max-height:230px;object-fit:contain;background:#f3f4f6;display:block}.defect-image-item figcaption{font-size:9px;color:#4b5563;padding:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.paper-footer-note{border-top:1px solid #9ca3af;margin-top:12px;padding-top:6px;text-align:right;color:#4b5563;font-size:10px}.office-empty{border:1px dashed #bbb;padding:8px;color:#666}@media print{.no-print{display:none!important}}
+  </style></head><body>${html}<script>window.onload=function(){setTimeout(function(){window.print()},250)};<\/script></body></html>`);
+  win.document.close();
+};
+
 function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
   ensureOverviewDatalists();
   ensureOverviewDefaultDates(prefix);
@@ -5730,6 +5332,7 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
   });
   const defectStatus = data.defectStatusCounts || { novo: 0, aktivno: 0, reseno: 0, arhivirano: 0 };
   const defectTableRows = (data.defectRows || []).slice(0, 20).map(item => item.row);
+  const defectReportActions = `<div class="owner-defect-report-actions no-print"><button class="primary small-action" type="button" onclick="openDirectorDefectsReport('${escapeHtml(prefix)}')">Otvori izveštaj kvarova</button><button class="secondary small-action" type="button" onclick="printDirectorDefectsReport('${escapeHtml(prefix)}')">Štampaj izveštaj kvarova</button></div>`;
   box.innerHTML = `
     <div class="office-form-titlebar owner-titlebar">
       <div><b>Vlasnik/Direktor pregled firme</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
@@ -5753,6 +5356,7 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.reseno}</b><span>Rešeni</span></div>
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.arhivirano}</b><span>Arhivirani</span></div>
       </div>
+      ${defectReportActions}
       ${officeTable(["Lokacija/gradilište","Sredstvo","Opis kvara","Hitnost","Status","Prijavljen","Zadnja promena"], defectTableRows)}
     </section>
     <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
@@ -5807,10 +5411,7 @@ function archiveReportHtml(r) {
 function renderArchiveList() {
   const box = $("#archiveReportsList");
   if (!box) return;
-  const archived = mergeReportsById(
-    filterVisibleReportsAfterPermanentDelete(directorReportsCache || []).filter(isArchivedReport),
-    filterVisibleReportsAfterPermanentDelete(loadLocalArchivedReports()).filter(isArchivedReport)
-  );
+  const archived = directorReportsCache.filter(isArchivedReport);
   const generated = loadOfficeGeneratedArchive();
   const html = [
     ...archived.map(archiveReportHtml),
@@ -6389,7 +5990,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
   </div>` : "";
 
   const showDefectSection = options.showDefect !== false;
-  const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status) || safe(d.defect_asset_name) || safe(d.defect_asset_code));
+  const hasDefect = showDefectSection && (safe(d.defect) || safe(d.defect_exists) === "da" || safe(d.defect_urgency) || safe(d.defect_status) || safe(d.defect_asset_name) || safe(d.defect_asset_code) || defectImageCount(d));
   const hasMaterialEntries = materialEntries.some(entry => entry && Object.values(entry).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
   const hasMaterial = hasMaterialEntries || safe(d.material) || safe(d.quantity) || safe(d.unit) || safe(d.warehouse_type) || safe(d.warehouse_item) || safe(d.warehouse_qty);
   const hasLeaveRequest = safe(d.leave_request_type) || safe(d.leave_type) || safe(d.leave_date) || safe(d.leave_from) || safe(d.leave_to) || safe(d.leave_note) || (leaveRequest && Object.values(leaveRequest).some(v => v !== undefined && v !== null && String(v).trim() !== ""));
@@ -6480,9 +6081,11 @@ function renderReportReadableDetails(d = {}, options = {}) {
               ["Hitnost", d.defect_urgency],
               ["Uticaj na rad", d.defect_work_impact === "zaustavlja_rad" ? "Zaustavlja rad" : d.defect_work_impact === "moze_nastaviti" ? "Može nastaviti rad" : d.defect_work_impact],
               ["Pozvan odgovorno lice mehanizacije", d.called_mechanic_by_phone],
-              ["Status kvara", d.defect_status]
+              ["Status kvara", d.defect_status],
+              ["Broj slika", defectImageCount(d) ? String(defectImageCount(d)) : ""]
             ])}
           </div>
+          ${renderDefectImagesHtml(d, { print: true })}
         </div>` : ""}
 
       ${hasLeaveRequest ? `
@@ -7413,28 +7016,13 @@ window.archiveReport = async (id) => {
   const existingReport = directorReportsCache.find(r => String(r.id) === String(id));
   const label = reportActionLabel(existingReport);
   if (!confirm(`Arhivirati ovu stavku?\n\n${label}\n\nStavka ostaje u bazi, ali se sklanja iz aktivne liste i prelazi u karticu Arhiva.`)) return;
-  const archivedAt = new Date().toISOString();
-  const nextData = {
-    ...(existingReport?.data || {}),
-    archived: true,
-    archived_from_direction: true,
-    archived_at: archivedAt
-  };
   try {
     await directorRpcArchiveReport(id);
-    // I posle uspešnog RPC-a forsiramo isti status/podatke. Ovo štiti slučaj da stara RPC funkcija
-    // samo skloni iz aktivnog pregleda, ali ne vrati stavku u karticu Arhiva.
-    const { error: directArchiveError } = await sb
-      .from("reports")
-      .update({ status: "archived", data: nextData })
-      .eq("id", id)
-      .eq("company_id", currentCompany.id);
-    if (directArchiveError) console.warn("AskCreate.app: direktno potvrđivanje arhive nije uspelo, koristim lokalnu arhivu:", directArchiveError.message);
   } catch (error) {
     try {
       const { error: directError } = await sb
         .from("reports")
-        .update({ status: "archived", data: nextData })
+        .update({ status: "archived", updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("company_id", currentCompany.id);
       if (directError) throw directError;
@@ -7444,8 +7032,8 @@ window.archiveReport = async (id) => {
   }
 
   if (existingReport) {
-    saveLocalArchivedReport({ ...existingReport, status: "archived", data: nextData, updated_at: archivedAt });
-    directorReportsCache = directorReportsCache.map(r => String(r.id) === String(id) ? { ...r, status: "archived", data: { ...(r.data || {}), ...nextData }, updated_at: archivedAt } : r);
+    saveLocalArchivedReport(existingReport);
+    directorReportsCache = directorReportsCache.map(r => String(r.id) === String(id) ? { ...r, status: "archived", updated_at: new Date().toISOString() } : r);
     businessUpdateReportsMetrics(directorReportsCache);
     renderFuelReportsList();
     renderFuelConsumptionAnalysis();
@@ -7520,7 +7108,7 @@ window.archiveAllApprovedReports = async () => {
       } catch (rpcError) {
         const { error: directError } = await sb
           .from("reports")
-          .update({ status: "archived" })
+          .update({ status: "archived", updated_at: new Date().toISOString() })
           .eq("id", r.id)
           .eq("company_id", currentCompany.id);
         if (directError) throw rpcError || directError;
@@ -7552,143 +7140,30 @@ window.deleteAllArchivedReportsPermanently = async () => {
   directorBulkDeleteArchiveBusy = true;
   try {
     for (const r of archived) {
-      await permanentlyDeleteReportInDatabase(r.id);
-      rememberLocalPermanentlyDeletedReport(r.id);
+      const { error } = await sb
+        .from("reports")
+        .delete()
+        .eq("id", r.id)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
       removeLocalArchivedReport(r.id);
       directorReportsCache = directorReportsCache.filter(x => String(x.id) !== String(r.id));
     }
     const generatedSourceIds = [...new Set(generated.flatMap(item => Array.isArray(item.source_report_ids) ? item.source_report_ids : []).filter(Boolean))];
     for (const reportId of generatedSourceIds) {
       if (directorReportsCache.some(r => String(r.id) === String(reportId))) continue;
-      await permanentlyDeleteReportInDatabase(reportId);
-      rememberLocalPermanentlyDeletedReport(reportId);
+      const { error } = await sb
+        .from("reports")
+        .delete()
+        .eq("id", reportId)
+        .eq("company_id", currentCompany.id);
+      if (error) throw error;
       removeLocalArchivedReport(reportId);
     }
     saveOfficeGeneratedArchive([]);
     toast(`Trajno obrisano iz arhive: ${total}.`);
     closeReportDocumentCenter?.();
     refreshDirectorReportViewsAfterBulk();
-    await loadReports({ silent: true });
-  } catch (e) {
-    toast(e.message || String(e), true);
-  } finally {
-    directorBulkDeleteArchiveBusy = false;
-  }
-};
-
-
-window.resetAllCompanyReportsForTesting = async () => {
-  if (directorBulkDeleteArchiveBusy) return toast("Reset izveštaja je već u toku. Sačekaj da se završi.", true);
-  if (!currentCompany?.id || !sb) return toast("Nema aktivne firme za reset izveštaja.", true);
-  const codeConfirm = prompt(
-    "OPREZ: Ovo nulira SVE izveštaje firme za testiranje.\n\n" +
-    "Izveštaji će biti označeni kao deleted i više neće hraniti Direkciju, Direktora, Šefa mehanizacije, gorivo, potrošnju, Dnevnik, Karnet ni Arhivu.\n\n" +
-    "Za potvrdu upiši: NULIRAJ"
-  );
-  if (String(codeConfirm || "").trim().toUpperCase() !== "NULIRAJ") return toast("Reset nije pokrenut.");
-  directorBulkDeleteArchiveBusy = true;
-  try {
-    // v1.68.8: najpre brišemo po trenutno prijavljenom korisniku/linku.
-    // Direktor i Šef mehanizacije se otvaraju preko radničkog linka, zato je ovo najtačnije mapiranje na company_id.
-    const purgeByWorkerResult = await callHardPurgeReportsForLoggedWorkerRpc();
-    if (purgeByWorkerResult !== null) {
-      directorReportsCache = [];
-      mechanicBossAllReportsCache = [];
-      mechanicBossReportsCache = [];
-      clearLocalReportStateForCompany();
-      closeReportDocumentCenter?.();
-      refreshDirectorReportViewsAfterBulk();
-      businessUpdateReportsMetrics([]);
-      renderOwnerDashboard?.();
-      renderMechanicFuelAnalysis?.();
-      renderMechanicBossDefects?.();
-      toast(`Svi izveštaji firme su trajno obrisani iz Supabase baze po prijavljenom korisniku. Obrisano: ${purgeByWorkerResult}.`);
-      await loadReports({ silent: true });
-      return;
-    }
-
-    // v1.68.7: zatim brišemo po šifri firme, jer radnički/direktor/mehanika linkovi nose company_code.
-    // Ovo rešava slučaj kada currentCompany.id nije isti izvor koji koristi reports.company_id.
-    const purgeByCodeResult = await callHardPurgeCompanyReportsByCodeRpc();
-    if (purgeByCodeResult !== null) {
-      directorReportsCache = [];
-      clearLocalReportStateForCompany();
-      closeReportDocumentCenter?.();
-      refreshDirectorReportViewsAfterBulk();
-      businessUpdateReportsMetrics([]);
-      renderOwnerDashboard?.();
-      toast(`Svi izveštaji firme su trajno obrisani iz Supabase baze po šifri firme. Obrisano: ${purgeByCodeResult}.`);
-      await loadReports({ silent: true });
-      return;
-    }
-
-    const purgeResult = await callHardPurgeCompanyReportsRpc();
-    if (purgeResult !== null) {
-      directorReportsCache = [];
-      clearLocalReportStateForCompany();
-      closeReportDocumentCenter?.();
-      refreshDirectorReportViewsAfterBulk();
-      businessUpdateReportsMetrics([]);
-      renderOwnerDashboard?.();
-      toast(`Svi izveštaji firme su trajno obrisani iz Supabase baze po ID firme. Obrisano: ${purgeResult}.`);
-      await loadReports({ silent: true });
-      return;
-    }
-
-    // Ako SQL RPC još nije dodat, pokušavamo direktan bulk DELETE.
-    const { error: bulkDeleteError } = await sb
-      .from("reports")
-      .delete()
-      .eq("company_id", currentCompany.id);
-    if (!bulkDeleteError) {
-      directorReportsCache = [];
-      clearLocalReportStateForCompany();
-      closeReportDocumentCenter?.();
-      refreshDirectorReportViewsAfterBulk();
-      businessUpdateReportsMetrics([]);
-      renderOwnerDashboard?.();
-      toast("Svi izveštaji firme su obrisani direktno iz baze.");
-      await loadReports({ silent: true });
-      return;
-    }
-
-    const { data, error } = await sb
-      .from("reports")
-      .select("id, company_id, status, data")
-      .eq("company_id", currentCompany.id)
-      .limit(2000);
-    if (error) throw error;
-    const rows = Array.isArray(data) ? data : [];
-    if (!rows.length) {
-      directorReportsCache = [];
-      clearLocalReportStateForCompany();
-      refreshDirectorReportViewsAfterBulk();
-      businessUpdateReportsMetrics([]);
-      renderOwnerDashboard?.();
-      return toast("Baza već nema izveštaje za ovu firmu. Lokalni prikazi su očišćeni.");
-    }
-    let ok = 0;
-    for (const r of rows) {
-      try {
-        await permanentlyDeleteReportInDatabase(r.id);
-        rememberLocalPermanentlyDeletedReport(r.id);
-        removeLocalArchivedReport(r.id);
-        ok += 1;
-      } catch (e) {
-        console.warn("Ne mogu trajno obrisati izveštaj:", r.id, e?.message || e);
-      }
-    }
-    directorReportsCache = [];
-    clearLocalReportStateForCompany();
-    closeReportDocumentCenter?.();
-    refreshDirectorReportViewsAfterBulk();
-    businessUpdateReportsMetrics([]);
-    renderOwnerDashboard?.();
-    if (ok < rows.length) {
-      toast(`Nije obrisano sve iz baze (${ok}/${rows.length}). Pokreni SQL iz chata, pa opet klikni Nuliraj.`, true);
-    } else {
-      toast(`Nulirano izveštaja: ${ok}/${rows.length}. Sada direktor i šef mehanizacije treba da budu na nuli.`);
-    }
     await loadReports({ silent: true });
   } catch (e) {
     toast(e.message || String(e), true);
@@ -7733,26 +7208,18 @@ window.archiveResolvedDefects = async () => {
   const more = defects.length > 6 ? `\n• ... i još ${defects.length - 6}` : "";
   if (!confirm(`Arhivirati sve rešene kvarove?\n\nUkupno: ${defects.length}\n\n${sample}${more}`)) return;
   for (const r of defects) {
-    const archivedAt = new Date().toISOString();
-    const nextData = { ...(r.data || {}), archived: true, archived_from_direction: true, archived_at: archivedAt };
     try {
       await directorRpcArchiveReport(r.id);
-      const { error: confirmError } = await sb
-        .from("reports")
-        .update({ status: "archived", data: nextData })
-        .eq("id", r.id)
-        .eq("company_id", currentCompany.id);
-      if (confirmError) console.warn("AskCreate.app: potvrda arhive kvara nije uspela:", confirmError.message);
     } catch (error) {
       const { error: directError } = await sb
         .from("reports")
-        .update({ status: "archived", data: nextData })
+        .update({ status: "archived", updated_at: new Date().toISOString() })
         .eq("id", r.id)
         .eq("company_id", currentCompany.id);
       if (directError) throw directError;
     }
-    saveLocalArchivedReport({ ...r, status: "archived", data: nextData, updated_at: archivedAt });
-    directorReportsCache = directorReportsCache.map(x => String(x.id) === String(r.id) ? { ...x, status: "archived", data: nextData, updated_at: archivedAt } : x);
+    saveLocalArchivedReport(r);
+    directorReportsCache = directorReportsCache.map(x => String(x.id) === String(r.id) ? { ...x, status: "archived", updated_at: new Date().toISOString() } : x);
   }
   toast(`Rešeni kvarovi arhivirani: ${defects.length}.`);
   refreshDirectorReportViewsAfterBulk();
@@ -10669,6 +10136,148 @@ function updateFieldTankerSmartResult(entryEl, asset, manualValue) {
   result.textContent = "Upiši interni broj, naziv ili tablice sredstva.";
 }
 
+
+function makeDefectImageId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return "defimg_" + window.crypto.randomUUID();
+  }
+  return "defimg_" + Date.now() + "_" + Math.random().toString(16).slice(2, 8);
+}
+
+
+function formatBytes(bytes) {
+  const n = Number(bytes || 0);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  if (n < 1024) return `${Math.round(n)} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function normalizeDefectImageList(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter(img => img && (img.data_url || img.url))
+    .slice(0, 5)
+    .map((img, index) => ({
+      id: img.id || makeDefectImageId(),
+      name: img.name || `kvar-slika-${index + 1}.jpg`,
+      type: img.type || "image/jpeg",
+      size: Number(img.size || 0) || 0,
+      data_url: img.data_url || img.url || "",
+      created_at: img.created_at || new Date().toISOString()
+    }));
+}
+
+function getDefectImagesPayload() {
+  return normalizeDefectImageList(defectImagesDraft);
+}
+
+function renderDefectImagesPreview() {
+  const box = $("#wrDefectImagesPreview");
+  const count = $("#wrDefectImagesCount");
+  const input = $("#wrDefectImages");
+  defectImagesDraft = normalizeDefectImageList(defectImagesDraft);
+  if (count) count.textContent = `${defectImagesDraft.length}/5 slika dodato`;
+  if (input) input.disabled = defectImagesDraft.length >= 5;
+  if (!box) return;
+  if (!defectImagesDraft.length) {
+    box.innerHTML = `<p class="defect-images-empty">Još nema dodatih slika. Dodaj fotografiju kvara ako pomaže Direkciji / mehanizaciji.</p>`;
+    return;
+  }
+  box.innerHTML = defectImagesDraft.map(img => `
+    <article class="defect-image-draft" data-image-id="${escapeHtml(img.id)}">
+      <img src="${escapeHtml(img.data_url)}" alt="${escapeHtml(img.name || "Slika kvara")}" loading="lazy" />
+      <div class="defect-image-draft-meta">
+        <b>${escapeHtml(img.name || "Slika kvara")}</b>
+        <small>${img.size ? escapeHtml(formatBytes(img.size)) : "kompresovana slika"}</small>
+      </div>
+      <button type="button" class="defect-image-remove" onclick="removeDefectImageDraft('${escapeHtml(img.id)}')">Obriši</button>
+    </article>
+  `).join("");
+}
+
+window.removeDefectImageDraft = function(id) {
+  defectImagesDraft = defectImagesDraft.filter(img => String(img.id) !== String(id));
+  const input = $("#wrDefectImages");
+  if (input) input.value = "";
+  renderDefectImagesPreview();
+};
+
+async function handleDefectImagesChange(e) {
+  try {
+    const input = e?.currentTarget || $("#wrDefectImages");
+    const files = Array.from(input?.files || []);
+    if (!files.length) return;
+    const freeSlots = Math.max(0, 5 - defectImagesDraft.length);
+    if (freeSlots <= 0) {
+      toast("Može najviše 5 slika po kvaru. Obriši neku sliku ako želiš zamenu.", true);
+      if (input) input.value = "";
+      return;
+    }
+    if (files.length > freeSlots) {
+      toast(`Možeš dodati još ${freeSlots} slika. Višak nije dodat.`, true);
+    }
+    for (const file of files.slice(0, freeSlots)) {
+      if (!String(file.type || "").startsWith("image/")) {
+        toast(`Fajl ${file.name || ""} nije slika. Dodaj JPG, PNG ili WEBP.`, true);
+        continue;
+      }
+      const dataUrl = await resizeImageFileToDataUrl(file, 1100, 0.78);
+      defectImagesDraft.push({
+        id: makeDefectImageId(),
+        name: file.name || "slika-kvara.jpg",
+        type: file.type || "image/jpeg",
+        size: file.size || 0,
+        data_url: dataUrl,
+        created_at: new Date().toISOString()
+      });
+    }
+    defectImagesDraft = normalizeDefectImageList(defectImagesDraft);
+    if (input) input.value = "";
+    renderDefectImagesPreview();
+  } catch (e) {
+    toast(e.message || "Slika kvara nije dodata.", true);
+  }
+}
+
+function clearDefectImagesDraft() {
+  defectImagesDraft = [];
+  const input = $("#wrDefectImages");
+  if (input) input.value = "";
+  renderDefectImagesPreview();
+}
+
+function bindDefectImagesInput() {
+  const input = $("#wrDefectImages");
+  if (!input || input.dataset.bound === "1") return;
+  input.dataset.bound = "1";
+  input.addEventListener("change", handleDefectImagesChange);
+  renderDefectImagesPreview();
+}
+
+function defectImagesFromData(d = {}) {
+  return normalizeDefectImageList(d.defect_images || d.defectImages || d.defect_photos || d.defectPhotos || []);
+}
+
+function defectImageCount(d = {}) {
+  return defectImagesFromData(d).length;
+}
+
+function renderDefectImagesHtml(d = {}, options = {}) {
+  const images = defectImagesFromData(d);
+  if (!images.length) return "";
+  const title = options.title || "Fotografije kvara";
+  const modeClass = options.print ? " defect-images-print" : "";
+  return `<div class="defect-images-block${modeClass}">
+    <h4>${escapeHtml(title)} <span>${images.length}/5</span></h4>
+    <div class="defect-images-grid">
+      ${images.map((img, i) => `<figure class="defect-image-item">
+        <img src="${escapeHtml(img.data_url)}" alt="Slika kvara ${i + 1}" loading="lazy" />
+        <figcaption>${escapeHtml(img.name || `Slika ${i + 1}`)}</figcaption>
+      </figure>`).join("")}
+    </div>
+  </div>`;
+}
+
 function findDefectAssetForSmartInput(searchValue) {
   const q = normalizeVehicleSearch(searchValue);
   if (!q) return null;
@@ -11921,7 +11530,7 @@ function collectWorkerData() {
     signature: !!(canSignature && getSignatureData().signature_data_url),
     leave_request: !!(canLeaveRequest && hasLeaveRequestData(leaveRequest)),
     warehouse: !!(canWarehouse && (($("#wrWarehouseItem")?.value || "").trim() || ($("#wrWarehouseQty")?.value || "").trim())),
-    defects: !!(canDefects && (($("#wrDefect")?.value || "").trim() || ($("#wrDefectAssetName")?.value || "").trim()))
+    defects: !!(canDefects && (($("#wrDefect")?.value || "").trim() || ($("#wrDefectAssetName")?.value || "").trim() || getDefectImagesPayload().length))
   };
 
   return {
@@ -11999,7 +11608,9 @@ function collectWorkerData() {
     defect: canDefects ? $("#wrDefect").value.trim() : "",
     ...defectImpactPayload,
     defect_urgency: canDefects ? $("#wrDefectUrgency").value : "",
-    called_mechanic_by_phone: canDefects ? ($("#wrDefectCalledMechanic")?.value || "") : ""
+    called_mechanic_by_phone: canDefects ? ($("#wrDefectCalledMechanic")?.value || "") : "",
+    defect_images: canDefects ? getDefectImagesPayload() : [],
+    defect_images_count: canDefects ? getDefectImagesPayload().length : 0
   };
 }
 
@@ -12018,6 +11629,7 @@ function clearWorkerForm() {
   if ($("#waterTankerEntries")) $("#waterTankerEntries").innerHTML = "";
   if ($("#fieldTankerEntries")) $("#fieldTankerEntries").innerHTML = "";
   if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
+  clearDefectImagesDraft();
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
   clearSignatureCanvas(false);
@@ -12263,6 +11875,8 @@ function loadDraft() {
     Object.entries({
       wrSiteName:"site_name", wrDescription:"description", wrHours:"hours", wrVehicle:"vehicle", wrKmStart:"km_start", wrKmEnd:"km_end", wrRoute:"route", wrTours:"tours", wrMaterialManual:"material", wrLeaveType:"leave_type", wrLeaveDate:"leave_date", wrLeaveFrom:"leave_from", wrLeaveTo:"leave_to", wrLeaveNote:"leave_note", wrWarehouseType:"warehouse_type", wrWarehouseItem:"warehouse_item", wrWarehouseQty:"warehouse_qty", wrDefectAssetName:"defect_asset_code", wrDefectSiteName:"defect_site_name", wrDefect:"defect", wrDefectStopsWork:"defect_work_impact", wrDefectUrgency:"defect_urgency", wrDefectCalledMechanic:"called_mechanic_by_phone", wrSignatureName:"signature_name"
     }).forEach(([id,key]) => { if ($("#"+id)) $("#"+id).value = d[key] || ""; });
+    defectImagesDraft = normalizeDefectImageList(d.defect_images || []);
+    renderDefectImagesPreview();
     if (d.signature_data_url) setSignatureImage(d.signature_data_url);
     if (moduleValue && $("#wrModuleSelect")) applyWorkerModuleSelection({ addDefaults: false });
     updateLeaveRequestVisibility();
@@ -12736,6 +12350,7 @@ const EXPORT_COLUMNS = [
   { key:"defect_urgency", label:"Hitnost" },
   { key:"defect_called_mechanic", label:"Pozvan odgovorno lice mehanizacije" },
   { key:"defect_status", label:"Status kvara" },
+  { key:"defect_images_count", label:"Broj slika kvara" },
   { key:"status", label:"Status izveštaja" }
 ];
 
@@ -12816,7 +12431,7 @@ const EXPORT_GROUPS = [
     id: "defects",
     title: "Kvarovi",
     hint: "Kratak prikaz kvara ako se izvozi zajedno sa dnevnim izveštajem.",
-    keys: ["defect_type", "defect_asset_code", "defect_asset", "defect_registration", "defect_site", "defect", "defect_work_impact", "defect_urgency", "defect_called_mechanic", "defect_status"]
+    keys: ["defect_type", "defect_asset_code", "defect_asset", "defect_registration", "defect_site", "defect", "defect_work_impact", "defect_urgency", "defect_called_mechanic", "defect_status", "defect_images_count"]
   },
   {
     id: "status",
@@ -13103,7 +12718,8 @@ function flattenReportRowsForExport(r) {
       defect_work_impact: defectImpactLabel(d.defect_work_impact),
       defect_urgency: d.defect_urgency || "",
       defect_called_mechanic: d.called_mechanic_by_phone || d.defect_called_mechanic || "",
-      defect_status: d.defect_status || ""
+      defect_status: d.defect_status || "",
+      defect_images_count: defectImageCount(d) ? String(defectImageCount(d)) : ""
     });
   }
 
@@ -13159,7 +12775,7 @@ const SMART_EXPORT_PRESETS = {
   },
   defects: {
     title: "Kvarovi",
-    keys: ["date","site","worker","defect_type","defect_asset_code","defect_asset","defect_registration","defect_site","defect","defect_work_impact","defect_urgency","defect_called_mechanic","defect_status","status"]
+    keys: ["date","site","worker","defect_type","defect_asset_code","defect_asset","defect_registration","defect_site","defect","defect_work_impact","defect_urgency","defect_called_mechanic","defect_status","defect_images_count","status"]
   }
 };
 
@@ -13607,7 +13223,8 @@ function smartRowsForReport(r, type) {
         defect_work_impact: defectImpactLabel(d.defect_work_impact),
         defect_urgency: d.defect_urgency || "",
         defect_called_mechanic: d.called_mechanic_by_phone || d.defect_called_mechanic || "",
-        defect_status: d.defect_status || ""
+        defect_status: d.defect_status || "",
+        defect_images_count: defectImageCount(d) ? String(defectImageCount(d)) : ""
       });
     }
   }
@@ -14040,6 +13657,13 @@ async function copyExportTableForExcel() {
 
 
 async function sendDefectNow() {
+  const sendBtn = $("#sendDefectNowBtn");
+  if (defectImmediateSubmitBusy) {
+    toast("Slanje kvara je već u toku. Ne pritiskaj dugme više puta.", true);
+    return;
+  }
+  defectImmediateSubmitBusy = true;
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.dataset.oldText = sendBtn.textContent || ""; sendBtn.textContent = "Šaljem kvar..."; }
   try {
     if (!navigator.onLine) {
       saveDraft();
@@ -14092,7 +13716,9 @@ async function sendDefectNow() {
       worker_number: getPersonEmployeeNumber(worker),
       created_by_employee_number: getPersonEmployeeNumber(worker),
       function_title: worker.function_title,
-      called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || ""
+      called_mechanic_by_phone: $("#wrDefectCalledMechanic")?.value || "",
+      defect_images: getDefectImagesPayload(),
+      defect_images_count: getDefectImagesPayload().length
     };
 
     const { error } = await sb.rpc("submit_worker_report", {
@@ -14106,9 +13732,13 @@ async function sendDefectNow() {
     if (error) throw error;
 
     await sendMechanicPushAfterDefect(worker, urgentData);
+    clearDefectImagesDraft();
     toast("Kvar je poslat odmah 🚨 Vide ga Uprava/Direkcija i Šef mehanizacije.");
   } catch(e) {
     toast(e.message, true);
+  } finally {
+    defectImmediateSubmitBusy = false;
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = sendBtn.dataset.oldText || "🚨 Evidentiraj kvar odmah"; delete sendBtn.dataset.oldText; }
   }
 }
 
@@ -14140,16 +13770,9 @@ async function loginWorkerByCode() {
       throw new Error("Worker login SQL nije aktivan ili je star. Pokreni SQL ispravku iz ZIP-a, pa probaj opet. Detalj: " + error.message);
     }
 
-    const expectedPersonId = getWorkerPersonIdFromUrl();
-    const row = selectWorkerLoginRow(data, companyCode, accessCode, expectedPersonId);
+    const row = readRpcSingleRow(data);
     if (!row || !row.user_id || !row.company_id) {
-      throw new Error("Neispravna šifra firme ili šifra zaposlenog. Link ne odgovara ovoj osobi ili je SQL vratio pogrešan nalog. Proveri da je zaposleni AKTIVAN i da koristi svoj lični link/kod.");
-    }
-    if (expectedPersonId) {
-      const returnedIds = [row.user_id, row.id, row.person_id, row.worker_id, row.company_user_id].map(v => String(v || "").trim()).filter(Boolean);
-      if (!returnedIds.includes(expectedPersonId)) {
-        throw new Error("Zaštita login-a: ovaj link pripada drugoj osobi. Aplikacija neće otvoriti pogrešan panel.");
-      }
+      throw new Error("Neispravna šifra firme ili šifra zaposlenog. Proveri da je zaposleni AKTIVAN i da unosiš baš šifru firme + šifru zaposlenog.");
     }
 
     currentWorker = {
@@ -14449,7 +14072,7 @@ function bindEvents() {
   if ($("#downloadCarnetCsvBtn")) $("#downloadCarnetCsvBtn").addEventListener("click", downloadCarnetCsv);
   if ($("#directorShowWorkerQrBtn")) $("#directorShowWorkerQrBtn").addEventListener("click", directorShowWorkerQr);
   if ($("#directorShowMechanicQrBtn")) $("#directorShowMechanicQrBtn").addEventListener("click", directorShowMechanicQr);
-  if ($("#ownerPanelRefreshBtn")) $("#ownerPanelRefreshBtn").addEventListener("click", () => refreshOwnerDashboardPanel({ silent: false }));
+  if ($("#ownerPanelRefreshBtn")) $("#ownerPanelRefreshBtn").addEventListener("click", refreshOwnerDashboardPanel);
   if ($("#ownerPanelRenderBtn")) $("#ownerPanelRenderBtn").addEventListener("click", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview"));
   if ($("#ownerPanelLogoutBtn")) $("#ownerPanelLogoutBtn").addEventListener("click", logoutOwnerDashboardPanel);
   ["ownerPanelDashboardFrom", "ownerPanelDashboardTo", "ownerPanelDashboardSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", () => renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview")); });
@@ -14533,6 +14156,7 @@ function bindEvents() {
 
   // Add mašina / gorivo koriste onclick direktno u HTML-u zbog pouzdanosti na mobilnom/PWA cache-u.
   if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
+  bindDefectImagesInput();
   if ($("#memorizeFieldTankerBtn")) $("#memorizeFieldTankerBtn").addEventListener("click", memorizeCurrentFieldTankerEntries);
   if ($("#sendStoredFieldTankerBtn")) $("#sendStoredFieldTankerBtn").addEventListener("click", sendStoredFieldTankerEntries);
   if ($("#clearStoredFieldTankerBtn")) $("#clearStoredFieldTankerBtn").addEventListener("click", clearStoredFieldTankerEntries);
@@ -14659,22 +14283,9 @@ function isOwnerDashboardWorker(worker = currentWorker) {
 async function safeOwnerSelect(table, select = "*") {
   try {
     if (!currentWorker?.company_id || !sb) return [];
-    if (table === "reports") {
-      // Vlasnik/Direktor: najpre čitaj aktivne izveštaje preko stvarno prijavljenog linka.
-      const workerReports = await listActiveReportsForLoggedWorkerRpc();
-      if (Array.isArray(workerReports)) return workerReports;
-      // Ako SQL još nije dodat, pokušaj stari Direkcija RPC pa direktan select sa strogim filterom.
-      try {
-        const oldCompany = currentCompany;
-        currentCompany = currentCompany || { id: currentWorker.company_id };
-        const rpcReports = await directorRpcListReports();
-        currentCompany = oldCompany || currentCompany;
-        return filterOperationalReportsForAnalytics(rpcReports || []);
-      } catch (_) {}
-    }
     const { data, error } = await sb.from(table).select(select).eq("company_id", currentWorker.company_id);
     if (error) throw error;
-    return table === "reports" ? filterOperationalReportsForAnalytics(data || []) : (data || []);
+    return data || [];
   } catch (e) {
     console.warn(`Vlasnik/Direktor panel: ${table} nije učitan`, e?.message || e);
     return [];
@@ -14699,7 +14310,7 @@ async function loadOwnerPanelData() {
   directorPeopleCache = people.filter(p => p.active !== false);
   directorSitesCache = sites.filter(x => x.active !== false);
   directorAssetsCache = assets.filter(x => x.active !== false);
-  directorReportsCache = await attachReportUsersFallback(filterOperationalReportsForAnalytics(reports || []));
+  directorReportsCache = await attachReportUsersFallback((reports || []).filter(r => !isArchivedReport(r)));
   try {
     const { data, error } = await sb.rpc("director_list_materials", { p_company_id: currentWorker.company_id });
     if (!error) directorMaterialsCache = data || [];
@@ -14709,49 +14320,19 @@ async function loadOwnerPanelData() {
   ensureOverviewDatalists();
 }
 
-async function refreshOwnerDashboardPanel({ silent = false } = {}) {
+async function refreshOwnerDashboardPanel() {
   try {
-    const connectionOk = await probeRealConnection();
-    if (!connectionOk) throw new Error("Proverite internet konekciju. Trenutno ste offline.");
     await loadOwnerPanelData();
     renderOwnerDashboard("ownerPanelDashboard", "ownerPanelDashboardPreview");
-    markAutoRefreshOnline("Direktor");
   } catch (e) {
-    markAutoRefreshOffline("Direktor", e);
     const box = document.getElementById("ownerPanelDashboardPreview");
-    if (box && !silent) box.innerHTML = `<div class="site-boss-warning"><b>Vlasnik/Direktor pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava vlasniku da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za vlasnički pregled.</span></div>`;
-    if (!silent) toast(e.message || "Vlasnik/Direktor pregled nije učitan.", true);
+    if (box) box.innerHTML = `<div class="site-boss-warning"><b>Vlasnik/Direktor pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava vlasniku da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za vlasnički pregled.</span></div>`;
+    toast(e.message || "Vlasnik/Direktor pregled nije učitan.", true);
   }
-}
-
-async function ownerAutoRefreshTick() {
-  if (!currentWorker?.company_id || ownerAutoRefreshBusy) return;
-  const panel = document.getElementById("viewOwnerDashboardPanel");
-  if (!panel || !panel.classList.contains("active")) return;
-  ownerAutoRefreshBusy = true;
-  try {
-    await refreshOwnerDashboardPanel({ silent: true });
-  } finally {
-    ownerAutoRefreshBusy = false;
-  }
-}
-
-function startOwnerAutoRefresh() {
-  stopOwnerAutoRefresh();
-  startAutoRefreshHeartbeat("Direktor");
-  ownerAutoRefreshTick();
-  ownerAutoRefreshTimer = setInterval(ownerAutoRefreshTick, AUTO_REFRESH_INTERVAL_MS);
-}
-
-function stopOwnerAutoRefresh() {
-  if (ownerAutoRefreshTimer) clearInterval(ownerAutoRefreshTimer);
-  ownerAutoRefreshTimer = null;
-  ownerAutoRefreshBusy = false;
 }
 
 async function openOwnerDashboardPanel() {
   stopMechanicBossWatcher();
-  stopDirectorAutoRefresh();
   await applyWorkerCompanyBrand();
   setInternalHeader("Vlasnik/Direktor pregled", `${currentWorker?.full_name || "Vlasnik"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
   const name = document.getElementById("ownerPanelName");
@@ -14759,12 +14340,10 @@ async function openOwnerDashboardPanel() {
   if (name) name.textContent = currentWorker?.full_name || "Vlasnik / Direktor";
   if (label) label.textContent = `${currentWorker?.company_name || "Firma"} · pregled bez izmena`;
   show("OwnerDashboardPanel");
-  await refreshOwnerDashboardPanel({ silent: true });
-  startOwnerAutoRefresh();
+  await refreshOwnerDashboardPanel();
 }
 
 function logoutOwnerDashboardPanel() {
-  stopOwnerAutoRefresh();
   localStorage.removeItem("swp_worker");
   currentWorker = null;
   clearCompanyBrandFromBody();
@@ -14775,13 +14354,12 @@ function logoutOwnerDashboardPanel() {
 function stopMechanicBossWatcher() {
   if (mechanicBossTimer) clearInterval(mechanicBossTimer);
   mechanicBossTimer = null;
-  mechanicBossAutoRefreshBusy = false;
 }
 
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1693", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1410", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -15014,38 +14592,6 @@ function dedupeMechanicDefects(reports = []) {
   return out;
 }
 
-function mechanicHiddenWorkerKey(worker = currentWorker) {
-  return String(worker?.id || worker?.user_id || worker?.access_code || worker?.full_name || "mechanic").trim();
-}
-
-function mechanicHiddenDefectsStorageKey(worker = currentWorker) {
-  return `askcreate_mechanic_hidden_defects_${worker?.company_id || worker?.company_code || "no_company"}_${mechanicHiddenWorkerKey(worker)}`;
-}
-
-function getLocalMechanicHiddenDefectIds(worker = currentWorker) {
-  try {
-    return JSON.parse(localStorage.getItem(mechanicHiddenDefectsStorageKey(worker)) || "[]").map(String);
-  } catch (_) {
-    return [];
-  }
-}
-
-function saveLocalMechanicHiddenDefectId(id, worker = currentWorker) {
-  const key = mechanicHiddenDefectsStorageKey(worker);
-  const ids = new Set(getLocalMechanicHiddenDefectIds(worker));
-  ids.add(String(id));
-  localStorage.setItem(key, JSON.stringify(Array.from(ids)));
-}
-
-function isMechanicDefectHiddenForCurrentWorker(report) {
-  const id = String(report?.id || "");
-  const workerKey = mechanicHiddenWorkerKey();
-  const d = report?.data || {};
-  const dbList = Array.isArray(d.mechanic_hidden_for) ? d.mechanic_hidden_for.map(String) : [];
-  const localList = getLocalMechanicHiddenDefectIds();
-  return (!!id && localList.includes(id)) || (!!workerKey && dbList.includes(workerKey));
-}
-
 function mechanicActionButtonsHtml(r) {
   const id = escapeHtml(r.id);
   const group = mechanicStatusGroup(r);
@@ -15057,8 +14603,6 @@ function mechanicActionButtonsHtml(r) {
   }
   if (group !== "resolved") {
     buttons.push(`<button class="primary small-action" type="button" onclick="updateMechanicDefectStatus('${id}','reseno')">Rešeno</button>`);
-  } else {
-    buttons.push(`<button class="secondary small-action mechanic-hide-btn" type="button" onclick="hideResolvedMechanicDefect('${id}')">Skloni kod mene</button>`);
   }
   buttons.push(`<button class="secondary small-action" type="button" onclick="addMechanicDefectNote('${id}')">Napomena</button>`);
   return `<div class="mechanic-actions">${buttons.join("")}</div>`;
@@ -15084,6 +14628,7 @@ function mechanicDefectCardHtml(r, compact = false) {
       <span><b>Pozvan telefonom:</b> ${escapeHtml(mechanicCalledPhoneLabel(r))}</span>
     </div>
     <p><b>Problem:</b> ${escapeHtml(mechanicDefectText(r))}</p>
+    ${renderDefectImagesHtml(d)}
     ${d.mechanic_note ? `<p class="mechanic-note"><b>Napomena šefa mehanizacije:</b> ${escapeHtml(d.mechanic_note)}</p>` : ""}
     ${mechanicActionButtonsHtml(r)}
   </article>`;
@@ -15123,7 +14668,7 @@ async function mechanicListDefectsSafe() {
       p_company_code: currentWorker.company_code,
       p_access_code: currentWorker.access_code
     });
-    if (!error) return filterOperationalReportsForAnalytics(data || []);
+    if (!error) return data || [];
     const msg = String(error.message || "").toLowerCase();
     if (!msg.includes("mechanic_list_defects") && !msg.includes("function") && !msg.includes("schema cache")) {
       throw error;
@@ -15136,9 +14681,6 @@ async function mechanicListDefectsSafe() {
     }
   }
 
-  const rpcReports = await listActiveReportsForLoggedWorkerRpc();
-  if (Array.isArray(rpcReports)) return rpcReports.filter(hasDefectData);
-
   const { data, error } = await sb
     .from("reports")
     .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
@@ -15146,7 +14688,7 @@ async function mechanicListDefectsSafe() {
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .limit(200);
   if (error) throw error;
-  return filterOperationalReportsForAnalytics(data || []).filter(hasDefectData);
+  return (data || []).filter(hasDefectData);
 }
 
 
@@ -15170,10 +14712,6 @@ function setMechanicSectionCount(id, count, suffix = "") {
 
 async function mechanicListCompanyReportsSafe() {
   if (!currentWorker?.company_id || !sb) return [];
-  const rpcReports = await listActiveReportsForLoggedWorkerRpc();
-  if (Array.isArray(rpcReports)) {
-    return attachReportUsersFallback ? await attachReportUsersFallback(rpcReports) : rpcReports;
-  }
   const { data, error } = await sb
     .from("reports")
     .select("id, company_id, user_id, report_date, status, submitted_at, created_at, data")
@@ -15181,8 +14719,7 @@ async function mechanicListCompanyReportsSafe() {
     .order("submitted_at", { ascending: false, nullsFirst: false })
     .limit(500);
   if (error) throw error;
-  const clean = filterOperationalReportsForAnalytics(data || []);
-  return attachReportUsersFallback ? await attachReportUsersFallback(clean) : clean;
+  return attachReportUsersFallback ? await attachReportUsersFallback(data || []) : (data || []);
 }
 
 async function mechanicListAssetsSafe() {
@@ -15266,11 +14803,9 @@ async function loadMechanicBossOperations({ silent = false } = {}) {
     mechanicBossAllReportsCache = reports || [];
     mechanicBossAssetsCache = assets || [];
     renderMechanicFuelAnalysis();
-    markAutoRefreshOnline("Šef mehanizacije");
     if (!silent) toast("Potrošnja i sredstva su osveženi.");
   } catch (e) {
     const box = document.getElementById("mechanicFuelOverview");
-    markAutoRefreshOffline("Šef mehanizacije", e);
     if (box) box.innerHTML = `<p class="muted">Ne mogu učitati potrošnju: ${escapeHtml(e.message || String(e))}</p>`;
     if (!silent) toast(e.message || "Ne mogu učitati potrošnju.", true);
   }
@@ -15328,7 +14863,7 @@ async function loadMechanicBossDefects({ silent = false } = {}) {
   if (!currentWorker?.company_id || !sb) return;
   try {
     const defects = await mechanicListDefectsSafe();
-    mechanicBossReportsCache = dedupeMechanicDefects(await attachReportUsersFallback(defects)).filter(r => !isMechanicDefectHiddenForCurrentWorker(r));
+    mechanicBossReportsCache = dedupeMechanicDefects(await attachReportUsersFallback(defects));
     const newReports = mechanicBossReportsCache.filter(r => mechanicStatusGroup(r) === "new");
     const signature = newReports.map(r => r.id).join("|");
     if (signature && mechanicBossLastSignature && signature !== mechanicBossLastSignature && newReports.length >= mechanicBossLastNewCount) {
@@ -15337,11 +14872,9 @@ async function loadMechanicBossDefects({ silent = false } = {}) {
     mechanicBossLastSignature = signature;
     mechanicBossLastNewCount = newReports.length;
     renderMechanicBossDefects();
-    markAutoRefreshOnline("Šef mehanizacije");
     if (!silent) toast("Kvarovi su osveženi.");
   } catch (e) {
     console.warn("Ne mogu učitati kvarove za šefa mehanizacije:", e);
-    markAutoRefreshOffline("Šef mehanizacije", e);
     renderMechanicBossError(e.message || "Ne mogu učitati kvarove. Ako se ovo ponavlja, treba dodati mechanic_list_defects SQL RPC.");
     if (!silent) toast(e.message || "Ne mogu učitati kvarove.", true);
   }
@@ -15371,28 +14904,7 @@ function showMechanicNewDefectSignal() {
   toast("Novi kvar prijavljen 🚨");
 }
 
-async function mechanicBossAutoRefreshTick() {
-  if (!currentWorker?.company_id || mechanicBossAutoRefreshBusy) return;
-  const panel = document.getElementById("viewMechanicBossPanel");
-  if (!panel || !panel.classList.contains("active")) return;
-  const connectionOk = await probeRealConnection();
-  if (!connectionOk) {
-    markAutoRefreshOffline("Šef mehanizacije");
-    return;
-  }
-  mechanicBossAutoRefreshBusy = true;
-  try {
-    await loadMechanicBossDefects({ silent: true });
-    await loadMechanicBossOperations({ silent: true });
-    markAutoRefreshOnline("Šef mehanizacije");
-  } finally {
-    mechanicBossAutoRefreshBusy = false;
-  }
-}
-
 async function openMechanicBossPanel() {
-  stopOwnerAutoRefresh();
-  stopDirectorAutoRefresh();
   stopMechanicBossWatcher();
   await applyWorkerCompanyBrand();
   setInternalHeader("Šef mehanizacije", `${currentWorker?.full_name || "Zaposleni"} · ${currentWorker?.company_name || currentWorker?.company_code || ""}`, true);
@@ -15404,9 +14916,7 @@ async function openMechanicBossPanel() {
   await loadMechanicBossDefects({ silent: true });
   await loadMechanicBossOperations({ silent: true });
   refreshMechanicPushUi();
-  startAutoRefreshHeartbeat("Šef mehanizacije");
-  mechanicBossAutoRefreshTick();
-  mechanicBossTimer = setInterval(mechanicBossAutoRefreshTick, AUTO_REFRESH_INTERVAL_MS);
+  mechanicBossTimer = setInterval(() => loadMechanicBossDefects({ silent: true }), 30000);
 }
 
 window.updateMechanicDefectStatus = async (id, newStatus) => {
@@ -15448,55 +14958,6 @@ window.addMechanicDefectNote = async (id) => {
     if (error) throw error;
     toast("Napomena je sačuvana.");
     await loadMechanicBossDefects({ silent: true });
-  } catch(e) {
-    toast(e.message || String(e), true);
-  }
-};
-
-window.hideResolvedMechanicDefect = async (id) => {
-  try {
-    if (!currentWorker?.company_id) throw new Error("Šef mehanizacije nije prijavljen.");
-    const current = mechanicBossReportsCache.find(r => String(r.id) === String(id));
-    if (!current || mechanicStatusGroup(current) !== "resolved") {
-      return toast("Samo rešeni kvar može da se skloni iz panela šefa mehanizacije.", true);
-    }
-    const label = mechanicDefectAssetName(current) || "rešeni kvar";
-    if (!confirm(`Skloniti ovaj rešeni kvar samo iz panela šefa mehanizacije?
-
-${label}
-
-Kvar ostaje vidljiv Direkciji i ostaje za Arhivu.`)) return;
-
-    const workerKey = mechanicHiddenWorkerKey();
-    try {
-      const { data: row, error: readError } = await sb
-        .from("reports")
-        .select("data, company_id")
-        .eq("id", id)
-        .eq("company_id", currentWorker.company_id)
-        .maybeSingle();
-      if (readError) throw readError;
-      const d = row?.data || {};
-      const hiddenFor = Array.isArray(d.mechanic_hidden_for) ? d.mechanic_hidden_for.map(String) : [];
-      if (!hiddenFor.includes(workerKey)) hiddenFor.push(workerKey);
-      d.mechanic_hidden_for = hiddenFor;
-      d.mechanic_hidden_at = new Date().toISOString();
-      d.mechanic_hidden_by = currentWorker.full_name || "Šef mehanizacije";
-      const { error } = await sb
-        .from("reports")
-        .update({ data: d })
-        .eq("id", id)
-        .eq("company_id", currentWorker.company_id);
-      if (error) throw error;
-    } catch (dbError) {
-      console.warn("Sakrij kvar za šefa mehanizacije: baza nije dozvolila upis, koristim lokalno skrivanje na ovom uređaju.", dbError?.message || dbError);
-      saveLocalMechanicHiddenDefectId(id);
-      toast("Kvar je sklonjen samo na ovom uređaju. Direkcija i Arhiva nisu dirnute.");
-    }
-
-    mechanicBossReportsCache = mechanicBossReportsCache.filter(r => String(r.id) !== String(id));
-    renderMechanicBossDefects();
-    toast("Rešeni kvar je sklonjen iz panela šefa mehanizacije. Direkcija i Arhiva ostaju sačuvane.");
   } catch(e) {
     toast(e.message || String(e), true);
   }
@@ -15592,7 +15053,6 @@ async function openWorkerForm() {
 async function boot() {
   installNavigationFallback();
   bindEvents();
-  hideAutoRefreshManualButtons();
   initSupabase();
   loadPublicHomeVisualSettings().catch(() => {});
   $("#wrDate").value = today();
