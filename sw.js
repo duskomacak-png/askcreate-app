@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1706-kvarovi-samo-kartica";
+const CACHE_NAME = "askcreate-app-v1707-ispravka-kvara-tok";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1706-kvarovi-samo-kartica",
-  "./script.js?v=1706-kvarovi-samo-kartica",
-  "./manifest.json?v=1706-kvarovi-samo-kartica",
+  "./style.css?v=1707-ispravka-kvara-tok",
+  "./script.js?v=1707-ispravka-kvara-tok",
+  "./manifest.json?v=1707-ispravka-kvara-tok",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

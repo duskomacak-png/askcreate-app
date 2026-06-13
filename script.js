@@ -6086,7 +6086,7 @@ function printOwnerDefectsReport(prefix = "ownerDashboard") {
   const html = buildOwnerDefectsReportHtml(prefix);
   const win = window.open("", "_blank");
   if (!win) { toast("Popup je blokiran. Dozvoli otvaranje prozora za štampu.", true); return; }
-  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1706-kvarovi-samo-kartica"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
+  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1707-ispravka-kvara-tok"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
   win.document.close();
 }
 window.printOwnerDefectsReport = printOwnerDefectsReport;
@@ -11500,9 +11500,21 @@ window.loadReturnedReportIntoForm = async (reportId) => {
     if (!r) throw new Error("Izveštaj nije pronađen ili više nije vraćen na ispravku.");
 
     const d = r.data || {};
+    const returnedReportType = d.report_type || d.reportType || "";
+    localStorage.setItem("swp_returned_report_type", returnedReportType);
+    localStorage.setItem("swp_returned_report_reason", r.returned_reason || d.returned_reason || "");
+
+    const moduleValue = workerModuleValueFromReportType(returnedReportType);
+    if (moduleValue && document.getElementById("wrModuleSelect")) {
+      document.getElementById("wrModuleSelect").value = moduleValue;
+      applyWorkerModuleSelection({ addDefaults: false });
+    }
+
     if (d.report_type === "site_daily_log") {
       loadSiteLogDataIntoForm(d, r);
       localStorage.setItem("swp_returned_report_id", reportId);
+      localStorage.setItem("swp_returned_report_type", "site_daily_log");
+      updateReturnedCorrectionUi();
       toast("Dnevnik gradilišta je otvoren za ispravku. Ispravi ga i pošalji ponovo Upravi firme.");
       const panel = $("#siteLogPanel");
       if (panel) panel.scrollIntoView({ behavior:"smooth", block:"start" });
@@ -11543,19 +11555,33 @@ window.loadReturnedReportIntoForm = async (reportId) => {
       wrWarehouseType:"warehouse_type",
       wrWarehouseItem:"warehouse_item",
       wrWarehouseQty:"warehouse_qty",
-      wrDefectAssetName:"defect_asset_code",
-      wrDefectSiteName:"defect_site_name",
       wrDefect:"defect",
       wrDefectStopsWork:"defect_work_impact",
       wrDefectUrgency:"defect_urgency",
-      wrDefectCalledMechanic:"called_mechanic_by_phone", wrSignatureName:"signature_name",}).forEach(([id,key]) => {
+      wrDefectCalledMechanic:"called_mechanic_by_phone",
+      wrSignatureName:"signature_name"
+    }).forEach(([id,key]) => {
       const el = $("#" + id);
       if (el) el.value = d[key] || "";
     });
 
+    const defectAssetEl = document.getElementById("wrDefectAssetName");
+    if (defectAssetEl) defectAssetEl.value = d.defect_asset_code || d.defect_asset_name || d.defect_manual_asset_name || d.defect_machine || d.machine || "";
+    const defectSiteEl = document.getElementById("wrDefectSiteName");
+    if (defectSiteEl) defectSiteEl.value = d.defect_site_name || d.site_name || d.defect_site_manual_location || "";
+
+    defectImagesDraft = normalizeDefectImages(d);
+    renderDefectImagesPreview();
+
+    if (d.signature_data_url) setSignatureImage(d.signature_data_url);
+    if (moduleValue && document.getElementById("wrModuleSelect")) applyWorkerModuleSelection({ addDefaults: false });
+
     localStorage.setItem("swp_returned_report_id", reportId);
-    toast("Izveštaj je otvoren. Ispravi ga i pošalji ponovo Upravi.");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    localStorage.setItem("swp_returned_report_type", returnedReportType);
+    updateReturnedCorrectionUi();
+    toast("Izveštaj je otvoren za ispravku. Podaci su vraćeni kako su bili pre slanja — izmeni traženo i pošalji ponovo Upravi.");
+    const target = moduleValue === "defect_report" ? document.getElementById("secDefects") : document.getElementById("viewWorkerForm");
+    (target || document.body).scrollIntoView?.({ behavior: "smooth", block: "start" });
   } catch(e) {
     toast(e.message, true);
   }
@@ -12237,7 +12263,64 @@ function clearReturnedReportContext() {
   try {
     localStorage.removeItem("swp_returned_report_id");
     localStorage.removeItem("swp_returned_report_type");
+    localStorage.removeItem("swp_returned_report_reason");
   } catch {}
+  updateReturnedCorrectionUi();
+}
+
+function updateReturnedCorrectionUi() {
+  const returnedId = (() => { try { return localStorage.getItem("swp_returned_report_id") || ""; } catch { return ""; } })();
+  const returnedType = (() => { try { return localStorage.getItem("swp_returned_report_type") || ""; } catch { return ""; } })();
+  const isCorrection = !!returnedId;
+  const isDefectCorrection = isCorrection && ["defect_report", "defect_alert", "defect_record"].includes(returnedType);
+  const submitBtn = document.getElementById("submitReportBtn");
+  const defectBtn = document.getElementById("sendDefectNowBtn");
+  if (submitBtn) submitBtn.textContent = isCorrection ? "Pošalji ispravljen izveštaj" : "Pošalji izveštaj";
+  if (defectBtn) defectBtn.textContent = isDefectCorrection ? "Pošalji ispravljen kvar" : "🚨 Evidentiraj kvar odmah";
+}
+
+function makeReportEventId(prefix = "evt") {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") return prefix + "_" + window.crypto.randomUUID();
+  return prefix + "_" + Date.now() + "_" + Math.random().toString(16).slice(2, 8);
+}
+
+function buildCorrectionEvent(label, note = "") {
+  const worker = currentWorker || {};
+  return {
+    id: makeReportEventId("defevt"),
+    status: "ponovo_poslato",
+    label: label || "Radnik ponovo poslao ispravku",
+    actor_name: worker.full_name || "Radnik",
+    actor_role: worker.function_title || "Radnik",
+    note: note || "",
+    at: new Date().toISOString()
+  };
+}
+
+function mergeCorrectionHistoryForResubmit(reportData = {}, returnedReport = null) {
+  const oldData = returnedReport?.data || {};
+  const reason = returnedReport?.returned_reason || oldData.returned_reason || "";
+  const oldTimeline = Array.isArray(oldData.defect_timeline) ? oldData.defect_timeline : (Array.isArray(oldData.defect_history) ? oldData.defect_history : []);
+  const newTimeline = Array.isArray(reportData.defect_timeline) ? reportData.defect_timeline : [];
+  const correctionEvent = buildCorrectionEvent("Radnik ponovo poslao ispravljen kvar", reason ? `Ispravljeno po razlogu Direkcije: ${reason}` : "");
+
+  reportData.defect_timeline = [...oldTimeline, ...newTimeline, correctionEvent];
+  reportData.defect_history = reportData.defect_timeline;
+  reportData.correction_history = [
+    ...(Array.isArray(oldData.correction_history) ? oldData.correction_history : []),
+    {
+      id: makeReportEventId("corr"),
+      returned_reason: reason,
+      returned_at: oldData.returned_at || oldData.returned_for_correction_at || returnedReport?.updated_at || "",
+      resubmitted_at: new Date().toISOString(),
+      resubmitted_by: currentWorker?.full_name || "Radnik"
+    }
+  ];
+  reportData.returned_reason = reason;
+  reportData.resubmitted_after_correction = true;
+  reportData.resubmitted_at = new Date().toISOString();
+  reportData.defect_status = reportData.defect_status || "ponovo_poslato";
+  return reportData;
 }
 
 async function submitSiteLogToDirector() {
@@ -12461,6 +12544,9 @@ function clearWorkerForm() {
   if ($("#materialEntries")) $("#materialEntries").innerHTML = "";
   localStorage.removeItem("swp_draft");
   localStorage.removeItem("swp_returned_report_id");
+  localStorage.removeItem("swp_returned_report_type");
+  localStorage.removeItem("swp_returned_report_reason");
+  updateReturnedCorrectionUi();
   clearSignatureCanvas(false);
   clearDefectImagesDraft();
 }
@@ -14558,19 +14644,46 @@ async function sendDefectNow() {
     };
     urgentData.defect_history = urgentData.defect_timeline;
 
-    const { error } = await sb.rpc("submit_worker_report", {
-      p_company_code: worker.company_code,
-      p_access_code: worker.access_code,
-      p_report_date: $("#wrDate").value || today(),
-      p_site_id: selectedDefectSite.site_id || fallbackMainSite.site_id || null,
-      p_data: urgentData
-    });
+    const returnedId = localStorage.getItem("swp_returned_report_id");
+    let wasCorrection = false;
+    if (returnedId) {
+      const returnedStillExists = await getReturnedReportForWorker(returnedId).catch(() => null);
+      if (returnedStillExists) {
+        const oldType = returnedStillExists?.data?.report_type || returnedStillExists?.data?.reportType || "";
+        if (oldType) urgentData.report_type = oldType;
+        mergeCorrectionHistoryForResubmit(urgentData, returnedStillExists);
+        const { error } = await sb.rpc("worker_resubmit_returned_report", {
+          p_company_code: worker.company_code,
+          p_access_code: worker.access_code,
+          p_report_id: returnedId,
+          p_report_date: $("#wrDate").value || today(),
+          p_site_id: selectedDefectSite.site_id || fallbackMainSite.site_id || null,
+          p_data: urgentData
+        });
+        if (error) throw error;
+        wasCorrection = true;
+      } else {
+        clearReturnedReportContext();
+      }
+    }
 
-    if (error) throw error;
+    if (!wasCorrection) {
+      const { error } = await sb.rpc("submit_worker_report", {
+        p_company_code: worker.company_code,
+        p_access_code: worker.access_code,
+        p_report_date: $("#wrDate").value || today(),
+        p_site_id: selectedDefectSite.site_id || fallbackMainSite.site_id || null,
+        p_data: urgentData
+      });
+      if (error) throw error;
+    }
 
     await sendMechanicPushAfterDefect(worker, urgentData);
+    clearReturnedReportContext();
     clearDefectImagesDraft();
-    toast("Kvar je poslat odmah 🚨 Vide ga Uprava/Direkcija i Šef mehanizacije.");
+    try { await prepareWorkerFormForNextReport(); } catch {}
+    loadWorkerReturnedReports();
+    toast(wasCorrection ? "Ispravljen kvar je ponovo poslat Upravi ✅" : "Kvar je poslat odmah 🚨 Vide ga Uprava/Direkcija i Šef mehanizacije.");
   } catch(e) {
     toast(e.message, true);
   } finally {
@@ -15006,6 +15119,7 @@ function bindEvents() {
   if ($("#sendDefectNowBtn")) $("#sendDefectNowBtn").addEventListener("click", sendDefectNow);
   if ($("#wrDefectImages")) $("#wrDefectImages").addEventListener("change", handleDefectImagesInput);
   renderDefectImagesPreview();
+  updateReturnedCorrectionUi();
   if ($("#memorizeFieldTankerBtn")) $("#memorizeFieldTankerBtn").addEventListener("click", memorizeCurrentFieldTankerEntries);
   if ($("#sendStoredFieldTankerBtn")) $("#sendStoredFieldTankerBtn").addEventListener("click", sendStoredFieldTankerEntries);
   if ($("#clearStoredFieldTankerBtn")) $("#clearStoredFieldTankerBtn").addEventListener("click", clearStoredFieldTankerEntries);
@@ -16176,6 +16290,14 @@ async function submitReturnedCorrectionIfNeeded(reportData) {
     clearReturnedReportContext();
     toast("Stari vraćeni izveštaj više nije aktivan. Ovaj unos šaljem kao novi izveštaj.");
     return false;
+  }
+
+  const oldType = returnedStillExists?.data?.report_type || returnedStillExists?.data?.reportType || "";
+  if (["defect_report", "defect_alert", "defect_record"].includes(oldType) || (reportData.defect || reportData.defect_images_count)) {
+    if (oldType && !reportData.report_type) reportData.report_type = oldType;
+    mergeCorrectionHistoryForResubmit(reportData, returnedStillExists);
+    reportData.visible_to_director = true;
+    reportData.visible_to_mechanic_boss = true;
   }
 
   const { error } = await sb.rpc("worker_resubmit_returned_report", {
