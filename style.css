@@ -8229,3 +8229,21 @@ body.defect-image-viewer-open{overflow:hidden;}
   .defect-image-viewer-modal,.defect-image-zoom-label{display:none!important;}
   .defect-image-zoom-btn{border:0!important;page-break-inside:avoid;break-inside:avoid;}
 }
+
+/* v1704: Tok kvara / dnevnik promena */
+.defect-timeline-block{margin-top:12px;border:1px solid rgba(148,163,184,.28);border-radius:14px;padding:10px;background:rgba(15,23,42,.04)}
+.defect-timeline-block h5{margin:0 0 8px;font-size:14px}
+.defect-timeline-list{display:grid;gap:8px}
+.defect-timeline-item{display:grid;grid-template-columns:1.2fr .95fr 1fr;gap:8px;align-items:start;padding:8px;border-radius:10px;background:rgba(255,255,255,.72);border:1px solid rgba(148,163,184,.22)}
+.defect-timeline-item b{font-size:13px}
+.defect-timeline-item span,.defect-timeline-item small,.defect-timeline-item em{font-size:12px;color:var(--muted,#64748b)}
+.defect-timeline-item em{grid-column:1/-1;font-style:normal;background:rgba(15,23,42,.05);padding:6px;border-radius:8px;color:inherit}
+.defect-timeline-compact .defect-timeline-item{grid-template-columns:1fr;gap:3px}
+@media print{.defect-timeline-block{break-inside:avoid;background:#fff;border-color:#999}.defect-timeline-item{background:#fff;border-color:#ccc}}
+@media(max-width:720px){.defect-timeline-item{grid-template-columns:1fr;gap:4px}}
+
+/* v1705: direktor može da skloni kvar samo iz svog prikaza */
+.owner-defect-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.owner-defect-card-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.owner-defect-card-actions small{font-size:12px}
+.owner-hidden-defects-note{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0;padding:10px 12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(255,255,255,.04)}

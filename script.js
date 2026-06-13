@@ -669,6 +669,78 @@ function defectImagesHtml(dataOrReport = {}, options = {}) {
   </div>`;
 }
 
+
+function makeDefectTimelineEvent(status, actorName = "", actorRole = "", note = "") {
+  const nowIso = new Date().toISOString();
+  return {
+    id: `defevt_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+    status: String(status || "").trim(),
+    label: defectStatusHumanLabel(status),
+    actor_name: actorName || "—",
+    actor_role: actorRole || "—",
+    note: note || "",
+    at: nowIso
+  };
+}
+
+function normalizeDefectTimeline(dataOrReport = {}) {
+  const d = dataOrReport?.data || dataOrReport || {};
+  const raw = d.defect_timeline || d.defect_history || d.mechanic_history || [];
+  const map = new Map();
+  const push = (item) => {
+    if (!item) return;
+    const at = item.at || item.created_at || item.time || item.date || item.updated_at;
+    const status = item.status || item.action || item.label || "promena";
+    const key = String(item.id || `${status}_${at}_${item.actor_name || item.by || ""}`);
+    if (map.has(key)) return;
+    map.set(key, {
+      id: item.id || key,
+      status,
+      label: item.label || defectStatusHumanLabel(status),
+      actor_name: item.actor_name || item.by || item.user || item.worker || "—",
+      actor_role: item.actor_role || item.role || "—",
+      note: item.note || item.comment || "",
+      at
+    });
+  };
+  (Array.isArray(raw) ? raw : []).forEach(push);
+
+  if (d.defect_reported_at) push({ id: "reported", status: "prijavljen", label: "Kvar prijavljen", actor_name: d.created_by_worker || d.reporter_name || "Radnik", actor_role: d.function_title || "Radnik", at: d.defect_reported_at, note: d.defect || "" });
+  if (d.defect_received_at) push({ id: "received", status: "preuzeto", label: "Kvar preuzet / primljen", actor_name: d.defect_received_by || d.mechanic_updated_by || "Šef mehanizacije", actor_role: d.defect_received_role || "Šef mehanizacije", at: d.defect_received_at });
+  if (d.defect_repair_started_at) push({ id: "repair_started", status: "u_radu", label: "Popravka započeta", actor_name: d.defect_repair_started_by || d.mechanic_updated_by || "Šef mehanizacije", actor_role: d.defect_repair_started_role || "Šef mehanizacije", at: d.defect_repair_started_at });
+  if (d.defect_resolved_at) push({ id: "resolved", status: "reseno", label: "Kvar popravljen / rešen", actor_name: d.defect_resolved_by || d.mechanic_updated_by || "Šef mehanizacije", actor_role: d.defect_resolved_role || "Šef mehanizacije", at: d.defect_resolved_at });
+  if (d.mechanic_note_at && d.mechanic_note) push({ id: `note_${d.mechanic_note_at}`, status: "napomena", label: "Napomena šefa mehanizacije", actor_name: d.mechanic_note_by || d.mechanic_updated_by || "Šef mehanizacije", actor_role: "Šef mehanizacije", at: d.mechanic_note_at, note: d.mechanic_note });
+
+  return Array.from(map.values())
+    .filter(x => x.at || x.label || x.status)
+    .sort((a, b) => String(a.at || "").localeCompare(String(b.at || "")));
+}
+
+function appendDefectTimelineEvent(d, event) {
+  const list = normalizeDefectTimeline(d).filter(x => !String(x.id || "").startsWith("reported") && !["received", "repair_started", "resolved"].includes(String(x.id || "")));
+  const next = event || null;
+  if (next) list.push(next);
+  d.defect_timeline = list;
+  d.defect_history = list;
+  return d;
+}
+
+function defectTimelineHtml(dataOrReport = {}, options = {}) {
+  const events = normalizeDefectTimeline(dataOrReport);
+  if (!events.length) return "";
+  return `<div class="defect-timeline-block ${options.compact ? "defect-timeline-compact" : ""}">
+    <h5>🕒 Tok kvara / dnevnik promena</h5>
+    <div class="defect-timeline-list">
+      ${events.map(ev => `<div class="defect-timeline-item">
+        <b>${escapeHtml(ev.label || defectStatusHumanLabel(ev.status))}</b>
+        <span>${escapeHtml(formatDateTimeLocal(ev.at) || ev.at || "—")}</span>
+        <small>${escapeHtml([ev.actor_role, ev.actor_name].filter(Boolean).join(" · ") || "—")}</small>
+        ${ev.note ? `<em>${escapeHtml(ev.note)}</em>` : ""}
+      </div>`).join("")}
+    </div>
+  </div>`;
+}
+
 async function handleAdminHomeVisualFileChange(e) {
   try {
     const file = e?.target?.files?.[0];
@@ -5284,6 +5356,7 @@ function defectHtml(r) {
         <b>Početak popravke</b><span>${escapeHtml(formatDateTimeLocal(d.defect_repair_started_at))}</span>
         <b>Rešeno</b><span>${escapeHtml(formatDateTimeLocal(d.defect_resolved_at))}</span>
       </div>
+      ${defectTimelineHtml(d)}
       <div class="actions defect-actions no-print">
         <button class="primary" onclick="openReportDocumentCenter('${r.id}')">Otvori dokument</button>
         <button class="secondary" onclick="printReportDocument('${r.id}')">Štampaj kvar</button>
@@ -5866,7 +5939,7 @@ function buildOwnerDashboardData(from, to, site = "") {
   const fuelRows = buildFuelConsumptionRows(from, to).filter(row => !site || [...row.sites].some(s => normalizeSearch(s).includes(normalizeSearch(site))));
   const badFuel = fuelRows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad").length;
 
-  const defectReports = allMatchingReports.filter(hasDefectData);
+  const defectReports = allMatchingReports.filter(hasDefectData).filter(r => !isOwnerHiddenDefectReport(r));
   const defectStatusCounts = { novo: 0, aktivno: 0, reseno: 0, arhivirano: 0 };
   const defectRows = defectReports.map(r => {
     const archived = isArchivedReport(r);
@@ -5897,6 +5970,58 @@ function buildOwnerDashboardData(from, to, site = "") {
 }
 
 
+function ownerHiddenDefectsLocalKey() {
+  return `askcreate_owner_hidden_defect_reports_${currentCompany?.id || "no_company"}`;
+}
+
+function loadOwnerHiddenDefectIds() {
+  try {
+    const raw = localStorage.getItem(ownerHiddenDefectsLocalKey());
+    const arr = JSON.parse(raw || "[]");
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function saveOwnerHiddenDefectIds(ids) {
+  try {
+    localStorage.setItem(ownerHiddenDefectsLocalKey(), JSON.stringify(Array.from(ids || []).slice(-1000)));
+  } catch (_) {}
+}
+
+function isOwnerHiddenDefectReport(r) {
+  if (!r?.id) return false;
+  return loadOwnerHiddenDefectIds().has(String(r.id));
+}
+
+window.ownerHideDefectReport = function(reportId) {
+  if (!reportId) return;
+  const ok = confirm("Skloniti ovaj izveštaj kvara samo sa direktorovog prikaza?\n\nNe ide u arhivu. Direkcija ga i dalje vidi dok ne klikne Arhiviraj.");
+  if (!ok) return;
+  const ids = loadOwnerHiddenDefectIds();
+  ids.add(String(reportId));
+  saveOwnerHiddenDefectIds(ids);
+  renderOwnerDashboard?.();
+  renderOwnerDashboard?.("ownerPanelDashboard", "ownerPanelPreview");
+  const ownerBox = document.getElementById("ownerDashboardPreview");
+  const ownerPanelBox = document.getElementById("ownerPanelPreview");
+  if (ownerBox && ownerBox.innerHTML.includes("Izveštaj kvarova")) openOwnerDefectsReport("ownerDashboard");
+  if (ownerPanelBox && ownerPanelBox.innerHTML.includes("Izveštaj kvarova")) openOwnerDefectsReport("ownerPanelDashboard");
+  toast("Izveštaj kvara je sklonjen samo sa direktorovog prikaza.");
+};
+
+window.ownerRestoreHiddenDefectReports = function() {
+  const ids = loadOwnerHiddenDefectIds();
+  if (!ids.size) { toast("Nema sklonjenih kvarova u direktorovom prikazu."); return; }
+  const ok = confirm(`Vratiti ${ids.size} sklonjenih izveštaja kvarova u direktorov prikaz?`);
+  if (!ok) return;
+  saveOwnerHiddenDefectIds(new Set());
+  renderOwnerDashboard?.();
+  renderOwnerDashboard?.("ownerPanelDashboard", "ownerPanelPreview");
+  toast("Sklonjeni kvarovi su vraćeni u direktorov prikaz.");
+};
+
 function getOwnerFilteredDefectReports(prefix = "ownerDashboard") {
   ensureOverviewDatalists();
   ensureOverviewDefaultDates(prefix);
@@ -5906,6 +6031,7 @@ function getOwnerFilteredDefectReports(prefix = "ownerDashboard") {
   const normalizedSite = normalizeSearch(site);
   const reports = (directorReportsCache || [])
     .filter(hasDefectData)
+    .filter(r => !isOwnerHiddenDefectReport(r))
     .filter(r => {
       const date = String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10);
       if (from && date && date < from) return false;
@@ -5919,8 +6045,9 @@ function getOwnerFilteredDefectReports(prefix = "ownerDashboard") {
 
 function ownerDefectReportCardHtml(r, options = {}) {
   const d = r.data || {};
+  const actions = options.noActions ? "" : `<div class="owner-defect-card-actions no-print"><button class="secondary small-action" type="button" onclick="ownerHideDefectReport('${escapeHtml(r.id)}')">Skloni sa mog prikaza</button><small class="muted">Ne arhivira — samo sakriva kod Direktora.</small></div>`;
   return `<article class="owner-defect-report-card ${options.compact ? "owner-defect-report-card-compact" : ""}">
-    <h4>🚨 Kvar — ${escapeHtml(mechanicDefectAssetName(r))}</h4>
+    <div class="owner-defect-card-head"><h4>🚨 Kvar — ${escapeHtml(mechanicDefectAssetName(r))}</h4>${actions}</div>
     <div class="report-kv">
       <b>Datum prijave</b><span>${escapeHtml(formatDateTimeLocal(mechanicDefectTime(r)) || r.report_date || "—")}</span>
       <b>Prijavio</b><span>${escapeHtml(mechanicDefectReporter(r))}</span>
@@ -5934,6 +6061,7 @@ function ownerDefectReportCardHtml(r, options = {}) {
       <b>Broj slika</b><span>${normalizeDefectImages(d).length}</span>
     </div>
     ${defectImagesHtml(d, { compact: options.compact, title: "Fotografije kvara" })}
+    ${defectTimelineHtml(d, { compact: options.compact })}
   </article>`;
 }
 
@@ -5948,7 +6076,9 @@ function buildOwnerDefectsReportHtml(prefix = "ownerDashboard") {
   const { from, to, site, reports } = getOwnerFilteredDefectReports(prefix);
   const cards = reports.map(r => ownerDefectReportCardHtml(r)).join("") || `<p class="muted">Nema kvarova za izabrani period.</p>`;
 
-  return `<div class="office-form-titlebar owner-titlebar"><div><b>Izveštaj kvarova</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div><div class="office-badges"><span>${reports.length} kvarova</span></div></div>${cards}`;
+  const hiddenCount = loadOwnerHiddenDefectIds().size;
+  const restoreBtn = hiddenCount ? `<button class="secondary small-action no-print" type="button" onclick="ownerRestoreHiddenDefectReports()">Vrati sklonjene (${hiddenCount})</button>` : "";
+  return `<div class="office-form-titlebar owner-titlebar"><div><b>Izveštaj kvarova</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div><div class="office-badges"><span>${reports.length} kvarova</span>${restoreBtn}</div></div>${cards}`;
 }
 
 function openOwnerDefectsReport(prefix = "ownerDashboard") {
@@ -5961,7 +6091,7 @@ function printOwnerDefectsReport(prefix = "ownerDashboard") {
   const html = buildOwnerDefectsReportHtml(prefix);
   const win = window.open("", "_blank");
   if (!win) { toast("Popup je blokiran. Dozvoli otvaranje prozora za štampu.", true); return; }
-  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1703-direktor-arhiva"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
+  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1705-direktor-skloni-kvar"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
   win.document.close();
 }
 window.printOwnerDefectsReport = printOwnerDefectsReport;
@@ -6005,6 +6135,7 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.reseno}</b><span>Rešeni</span></div>
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.arhivirano}</b><span>Arhivirani</span></div>
       </div>
+      ${loadOwnerHiddenDefectIds().size ? `<div class="owner-hidden-defects-note no-print"><span>Sklonjeno sa direktorovog prikaza: ${loadOwnerHiddenDefectIds().size}</span><button class="secondary small-action" type="button" onclick="ownerRestoreHiddenDefectReports()">Vrati sklonjene</button></div>` : ""}
       ${officeTable(["Lokacija/gradilište","Sredstvo","Opis kvara","Hitnost","Slike","Status","Prijavljen","Zadnja promena"], defectTableRows)}
       <div class="owner-defect-images-inline">
         <h4>📸 Slike kvarova</h4>
@@ -6773,6 +6904,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
             ])}
           </div>
           ${defectImagesHtml(d)}
+          ${defectTimelineHtml(d)}
         </div>` : ""}
 
       ${hasLeaveRequest ? `
@@ -8053,16 +8185,36 @@ window.setDefectRecordStatus = async (id, newStatus, options = {}) => {
   const { data: row, error: readError } = await sb.from("reports").select("data").eq("id", id).eq("company_id", currentCompany.id).maybeSingle();
   if (readError) return toast(readError.message, true);
   const d = row?.data || {};
+  const nowIso = new Date().toISOString();
+  const actorName = currentDirector?.name || currentCompany?.name || "Direkcija";
+  const actorRole = "Direkcija";
   d.defect_status = newStatus;
-  if (newStatus === "primljeno") d.defect_received_at = new Date().toISOString();
-  if (newStatus === "u_popravci") d.defect_repair_started_at = new Date().toISOString();
-  if (newStatus === "reseno") d.defect_resolved_at = new Date().toISOString();
+  d.mechanic_status = d.mechanic_status || newStatus;
+  d.defect_last_change_at = nowIso;
+  d.defect_last_change_by = actorName;
+  d.defect_last_change_role = actorRole;
+  if (newStatus === "primljeno") {
+    d.defect_received_at = d.defect_received_at || nowIso;
+    d.defect_received_by = d.defect_received_by || actorName;
+    d.defect_received_role = d.defect_received_role || actorRole;
+  }
+  if (newStatus === "u_popravci") {
+    d.defect_repair_started_at = d.defect_repair_started_at || nowIso;
+    d.defect_repair_started_by = d.defect_repair_started_by || actorName;
+    d.defect_repair_started_role = d.defect_repair_started_role || actorRole;
+  }
+  if (newStatus === "reseno") {
+    d.defect_resolved_at = d.defect_resolved_at || nowIso;
+    d.defect_resolved_by = d.defect_resolved_by || actorName;
+    d.defect_resolved_role = d.defect_resolved_role || actorRole;
+  }
+  appendDefectTimelineEvent(d, makeDefectTimelineEvent(newStatus, actorName, actorRole));
   const { error } = await sb.from("reports").update({ data: d }).eq("id", id).eq("company_id", currentCompany.id);
   if (error) {
     if (!options.silent) return toast(error.message, true);
     throw error;
   }
-  if (!options.silent) toast("Status kvara promenjen.");
+  if (!options.silent) toast("Status kvara promenjen i upisan u dnevnik promena.");
   if (!options.skipReload) await loadReports();
 };
 
@@ -14362,6 +14514,9 @@ async function sendDefectNow() {
 
     const machines = getMachineEntries ? getMachineEntries() : [];
     const firstMachine = defectAssetName || machines[0]?.name || "";
+    const defectNow = new Date().toISOString();
+    const defectReporterName = worker.full_name || "Radnik";
+    const defectReporterRole = worker.function_title || "Radnik";
 
     const urgentData = {
       report_type: "defect_alert",
@@ -14371,7 +14526,7 @@ async function sendDefectNow() {
       visible_to_mechanic_boss: true,
       sent_to: "direkcija_i_sef_mehanizacije",
       defect_status: "prijavljen",
-      defect_reported_at: new Date().toISOString(),
+      defect_reported_at: defectNow,
       site_id: selectedDefectSite.site_id || fallbackMainSite.site_id || null,
       site_name: defectSiteName || fallbackMainSite.site_name || "",
       defect_site_name: defectSiteName || fallbackMainSite.site_name || "",
@@ -14395,8 +14550,18 @@ async function sendDefectNow() {
       defect_images: defectImagesPayload(),
       defectImages: defectImagesPayload(),
       defect_photos: defectImagesPayload(),
-      defect_images_count: defectImagesPayload().length
+      defect_images_count: defectImagesPayload().length,
+      defect_timeline: [{
+        id: makeDefectImageId().replace("defimg_", "defevt_"),
+        status: "prijavljen",
+        label: "Kvar prijavljen",
+        actor_name: defectReporterName,
+        actor_role: defectReporterRole,
+        note: defectText,
+        at: defectNow
+      }]
     };
+    urgentData.defect_history = urgentData.defect_timeline;
 
     const { error } = await sb.rpc("submit_worker_report", {
       p_company_code: worker.company_code,
@@ -15399,6 +15564,7 @@ function mechanicDefectCardHtml(r, compact = false) {
     </div>
     <p><b>Problem:</b> ${escapeHtml(mechanicDefectText(r))}</p>
     ${defectImagesHtml(d, { compact: true })}
+    ${defectTimelineHtml(d, { compact: true })}
     ${d.mechanic_note ? `<p class="mechanic-note"><b>Napomena šefa mehanizacije:</b> ${escapeHtml(d.mechanic_note)}</p>` : ""}
     ${mechanicActionButtonsHtml(r)}
   </article>`;
@@ -15730,16 +15896,35 @@ window.updateMechanicDefectStatus = async (id, newStatus) => {
     const { data: row, error: readError } = await sb.from("reports").select("data, company_id").eq("id", id).eq("company_id", currentWorker.company_id).maybeSingle();
     if (readError) throw readError;
     const d = row?.data || {};
+    const nowIso = new Date().toISOString();
+    const actorName = currentWorker.full_name || "Šef mehanizacije";
+    const actorRole = currentWorker.function_title || "Šef mehanizacije";
     d.defect_status = newStatus;
     d.mechanic_status = newStatus;
-    d.mechanic_updated_by = currentWorker.full_name || "Šef mehanizacije";
-    d.mechanic_updated_at = new Date().toISOString();
-    if (newStatus === "preuzeto") d.defect_received_at = d.defect_received_at || new Date().toISOString();
-    if (newStatus === "u_radu") d.defect_repair_started_at = d.defect_repair_started_at || new Date().toISOString();
-    if (newStatus === "reseno") d.defect_resolved_at = d.defect_resolved_at || new Date().toISOString();
+    d.mechanic_updated_by = actorName;
+    d.mechanic_updated_at = nowIso;
+    d.defect_last_change_at = nowIso;
+    d.defect_last_change_by = actorName;
+    d.defect_last_change_role = actorRole;
+    if (newStatus === "preuzeto") {
+      d.defect_received_at = d.defect_received_at || nowIso;
+      d.defect_received_by = d.defect_received_by || actorName;
+      d.defect_received_role = d.defect_received_role || actorRole;
+    }
+    if (newStatus === "u_radu") {
+      d.defect_repair_started_at = d.defect_repair_started_at || nowIso;
+      d.defect_repair_started_by = d.defect_repair_started_by || actorName;
+      d.defect_repair_started_role = d.defect_repair_started_role || actorRole;
+    }
+    if (newStatus === "reseno") {
+      d.defect_resolved_at = d.defect_resolved_at || nowIso;
+      d.defect_resolved_by = d.defect_resolved_by || actorName;
+      d.defect_resolved_role = d.defect_resolved_role || actorRole;
+    }
+    appendDefectTimelineEvent(d, makeDefectTimelineEvent(newStatus, actorName, actorRole));
     const { error } = await sb.from("reports").update({ data: d }).eq("id", id).eq("company_id", currentWorker.company_id);
     if (error) throw error;
-    toast("Status kvara je promenjen.");
+    toast("Status kvara je promenjen i upisan u dnevnik promena.");
     await loadMechanicBossDefects({ silent: true });
   } catch(e) {
     toast(e.message || String(e), true);
@@ -15756,9 +15941,16 @@ window.addMechanicDefectNote = async (id) => {
     const { data: row, error: readError } = await sb.from("reports").select("data, company_id").eq("id", id).eq("company_id", currentWorker.company_id).maybeSingle();
     if (readError) throw readError;
     const d = row?.data || {};
+    const nowIso = new Date().toISOString();
+    const actorName = currentWorker.full_name || "Šef mehanizacije";
+    const actorRole = currentWorker.function_title || "Šef mehanizacije";
     d.mechanic_note = note.trim();
-    d.mechanic_note_by = currentWorker.full_name || "Šef mehanizacije";
-    d.mechanic_note_at = new Date().toISOString();
+    d.mechanic_note_by = actorName;
+    d.mechanic_note_at = nowIso;
+    d.defect_last_change_at = nowIso;
+    d.defect_last_change_by = actorName;
+    d.defect_last_change_role = actorRole;
+    if (note.trim()) appendDefectTimelineEvent(d, makeDefectTimelineEvent("napomena", actorName, actorRole, note.trim()));
     const { error } = await sb.from("reports").update({ data: d }).eq("id", id).eq("company_id", currentWorker.company_id);
     if (error) throw error;
     toast("Napomena je sačuvana.");

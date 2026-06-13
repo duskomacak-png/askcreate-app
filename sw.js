@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1703-direktor-arhiva";
+const CACHE_NAME = "askcreate-app-v1705-direktor-skloni-kvar";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1703-direktor-arhiva",
-  "./script.js?v=1703-direktor-arhiva",
-  "./manifest.json?v=1703-direktor-arhiva",
+  "./style.css?v=1705-direktor-skloni-kvar",
+  "./script.js?v=1705-direktor-skloni-kvar",
+  "./manifest.json?v=1705-direktor-skloni-kvar",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
