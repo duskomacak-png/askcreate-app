@@ -287,9 +287,10 @@ function businessUpdateReportsMetrics(list) {
   const fuelReports = getTodayFuelDashboardReports(reports);
   const fuel = Math.round(fuelReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
   const todayIso = today();
-  const todayDefects = reports.filter(r => String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
+  const todayDefects = reports.filter(r => !isArchivedReport(r) && String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
   const archived = reports.filter(isArchivedReport).length;
-  const todayDailyLogReports = reports.filter(r => officeReportMatchesDateSite(r, todayIso, todayIso, "")).length;
+  // Kvarovi se vode samo kroz karticu Kvarovi. Ne smeju dizati broj u kartici Dnevnik rada danas.
+  const todayDailyLogReports = reports.filter(r => !isArchivedReport(r) && !isDefectOnlyReport(r) && hasDailyReportData(r) && officeReportMatchesDateSite(r, todayIso, todayIso, "")).length;
   const todayCarnetRows = officeMetricCarnetRowsForToday(reports);
   businessSetText("directorMetricDailyLog", String(todayDailyLogReports));
   businessSetText("directorMetricCarnet", String(todayCarnetRows));
@@ -4676,7 +4677,9 @@ function vehicleTourMatchesFilter(row = {}, site = "") {
 }
 
 function officeBuildDailyLogData(date, site) {
-  const reports = (directorReportsCache || []).filter(r => officeReportMatchesDateSite(r, date, date, site));
+  // Dnevnik rada prikazuje samo radne izveštaje. Kvarovi idu u posebnu karticu Kvarovi,
+  // a arhivirani zapisi se prikazuju samo u kartici Arhiva.
+  const reports = (directorReportsCache || []).filter(r => !isArchivedReport(r) && !isDefectOnlyReport(r) && hasDailyReportData(r) && officeReportMatchesDateSite(r, date, date, site));
   const workers = [];
   const machines = [];
   const vehicles = [];
@@ -4844,19 +4847,9 @@ function officeBuildDailyLogData(date, site) {
       ]);
     });
 
-    if (hasDefectData(r)) {
-      const defectSite = d.defect_site_name || reportSite;
-      if (!site || normalizeSearch(defectSite).includes(normalizeSearch(site))) {
-        defects.push([
-          defectSite,
-          d.defect_asset_code || "",
-          d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || "",
-          d.defect || d.defect_description || d.problem_description || "",
-          d.defect_urgency || "",
-          d.defect_status || d.mechanic_status || "novo"
-        ]);
-      }
-    }
+    // Namerno ne dodajemo kvarove u Dnevnik rada.
+    // Aktivni kvarovi se signaliziraju i prikazuju samo u kartici Kvarovi,
+    // a po arhiviranju samo u kartici Arhiva.
   });
 
   return { reports, workers, machines, vehicles, lowloaders, waters, fuels, materials, defects };
@@ -5939,7 +5932,9 @@ function buildOwnerDashboardData(from, to, site = "") {
   const fuelRows = buildFuelConsumptionRows(from, to).filter(row => !site || [...row.sites].some(s => normalizeSearch(s).includes(normalizeSearch(site))));
   const badFuel = fuelRows.filter(row => fuelConsumptionStatus(row).cls === "consumption-status-bad").length;
 
-  const defectReports = allMatchingReports.filter(hasDefectData).filter(r => !isOwnerHiddenDefectReport(r));
+  // Direktorov aktivni pregled kvarova ne prikazuje arhivirane kvarove.
+  // Kada Direkcija klikne Arhiviraj, kvar ostaje samo u kartici Arhiva.
+  const defectReports = allMatchingReports.filter(r => hasDefectData(r) && !isArchivedReport(r)).filter(r => !isOwnerHiddenDefectReport(r));
   const defectStatusCounts = { novo: 0, aktivno: 0, reseno: 0, arhivirano: 0 };
   const defectRows = defectReports.map(r => {
     const archived = isArchivedReport(r);
@@ -6091,7 +6086,7 @@ function printOwnerDefectsReport(prefix = "ownerDashboard") {
   const html = buildOwnerDefectsReportHtml(prefix);
   const win = window.open("", "_blank");
   if (!win) { toast("Popup je blokiran. Dozvoli otvaranje prozora za štampu.", true); return; }
-  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1705-direktor-skloni-kvar"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
+  win.document.write(`<!doctype html><html><head><title>Izveštaj kvarova</title><link rel="stylesheet" href="style.css?v=1706-kvarovi-samo-kartica"><style>body{background:#fff;color:#111;padding:24px}.no-print{display:none!important}.office-form-preview{box-shadow:none}.defect-image-link{break-inside:avoid}.owner-defect-report-card{break-inside:avoid;margin-bottom:18px}</style></head><body><div class="office-form-preview owner-dashboard-preview">${html}</div><script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>`);
   win.document.close();
 }
 window.printOwnerDefectsReport = printOwnerDefectsReport;
@@ -6133,7 +6128,7 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.novo}</b><span>Novi kvarovi</span></div>
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.aktivno}</b><span>Preuzeto / u radu</span></div>
         <div class="owner-kpi owner-kpi-status"><b>${defectStatus.reseno}</b><span>Rešeni</span></div>
-        <div class="owner-kpi owner-kpi-status"><b>${defectStatus.arhivirano}</b><span>Arhivirani</span></div>
+        <div class="owner-kpi owner-kpi-status"><b>Arhiva</b><span>Arhivirani kvarovi su samo u kartici Arhiva</span></div>
       </div>
       ${loadOwnerHiddenDefectIds().size ? `<div class="owner-hidden-defects-note no-print"><span>Sklonjeno sa direktorovog prikaza: ${loadOwnerHiddenDefectIds().size}</span><button class="secondary small-action" type="button" onclick="ownerRestoreHiddenDefectReports()">Vrati sklonjene</button></div>` : ""}
       ${officeTable(["Lokacija/gradilište","Sredstvo","Opis kvara","Hitnost","Slike","Status","Prijavljen","Zadnja promena"], defectTableRows)}
