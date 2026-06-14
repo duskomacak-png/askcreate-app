@@ -6823,6 +6823,134 @@ function printOwnerDefectsReport(prefix = "ownerDashboard") {
 }
 window.printOwnerDefectsReport = printOwnerDefectsReport;
 
+
+function ownerSummaryQty(q, unit = "") {
+  const n = Number(q || 0);
+  if (!Number.isFinite(n) || Math.abs(n) < 0.00001) return "0" + (unit ? ` ${unit}` : "");
+  return `${round2(n)}${unit ? ` ${unit}` : ""}`;
+}
+
+function ownerSummaryStatusForMaterial(row) {
+  const imported = Number(row.imported || 0);
+  const exported = Number(row.exported || 0);
+  const installed = Number(row.installed || 0);
+  const internal = Number(row.internal || 0);
+  if (installed > 0) return "Ima ugradnju po šefu";
+  if (imported > 0 && installed <= 0) return "Čeka izveštaj šefa / ugradnju";
+  if (exported > 0 && imported <= 0 && installed <= 0) return "Odvoz sa gradilišta";
+  if (internal > 0) return "Rad u krugu gradilišta";
+  return "Nema promene";
+}
+
+function buildOwnerSiteShortSummaries(from, to, site = "") {
+  const siteMap = new Map();
+  const ensureSite = (name) => {
+    const key = name || "—";
+    if (!siteMap.has(key)) siteMap.set(key, {
+      site: key,
+      materials: new Map(),
+      workers: new Map(),
+      reports: 0,
+      hasChiefMaterialReport: false
+    });
+    return siteMap.get(key);
+  };
+
+  buildMaterialOverviewRows(from, to, site).forEach(r => {
+    const siteName = r.site || "—";
+    const summary = ensureSite(siteName);
+    const mat = r.material || "—";
+    const unit = r.unit || "";
+    const key = `${mat}||${unit}`;
+    if (!summary.materials.has(key)) summary.materials.set(key, {
+      material: mat,
+      unit,
+      imported: 0,
+      exported: 0,
+      installed: 0,
+      internal: 0,
+      tours: 0,
+      rows: []
+    });
+    const m = summary.materials.get(key);
+    const qty = Number(r.quantity || 0);
+    const tours = Number(r.tours || 0);
+    m.tours += Number.isFinite(tours) ? tours : 0;
+    if (r.flow === "imported") m.imported += qty;
+    else if (r.flow === "exported") m.exported += qty;
+    else if (r.flow === "installed") {
+      m.installed += qty;
+      summary.hasChiefMaterialReport = true;
+    }
+    else if (r.flow === "internal") m.internal += qty;
+    m.rows.push(r);
+  });
+
+  const reports = filterOperationalReportsForAnalytics(directorReportsCache || []).filter(r => ownerReportMatchesDateSiteAny(r, from, to, site));
+  reports.forEach(r => {
+    const d = r.data || {};
+    const reportSite = officeReportSite(r) || d.site_name || d.site || "—";
+    const workerRows = Array.isArray(d.workers) ? d.workers : (Array.isArray(d.worker_entries) ? d.worker_entries : []);
+    if (workerRows.length) {
+      workerRows.forEach(w => {
+        const siteName = officeEntrySiteName(w, reportSite) || reportSite || "—";
+        if (site && !officeEntryMatchesSite(w, reportSite, site) && !normalizeSearch(siteName).includes(normalizeSearch(site))) return;
+        const name = w.name || w.full_name || w.worker_name || w.employee_name || w.person_name || reportDocumentPerson(r) || "—";
+        const hours = parseDecimalInput(w.hours || w.work_hours || w.total_hours || w.shift_hours || "");
+        const summary = ensureSite(siteName);
+        const prev = summary.workers.get(name) || 0;
+        summary.workers.set(name, prev + (Number.isFinite(hours) ? hours : 0));
+      });
+    } else {
+      const hours = ownerTopLevelNumber(d, ["hours", "work_hours", "worker_hours", "workers_total_hours", "total_hours", "radni_sati"]);
+      if (hours) {
+        const summary = ensureSite(reportSite);
+        const name = reportDocumentPerson(r) || "—";
+        summary.workers.set(name, (summary.workers.get(name) || 0) + hours);
+      }
+    }
+    ensureSite(reportSite).reports += 1;
+  });
+
+  return Array.from(siteMap.values()).sort((a, b) => String(a.site).localeCompare(String(b.site), "sr"));
+}
+
+function ownerSiteSummaryCardsHtml(from, to, site = "") {
+  const summaries = buildOwnerSiteShortSummaries(from, to, site);
+  if (!summaries.length) return `<p class="muted">Nema podataka za izabrani period/gradilište.</p>`;
+  return `<div class="owner-site-summary-list">${summaries.map(summary => {
+    const materialRows = Array.from(summary.materials.values()).sort((a, b) => String(a.material).localeCompare(String(b.material), "sr"));
+    const workerRows = Array.from(summary.workers.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]), "sr"));
+    const totalHours = workerRows.reduce((sum, item) => sum + Number(item[1] || 0), 0);
+    const materialHtml = materialRows.length ? materialRows.map(m => {
+      const bits = [];
+      if (m.imported) bits.push(`<b>Uvezeno:</b> ${ownerSummaryQty(m.imported, m.unit)}`);
+      if (m.exported) bits.push(`<b>Izvezeno:</b> ${ownerSummaryQty(m.exported, m.unit)}`);
+      if (m.installed) bits.push(`<b>Ugrađeno po šefu:</b> ${ownerSummaryQty(m.installed, m.unit)}`);
+      if (m.internal) bits.push(`<b>U krugu:</b> ${ownerSummaryQty(m.internal, m.unit)}`);
+      if (m.tours) bits.push(`<b>Ture:</b> ${round2(m.tours)}`);
+      if (!bits.length) bits.push("Nema količine");
+      return `<div class="owner-site-material-line">
+        <strong>${escapeHtml(m.material)}${m.unit ? ` · ${escapeHtml(m.unit)}` : ""}</strong>
+        <span>${bits.join(" · ")}</span>
+        <em>${escapeHtml(ownerSummaryStatusForMaterial(m))}</em>
+      </div>`;
+    }).join("") : `<p class="muted tiny">Nema prijavljenog kretanja materijala za ovo gradilište.</p>`;
+    const workersHtml = workerRows.length ? workerRows.map(([name, hours]) => `<div class="owner-site-worker-line"><span>${escapeHtml(name)}</span><b>${round2(hours)} h</b></div>`).join("") + `<div class="owner-site-worker-total"><span>Ukupno radnih sati</span><b>${round2(totalHours)} h</b></div>` : `<p class="muted tiny">Radni sati nisu prijavljeni u izabranom periodu.</p>`;
+    const waitsChief = materialRows.some(m => Number(m.imported || 0) > 0 && Number(m.installed || 0) <= 0);
+    return `<article class="owner-site-summary-card">
+      <div class="owner-site-summary-head">
+        <h4>🏗️ ${escapeHtml(summary.site)}</h4>
+        <div class="owner-site-summary-badges"><span>${materialRows.length} materijala</span><span>${round2(totalHours)} h</span>${waitsChief ? `<span class="warn">Čeka šefa</span>` : `<span>Pregled</span>`}</div>
+      </div>
+      <div class="owner-site-summary-cols">
+        <div><h5>📦 Materijal</h5>${materialHtml}</div>
+        <div><h5>👷 Radni sati</h5>${workersHtml}</div>
+      </div>
+    </article>`;
+  }).join("")}</div>`;
+}
+
 function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
   ensureOverviewDatalists();
   ensureOverviewDefaultDates(prefix);
@@ -6869,7 +6997,10 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
         ${ownerDashboardDefectImagesPreviewHtml(prefix)}
       </div>
     </section>
-    <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","Dovezeno","Izvezeno","Ugrađeno po šefu"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.imported), round2(r.exported), round2(r.installed)]))}</section>
+    <section><h4>📊 Kratak pregled po gradilištu</h4>
+      <p class="muted tiny">Direktor prvo vidi sažetak: šta je dovezeno, odvezeno, šta je ugrađeno po šefu i koliko je radnih sati prijavljeno. Ugradnja se čita samo iz dnevnika šefa gradilišta.</p>
+      ${ownerSiteSummaryCardsHtml(from, to, site)}
+    </section>
     <section><h4>⛽ Povećana potrošnja</h4>${officeTable(["Sredstvo","Norma","Očekivano","Sipano","Razlika","Status"], fuelBadRows)}</section>`;
 }
 

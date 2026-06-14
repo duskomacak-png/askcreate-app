@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1734-materijal-tona-kg-rucno";
+const CACHE_NAME = "askcreate-v1736-direktor-kratak-pregled";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1734-materijal-tona-kg-rucno",
-  "./script.js?v=1734-materijal-tona-kg-rucno",
-  "./manifest.json?v=1734-materijal-tona-kg-rucno",
+  "./style.css?v=1736-direktor-kratak-pregled",
+  "./script.js?v=1736-direktor-kratak-pregled",
+  "./manifest.json?v=1736-direktor-kratak-pregled",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
