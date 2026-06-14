@@ -10469,6 +10469,23 @@ function prefillSelectedWorkerAssetIntoActiveModule() {
   }
 }
 
+
+function updateWorkerModuleSelectedLabel() {
+  const select = document.querySelector("#wrModuleSelect");
+  const label = document.querySelector("#wrModuleSelectedLabel");
+  if (!label || !select) return;
+  const value = String(select.value || "").trim();
+  if (!value) {
+    label.textContent = "Izabrana rubrika: —";
+    label.classList.add("hidden");
+    return;
+  }
+  const selectedOption = select.options[select.selectedIndex];
+  const text = selectedOption?.textContent?.trim() || WORKER_MODULE_DEFINITIONS.find(m => m.value === value)?.label || value;
+  label.textContent = "Izabrana rubrika: " + text;
+  label.classList.remove("hidden");
+}
+
 function refreshWorkerModuleSelector(perms = {}) {
   const select = $("#wrModuleSelect");
   const hint = $("#wrModuleHint");
@@ -10483,6 +10500,7 @@ function refreshWorkerModuleSelector(perms = {}) {
   if (hint) hint.textContent = allowed.length ? "" : (getSelectedWorkerContextAsset() ? "Za ovo sredstvo nisu podešene rubrike u Direkciji. Otvori sredstvo u Direkciji i čekiraj Kiper/Labudica/Cisterna." : "");
   applyWorkerModuleSelection({ addDefaults: false });
   updateWorkerSubmitButtonLabel();
+  updateWorkerModuleSelectedLabel();
 }
 
 function applyWorkerModuleSelection({ addDefaults = true } = {}) {
@@ -10492,6 +10510,7 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   const hint = $("#wrModuleHint");
   if (hint && module) hint.textContent = "";
   updateWorkerSubmitButtonLabel();
+  updateWorkerModuleSelectedLabel();
   if (!module || !addDefaults) return;
   if (module.value === "worker_hours" && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
   if (module.value === "machine_work" && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
@@ -15757,7 +15776,10 @@ function bindEvents() {
     renderSelectedAssetRubricsPreview(getSelectedWorkerContextAsset());
     refreshWorkerModuleSelector(currentWorker?.permissions || {});
   });
-  if ($("#wrModuleSelect")) $("#wrModuleSelect").addEventListener("change", () => applyWorkerModuleSelection({ addDefaults: true }));
+  if ($("#wrModuleSelect")) $("#wrModuleSelect").addEventListener("change", () => {
+    updateWorkerModuleSelectedLabel();
+    applyWorkerModuleSelection({ addDefaults: true });
+  });
   initSignaturePad();
   if ($("#clearSignatureBtn")) $("#clearSignatureBtn").addEventListener("click", () => clearSignatureCanvas(true));
   if ($("#wrDefectAssetName")) {

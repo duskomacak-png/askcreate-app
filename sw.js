@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1720-radnik-beli-prikaz";
+const CACHE_NAME = "askcreate-app-v1721-rubrika-vidljiva";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1720-radnik-beli-prikaz",
-  "./script.js?v=1720-radnik-beli-prikaz",
-  "./manifest.json?v=1720-radnik-beli-prikaz",
+  "./style.css?v=1721-rubrika-vidljiva",
+  "./script.js?v=1721-rubrika-vidljiva",
+  "./manifest.json?v=1721-rubrika-vidljiva",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

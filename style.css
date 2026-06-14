@@ -8533,3 +8533,29 @@ body.worker-field-theme #viewWorkerForm th{
     border-radius:16px!important;
   }
 }
+
+
+/* === AskCreate v1721: jasno prikaži izabranu radničku rubriku === */
+#viewWorkerForm .worker-selected-rubric{
+  margin:8px 0 0 !important;
+  padding:10px 12px !important;
+  border:1px solid #fecaca !important;
+  border-left:4px solid #dc2626 !important;
+  border-radius:12px !important;
+  background:#fff7f7 !important;
+  color:#7f1d1d !important;
+  font-weight:900 !important;
+  font-size:14px !important;
+  line-height:1.25 !important;
+}
+#viewWorkerForm .worker-selected-rubric.hidden{display:none!important;}
+#viewWorkerForm.worker-mobile-panel #wrModuleSelect{
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  font-weight:800!important;
+}
+#viewWorkerForm.worker-mobile-panel #wrModuleSelect option{
+  color:#111827!important;
+  background:#ffffff!important;
+  -webkit-text-fill-color:#111827!important;
+}
