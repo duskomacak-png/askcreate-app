@@ -8357,3 +8357,179 @@ body.defect-image-viewer-open{overflow:hidden;}
 @media (max-width: 720px){
   .worker-asset-context-grid{ grid-template-columns: 1fr; }
 }
+
+/* =========================================================
+   v1720 - Radnik beli prikaz
+   cilj: belа forma za teren, sivi okviri, tamna slova, crvena dugmad
+   ========================================================= */
+body.worker-field-theme{
+  --worker-bg:#f4f6f8!important;
+  --worker-surface:#ffffff!important;
+  --worker-surface-2:#ffffff!important;
+  --worker-text:#111827!important;
+  --worker-muted:#667085!important;
+  --worker-border:#d0d5dd!important;
+  --worker-border-soft:#e4e7ec!important;
+  background:#f4f6f8!important;
+  color:#111827!important;
+}
+body.worker-field-theme .internal-header{
+  background:#ffffff!important;
+  color:#111827!important;
+  border-bottom:1px solid #e4e7ec!important;
+  box-shadow:0 6px 18px rgba(16,24,40,.06)!important;
+}
+body.worker-field-theme .internal-header strong,
+body.worker-field-theme .internal-header small,
+body.worker-field-theme #internalTitle{
+  color:#111827!important;
+}
+body.worker-field-theme #internalSubtitle{
+  color:#667085!important;
+}
+body.worker-field-theme .internal-header > div:first-child::before{
+  background:#fff5f5!important;
+  border:1px solid #fecaca!important;
+  color:#b42318!important;
+}
+body.worker-field-theme #viewWorkerForm{
+  background:#f4f6f8!important;
+  color:#111827!important;
+}
+body.worker-field-theme #viewWorkerForm .dashboard-head,
+body.worker-field-theme #viewWorkerForm > .card,
+body.worker-field-theme #viewWorkerForm .dyn-section,
+body.worker-field-theme #viewWorkerForm .entry-card,
+body.worker-field-theme #viewWorkerForm .returned-panel,
+body.worker-field-theme #viewWorkerForm .fuel-memory-panel,
+body.worker-field-theme #workerAssetContextBox,
+body.worker-field-theme #workerModuleChooser{
+  background:#ffffff!important;
+  border:1px solid #d0d5dd!important;
+  color:#111827!important;
+  box-shadow:0 10px 24px rgba(16,24,40,.07)!important;
+}
+body.worker-field-theme #viewWorkerForm .dashboard-head{
+  border-left:4px solid #ef4444!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section{
+  border-left:4px solid #ef4444!important;
+  border-radius:18px!important;
+  margin-top:14px!important;
+}
+body.worker-field-theme #workerAssetContextBox,
+body.worker-field-theme #workerModuleChooser{
+  border-radius:18px!important;
+  padding:14px!important;
+  margin:14px 0!important;
+}
+body.worker-field-theme #viewWorkerForm h2,
+body.worker-field-theme #viewWorkerForm h3,
+body.worker-field-theme #viewWorkerForm h4,
+body.worker-field-theme #viewWorkerForm h5,
+body.worker-field-theme #workerHello,
+body.worker-field-theme #workerCompanyLabel{
+  color:#111827!important;
+}
+body.worker-field-theme #workerCompanyLabel,
+body.worker-field-theme #viewWorkerForm .hint,
+body.worker-field-theme #viewWorkerForm .field-hint,
+body.worker-field-theme #viewWorkerForm .muted,
+body.worker-field-theme #viewWorkerForm .tiny,
+body.worker-field-theme #wrAssetContextInfo{
+  color:#667085!important;
+}
+body.worker-field-theme #viewWorkerForm label{
+  color:#1f2937!important;
+  font-weight:850!important;
+  margin-top:12px!important;
+}
+body.worker-field-theme #viewWorkerForm input,
+body.worker-field-theme #viewWorkerForm select,
+body.worker-field-theme #viewWorkerForm textarea{
+  background:#ffffff!important;
+  border:1px solid #cbd5e1!important;
+  color:#111827!important;
+  border-radius:14px!important;
+  box-shadow:0 1px 0 rgba(16,24,40,.02)!important;
+}
+body.worker-field-theme #viewWorkerForm input::placeholder,
+body.worker-field-theme #viewWorkerForm textarea::placeholder{
+  color:#98a2b3!important;
+}
+body.worker-field-theme #viewWorkerForm input:focus,
+body.worker-field-theme #viewWorkerForm select:focus,
+body.worker-field-theme #viewWorkerForm textarea:focus{
+  outline:3px solid rgba(239,68,68,.14)!important;
+  border-color:#ef4444!important;
+  box-shadow:0 0 0 1px rgba(239,68,68,.08)!important;
+}
+body.worker-field-theme #viewWorkerForm button.primary,
+body.worker-field-theme #viewWorkerForm .primary,
+body.worker-field-theme #viewWorkerForm button.secondary,
+body.worker-field-theme #viewWorkerForm .secondary,
+body.worker-field-theme #viewWorkerForm .danger-btn{
+  background:linear-gradient(135deg,#b42318,#ef4444)!important;
+  color:#ffffff!important;
+  border:1px solid #ef4444!important;
+  border-radius:14px!important;
+  box-shadow:0 10px 22px rgba(180,35,24,.18)!important;
+  font-weight:900!important;
+}
+body.worker-field-theme #workerLogoutBtn{
+  background:#ffffff!important;
+  color:#b42318!important;
+  border:1px solid #fecaca!important;
+  box-shadow:0 8px 18px rgba(16,24,40,.08)!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-list{
+  display:grid!important;
+  gap:12px!important;
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .defect-picked,
+body.worker-field-theme #viewWorkerForm .worker-asset-rubrics-preview,
+body.worker-field-theme #viewWorkerForm .stored-fuel-list,
+body.worker-field-theme #viewWorkerForm .signed-file-info{
+  background:#f8fafc!important;
+  border:1px solid #e4e7ec!important;
+  color:#475467!important;
+  border-radius:14px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-asset-rubrics-preview span,
+body.worker-field-theme #viewWorkerForm .asset-feature-badge,
+body.worker-field-theme #viewWorkerForm .pill,
+body.worker-field-theme #viewWorkerForm .badge{
+  background:#fff5f5!important;
+  border:1px solid #fecaca!important;
+  color:#b42318!important;
+}
+body.worker-field-theme #viewWorkerForm .signature-pad-wrap,
+body.worker-field-theme #viewWorkerForm .defect-images-preview,
+body.worker-field-theme #viewWorkerForm .report-excel-wrap,
+body.worker-field-theme #viewWorkerForm .excel-scroll{
+  background:#ffffff!important;
+  border:1px solid #d0d5dd!important;
+  color:#111827!important;
+}
+body.worker-field-theme #viewWorkerForm table,
+body.worker-field-theme #viewWorkerForm th,
+body.worker-field-theme #viewWorkerForm td{
+  color:#111827!important;
+  border-color:#d0d5dd!important;
+}
+body.worker-field-theme #viewWorkerForm th{
+  background:#f2f4f7!important;
+}
+@media (max-width:768px){
+  body.worker-field-theme #viewWorkerForm{padding:10px 8px 18px!important;}
+  body.worker-field-theme #viewWorkerForm .dashboard-head,
+  body.worker-field-theme #viewWorkerForm > .card,
+  body.worker-field-theme #viewWorkerForm .dyn-section,
+  body.worker-field-theme #viewWorkerForm .entry-card,
+  body.worker-field-theme #workerAssetContextBox,
+  body.worker-field-theme #workerModuleChooser{
+    padding:14px!important;
+    border-radius:16px!important;
+  }
+}
