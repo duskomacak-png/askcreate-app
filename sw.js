@@ -1,4 +1,4 @@
-const CACHE_NAME = "askcreate-v1725-radnik-cistiji-tok";
+const CACHE_NAME = "askcreate-v1726-ture-jednostavan-tok";
 const APP_SHELL = [
   "./",
   "./index.html",

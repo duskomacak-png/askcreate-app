@@ -8719,3 +8719,40 @@ body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-
 #viewWorkerForm .worker-close-module-btn:hover{border-color:#dc2626!important;color:#dc2626!important;}
 #viewWorkerForm .hidden-by-rule{display:none!important;}
 #viewWorkerForm .worker-active-module-section{border-left:6px solid #dc2626!important;}
+
+
+/* === AskCreate v1726: jednostavan tok za ture / kiper === */
+#viewWorkerForm.worker-mobile-panel .simplified-tour-card {
+  border-left: 5px solid #dc2626 !important;
+  background: #ffffff !important;
+}
+#viewWorkerForm.worker-mobile-panel .tour-route-box {
+  border: 1px solid #d1d5db !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  padding: 12px !important;
+  margin: 10px 0 !important;
+}
+#viewWorkerForm.worker-mobile-panel .tour-route-box h4 {
+  margin: 0 0 8px !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  color: #111827 !important;
+}
+#viewWorkerForm.worker-mobile-panel .tour-place-preview {
+  margin: 8px 0 0 !important;
+  padding: 9px 10px !important;
+  border-radius: 12px !important;
+  border: 1px solid #dcfce7 !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+  font-weight: 800 !important;
+}
+#viewWorkerForm.worker-mobile-panel .tour-place-extra {
+  margin-top: 8px !important;
+}
+#viewWorkerForm.worker-mobile-panel .tour-place-kind {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #cbd5e1 !important;
+}

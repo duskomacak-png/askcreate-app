@@ -9470,100 +9470,158 @@ function truckTourTypeLabel(value = "") {
   return v || "—";
 }
 
+function getCurrentWorkerSiteNameForTours() {
+  const select = document.querySelector("#wrSiteName");
+  const value = String(select?.value || "").trim();
+  if (value) return value;
+  const opt = select?.options?.[select.selectedIndex];
+  return String(opt?.textContent || "").trim();
+}
+
+function normalizeTourPlaceKind(value = "") {
+  const v = String(value || "").trim();
+  if (["current", "site", "landfill", "manual"].includes(v)) return v;
+  if (["deponija", "dump"].includes(v)) return "landfill";
+  if (["gradiliste", "other_site", "other"].includes(v)) return "site";
+  return "current";
+}
+
+function fillTourPlaceFields(row, prefix, values = {}) {
+  const kind = normalizeTourPlaceKind(values.kind || values.type || "current");
+  const kindSelect = row.querySelector(`.${prefix}-kind`);
+  if (kindSelect) kindSelect.value = kind;
+  const site = values.site || values.site_name || "";
+  const landfill = values.landfill || "";
+  const manual = values.manual || values.text || "";
+  const siteSelect = row.querySelector(`.${prefix}-site`);
+  const landfillInput = row.querySelector(`.${prefix}-landfill`);
+  const manualInput = row.querySelector(`.${prefix}-manual`);
+  if (siteSelect) siteSelect.value = site;
+  if (landfillInput) landfillInput.value = landfill;
+  if (manualInput) manualInput.value = manual;
+}
+
+function getTourPlaceFromRow(row, prefix) {
+  const kind = normalizeTourPlaceKind(row.querySelector(`.${prefix}-kind`)?.value || "current");
+  const currentSite = getCurrentWorkerSiteNameForTours();
+  const site = String(row.querySelector(`.${prefix}-site`)?.value || "").trim();
+  const landfill = String(row.querySelector(`.${prefix}-landfill`)?.value || "").trim();
+  const manual = String(row.querySelector(`.${prefix}-manual`)?.value || "").trim();
+  let label = "";
+  if (kind === "current") label = currentSite;
+  else if (kind === "site") label = site;
+  else if (kind === "landfill") label = landfill;
+  else label = manual;
+  return { kind, label, site: kind === "current" ? currentSite : (kind === "site" ? site : ""), landfill: kind === "landfill" ? landfill : "", manual: kind === "manual" ? manual : "" };
+}
+
+function refreshTourPlaceVisibility(row) {
+  ["from", "to"].forEach(prefix => {
+    const kind = normalizeTourPlaceKind(row.querySelector(`.${prefix}-kind`)?.value || "current");
+    const set = (cls, show) => { const el = row.querySelector(`.${cls}`); if (el) el.style.display = show ? "block" : "none"; };
+    set(`${prefix}-site-wrap`, kind === "site");
+    set(`${prefix}-landfill-wrap`, kind === "landfill");
+    set(`${prefix}-manual-wrap`, kind === "manual");
+    const current = row.querySelector(`.${prefix}-current-preview`);
+    if (current) {
+      current.style.display = kind === "current" ? "block" : "none";
+      current.textContent = `Koristi se dnevno gradilište: ${getCurrentWorkerSiteNameForTours() || "nije odabrano"}`;
+    }
+  });
+}
+
 function addVehicleTourRow(vehicleCard, values = {}) {
   const list = vehicleCard?.querySelector(".v-tour-items");
   if (!list) return;
   const idx = list.querySelectorAll(".vehicle-tour-row").length + 1;
   const rawType = values.tour_type || values.type || values.direction_type || (values.direction === "interno" ? "site_to_site" : values.direction === "odvoz" ? "landfill" : "local");
-  const type = rawType === "external_in" ? "site_to_site" : rawType;
   const material = values.material || values.material_name || "";
+  const currentSite = getCurrentWorkerSiteNameForTours();
+
+  let fromDefaults = { kind: "current", site: currentSite };
+  let toDefaults = { kind: "current", site: currentSite };
+  if (rawType === "site_to_site") {
+    fromDefaults = { kind: "site", site: values.from_site || values.load_location || currentSite || "" };
+    toDefaults = { kind: "site", site: values.to_site || values.unload_location || "" };
+  } else if (rawType === "landfill") {
+    fromDefaults = { kind: "current", site: values.from_site || values.site_name || values.site || currentSite || "" };
+    toDefaults = { kind: "landfill", landfill: values.landfill || values.unload_location || values.to_site || "" };
+  }
+  if (values.from_kind || values.from_type) fromDefaults.kind = values.from_kind || values.from_type;
+  if (values.to_kind || values.to_type) toDefaults.kind = values.to_kind || values.to_type;
+  if (values.from_label && !fromDefaults.site && !fromDefaults.landfill) fromDefaults.manual = values.from_label;
+  if (values.to_label && !toDefaults.site && !toDefaults.landfill) toDefaults.manual = values.to_label;
+
   const div = document.createElement("div");
-  div.className = "vehicle-tour-row truck-tour-card";
+  div.className = "vehicle-tour-row truck-tour-card simplified-tour-card";
   div.innerHTML = `
     <div class="entry-card-head vehicle-tour-head">
       <strong>Tura ${idx}</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-    <div class="grid two">
-      <div>
-        <label>Vrsta ture</label>
-        <select class="tour-type">
-          <option value="local" ${type === "local" ? "selected" : ""}>Lokal u krugu gradilišta</option>
-          <option value="site_to_site" ${type === "site_to_site" ? "selected" : ""}>Sa gradilišta na gradilište</option>
-          <option value="landfill" ${type === "landfill" ? "selected" : ""}>Odvoz na deponiju</option>
-        </select>
-      </div>
+    <div class="grid two tour-count-box">
       <div>
         <label>Materijal</label>
         <select class="tour-material">${buildWorkerMaterialOptionsHtml(material)}</select>
       </div>
-    </div>
-
-    <div class="grid two tour-count-box">
       <div>
         <label>Broj tura</label>
         <input class="tour-count" inputmode="decimal" placeholder="npr. 2" value="${escapeHtml(values.tours || values.tour_count || "")}" />
       </div>
-      <div>
-        <label>Napomena</label>
-        <input class="tour-note" placeholder="kratka napomena" value="${escapeHtml(values.note || values.route || "")}" />
-      </div>
     </div>
 
-    <div class="grid two tour-site-local">
-      <div>
-        <label>Gradilište</label>
-        <select class="tour-site">${buildTruckTourSiteOptionsHtml(values.site_name || values.site || "")}</select>
-      </div>
+    <div class="tour-route-box">
+      <h4>Polazište</h4>
+      <select class="from-kind tour-place-kind">
+        <option value="current">Sa trenutnog gradilišta</option>
+        <option value="site">Sa drugog gradilišta</option>
+        <option value="landfill">Sa deponije</option>
+        <option value="manual">Ručni unos</option>
+      </select>
+      <div class="tour-place-preview from-current-preview"></div>
+      <div class="from-site-wrap tour-place-extra"><select class="from-site entry-site-select">${buildTruckTourSiteOptionsHtml(fromDefaults.site || "")}</select></div>
+      <div class="from-landfill-wrap tour-place-extra"><input class="from-landfill" placeholder="npr. Deponija Surčin" value="${escapeHtml(fromDefaults.landfill || "")}" /></div>
+      <div class="from-manual-wrap tour-place-extra"><input class="from-manual" placeholder="upiši polazište" value="${escapeHtml(fromDefaults.manual || "")}" /></div>
     </div>
 
-    <div class="grid two tour-site-transfer">
-      <div>
-        <label>Od gradilišta</label>
-        <select class="tour-from-site">${buildTruckTourSiteOptionsHtml(values.from_site || values.load_location || "")}</select>
-      </div>
-      <div>
-        <label>Do gradilišta</label>
-        <select class="tour-to-site">${buildTruckTourSiteOptionsHtml(values.to_site || values.unload_location || "")}</select>
-      </div>
+    <div class="tour-route-box">
+      <h4>Odredište</h4>
+      <select class="to-kind tour-place-kind">
+        <option value="current">Na trenutno gradilište</option>
+        <option value="site">Na drugo gradilište</option>
+        <option value="landfill">Na deponiju</option>
+        <option value="manual">Ručni unos</option>
+      </select>
+      <div class="tour-place-preview to-current-preview"></div>
+      <div class="to-site-wrap tour-place-extra"><select class="to-site entry-site-select">${buildTruckTourSiteOptionsHtml(toDefaults.site || "")}</select></div>
+      <div class="to-landfill-wrap tour-place-extra"><input class="to-landfill" placeholder="npr. Deponija Surčin" value="${escapeHtml(toDefaults.landfill || "")}" /></div>
+      <div class="to-manual-wrap tour-place-extra"><input class="to-manual" placeholder="upiši odredište" value="${escapeHtml(toDefaults.manual || "")}" /></div>
     </div>
 
-    <div class="grid two tour-site-landfill">
-      <div>
-        <label>Sa gradilišta</label>
-        <select class="tour-source-site">${buildTruckTourSiteOptionsHtml(values.from_site || values.site_name || values.site || values.load_location || "")}</select>
-      </div>
-      <div>
-        <label>Deponija</label>
-        <input class="tour-landfill" placeholder="npr. Deponija Surčin" value="${escapeHtml(values.landfill || values.unload_location || values.to_site || "")}" />
-      </div>
+    <div>
+      <label>Napomena</label>
+      <input class="tour-note" placeholder="kratka napomena" value="${escapeHtml(values.note || values.route || "")}" />
     </div>
   `;
-  const setBlock = (selector, show) => {
-    const el = div.querySelector(selector);
-    if (!el) return;
-    el.style.display = show ? "grid" : "none";
-  };
-  const refreshVisibility = () => {
-    const t = div.querySelector(".tour-type")?.value || "local";
-    setBlock('.tour-site-local', t === 'local');
-    setBlock('.tour-site-transfer', t === 'site_to_site');
-    setBlock('.tour-site-landfill', t === 'landfill');
-  };
+
+  list.appendChild(div);
+  fillTourPlaceFields(div, "from", fromDefaults);
+  fillTourPlaceFields(div, "to", toDefaults);
+  refreshTourPlaceVisibility(div);
+
   div.querySelector(".remove-entry")?.addEventListener("click", () => {
     div.remove();
     updateVehicleCubic(vehicleCard);
   });
-  div.querySelector(".tour-type")?.addEventListener("change", () => {
-    refreshVisibility();
-    updateVehicleCubic(vehicleCard);
+  div.querySelectorAll("input, select").forEach(el => {
+    el.addEventListener("input", () => updateVehicleCubic(vehicleCard));
+    el.addEventListener("change", () => {
+      refreshTourPlaceVisibility(div);
+      updateVehicleCubic(vehicleCard);
+    });
   });
-  div.querySelectorAll("input, select").forEach(el => el.addEventListener("input", () => updateVehicleCubic(vehicleCard)));
-  div.querySelectorAll("select").forEach(el => el.addEventListener("change", () => updateVehicleCubic(vehicleCard)));
-  list.appendChild(div);
   preventNumberInputScrollChanges(div);
-  refreshVisibility();
   updateVehicleCubic(vehicleCard);
 }
 
@@ -9667,44 +9725,36 @@ function addVehicleEntry(values = {}) {
 
 function getVehicleTourItemsFromEntry(el, selected = {}) {
   return Array.from(el.querySelectorAll(".vehicle-tour-row")).map((row, idx) => {
-    const type = row.querySelector(".tour-type")?.value || "local";
     const material = row.querySelector(".tour-material")?.value.trim() || "";
     const tours = row.querySelector(".tour-count")?.value.trim() || "";
-    const base = {
+    const from = getTourPlaceFromRow(row, "from");
+    const to = getTourPlaceFromRow(row, "to");
+    let tourType = "site_to_site";
+    if (from.kind === "current" && to.kind === "current") tourType = "local";
+    if (to.kind === "landfill") tourType = "landfill";
+    const routeText = `${from.label || "—"} → ${to.label || "—"}`;
+    return {
       no: idx + 1,
-      tour_type: type,
-      tour_type_label: truckTourTypeLabel(type),
+      tour_type: tourType,
+      tour_type_label: truckTourTypeLabel(tourType),
+      from_kind: from.kind,
+      to_kind: to.kind,
+      from_label: from.label,
+      to_label: to.label,
+      from_site: from.site || from.label || "",
+      to_site: to.site || "",
+      site_name: from.kind === "current" ? from.site : (to.kind === "current" ? to.site : from.site || to.site || ""),
+      landfill: from.landfill || to.landfill || "",
+      load_location: from.label || "",
+      unload_location: to.label || "",
+      route: routeText,
       material,
       material_name: material,
       tours,
-      note: row.querySelector(".tour-note")?.value.trim() || ""
+      note: row.querySelector(".tour-note")?.value.trim() || "",
+      direction: tourType === "landfill" ? "landfill" : (tourType === "local" ? "local" : "transfer")
     };
-    if (type === "site_to_site") {
-      return {
-        ...base,
-        from_site: row.querySelector(".tour-from-site")?.value || "",
-        to_site: row.querySelector(".tour-to-site")?.value || "",
-        load_location: row.querySelector(".tour-from-site")?.value || "",
-        unload_location: row.querySelector(".tour-to-site")?.value || "",
-        direction: "transfer"
-      };
-    }
-    if (type === "landfill") {
-      return {
-        ...base,
-        site_name: row.querySelector(".tour-source-site")?.value || "",
-        from_site: row.querySelector(".tour-source-site")?.value || "",
-        landfill: row.querySelector(".tour-landfill")?.value.trim() || "",
-        unload_location: row.querySelector(".tour-landfill")?.value.trim() || "",
-        direction: "landfill"
-      };
-    }
-    return {
-      ...base,
-      site_name: row.querySelector(".tour-site")?.value || "",
-      direction: "local"
-    };
-  }).filter(x => x.tours || x.material || x.site_name || x.from_site || x.to_site || x.landfill || x.note);
+  }).filter(x => x.tours || x.material || x.from_label || x.to_label || x.landfill || x.note);
 }
 
 function getVehicleEntries() {
