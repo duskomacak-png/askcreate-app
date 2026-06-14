@@ -2626,6 +2626,16 @@ function setAssetFuelTypeInputs(types) {
   });
 }
 
+function syncAssetTankFieldVisibility() {
+  const features = collectAssetFeatureInputs();
+  const hasFuelTank = features.includes("fuel_tanker") || features.includes("fixed_fuel_pump");
+  const hasWaterTank = features.includes("water_tanker");
+  const fuelBox = document.querySelector("#assetFuelTankBox");
+  const waterBox = document.querySelector("#assetWaterTankBox");
+  if (fuelBox) fuelBox.classList.toggle("hidden", !hasFuelTank);
+  if (waterBox) waterBox.classList.toggle("hidden", !hasWaterTank);
+}
+
 function getAssetFuelTypes(asset = {}) {
   return normalizeAssetFeatures(asset.fuel_types || asset.asset_fuel_types || asset.supported_fuel_types || []);
 }
@@ -2676,6 +2686,7 @@ function applyDefaultAssetFeaturesFromType({ onlyIfEmpty = true } = {}) {
   inputs.forEach(input => {
     if (defaults.has(input.value)) input.checked = true;
   });
+  syncAssetTankFieldVisibility();
 }
 
 function defaultFuelUnitForAssetType(assetType) {
@@ -2783,6 +2794,7 @@ function clearAssetForm() {
   setAssetFeatureInputs([]);
   setAssetFuelTypeInputs([]);
   applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true });
+  syncAssetTankFieldVisibility();
   editingAssetId = null;
   setAssetFormMode("add");
   setAssetCodeStatus("Interni broj sredstva mora biti jedinstven u ovoj firmi. Ne koristi isti broj za dve mašine, vozila ili opremu.", "info");
@@ -2922,6 +2934,7 @@ window.editAsset = async (id) => {
     if (document.querySelector("#assetFuelTolerance")) document.querySelector("#assetFuelTolerance").value = asset.fuel_tolerance_percent || asset.consumption_tolerance_percent || asset.tolerance_percent || "";
     const storedFeatures = getAssetFeatures(asset);
     setAssetFeatureInputs(storedFeatures.length ? storedFeatures : defaultAssetFeaturesForType(asset.asset_type || ""));
+    syncAssetTankFieldVisibility();
     setAssetFuelTypeInputs(getAssetFuelTypes(asset));
     if (document.querySelector("#assetFuelTankCapacity")) document.querySelector("#assetFuelTankCapacity").value = asset.fuel_tank_capacity || "";
     if (document.querySelector("#assetFuelTankLabel")) document.querySelector("#assetFuelTankLabel").value = asset.fuel_tank_label || "";
@@ -15445,10 +15458,13 @@ function bindEvents() {
   $("#addAssetBtn").addEventListener("click", saveAssetForm);
   if ($("#assetType")) $("#assetType").addEventListener("change", () => {
     applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true });
+    syncAssetTankFieldVisibility();
     const fuelUnit = $("#assetFuelUnit");
     if (fuelUnit && !(fuelUnit.dataset.userChanged === "1")) fuelUnit.value = defaultFuelUnitForAssetType($("#assetType").value);
   });
   if ($("#assetFuelUnit")) $("#assetFuelUnit").addEventListener("change", () => { $("#assetFuelUnit").dataset.userChanged = "1"; });
+  document.querySelectorAll(".assetFeatureInput").forEach(input => input.addEventListener("change", syncAssetTankFieldVisibility));
+  syncAssetTankFieldVisibility();
   if ($("#cancelEditAssetBtn")) $("#cancelEditAssetBtn").addEventListener("click", clearAssetForm);
   if ($("#assetCode")) $("#assetCode").addEventListener("input", scheduleAssetCodeAvailabilityCheck);
   if ($("#assetListFilter")) $("#assetListFilter").addEventListener("change", (e) => handleAssetListFilterChange(e.target.value));
