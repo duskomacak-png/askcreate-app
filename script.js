@@ -10486,6 +10486,81 @@ function updateWorkerModuleSelectedLabel() {
   label.classList.remove("hidden");
 }
 
+
+function ensureWorkerModuleFlowBox() {
+  const chooser = document.querySelector("#workerModuleChooser");
+  if (!chooser) return null;
+  let box = document.querySelector("#wrModuleFlowBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "wrModuleFlowBox";
+    box.className = "worker-module-flow hidden";
+    chooser.appendChild(box);
+  }
+  return box;
+}
+
+function updateWorkerModuleFlowBox() {
+  const box = ensureWorkerModuleFlowBox();
+  if (!box) return;
+  const module = getSelectedWorkerModule();
+  const asset = getSelectedWorkerContextAsset();
+  if (!module) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  const assetLabel = asset ? formatAssetLabel(asset) : "nije izabrano sredstvo";
+  const texts = {
+    fuel_entry: ["Otvoren je obrazac: Gorivo odmah", "Popuni sredstvo, litre, KM/MTČ i ko je sipao."],
+    field_tanker: ["Otvoren je obrazac: Cisterna goriva", "Popuni izvor/cisternu, svako sipanje, KM/MTČ, litre i ko je primio gorivo."],
+    defect_report: ["Otvoren je obrazac: Prijava kvara", "Popuni opis kvara, lokaciju, hitnost i slike ako postoje."],
+    truck_tours: ["Otvoren je obrazac: Vožnja / ture / materijal", "Popuni ture, materijal, m³/tona i relacije."],
+    lowloader: ["Otvoren je obrazac: Labudica / transport mašine", "Popuni koju mašinu prevoziš, odakle, dokle i kilometre."],
+    water_tanker: ["Otvoren je obrazac: Cisterna za vodu", "Popuni odakle je voda, gde je isporučena i količinu/ture."],
+    machine_work: ["Otvoren je obrazac: Rad mašine / MTČ", "Popuni gradilište, MTČ i šta je rađeno."],
+    worker_hours: ["Otvoren je obrazac: Dnevni radni izveštaj", "Popuni radnike, sate i opis rada."],
+    leave_request: ["Otvoren je obrazac: Slobodan dan / godišnji", "Popuni datum i napomenu ako treba."],
+    warehouse: ["Otvoren je obrazac: Magacin", "Popuni ulaz/izlaz, artikal i količinu."],
+    material_entry: ["Otvoren je obrazac: Materijal", "Popuni materijal i količinu."]
+  };
+  const [title, desc] = texts[module.value] || ["Otvoren je obrazac: " + module.label, "Popuni polja ispod i pošalji Upravi."];
+  box.innerHTML = `<strong>${escapeHtml(title)}</strong><span>Sredstvo: ${escapeHtml(assetLabel)}</span><small>${escapeHtml(desc)}</small>`;
+  box.classList.remove("hidden");
+}
+
+function markAndScrollWorkerActiveSection({ scroll = false } = {}) {
+  const module = getSelectedWorkerModule();
+  const keys = module?.sectionKeys || [];
+  const selectorMap = {
+    workers: "#secWorkers",
+    machines: "#secMachines",
+    vehicles: "#secVehicles",
+    lowloader: "#secLowloader",
+    water_tanker: "#secWaterTanker",
+    fuel: "#secFuel",
+    field_tanker: "#secFieldTanker",
+    materials: "#secMaterials",
+    signature: "#secSignature",
+    leave_request: "#secLeaveRequest",
+    warehouse: "#secWarehouse",
+    defects: "#secDefects",
+    daily_work: "#secWorkerSite"
+  };
+  document.querySelectorAll("#viewWorkerForm .dyn-section").forEach(el => el.classList.remove("worker-active-module-section"));
+  let first = null;
+  for (const key of keys) {
+    const el = document.querySelector(selectorMap[key] || "");
+    if (el && el.classList.contains("active")) {
+      el.classList.add("worker-active-module-section");
+      if (!first) first = el;
+    }
+  }
+  if (scroll && first && first.scrollIntoView) {
+    setTimeout(() => first.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }
+}
+
 function refreshWorkerModuleSelector(perms = {}) {
   const select = $("#wrModuleSelect");
   const hint = $("#wrModuleHint");
@@ -10511,6 +10586,8 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   if (hint && module) hint.textContent = "";
   updateWorkerSubmitButtonLabel();
   updateWorkerModuleSelectedLabel();
+  updateWorkerModuleFlowBox();
+  markAndScrollWorkerActiveSection({ scroll: !!module && !!addDefaults });
   if (!module || !addDefaults) return;
   if (module.value === "worker_hours" && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
   if (module.value === "machine_work" && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
@@ -10521,6 +10598,8 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   if (module.value === "water_tanker" && $("#waterTankerEntries") && !$("#waterTankerEntries").children.length) addWaterTankerEntry();
   if ((module.value === "truck_tours" || module.value === "material_entry") && $("#materialEntries") && !$("#materialEntries").children.length && perms.materials) addMaterialEntry();
   prefillSelectedWorkerAssetIntoActiveModule();
+  updateWorkerModuleFlowBox();
+  markAndScrollWorkerActiveSection({ scroll: true });
   updateLeaveRequestVisibility();
 }
 
@@ -17008,3 +17087,70 @@ function copySupportEmail() {
     showToast(email);
   }
 }
+
+
+// === AskCreate v1722: sigurni prikaz izabrane vrednosti za sva select polja kod radnika ===
+(function(){
+  function selectText(sel){
+    if (!sel) return "";
+    var opt = sel.options && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
+    return (opt ? (opt.textContent || "") : "").trim();
+  }
+  function isPlaceholderText(txt){
+    var t = String(txt || "").toLowerCase();
+    return !t || t.includes("izaberi") || t.includes("prvo izaberi") || t.includes("učitavam") || t.includes("ucitavam") || t.includes("nema ");
+  }
+  window.updateWorkerSelectVisibleValue = function(sel){
+    try{
+      if (!sel || !sel.closest || !sel.closest("#viewWorkerForm")) return;
+      var txt = selectText(sel);
+      var val = String(sel.value || "").trim();
+      sel.style.setProperty("color", "#111827", "important");
+      sel.style.setProperty("-webkit-text-fill-color", "#111827", "important");
+      sel.style.setProperty("background-color", "#ffffff", "important");
+      var mirror = sel.nextElementSibling;
+      if (!mirror || !mirror.classList || !mirror.classList.contains("worker-select-visible-value")) {
+        mirror = document.createElement("div");
+        mirror.className = "worker-select-visible-value";
+        sel.insertAdjacentElement("afterend", mirror);
+      }
+      if (!val || isPlaceholderText(txt)) {
+        mirror.textContent = "";
+        mirror.classList.remove("is-visible");
+        return;
+      }
+      mirror.textContent = "Izabrano: " + txt;
+      mirror.classList.add("is-visible");
+    }catch(e){}
+  };
+  window.refreshWorkerSelectVisibleValues = function(){
+    try{
+      document.querySelectorAll("#viewWorkerForm select").forEach(function(sel){
+        window.updateWorkerSelectVisibleValue(sel);
+      });
+    }catch(e){}
+  };
+  document.addEventListener("change", function(e){
+    if (e.target && e.target.matches && e.target.matches("#viewWorkerForm select")) {
+      setTimeout(function(){ window.updateWorkerSelectVisibleValue(e.target); }, 0);
+      setTimeout(window.refreshWorkerSelectVisibleValues, 80);
+    }
+  }, true);
+  document.addEventListener("input", function(e){
+    if (e.target && e.target.matches && e.target.matches("#viewWorkerForm select")) {
+      setTimeout(function(){ window.updateWorkerSelectVisibleValue(e.target); }, 0);
+    }
+  }, true);
+  document.addEventListener("DOMContentLoaded", function(){
+    setTimeout(window.refreshWorkerSelectVisibleValues, 200);
+    var form = document.querySelector("#viewWorkerForm");
+    if (form && window.MutationObserver) {
+      var obs = new MutationObserver(function(){ setTimeout(window.refreshWorkerSelectVisibleValues, 40); });
+      obs.observe(form, { childList:true, subtree:true, attributes:true, attributeFilter:["value", "class", "style"] });
+    }
+    setInterval(function(){
+      var formNow = document.querySelector("#viewWorkerForm");
+      if (formNow && !formNow.classList.contains("hidden")) window.refreshWorkerSelectVisibleValues();
+    }, 900);
+  });
+})();

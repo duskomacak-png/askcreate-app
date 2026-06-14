@@ -8559,3 +8559,103 @@ body.worker-field-theme #viewWorkerForm th{
   background:#ffffff!important;
   -webkit-text-fill-color:#111827!important;
 }
+
+/* === AskCreate v1722: select vrednosti u radnickom prikazu uvek vidljive === */
+#viewWorkerForm select,
+#viewWorkerForm.worker-mobile-panel select,
+body.worker-field-theme #viewWorkerForm select{
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  background-color:#ffffff!important;
+  opacity:1!important;
+  text-shadow:none!important;
+  filter:none!important;
+  line-height:1.25!important;
+  text-indent:0!important;
+  appearance:auto!important;
+  -webkit-appearance:menulist!important;
+}
+#viewWorkerForm select option,
+#viewWorkerForm.worker-mobile-panel select option,
+body.worker-field-theme #viewWorkerForm select option{
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  background:#ffffff!important;
+  opacity:1!important;
+}
+#viewWorkerForm .worker-select-visible-value{
+  display:none;
+  margin:6px 0 0!important;
+  padding:8px 10px!important;
+  border:1px solid #d0d5dd!important;
+  border-left:4px solid #ef4444!important;
+  border-radius:10px!important;
+  background:#f9fafb!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  line-height:1.25!important;
+}
+#viewWorkerForm .worker-select-visible-value.is-visible{display:block!important;}
+
+
+/* v1723: jasniji dalji tok radničkih rubrika */
+body.worker-field-theme #viewWorkerForm .worker-module-flow{
+  margin-top:10px;
+  padding:12px 14px;
+  border:1px solid #fecaca !important;
+  border-left:5px solid #dc2626 !important;
+  border-radius:14px !important;
+  background:#fff7f7 !important;
+  color:#111827 !important;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+body.worker-field-theme #viewWorkerForm .worker-module-flow.hidden{display:none!important;}
+body.worker-field-theme #viewWorkerForm .worker-module-flow strong{color:#111827!important;font-size:15px;font-weight:900;}
+body.worker-field-theme #viewWorkerForm .worker-module-flow span{color:#374151!important;font-weight:800;}
+body.worker-field-theme #viewWorkerForm .worker-module-flow small{color:#6b7280!important;font-weight:700;}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section{
+  display:block!important;
+  background:#ffffff!important;
+  color:#111827!important;
+  border:1px solid #d1d5db!important;
+  border-left:5px solid #dc2626!important;
+  border-radius:18px!important;
+  box-shadow:0 12px 30px rgba(15,23,42,.08)!important;
+  padding:16px!important;
+  margin-top:14px!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section h4{
+  color:#111827!important;
+  font-size:18px!important;
+  font-weight:900!important;
+  margin-bottom:10px!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section .entry-card,
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section .fuel-memory-panel{
+  background:#ffffff!important;
+  color:#111827!important;
+  border:1px solid #d1d5db!important;
+  border-radius:16px!important;
+  box-shadow:none!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section input,
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section select,
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section textarea{
+  background:#ffffff!important;
+  color:#111827!important;
+  border:1px solid #cbd5e1!important;
+  border-radius:14px!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section label{
+  color:#111827!important;
+  font-weight:900!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section .hint,
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section .field-hint,
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section .muted{
+  color:#64748b!important;
+}
