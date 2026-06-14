@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1713-asset-kategorije-cisterne" />
+  <link rel="stylesheet" href="style.css?v=1714-assets-numeric-fix" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -674,9 +674,17 @@
             <label>Kategorija</label>
             <select id="assetType">
               <option value="machine">Mašina</option>
-              <option value="vehicle">Vozilo</option>
+              <option value="vehicle">Vozilo / opšte</option>
+              <option value="vehicle_kiper">Kiper / kamion za materijal</option>
+              <option value="lowloader_vehicle">Labudica / niskonoseća prikolica</option>
+              <option value="water_tanker">Cisterna za vodu</option>
+              <option value="fuel_tanker_vehicle">Cisterna za gorivo</option>
+              <option value="small_fuel_tanker">Mala pokretna cisterna za gorivo</option>
+              <option value="pickup_service">Kombi / pikap / servisno vozilo</option>
+              <option value="fixed_fuel_pump">Fiksna pumpa u bazi</option>
+              <option value="fuel_canister">Kanister / ručno sipanje</option>
+              <option value="other">Oprema / ostalo</option>
             </select>
-            <p class="field-hint">Kategorija ostaje jednostavna. Kiper, labudica, cisterna, pumpa i slike podešavaju se ispod kroz namenu / mogućnosti sredstva.</p>
             <label>Registracija / oznaka</label>
             <input id="assetReg" placeholder="BG-123-AA / interna oznaka" />
             <label>Kapacitet</label>
@@ -697,58 +705,7 @@
                 <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="lowloader" /> <span>Labudica / prevoz mašina</span></label>
                 <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="water_tanker" /> <span>Cisterna za vodu</span></label>
                 <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="fuel_tanker" /> <span>Cisterna za gorivo</span></label>
-                <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="service_vehicle" /> <span>Kombi / pikap / servisno vozilo</span></label>
-                <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="fixed_fuel_pump" /> <span>Fiksna pumpa goriva u bazi</span></label>
                 <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="allow_images" /> <span>Dozvoli dodavanje slika uz ovo sredstvo</span></label>
-              </div>
-            </div>
-            <div class="asset-tank-box">
-              <label>Detalji za cisterne / pumpu</label>
-              <p class="field-hint">Ako je sredstvo cisterna ili fiksna pumpa, ovde upiši kapacitet i gorivo. Mala i velika cisterna se razlikuju po oznaci i litraži, ne kao posebna kategorija.</p>
-              <div class="asset-tank-grid">
-                <div>
-                  <label>Gorivo — kapacitet rezervoara</label>
-                  <div class="unit-input">
-                    <input id="assetFuelTankCapacity" inputmode="decimal" placeholder="npr. 5000" />
-                    <span class="unit-suffix">L</span>
-                  </div>
-                </div>
-                <div>
-                  <label>Gorivo — oznaka</label>
-                  <select id="assetFuelTankLabel">
-                    <option value="">Nije cisterna goriva</option>
-                    <option value="mala">Mala cisterna</option>
-                    <option value="velika">Velika cisterna</option>
-                    <option value="pumpa_baza">Fiksna pumpa u bazi</option>
-                    <option value="ostalo">Ostalo</option>
-                  </select>
-                </div>
-              </div>
-              <label>Vrsta goriva koju sredstvo nosi / sipa</label>
-              <div class="asset-feature-grid asset-fuel-type-grid">
-                <label class="feature-check"><input type="checkbox" class="assetFuelTypeInput" value="dizel" /> <span>Dizel</span></label>
-                <label class="feature-check"><input type="checkbox" class="assetFuelTypeInput" value="benzin" /> <span>Benzin</span></label>
-                <label class="feature-check"><input type="checkbox" class="assetFuelTypeInput" value="adblue" /> <span>AdBlue</span></label>
-                <label class="feature-check"><input type="checkbox" class="assetFuelTypeInput" value="ostalo" /> <span>Ostalo</span></label>
-              </div>
-              <div class="asset-tank-grid">
-                <div>
-                  <label>Voda — kapacitet cisterne</label>
-                  <div class="unit-input">
-                    <input id="assetWaterTankCapacity" inputmode="decimal" placeholder="npr. 8000" />
-                    <span class="unit-suffix">L</span>
-                  </div>
-                </div>
-                <div>
-                  <label>Voda — oznaka</label>
-                  <select id="assetWaterTankLabel">
-                    <option value="">Nije cisterna vode</option>
-                    <option value="mala">Mala cisterna</option>
-                    <option value="velika">Velika cisterna</option>
-                    <option value="prikolica">Prikolica cisterna</option>
-                    <option value="ostalo">Ostalo</option>
-                  </select>
-                </div>
               </div>
             </div>
             <div class="asset-consumption-box">
@@ -777,9 +734,10 @@
             <h3>Evidencija sredstava rada</h3>
             <label>Prikaži kategoriju</label>
             <select id="assetListFilter" class="asset-category-filter">
-              <option value="all">Sva sredstva</option>
+              <option value="all">Sve kategorije</option>
               <option value="machine">Mašine</option>
               <option value="vehicle">Vozila</option>
+              <option value="other">Ostalo / oprema</option>
             </select>
             <p id="assetListFilterInfo" class="muted tiny">Prikazuju se sva aktivna sredstva rada.</p>
             <div id="assetsList" class="list"></div>
@@ -1715,6 +1673,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1713-asset-kategorije-cisterne"></script>
+  <script src="script.js?v=1714-assets-numeric-fix"></script>
 </body>
 </html>

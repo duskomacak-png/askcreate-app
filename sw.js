@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1713-asset-kategorije-cisterne";
+const CACHE_NAME = "askcreate-app-v1714-assets-numeric-fix";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1713-asset-kategorije-cisterne",
-  "./script.js?v=1713-asset-kategorije-cisterne",
-  "./manifest.json?v=1713-asset-kategorije-cisterne",
+  "./style.css?v=1714-assets-numeric-fix",
+  "./script.js?v=1714-assets-numeric-fix",
+  "./manifest.json?v=1714-assets-numeric-fix",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

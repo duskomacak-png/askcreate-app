@@ -2705,6 +2705,12 @@ function assetFuelToleranceValue(asset) {
   return n > 0 ? n : 20;
 }
 
+function nullableNumericInputValue(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  return parseDecimalInput(raw);
+}
+
 function formatAssetFuelNorm(asset) {
   const n = assetFuelNormValue(asset);
   if (!n) return "";
@@ -2942,14 +2948,14 @@ async function saveAssetForm() {
     const capacityValue = document.querySelector("#assetCapacity")?.value.trim() || "";
     const capacityUnit = document.querySelector("#assetCapacityUnit")?.value || "m3";
     const capacity = buildAssetCapacityText(capacityValue, capacityUnit);
-    const fuelNorm = document.querySelector("#assetFuelNorm")?.value.trim() || "";
+    const fuelNorm = nullableNumericInputValue(document.querySelector("#assetFuelNorm")?.value);
     const fuelNormUnit = document.querySelector("#assetFuelUnit")?.value || defaultFuelUnitForAssetType(assetType);
-    const fuelTolerance = document.querySelector("#assetFuelTolerance")?.value.trim() || "";
+    const fuelTolerance = nullableNumericInputValue(document.querySelector("#assetFuelTolerance")?.value);
     const assetFeatures = collectAssetFeatureInputs();
     const assetFuelTypes = collectAssetFuelTypeInputs();
-    const fuelTankCapacity = document.querySelector("#assetFuelTankCapacity")?.value.trim() || "";
+    const fuelTankCapacity = nullableNumericInputValue(document.querySelector("#assetFuelTankCapacity")?.value);
     const fuelTankLabel = document.querySelector("#assetFuelTankLabel")?.value || "";
-    const waterTankCapacity = document.querySelector("#assetWaterTankCapacity")?.value.trim() || "";
+    const waterTankCapacity = nullableNumericInputValue(document.querySelector("#assetWaterTankCapacity")?.value);
     const waterTankLabel = document.querySelector("#assetWaterTankLabel")?.value || "";
 
     if (!name) throw new Error("Upiši naziv mašine/vozila.");
