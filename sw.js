@@ -1,4 +1,4 @@
-const CACHE_NAME = "askcreate-app-v1714-assets-numeric-fix";
+const CACHE_NAME = "askcreate-app-v1717-radnik-rubrike-po-sredstvu";
 const APP_SHELL = [
   "./",
   "./index.html",
