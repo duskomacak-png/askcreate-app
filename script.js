@@ -13610,12 +13610,54 @@ function renderSiteLogA4(data = collectSiteLogData()) {
     <div class="paper-footer-note">Dnevnik pripremljen u AskCreate.app · podaci za Excel dolaze iz forme, uploadovani dokument je dokaz.</div>
   </section>`;
 }
+
+
+/* v1737 — Šef gradilišta laptop: živi A4 pregled desno */
+let siteLogLivePreviewTimer = null;
+function updateSiteLogLivePreview() {
+  const panel = document.getElementById("siteLogPanel");
+  const box = document.getElementById("siteLogPreviewBox");
+  if (!panel || !box || panel.classList.contains("hidden")) return;
+  try {
+    box.innerHTML = `<div class="site-log-live-title no-print"><b>Živi pregled dnevnika</b><span>Menja se dok popunjavaš levo.</span></div>` + renderSiteLogA4(collectSiteLogData());
+    box.classList.remove("hidden");
+    box.classList.add("site-log-live-preview");
+    const badge = document.getElementById("siteLogStatusBadge");
+    if (badge && badge.textContent !== "Poslato Upravi firme" && badge.textContent !== "Ponovo poslato Upravi firme") badge.textContent = "Živi pregled";
+  } catch (e) {
+    console.warn("Živi pregled dnevnika gradilišta nije osvežen", e?.message || e);
+  }
+}
+function scheduleSiteLogLivePreview() {
+  clearTimeout(siteLogLivePreviewTimer);
+  siteLogLivePreviewTimer = setTimeout(updateSiteLogLivePreview, 180);
+}
+function bindSiteLogLivePreviewEvents() {
+  const panel = document.getElementById("siteLogPanel");
+  if (!panel || panel.dataset.livePreviewBound === "1") return;
+  panel.dataset.livePreviewBound = "1";
+  ["input", "change", "keyup"].forEach(evt => {
+    panel.addEventListener(evt, (e) => {
+      if (e.target && e.target.closest && e.target.closest("#siteLogPreviewBox")) return;
+      scheduleSiteLogLivePreview();
+    }, true);
+  });
+  try {
+    const mo = new MutationObserver(() => scheduleSiteLogLivePreview());
+    ["siteLogWorkers", "siteLogMaterialIn", "siteLogMaterialOut", "siteLogMaterialsInstalled", "siteLogMaterialsStock", "siteLogTrucks"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) mo.observe(el, { childList: true, subtree: true });
+    });
+    panel._siteLogLivePreviewObserver = mo;
+  } catch {}
+}
+
 function previewSiteLog() {
   const box = $("#siteLogPreviewBox"); if (!box) return;
   box.innerHTML = renderSiteLogA4(); box.classList.remove("hidden");
   ["#siteLogEditBtn", "#siteLogPrintBtn", "#siteLogDownloadBtn", "#siteLogSubmitBtn"].forEach(sel => $(sel)?.classList.remove("hidden"));
   $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Pregled");
-  box.scrollIntoView({ behavior:"smooth", block:"start" });
+  if (!window.matchMedia || !window.matchMedia("(min-width: 1050px)").matches) box.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 function editSiteLog() { $("#siteLogPreviewBox")?.classList.add("hidden"); $("#siteLogStatusBadge") && ($("#siteLogStatusBadge").textContent = "Nacrt"); }
 function buildSiteLogStandaloneHtml(data = collectSiteLogData()) {
@@ -13821,6 +13863,7 @@ function initSiteLogPanel() {
   initSiteLogSignaturePad();
   if ($("#siteLogDate") && !$("#siteLogDate").value) $("#siteLogDate").value = today();
   refreshSiteLogSelectors();
+  bindSiteLogLivePreviewEvents();
   if (!$$("#siteLogWorkers .site-log-worker-entry").length) addSiteLogWorkerEntry();
   if (!$$("#siteLogMaterialIn .site-log-material-entry").length) addSiteLogMaterialEntry("material_in");
   if (!$$("#siteLogMaterialsStock .site-log-material-entry").length) addSiteLogMaterialEntry("materials_stock_on_site", { material_name:"", unit:"m3" });
@@ -13838,6 +13881,7 @@ function initSiteLogPanel() {
   if (siteLogDate && !siteLogDate.dataset.siteBossBound) { siteLogDate.dataset.siteBossBound = "1"; siteLogDate.addEventListener("change", () => { siteBossOverviewCache = null; siteBossMetricSet(null); }); }
   const siteLogSite = $("#siteLogSite");
   if (siteLogSite && !siteLogSite.dataset.siteBossBound) { siteLogSite.dataset.siteBossBound = "1"; siteLogSite.addEventListener("change", () => { siteBossOverviewCache = null; siteBossMetricSet(null); }); }
+  scheduleSiteLogLivePreview();
 }
 function hasSiteLogAnyContent(d) {
   return !!(d.site_name || d.today_work_description || d.tomorrow_work_plan || d.workers.length || d.material_in.length || d.material_out.length || d.materials_installed.length || d.materials_stock_on_site.length || d.truck_tours.length);

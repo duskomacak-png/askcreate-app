@@ -8788,3 +8788,63 @@ body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-
 .owner-site-worker-line,.owner-site-worker-total{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px dashed #e5e7eb;padding:7px 0;color:#111827;font-size:13px}
 .owner-site-worker-total{border-bottom:0;margin-top:6px;padding-top:10px;font-weight:900;color:#b91c1c}
 @media(max-width:720px){.owner-site-summary-head{display:block}.owner-site-summary-badges{justify-content:flex-start;margin-top:8px}.owner-site-summary-cols{grid-template-columns:1fr}}
+
+
+/* v1737 — Šef gradilišta laptop split prikaz: unos levo, živi A4 pregled desno */
+@media (min-width: 1050px){
+  body.site-log-mode #viewWorkerForm{max-width:1680px;margin:0 auto;padding-left:18px;padding-right:18px;}
+  body.site-log-mode #siteLogPanel{
+    display:grid!important;
+    grid-template-columns:minmax(420px, 0.92fr) minmax(520px, 1.08fr);
+    gap:18px;
+    align-items:start;
+  }
+  body.site-log-mode #siteLogPanel > .site-log-head{
+    grid-column:1 / -1;
+    margin-bottom:0;
+  }
+  body.site-log-mode #siteLogPanel > .site-log-form-grid,
+  body.site-log-mode #siteLogPanel > .site-boss-overview,
+  body.site-log-mode #siteLogPanel > .site-log-section,
+  body.site-log-mode #siteLogPanel > .site-log-actions{
+    grid-column:1;
+  }
+  body.site-log-mode #siteLogPanel > #siteLogPreviewBox{
+    grid-column:2;
+    grid-row:2 / span 30;
+    position:sticky;
+    top:82px;
+    max-height:calc(100vh - 104px);
+    overflow:auto;
+    margin-top:0!important;
+    background:#f8fafc!important;
+    border:1px solid #cbd5e1!important;
+    border-radius:18px!important;
+    box-shadow:0 18px 42px rgba(15,23,42,.12)!important;
+  }
+  body.site-log-mode #siteLogPanel > #siteLogPreviewBox.hidden{
+    display:block!important;
+  }
+  body.site-log-mode #siteLogPanel .site-log-live-title{
+    position:sticky;top:0;z-index:3;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;
+    padding:10px 12px;margin:0 0 12px;color:#0f172a;
+    box-shadow:0 8px 18px rgba(15,23,42,.06);
+  }
+  body.site-log-mode #siteLogPanel .site-log-live-title b{font-size:1rem;color:#0f172a!important;}
+  body.site-log-mode #siteLogPanel .site-log-live-title span{font-size:.82rem;color:#64748b!important;font-weight:700;}
+  body.site-log-mode #siteLogPanel .site-log-a4{
+    width:100%!important;
+    min-height:auto!important;
+    padding:18px!important;
+    box-shadow:none!important;
+    border:1px solid #d1d5db!important;
+  }
+  body.site-log-mode #siteLogPanel .site-log-actions{
+    position:sticky;bottom:10px;z-index:4;
+  }
+}
+@media (max-width:1049px){
+  body.site-log-mode #siteLogPanel .site-log-live-title{display:none;}
+}
