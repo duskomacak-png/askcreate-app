@@ -8704,3 +8704,18 @@ body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-
 body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-mode > label{
   display:none!important;
 }
+
+
+/* AskCreate v1725: radnički tok bez ponavljanja i bez potpisa */
+#viewWorkerForm #secSignature{display:none!important;}
+#viewWorkerForm .worker-select-visible-value{display:none!important;}
+#viewWorkerForm #wrModuleSelectedLabel{display:none!important;}
+#viewWorkerForm .asset-smart-result.ok{color:#065f46!important;background:#ecfdf5!important;border-color:#bbf7d0!important;}
+#viewWorkerForm .worker-auto-module-info.compact-worker-info small{display:block;margin-top:4px;color:#6b7280;font-weight:700;}
+#viewWorkerForm .worker-module-flow{background:#fff!important;border:1px solid #e5e7eb!important;border-left:6px solid #dc2626!important;border-radius:18px!important;padding:14px!important;margin:12px 0!important;box-shadow:0 8px 22px rgba(15,23,42,.06)!important;}
+#viewWorkerForm .worker-flow-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+#viewWorkerForm .worker-flow-title-row strong{font-size:18px;color:#111827;}
+#viewWorkerForm .worker-close-module-btn{padding:8px 12px!important;border-radius:12px!important;background:#fff!important;color:#374151!important;border:1px solid #d1d5db!important;box-shadow:none!important;}
+#viewWorkerForm .worker-close-module-btn:hover{border-color:#dc2626!important;color:#dc2626!important;}
+#viewWorkerForm .hidden-by-rule{display:none!important;}
+#viewWorkerForm .worker-active-module-section{border-left:6px solid #dc2626!important;}

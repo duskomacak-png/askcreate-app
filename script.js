@@ -10168,7 +10168,7 @@ const WORKER_MODULE_DEFINITIONS = [
     value: "worker_hours",
     label: "Radni izveštaj / radni sati",
     requiredPerms: ["workers"],
-    sectionKeys: ["workers", "signature"],
+    sectionKeys: ["workers"],
     needsMainSite: true,
     reportType: "worker_hours"
   },
@@ -10176,7 +10176,7 @@ const WORKER_MODULE_DEFINITIONS = [
     value: "machine_work",
     label: "Rad mašine / MTČ",
     requiredPerms: ["machines"],
-    sectionKeys: ["machines", "signature"],
+    sectionKeys: ["machines"],
     // v2.1: Bagerista može u toku dana raditi na više gradilišta.
     // Zato gradilište više nije jedno glavno polje, nego se bira u svakoj stavki mašine.
     needsMainSite: false,
@@ -10188,7 +10188,7 @@ const WORKER_MODULE_DEFINITIONS = [
     requiredPerms: ["vehicles"],
     // v2.1: Vozač može imati više gradilišta u jednom dnevnom izveštaju.
     // Materijal se unosi u samoj stavci vozila, da Direkcija može čistije da razvrsta po gradilištu.
-    sectionKeys: ["vehicles", "signature"],
+    sectionKeys: ["vehicles"],
     needsMainSite: false,
     reportType: "truck_tours_daily"
   },
@@ -10252,7 +10252,7 @@ const WORKER_MODULE_DEFINITIONS = [
     value: "material_entry",
     label: "Materijal",
     requiredPerms: ["materials"],
-    sectionKeys: ["materials", "signature"],
+    sectionKeys: ["materials"],
     needsMainSite: true,
     reportType: "material_movement"
   }
@@ -10463,11 +10463,11 @@ function renderWorkerAssetAutoActions(allowed = []) {
       ? "Ovo sredstvo ima više rubrika. Izaberi šta trenutno popunjavaš."
       : "Za ovo sredstvo možeš otvoriti brze prijave.";
 
+  const currentLabel = current ? (workerModuleDefinitionByValue(current)?.label || current) : "";
   box.innerHTML = `
-    <div class="worker-auto-module-info">
-      <strong>${escapeHtml(mainText)}</strong>
-      <small>${escapeHtml(formatAssetLabel(asset))}</small>
-      ${current ? `<span>Trenutno aktivno: ${escapeHtml(workerModuleDefinitionByValue(current)?.label || current)}</span>` : ""}
+    <div class="worker-auto-module-info compact-worker-info">
+      <strong>${escapeHtml(currentLabel || mainText)}</strong>
+      <small>${primaryValues.length === 1 ? "Obrazac je otvoren automatski po podešenju iz Direkcije." : "Izaberi samo ono što trenutno popunjavaš."}</small>
     </div>
     ${buttons ? `<div class="worker-auto-module-buttons">${buttons}</div>` : ""}
   `;
@@ -10498,7 +10498,7 @@ function renderSelectedAssetRubricsPreview(asset) {
   box.innerHTML = labels.map(x => `<span class="asset-feature-badge">${escapeHtml(x)}</span>`).join("");
   if (info) {
     info.className = "asset-smart-result ok";
-    info.textContent = `Izabrano: ${formatAssetLabel(asset)}. Rubrike su filtrirane prema ovom sredstvu.`;
+    info.textContent = "Rubrike su spremne prema izabranom sredstvu.";
   }
 }
 
@@ -10612,7 +10612,13 @@ function updateWorkerModuleFlowBox() {
     material_entry: ["Otvoren je obrazac: Materijal", "Popuni materijal i količinu."]
   };
   const [title, desc] = texts[module.value] || ["Otvoren je obrazac: " + module.label, "Popuni polja ispod i pošalji Upravi."];
-  box.innerHTML = `<strong>${escapeHtml(title)}</strong><span>Sredstvo: ${escapeHtml(assetLabel)}</span><small>${escapeHtml(desc)}</small>`;
+  box.innerHTML = `
+    <div class="worker-flow-title-row">
+      <strong>${escapeHtml(title)}</strong>
+      <button type="button" class="secondary small-btn worker-close-module-btn" onclick="closeWorkerActiveModule()">Zatvori rubriku</button>
+    </div>
+    <small>${escapeHtml(desc)}</small>
+  `;
   box.classList.remove("hidden");
 }
 
@@ -10685,9 +10691,38 @@ function refreshWorkerModuleSelector(perms = {}) {
   updateWorkerSubmitButtonLabel();
   updateWorkerModuleSelectedLabel();
   renderWorkerAssetAutoActions(allowed);
+  updateWorkerSingleAssetAddButtons(getSelectedWorkerModule());
 
   const chooser = document.querySelector("#workerModuleChooser");
   if (chooser) chooser.classList.toggle("worker-module-auto-mode", !!asset && primaryValues.length === 1);
+}
+
+
+function closeWorkerActiveModule() {
+  const select = document.querySelector("#wrModuleSelect");
+  if (select) select.value = "";
+  try { updateWorkerModuleSelectedLabel(); } catch(e) {}
+  try { updateWorkerModuleFlowBox(); } catch(e) {}
+  try { workerSetSections(currentWorker?.permissions || {}); } catch(e) {}
+  try { renderWorkerAssetAutoActions(filterAllowedWorkerModulesBySelectedAsset(getAllowedWorkerModules(currentWorker?.permissions || {}))); } catch(e) {}
+  toast("Rubrika je zatvorena. Izaberi drugu ako treba.");
+}
+window.closeWorkerActiveModule = closeWorkerActiveModule;
+
+function updateWorkerSingleAssetAddButtons(module = getSelectedWorkerModule()) {
+  const hasContextAsset = !!getSelectedWorkerContextAsset();
+  const map = {
+    machine_work: "#addMachineBtn",
+    truck_tours: "#addVehicleBtn"
+  };
+  Object.values(map).forEach(sel => {
+    const btn = document.querySelector(sel);
+    if (btn) btn.classList.remove("hidden-by-rule");
+  });
+  if (!hasContextAsset || !module) return;
+  const btnSel = map[module.value];
+  const btn = btnSel ? document.querySelector(btnSel) : null;
+  if (btn) btn.classList.add("hidden-by-rule");
 }
 
 function applyWorkerModuleSelection({ addDefaults = true } = {}) {
@@ -10710,6 +10745,7 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   if (module.value === "water_tanker" && $("#waterTankerEntries") && !$("#waterTankerEntries").children.length) addWaterTankerEntry();
   if ((module.value === "truck_tours" || module.value === "material_entry") && $("#materialEntries") && !$("#materialEntries").children.length && perms.materials) addMaterialEntry();
   prefillSelectedWorkerAssetIntoActiveModule();
+  updateWorkerSingleAssetAddButtons(module);
   updateWorkerModuleFlowBox();
   markAndScrollWorkerActiveSection({ scroll: true });
   updateLeaveRequestVisibility();
@@ -10760,7 +10796,11 @@ function workerSetSections(perms) {
     if (el) el.classList.toggle("active", activeKeys.has(key));
   });
 
+  const sig = $("#secSignature");
+  if (sig) sig.classList.remove("active");
+
   const module = getSelectedWorkerModule();
+  updateWorkerSingleAssetAddButtons(module);
   const draftBtn = $("#saveDraftBtn");
   if (draftBtn) draftBtn.classList.toggle("hidden", module?.value === "field_tanker");
 }
