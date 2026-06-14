@@ -7,11 +7,11 @@
   <meta name="theme-color" content="#39b54a" />
   <meta name="description" content="AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju: terenski izveštaji, dnevnik rada, karnet, radnici, mašine, vozila, materijal, voda, labudica, gorivo, norme potrošnje i upozorenja na povećanu potrošnju po mašini ili vozilu, uz Excel izvoz i arhivu." />
   <meta name="keywords" content="AskCreate.app, aplikacija za građevinske firme, niskogradnja, terenski izveštaji, dnevnik rada, karnet radnika, karnet mehanizacije, evidencija goriva, potrošnja goriva po mašini, potrošnja goriva po vozilu, norma potrošnje goriva, velika potrošnja goriva, kvarovi mašina, građevinska mehanizacija, materijal po gradilištu, labudica, cisterna za vodu, Excel izvoz" />
-  <link rel="manifest" href="manifest.json?v=1721-rubrika-vidljiva" />
+  <link rel="manifest" href="manifest.json?v=1727-zatvoren-tok-tura-deponije" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1726-ture-jednostavan-tok" />
+  <link rel="stylesheet" href="style.css?v=1727-zatvoren-tok-tura-deponije" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -427,6 +427,7 @@
         <div class="tabs director-nav-tabs director-basic-menu">
           <button class="tab active" data-tab="people">🏠 Početna / Ljudi</button>
           <button class="tab" data-tab="sites">🏗️ Gradilišta</button>
+          <button class="tab" data-tab="depots">🟫 Deponije</button>
           <button class="tab" data-tab="assets">🚚 Sredstva rada</button>
           <button class="tab" data-tab="materials">📦 Materijali</button>
           <button class="tab" data-tab="reports">📄 Izveštaji</button>
@@ -657,6 +658,24 @@
           <div class="card">
             <h3>Evidencija gradilišta</h3>
             <div id="sitesList" class="list"></div>
+          </div>
+        </div>
+      </div>
+
+
+      <div id="tabDepots" class="tab-panel">
+        <div class="grid two">
+          <div class="card">
+            <h3 id="depotFormTitle">+ Dodaj deponiju</h3>
+            <label>Ime deponije</label>
+            <input id="depotName" placeholder="npr. Deponija Vinča" autocomplete="off" />
+            <div id="depotNameStatus" class="person-code-status muted tiny">Ime deponije mora biti jedinstveno u ovoj firmi. Deponije unosi Direkcija, radnik kasnije samo bira iz liste.</div>
+            <div class="form-actions-inline"><button id="addDepotBtn" class="primary" type="button">Sačuvaj deponiju</button><button id="cancelEditDepotBtn" class="secondary hidden" type="button">Otkaži izmenu</button></div>
+          </div>
+          <div class="card">
+            <h3>Evidencija deponija</h3>
+            <p class="field-hint">Ovde dodaješ samo naziv deponije, bez adrese. Primer: Deponija Vinča. Radnik u turama bira deponiju iz ove liste.</p>
+            <div id="depotsList" class="list"></div>
           </div>
         </div>
       </div>
@@ -1725,6 +1744,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1726-ture-jednostavan-tok"></script>
+  <script src="script.js?v=1727-zatvoren-tok-tura-deponije"></script>
 </body>
 </html>

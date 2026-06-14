@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1726-ture-jednostavan-tok";
+const CACHE_NAME = "askcreate-v1727-zatvoren-tok-tura-deponije";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1721-rubrika-vidljiva",
-  "./script.js?v=1721-rubrika-vidljiva",
-  "./manifest.json?v=1721-rubrika-vidljiva",
+  "./style.css?v=1727-zatvoren-tok-tura-deponije",
+  "./script.js?v=1727-zatvoren-tok-tura-deponije",
+  "./manifest.json?v=1727-zatvoren-tok-tura-deponije",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

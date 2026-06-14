@@ -24,6 +24,7 @@ let currentWorker = null;
 let workerAssetOptions = [];
 let workerSiteOptions = [];
 let workerMaterialOptions = [];
+let workerDepotOptions = [];
 let deferredPwaInstallPrompt = null;
 let pwaInstallPromptReadyAt = 0;
 const AUTO_REFRESH_INTERVAL_MS = 10000;
@@ -2012,7 +2013,7 @@ async function loadDirectorCompany() {
   show("DirectorDashboard");
   showDirectorPackageNotice(approvedSource || currentCompany);
   showCurrentCompanyLoginInfo();
-  await Promise.all([loadPeople(), loadSites(), loadAssets(), loadMaterials(), loadReports()]);
+  await Promise.all([loadPeople(), loadSites(), loadDepots(), loadAssets(), loadMaterials(), loadReports()]);
   startDirectorAutoRefresh();
   return data;
 }
@@ -3222,6 +3223,137 @@ async function loadSites() {
   `).join("") || `<p class="muted">Nema aktivnih gradilišta.</p>`;
 }
 
+
+let editingDepotId = null;
+
+function setDepotFormMode(mode = "add") {
+  const editing = mode === "edit";
+  const title = document.querySelector("#depotFormTitle");
+  const btn = document.querySelector("#addDepotBtn");
+  const cancel = document.querySelector("#cancelEditDepotBtn");
+  if (title) title.textContent = editing ? "✏️ Izmeni deponiju" : "+ Dodaj deponiju";
+  if (btn) btn.textContent = editing ? "Sačuvaj izmene" : "Sačuvaj deponiju";
+  if (cancel) cancel.classList.toggle("hidden", !editing);
+}
+
+function setDepotNameStatus(message, type = "info") {
+  const el = document.querySelector("#depotNameStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("code-ok", "code-bad", "code-info");
+  el.classList.add(type === "ok" ? "code-ok" : type === "bad" ? "code-bad" : "code-info");
+}
+
+function clearDepotForm() {
+  const name = document.querySelector("#depotName");
+  if (name) name.value = "";
+  editingDepotId = null;
+  setDepotFormMode("add");
+  setDepotNameStatus("Ime deponije mora biti jedinstveno u ovoj firmi. Deponije unosi Direkcija, radnik kasnije samo bira iz liste.", "info");
+}
+
+function normalizeDepotNameKey(v = "") { return String(v || "").trim().toLowerCase().replace(/\s+/g, " "); }
+
+async function loadDepots() {
+  if (!currentCompany) return;
+  const list = document.querySelector("#depotsList");
+  try {
+    let data = [];
+    let rpcError = null;
+    if (sb?.rpc) {
+      const res = await sb.rpc("director_list_depots", { p_company_id: currentCompany.id });
+      if (res.error) rpcError = res.error; else data = res.data || [];
+    }
+    if (!data.length) {
+      const res = await sb.from("depots").select("*").eq("company_id", currentCompany.id).eq("active", true).order("name", { ascending: true });
+      if (res.error && rpcError) throw rpcError;
+      if (res.error) throw res.error;
+      data = res.data || [];
+    }
+    directorDepotsCache = data || [];
+    if (list) {
+      list.innerHTML = (data || []).filter(d => d.active !== false).map(d => `
+        <div class="director-table-row management-item">
+          <div class="dt-cell dt-name"><strong>${escapeHtml(d.name)}</strong><small>Naziv deponije</small></div>
+          <div class="dt-cell"><span class="dt-status dt-ok">Aktivna</span><small>Status</small></div>
+          <div class="dt-actions management-actions">
+            <button class="edit-btn" type="button" onclick="editDepot('${d.id}')">✏️ Izmeni</button>
+            <button class="archive-btn" type="button" onclick="archiveDepot('${d.id}', '${escapeHtml(d.name || '')}')">Skloni</button>
+          </div>
+        </div>
+      `).join("") || `<p class="muted">Nema dodatih deponija.</p>`;
+    }
+  } catch (e) {
+    directorDepotsCache = [];
+    if (list) list.innerHTML = `<p class="muted">Deponije nisu učitane: ${escapeHtml(e.message || e)}. Pokreni SQL za v1727 deponije.</p>`;
+  }
+}
+
+window.editDepot = async (id) => {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    let depot = (directorDepotsCache || []).find(d => String(d.id) === String(id));
+    if (!depot) {
+      const { data, error } = await sb.from("depots").select("*").eq("id", id).eq("company_id", currentCompany.id).maybeSingle();
+      if (error) throw error;
+      depot = data;
+    }
+    if (!depot) throw new Error("Deponija nije pronađena.");
+    editingDepotId = depot.id;
+    const input = document.querySelector("#depotName");
+    if (input) input.value = depot.name || "";
+    setDepotFormMode("edit");
+    setDepotNameStatus("Izmeni naziv deponije i sačuvaj.", "info");
+    document.querySelector("#depotFormTitle")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (e) { toast(e.message || e, true); }
+};
+
+async function saveDepotForm() {
+  try {
+    if (!currentCompany) throw new Error("Nema aktivne firme.");
+    const name = String(document.querySelector("#depotName")?.value || "").trim();
+    if (!name) throw new Error("Upiši ime deponije.");
+    const duplicate = (directorDepotsCache || []).find(d => d.active !== false && normalizeDepotNameKey(d.name) === normalizeDepotNameKey(name) && String(d.id) !== String(editingDepotId || ""));
+    if (duplicate) throw new Error(`Deponija sa ovim imenom već postoji: ${duplicate.name}. Ne pravi duplu deponiju.`);
+
+    let saved = false;
+    if (sb?.rpc) {
+      const res = await sb.rpc("director_save_depot", { p_company_id: currentCompany.id, p_depot_id: editingDepotId || null, p_name: name });
+      if (!res.error) saved = true;
+    }
+    if (!saved) {
+      if (editingDepotId) {
+        const { error } = await sb.from("depots").update({ name }).eq("id", editingDepotId).eq("company_id", currentCompany.id);
+        if (error) throw error;
+      } else {
+        const { error } = await sb.from("depots").insert({ company_id: currentCompany.id, name, active: true });
+        if (error) throw error;
+      }
+    }
+    toast(editingDepotId ? "Deponija je izmenjena." : "Deponija je dodata.");
+    clearDepotForm();
+    await loadDepots();
+  } catch (e) { toast(e.message || e, true); }
+}
+
+window.archiveDepot = async (id, name = "") => {
+  const label = name ? ` (${name})` : "";
+  if (!confirm("Skloniti deponiju iz aktivnog spiska" + label + "?\n\nStari izveštaji ostaju sačuvani zbog evidencije.")) return;
+  try {
+    let done = false;
+    if (sb?.rpc) {
+      const res = await sb.rpc("director_archive_depot", { p_company_id: currentCompany.id, p_depot_id: id });
+      if (!res.error) done = true;
+    }
+    if (!done) {
+      const { error } = await sb.from("depots").update({ active: false }).eq("id", id).eq("company_id", currentCompany.id);
+      if (error) throw error;
+    }
+    toast("Deponija je sklonjena iz aktivnog spiska.");
+    loadDepots();
+  } catch (e) { toast(e.message || e, true); }
+};
+
 function setSiteFormMode(mode = "add") {
   const editing = mode === "edit";
   const title = $("#siteFormTitle");
@@ -3811,6 +3943,7 @@ let directorReportsCache = [];
 let directorSitesCache = [];
 let directorAssetsCache = [];
 let directorMaterialsCache = [];
+let directorDepotsCache = [];
 let directorPeopleCache = [];
 
 
@@ -9478,56 +9611,74 @@ function getCurrentWorkerSiteNameForTours() {
   return String(opt?.textContent || "").trim();
 }
 
+
 function normalizeTourPlaceKind(value = "") {
   const v = String(value || "").trim();
   if (["current", "site", "landfill", "manual"].includes(v)) return v;
-  if (["deponija", "dump"].includes(v)) return "landfill";
+  if (["deponija", "dump", "depot"].includes(v)) return "landfill";
   if (["gradiliste", "other_site", "other"].includes(v)) return "site";
+  if (["local", "same_site", "u_krugu"].includes(v)) return "current";
   return "current";
 }
 
 function fillTourPlaceFields(row, prefix, values = {}) {
-  const kind = normalizeTourPlaceKind(values.kind || values.type || "current");
+  const kind = normalizeTourPlaceKind(values.kind || values.type || (prefix === "from" ? "site" : "current"));
   const kindSelect = row.querySelector(`.${prefix}-kind`);
   if (kindSelect) kindSelect.value = kind;
-  const site = values.site || values.site_name || "";
-  const landfill = values.landfill || "";
-  const manual = values.manual || values.text || "";
+  const site = values.site || values.site_name || values.label || "";
+  const landfill = values.landfill || values.depot || "";
   const siteSelect = row.querySelector(`.${prefix}-site`);
-  const landfillInput = row.querySelector(`.${prefix}-landfill`);
-  const manualInput = row.querySelector(`.${prefix}-manual`);
-  if (siteSelect) siteSelect.value = site;
-  if (landfillInput) landfillInput.value = landfill;
-  if (manualInput) manualInput.value = manual;
+  const landfillSelect = row.querySelector(`.${prefix}-landfill`);
+  if (siteSelect && site) siteSelect.value = site;
+  if (landfillSelect && landfill) landfillSelect.value = landfill;
+}
+
+function tourSelectedOptionMeta(select) {
+  const opt = select?.options ? select.options[select.selectedIndex] : null;
+  return { id: opt?.dataset?.siteId || opt?.dataset?.depotId || "", text: String(opt?.textContent || "").trim() };
 }
 
 function getTourPlaceFromRow(row, prefix) {
-  const kind = normalizeTourPlaceKind(row.querySelector(`.${prefix}-kind`)?.value || "current");
-  const currentSite = getCurrentWorkerSiteNameForTours();
-  const site = String(row.querySelector(`.${prefix}-site`)?.value || "").trim();
-  const landfill = String(row.querySelector(`.${prefix}-landfill`)?.value || "").trim();
-  const manual = String(row.querySelector(`.${prefix}-manual`)?.value || "").trim();
-  let label = "";
-  if (kind === "current") label = currentSite;
-  else if (kind === "site") label = site;
-  else if (kind === "landfill") label = landfill;
-  else label = manual;
-  return { kind, label, site: kind === "current" ? currentSite : (kind === "site" ? site : ""), landfill: kind === "landfill" ? landfill : "", manual: kind === "manual" ? manual : "" };
+  const fromSiteSelect = row.querySelector(".from-site");
+  const fromSite = String(fromSiteSelect?.value || "").trim();
+  const fromMeta = tourSelectedOptionMeta(fromSiteSelect);
+
+  if (prefix === "from") {
+    return { kind: "site", label: fromSite, site: fromSite, site_id: fromMeta.id || "", landfill: "", manual: "" };
+  }
+
+  const kind = normalizeTourPlaceKind(row.querySelector(".to-kind")?.value || "current");
+  const siteSelect = row.querySelector(".to-site");
+  const depotSelect = row.querySelector(".to-landfill");
+  const site = String(siteSelect?.value || "").trim();
+  const depot = String(depotSelect?.value || "").trim();
+  const siteMeta = tourSelectedOptionMeta(siteSelect);
+  const depotMeta = tourSelectedOptionMeta(depotSelect);
+
+  if (kind === "current") {
+    return { kind: "current", label: fromSite, site: fromSite, site_id: fromMeta.id || "", landfill: "", depot_id: "", manual: "" };
+  }
+  if (kind === "site") {
+    return { kind: "site", label: site, site, site_id: siteMeta.id || "", landfill: "", depot_id: "", manual: "" };
+  }
+  return { kind: "landfill", label: depot, site: "", site_id: "", landfill: depot, depot_id: depotMeta.id || "", manual: "" };
 }
 
 function refreshTourPlaceVisibility(row) {
-  ["from", "to"].forEach(prefix => {
-    const kind = normalizeTourPlaceKind(row.querySelector(`.${prefix}-kind`)?.value || "current");
-    const set = (cls, show) => { const el = row.querySelector(`.${cls}`); if (el) el.style.display = show ? "block" : "none"; };
-    set(`${prefix}-site-wrap`, kind === "site");
-    set(`${prefix}-landfill-wrap`, kind === "landfill");
-    set(`${prefix}-manual-wrap`, kind === "manual");
-    const current = row.querySelector(`.${prefix}-current-preview`);
-    if (current) {
-      current.style.display = kind === "current" ? "block" : "none";
-      current.textContent = `Koristi se dnevno gradilište: ${getCurrentWorkerSiteNameForTours() || "nije odabrano"}`;
-    }
-  });
+  const fromSite = row.querySelector(".from-site")?.value || "";
+  const fromPreview = row.querySelector(".from-current-preview");
+  if (fromPreview) fromPreview.textContent = fromSite ? `Polazište: ${fromSite}` : "Izaberi polazno gradilište iz liste Direkcije.";
+
+  const kind = normalizeTourPlaceKind(row.querySelector(".to-kind")?.value || "current");
+  const siteWrap = row.querySelector(".to-site-wrap");
+  const landfillWrap = row.querySelector(".to-landfill-wrap");
+  const preview = row.querySelector(".to-current-preview");
+  if (siteWrap) siteWrap.style.display = kind === "site" ? "block" : "none";
+  if (landfillWrap) landfillWrap.style.display = kind === "landfill" ? "block" : "none";
+  if (preview) {
+    preview.style.display = kind === "current" ? "block" : "none";
+    preview.textContent = fromSite ? `U krugu gradilišta: ${fromSite}` : "Prvo izaberi polazno gradilište.";
+  }
 }
 
 function addVehicleTourRow(vehicleCard, values = {}) {
@@ -9538,8 +9689,8 @@ function addVehicleTourRow(vehicleCard, values = {}) {
   const material = values.material || values.material_name || "";
   const currentSite = getCurrentWorkerSiteNameForTours();
 
-  let fromDefaults = { kind: "current", site: currentSite };
-  let toDefaults = { kind: "current", site: currentSite };
+  let fromDefaults = { kind: "site", site: values.from_site || values.site_name || values.site || currentSite || "" };
+  let toDefaults = { kind: "current", site: fromDefaults.site || currentSite || "" };
   if (rawType === "site_to_site") {
     fromDefaults = { kind: "site", site: values.from_site || values.load_location || currentSite || "" };
     toDefaults = { kind: "site", site: values.to_site || values.unload_location || "" };
@@ -9573,30 +9724,22 @@ function addVehicleTourRow(vehicleCard, values = {}) {
 
     <div class="tour-route-box">
       <h4>Polazište</h4>
-      <select class="from-kind tour-place-kind">
-        <option value="current">Sa trenutnog gradilišta</option>
-        <option value="site">Sa drugog gradilišta</option>
-        <option value="landfill">Sa deponije</option>
-        <option value="manual">Ručni unos</option>
-      </select>
+      <label>Sa gradilišta</label>
+      <select class="from-site entry-site-select">${buildTruckTourSiteOptionsHtml(fromDefaults.site || currentSite || "")}</select>
       <div class="tour-place-preview from-current-preview"></div>
-      <div class="from-site-wrap tour-place-extra"><select class="from-site entry-site-select">${buildTruckTourSiteOptionsHtml(fromDefaults.site || "")}</select></div>
-      <div class="from-landfill-wrap tour-place-extra"><input class="from-landfill" placeholder="npr. Deponija Surčin" value="${escapeHtml(fromDefaults.landfill || "")}" /></div>
-      <div class="from-manual-wrap tour-place-extra"><input class="from-manual" placeholder="upiši polazište" value="${escapeHtml(fromDefaults.manual || "")}" /></div>
     </div>
 
     <div class="tour-route-box">
       <h4>Odredište</h4>
+      <label>Gde voziš?</label>
       <select class="to-kind tour-place-kind">
-        <option value="current">Na trenutno gradilište</option>
-        <option value="site">Na drugo gradilište</option>
-        <option value="landfill">Na deponiju</option>
-        <option value="manual">Ručni unos</option>
+        <option value="current">U krugu gradilišta</option>
+        <option value="site">Drugo gradilište</option>
+        <option value="landfill">Deponija</option>
       </select>
       <div class="tour-place-preview to-current-preview"></div>
-      <div class="to-site-wrap tour-place-extra"><select class="to-site entry-site-select">${buildTruckTourSiteOptionsHtml(toDefaults.site || "")}</select></div>
-      <div class="to-landfill-wrap tour-place-extra"><input class="to-landfill" placeholder="npr. Deponija Surčin" value="${escapeHtml(toDefaults.landfill || "")}" /></div>
-      <div class="to-manual-wrap tour-place-extra"><input class="to-manual" placeholder="upiši odredište" value="${escapeHtml(toDefaults.manual || "")}" /></div>
+      <div class="to-site-wrap tour-place-extra"><label>Odaberi drugo gradilište</label><select class="to-site entry-site-select">${buildTruckTourSiteOptionsHtml(toDefaults.site || "")}</select></div>
+      <div class="to-landfill-wrap tour-place-extra"><label>Odaberi deponiju</label><select class="to-landfill">${buildWorkerDepotOptionsHtml(toDefaults.landfill || "")}</select></div>
     </div>
 
     <div>
@@ -9609,6 +9752,7 @@ function addVehicleTourRow(vehicleCard, values = {}) {
   fillTourPlaceFields(div, "from", fromDefaults);
   fillTourPlaceFields(div, "to", toDefaults);
   refreshTourPlaceVisibility(div);
+  refreshTourDepotSelectors();
 
   div.querySelector(".remove-entry")?.addEventListener("click", () => {
     div.remove();
@@ -9742,9 +9886,12 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
       from_label: from.label,
       to_label: to.label,
       from_site: from.site || from.label || "",
+      from_site_id: from.site_id || "",
       to_site: to.site || "",
-      site_name: from.kind === "current" ? from.site : (to.kind === "current" ? to.site : from.site || to.site || ""),
-      landfill: from.landfill || to.landfill || "",
+      to_site_id: to.site_id || "",
+      site_name: from.site || to.site || "",
+      landfill: to.landfill || "",
+      depot_id: to.depot_id || "",
       load_location: from.label || "",
       unload_location: to.label || "",
       route: routeText,
@@ -9887,6 +10034,61 @@ function normalizeWorkerMaterialList(rows = []) {
       return true;
     })
     .sort((a, b) => String(a.name).localeCompare(String(b.name), "sr"));
+}
+
+
+function normalizeWorkerDepotList(rows = []) {
+  const seen = new Set();
+  return (Array.isArray(rows) ? rows : [])
+    .map(d => typeof d === "string" ? { name: d } : { id: d?.id || "", name: d?.name || d?.depot_name || d?.label || "" })
+    .filter(d => {
+      const key = String(d.name || "").trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), "sr"));
+}
+
+function buildWorkerDepotOptionsHtml(selectedValue = "") {
+  const selected = String(selectedValue || "").trim();
+  const depots = normalizeWorkerDepotList(workerDepotOptions);
+  if (!depots.length) return `<option value="">Nema deponija iz Direkcije</option>`;
+  return `<option value="">Odaberi deponiju</option>` + depots.map(d => {
+    const isSelected = selected && selected === d.name ? "selected" : "";
+    return `<option value="${escapeHtml(d.name)}" data-depot-id="${escapeHtml(d.id || "")}" ${isSelected}>${escapeHtml(d.name)}</option>`;
+  }).join("");
+}
+
+function refreshTourDepotSelectors() {
+  document.querySelectorAll(".to-landfill, .from-landfill").forEach(sel => {
+    if (!sel || sel.tagName !== "SELECT") return;
+    const old = sel.value || "";
+    sel.innerHTML = buildWorkerDepotOptionsHtml(old);
+    if (old && Array.from(sel.options).some(o => o.value === old)) sel.value = old;
+  });
+}
+
+async function loadWorkerDepots() {
+  const worker = currentWorker || JSON.parse(localStorage.getItem("swp_worker") || "null");
+  try {
+    let depots = [];
+    if (worker?.company_code && worker?.access_code && sb?.rpc) {
+      const { data, error } = await sb.rpc("worker_list_depots", {
+        p_company_code: worker.company_code,
+        p_access_code: worker.access_code
+      });
+      if (!error) depots = normalizeWorkerDepotList(data || []);
+    }
+    if (!depots.length && worker?.company_id && sb) {
+      const { data, error } = await sb.from("depots").select("id,name").eq("company_id", worker.company_id).eq("active", true).order("name", { ascending: true });
+      if (!error) depots = normalizeWorkerDepotList(data || []);
+    }
+    workerDepotOptions = depots;
+  } catch (e) {
+    workerDepotOptions = [];
+  }
+  refreshTourDepotSelectors();
 }
 
 function buildWorkerMaterialOptionsHtml(selectedValue = "") {
@@ -13456,7 +13658,7 @@ async function prepareWorkerFormForNextReport() {
 
   // v1.20.1: Posle uspešnog slanja ne smeju nestati liste mašina/vozila/opreme.
   // Zato ponovo učitavamo sredstva i odmah vraćamo po jednu praznu karticu za svaku dozvoljenu rubriku.
-  await Promise.allSettled([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
+  await Promise.allSettled([loadWorkerSites(), loadWorkerDepots(), loadWorkerAssets(), loadWorkerMaterials()]);
   ensureWorkerDefaultEntries();
   renderStoredFieldTankerEntries();
   updateLeaveRequestVisibility();
@@ -15937,6 +16139,7 @@ function bindEvents() {
     if (btn.dataset.tab === "defects") renderDefectsList();
     if (btn.dataset.tab === "fuel") { renderFuelReportsList(); renderFuelConsumptionAnalysis(); }
     if (btn.dataset.tab === "materials") renderMaterialOverview();
+    if (btn.dataset.tab === "depots") loadDepots();
     if (btn.dataset.tab === "owner") renderOwnerDashboard();
     if (btn.dataset.tab === "archive") renderArchiveList();
     if (btn.dataset.tab === "dailyLog") renderDailyLogPreview();
@@ -15956,6 +16159,9 @@ function bindEvents() {
   $("#addSiteBtn").addEventListener("click", saveSiteForm);
   if ($("#cancelEditSiteBtn")) $("#cancelEditSiteBtn").addEventListener("click", clearSiteForm);
   if ($("#siteName")) $("#siteName").addEventListener("input", scheduleSiteNameAvailabilityCheck);
+  if ($("#addDepotBtn")) $("#addDepotBtn").addEventListener("click", saveDepotForm);
+  if ($("#cancelEditDepotBtn")) $("#cancelEditDepotBtn").addEventListener("click", clearDepotForm);
+  if ($("#depotName")) $("#depotName").addEventListener("input", () => setDepotNameStatus("Ime deponije će se proveriti prilikom čuvanja.", "info"));
 
   $("#addAssetBtn").addEventListener("click", saveAssetForm);
   if ($("#assetType")) $("#assetType").addEventListener("change", () => {
@@ -17137,7 +17343,7 @@ async function openWorkerForm() {
     workerLogout.setAttribute("aria-hidden", "false");
   }
   show("WorkerForm");
-  await Promise.all([loadWorkerSites(), loadWorkerAssets(), loadWorkerMaterials()]);
+  await Promise.all([loadWorkerSites(), loadWorkerDepots(), loadWorkerAssets(), loadWorkerMaterials()]);
   const perms = currentWorker.permissions || {};
   if (perms.site_daily_log) {
     initSiteLogPanel();
