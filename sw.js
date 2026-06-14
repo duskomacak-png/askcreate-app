@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1733-materijal-excel-status-fix";
+const CACHE_NAME = "askcreate-v1734-materijal-tona-kg-rucno";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1733-materijal-excel-status-fix",
-  "./script.js?v=1733-materijal-excel-status-fix",
-  "./manifest.json?v=1733-materijal-excel-status-fix",
+  "./style.css?v=1734-materijal-tona-kg-rucno",
+  "./script.js?v=1734-materijal-tona-kg-rucno",
+  "./manifest.json?v=1734-materijal-tona-kg-rucno",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

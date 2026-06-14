@@ -9730,6 +9730,21 @@ function normalizeTransportUnit(unit = "") {
   return unit || "";
 }
 
+function isWeightTransportUnit(unit = "") {
+  const u = normalizeTransportUnit(unit);
+  return u === "t" || u === "kg";
+}
+
+function transportQuantityCalcModeForUnit(unit = "") {
+  return isWeightTransportUnit(unit) ? "manual_delivery_note" : "vehicle_capacity";
+}
+
+function transportCalcModeLabel(mode = "") {
+  if (mode === "manual_delivery_note") return "Otpremnica / ručni unos";
+  if (mode === "vehicle_capacity") return "Kapacitet vozila";
+  return mode || "—";
+}
+
 function materialUnitFromNameOrOption(material = "", option = null) {
   const byOption = option?.dataset?.unit || "";
   if (byOption) return normalizeTransportUnit(byOption);
@@ -9774,9 +9789,32 @@ function updateTourQuantityPreview(row, vehicleCard) {
   const option = materialSelect?.options ? materialSelect.options[materialSelect.selectedIndex] : null;
   const unit = materialUnitFromNameOrOption(material, option);
   const tours = row.querySelector(".tour-count")?.value || "";
-  const quantityText = calculateTransportQuantity(selected.capacity, tours, unit);
   const preview = row.querySelector(".tour-quantity-preview");
+  const manualWrap = row.querySelector(".tour-manual-quantity-wrap");
+  const manualQtyInput = row.querySelector(".tour-manual-qty");
+  const deliveryInput = row.querySelector(".tour-delivery-note");
+  const unitLabel = row.querySelector(".tour-manual-unit-label");
+  const calcMode = transportQuantityCalcModeForUnit(unit);
+
+  if (manualWrap) manualWrap.style.display = calcMode === "manual_delivery_note" ? "block" : "none";
+  if (unitLabel) unitLabel.textContent = unit || "t/kg";
+  if (deliveryInput) deliveryInput.closest?.(".tour-delivery-note-box")?.style && (deliveryInput.closest(".tour-delivery-note-box").style.display = calcMode === "manual_delivery_note" ? "block" : "none");
+
   if (!preview) return;
+
+  if (calcMode === "manual_delivery_note") {
+    const qty = parseDecimal(manualQtyInput?.value || "");
+    if (qty) {
+      preview.textContent = `Ukupno: ${formatTransportQuantity(qty, unit)} — obračun po otpremnici / ručnom unosu${deliveryInput?.value ? `, otpremnica ${deliveryInput.value}` : ""}.`;
+      preview.classList.add("ok");
+    } else {
+      preview.textContent = `Materijal je u ${unit || "tonama/kg"}: upiši količinu sa otpremnice. Ne računa se po kapacitetu vozila.`;
+      preview.classList.remove("ok");
+    }
+    return;
+  }
+
+  const quantityText = calculateTransportQuantity(selected.capacity, tours, unit);
   if (quantityText) {
     preview.textContent = `Ukupno: ${quantityText} (${selected.capacity || "0"} × ${tours || "0"} tura)`;
     preview.classList.add("ok");
@@ -10022,6 +10060,20 @@ function addVehicleTourRow(vehicleCard, values = {}) {
 
     <div class="tour-quantity-preview">Ukupno će se izračunati po materijalu i kapacitetu vozila.</div>
 
+    <div class="tour-manual-quantity-wrap" style="display:none;">
+      <div class="grid two">
+        <div>
+          <label>Količina sa otpremnice / ručni unos (<span class="tour-manual-unit-label">t/kg</span>)</label>
+          <input class="tour-manual-qty" inputmode="decimal" placeholder="npr. 14" value="${escapeHtml(values.manual_quantity || values.delivery_quantity || values.total_quantity || values.quantity || "")}" />
+        </div>
+        <div class="tour-delivery-note-box">
+          <label>Broj otpremnice</label>
+          <input class="tour-delivery-note" placeholder="npr. 55821" value="${escapeHtml(values.delivery_note_no || values.dispatch_note_no || values.otpremnica || "")}" />
+        </div>
+      </div>
+      <p class="field-hint">Za materijale u tonama ili kilogramima količina se unosi po otpremnici. Aplikacija ne pretvara m³ u tone.</p>
+    </div>
+
     <div class="tour-route-box">
       <h4>Polazište</h4>
       <label>Sa gradilišta</label>
@@ -10173,8 +10225,13 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
     const material = materialSelect?.value.trim() || "";
     const materialOption = materialSelect?.options ? materialSelect.options[materialSelect.selectedIndex] : null;
     const unit = materialUnitFromNameOrOption(material, materialOption);
+    const calcMode = transportQuantityCalcModeForUnit(unit);
     const tours = row.querySelector(".tour-count")?.value.trim() || "";
-    const totalRaw = parseDecimal(selected.capacity) && parseDecimal(tours) ? parseDecimal(selected.capacity) * parseDecimal(tours) : 0;
+    const manualQty = row.querySelector(".tour-manual-qty")?.value.trim() || "";
+    const deliveryNoteNo = row.querySelector(".tour-delivery-note")?.value.trim() || "";
+    const totalRaw = calcMode === "manual_delivery_note"
+      ? parseDecimal(manualQty)
+      : (parseDecimal(selected.capacity) && parseDecimal(tours) ? parseDecimal(selected.capacity) * parseDecimal(tours) : 0);
     const totalText = totalRaw ? formatTransportQuantity(totalRaw, unit) : "";
     const from = getTourPlaceFromRow(row, "from");
     const to = getTourPlaceFromRow(row, "to");
@@ -10204,7 +10261,12 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
       material_name: material,
       unit,
       measure_unit: unit,
-      capacity_per_tour: selected.capacity || "",
+      calculation_mode: calcMode,
+      calculation_mode_label: transportCalcModeLabel(calcMode),
+      delivery_note_no: deliveryNoteNo,
+      dispatch_note_no: deliveryNoteNo,
+      manual_quantity: calcMode === "manual_delivery_note" ? manualQty : "",
+      capacity_per_tour: calcMode === "vehicle_capacity" ? (selected.capacity || "") : "",
       tours,
       total_quantity: totalRaw ? String(Math.round(totalRaw * 100) / 100) : "",
       quantity: totalRaw ? String(Math.round(totalRaw * 100) / 100) : "",
