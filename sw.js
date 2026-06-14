@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1732-materijal-direkcija-excel";
+const CACHE_NAME = "askcreate-v1733-materijal-excel-status-fix";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1732-materijal-direkcija-excel",
-  "./script.js?v=1732-materijal-direkcija-excel",
-  "./manifest.json?v=1732-materijal-direkcija-excel",
+  "./style.css?v=1733-materijal-excel-status-fix",
+  "./script.js?v=1733-materijal-excel-status-fix",
+  "./manifest.json?v=1733-materijal-excel-status-fix",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

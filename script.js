@@ -6389,11 +6389,31 @@ function buildMaterialTotals(rows = []) {
     else if (flow === "internal") brow.internal += qty;
   });
   const balance = Array.from(byBalance.values()).map(r => {
-    const stock = round2(Number(r.imported || 0) - Number(r.exported || 0) - Number(r.installed || 0));
+    const imported = Number(r.imported || 0);
+    const exported = Number(r.exported || 0);
+    const installed = Number(r.installed || 0);
+    const stock = round2(imported - exported - installed);
     let status = "Čeka / lager";
-    if (stock === 0 && (r.imported || r.installed || r.exported)) status = "Poravnato";
-    if (stock < 0) status = "Proveriti — više ugrađeno/izvezeno";
-    if (!r.imported && r.installed) status = "Ugrađeno iz ranijeg lagera";
+
+    // Važno: izvoz materijala sa gradilišta nije greška sam po sebi.
+    // Materijal može biti odvezen sa starog lagera, pa ne sme odmah pisati "proveriti".
+    if (imported === 0 && exported > 0 && installed === 0) {
+      status = "Odvezeno sa gradilišta";
+    } else if (imported === 0 && installed > 0) {
+      status = "Ugrađeno iz ranijeg lagera";
+    } else if (stock === 0 && (imported || exported || installed)) {
+      status = "Poravnato";
+    } else if (stock > 0 && installed > 0) {
+      status = "Delimično ugrađeno / lager";
+    } else if (stock > 0 && exported > 0) {
+      status = "Delimično odvezeno / lager";
+    } else if (stock > 0) {
+      status = "Čeka / lager";
+    } else if (stock < 0 && installed > 0) {
+      status = "Proveriti — više ugrađeno od raspoloživog";
+    } else if (stock < 0 && exported > 0) {
+      status = "Odvezeno iz lagera";
+    }
     return { ...r, stock, status };
   });
   return { bySite: Array.from(bySite.values()), byMaterial: Array.from(byMaterial.values()), balance };
@@ -6446,7 +6466,7 @@ function renderMaterialOverview() {
       <div><b>Materijal po gradilištu</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
       <div class="office-badges"><span>${rows.length} stavki</span><span>${totalTours} tura</span><span>Uvezeno ${imported}</span><span>Izvezeno ${exported}</span><span>Ugrađeno ${installed}</span></div>
     </div>
-    <section><h4>📦 Kontrola po gradilištu i materijalu</h4>${officeTable(["Gradilište","Materijal","Jed.","Dovezeno","Izvezeno","Ugrađeno po šefu","Preostalo / čeka","Ture","Status"], totals.balance.map(r => [r.site, r.material, r.unit, round2(r.imported), round2(r.exported), round2(r.installed), round2(r.stock), round2(r.tours), r.status]))}</section>
+    <section><h4>📦 Kontrola po gradilištu i materijalu</h4>${officeTable(["Gradilište","Materijal","Jed.","Dovezeno","Izvezeno","Ugrađeno po šefu","Neto stanje / lager","Ture","Status"], totals.balance.map(r => [r.site, r.material, r.unit, round2(r.imported), round2(r.exported), round2(r.installed), round2(r.stock), round2(r.tours), r.status]))}</section>
     <section><h4>🏗️ Ukupno po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","Dovezeno","Izvezeno","Ugrađeno po šefu","U krugu"], totals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.imported), round2(r.exported), round2(r.installed), round2(r.internal)]))}</section>
     <section><h4>📦 Ukupno po materijalu</h4>${officeTable(["Materijal","Jedinica","Stavki","Ture","Dovezeno","Izvezeno","Ugrađeno po šefu","U krugu"], totals.byMaterial.map(r => [r.material, r.unit, r.rows, round2(r.tours), round2(r.imported), round2(r.exported), round2(r.installed), round2(r.internal)]))}</section>
     <section><h4>📋 Detaljne stavke</h4>${officeTable(["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jed.","Radnik/šef","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]))}</section>`;
@@ -6460,16 +6480,34 @@ function printMaterialOverview() {
 }
 
 function materialOverviewTableHtml(title, headers, rows) {
-  return `<h2>${escapeHtml(title)}</h2><table border="1"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(c => `<td>${escapeHtml(c ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+  const colgroup = headers.map((h) => {
+    const key = normalizeSearch(h);
+    let width = 110;
+    if (key.includes("gradiliste") || key.includes("materijal") || key.includes("napomena") || key.includes("sredstvo")) width = 170;
+    if (key.includes("smer") || key.includes("status")) width = 210;
+    if (key.includes("datum") || key.includes("jed") || key.includes("ture")) width = 80;
+    return `<col style="width:${width}px">`;
+  }).join("");
+  return `<h2>${escapeHtml(title)}</h2><table border="1" cellspacing="0" cellpadding="4"><colgroup>${colgroup}</colgroup><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(c => `<td>${escapeHtml(c ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
 
 function downloadMaterialOverviewCsv() {
   const { from, to, site, rows, totals } = materialOverviewData();
   if (!rows.length) return toast("Nema materijala za izabrani period.", true);
-  const html = `<!doctype html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse}td,th{border:1px solid #999;padding:4px 6px}th{background:#eee}</style></head><body>
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+    body{font-family:Arial, sans-serif; font-size:12px; color:#111;}
+    h1{font-size:22px; margin:0 0 8px;}
+    h2{font-size:16px; margin:18px 0 8px; background:#f2f2f2; padding:6px;}
+    p{margin:0 0 14px; color:#555;}
+    table{border-collapse:collapse; margin-bottom:18px;}
+    td,th{border:1px solid #777; padding:5px 7px; vertical-align:top; white-space:normal;}
+    th{background:#e8e8e8; font-weight:bold;}
+    .hint{font-size:11px; color:#555; margin-bottom:10px;}
+  </style></head><body>
     <h1>Materijal po gradilištu</h1>
     <p>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</p>
-    ${materialOverviewTableHtml("Pregled po gradilištu i materijalu", ["Gradilište","Materijal","Jed.","Dovezeno","Izvezeno","Ugrađeno po šefu","Preostalo / čeka","Ture","Status"], totals.balance.map(r => [r.site, r.material, r.unit, round2(r.imported), round2(r.exported), round2(r.installed), round2(r.stock), round2(r.tours), r.status]))}
+    <div class="hint">Neto stanje = dovezeno - izvezeno - ugrađeno po šefu. Negativan iznos kod izvoza znači da je materijal odvezen sa lagera ili iz prethodnog stanja, nije automatski greška.</div>
+    ${materialOverviewTableHtml("Pregled po gradilištu i materijalu", ["Gradilište","Materijal","Jed.","Dovezeno","Izvezeno","Ugrađeno po šefu","Neto stanje / lager","Ture","Status"], totals.balance.map(r => [r.site, r.material, r.unit, round2(r.imported), round2(r.exported), round2(r.installed), round2(r.stock), round2(r.tours), r.status]))}
     ${materialOverviewTableHtml("Detalji tura i ugradnje", ["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jed.","Radnik/šef","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]))}
   </body></html>`;
   downloadBlob(new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" }), `materijal_po_gradilistu_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.xls`);
