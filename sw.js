@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1736-direktor-kratak-pregled";
+const CACHE_NAME = "askcreate-v1741-sef-podaci-u-a4-pregled";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1736-direktor-kratak-pregled",
-  "./script.js?v=1736-direktor-kratak-pregled",
-  "./manifest.json?v=1736-direktor-kratak-pregled",
+  "./style.css?v=1741-sef-podaci-u-a4-pregled",
+  "./script.js?v=1741-sef-podaci-u-a4-pregled",
+  "./manifest.json?v=1741-sef-podaci-u-a4-pregled",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

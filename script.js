@@ -5444,6 +5444,7 @@ function renderDailyLogPreview() {
 
 
 let siteBossOverviewCache = null;
+let siteLogImportedWorkerOverview = null;
 
 function siteBossMetricSet(data = null, loadingText = "—") {
   const box = $("#siteBossOverviewMetrics");
@@ -5467,11 +5468,53 @@ function siteBossMetricSet(data = null, loadingText = "—") {
     <span>Materijal: ${Math.round(totalM3 * 100) / 100} m³</span>`;
 }
 
+function siteBossImmediateReportSite(r = {}) {
+  const d = r?.data || {};
+  return d.defect_site_name || d.site_name || d.location || d.worksite || d.gradiliste || officeReportSite(r) || "";
+}
+
+function siteBossAugmentImmediateReports(overview = {}, reports = [], site = "") {
+  const target = site || "";
+  const fuels = Array.isArray(overview.fuels) ? overview.fuels : [];
+  const defects = Array.isArray(overview.defects) ? overview.defects : [];
+  (Array.isArray(reports) ? reports : []).forEach(r => {
+    if (!r || isArchivedReport(r)) return;
+    const d = r.data || {};
+    const reportPerson = officePersonLabel(r);
+    const reportSite = siteBossImmediateReportSite(r) || target || "—";
+
+    if (isFuelDashboardOnlyReport(r)) {
+      const ownFuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+      ownFuels.forEach(f => {
+        if (!officeEntryMatchesSite(f, reportSite, target)) return;
+        const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
+        fuels.push([entrySite, f.asset_code || "", f.asset_name || f.machine || f.vehicle || f.other || "", f.liters || "", f.km || f.current_km || "", f.mtc || f.current_mtc || "", f.by || reportPerson, f.receiver || d.fuel_receiver || "", fuelSourceText(f)]);
+      });
+      const tankerFuels = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+      tankerFuels.forEach(f => {
+        if (!officeEntryMatchesSite(f, reportSite, target)) return;
+        const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
+        fuels.push([entrySite, f.asset_code || "", f.asset_name || f.machine || f.vehicle || f.other || "", f.liters || "", f.km || f.current_km || "", f.mtc || f.current_mtc || "", f.tanker_asset_name || f.tanker_vehicle || f.cistern_vehicle || reportPerson, f.receiver || f.received_by || "", fuelSourceText(f)]);
+      });
+    }
+
+    if (isDefectOnlyReport(r) || (hasDefectData(r) && !hasDailyReportData(r))) {
+      const defectSite = d.defect_site_name || d.site_name || reportSite;
+      if (!officeEntryMatchesSite({ site_name: defectSite }, reportSite, target)) return;
+      defects.push([defectSite || reportSite, d.defect_asset_code || "", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || d.defect_manual_asset_name || "", d.defect || d.defect_description || d.problem_description || "", d.defect_urgency || "", d.mechanic_status || d.defect_status || r.status || "novo"]);
+    }
+  });
+  overview.fuels = fuels;
+  overview.defects = defects;
+  return overview;
+}
+
 function siteBossBuildOverviewFromReports(reports = [], date = today(), site = "") {
   const previousCache = directorReportsCache;
   try {
     directorReportsCache = Array.isArray(reports) ? reports : [];
-    return officeBuildDailyLogData(date, site);
+    const overview = officeBuildDailyLogData(date, site);
+    return siteBossAugmentImmediateReports(overview, reports, site);
   } finally {
     directorReportsCache = previousCache;
   }
@@ -5514,7 +5557,8 @@ async function refreshSiteBossOverview() {
     if (!currentWorker?.company_id) throw new Error("Nema aktivne firme za ovog korisnika.");
     const date = $("#siteLogDate")?.value || today();
     const site = $("#siteLogSite")?.value || "";
-    if (box) box.innerHTML = `<p class="muted">Učitavam poslate izveštaje za ${escapeHtml(formatDateOnlyLocal(date) || date)}...</p>`;
+    if (!site) throw new Error("Prvo izaberi gradilište. Šef gradilišta treba da vidi samo izveštaje za taj datum i to gradilište.");
+    if (box) box.innerHTML = `<p class="muted">Učitavam poslate izveštaje za ${escapeHtml(formatDateOnlyLocal(date) || date)} · ${escapeHtml(site)}...</p>`;
     siteBossMetricSet(null, "učitavam");
     const { data, error } = await sb
       .from("reports")
@@ -5527,20 +5571,25 @@ async function refreshSiteBossOverview() {
     const clean = (Array.isArray(data) ? data : []).filter(r => !isArchivedReport(r));
     const overview = siteBossBuildOverviewFromReports(clean, date, site);
     renderSiteBossOverview(overview, date, site);
+    return overview;
   } catch (e) {
     siteBossMetricSet(null, "nije dostupno");
     if (box) box.innerHTML = `<div class="site-boss-warning"><b>Pregled nije učitan.</b><br>${escapeHtml(e.message || e)}<br><span class="muted">Ako Supabase RLS ne dozvoljava šefu gradilišta da čita izveštaje firme, treba dodati posebnu RPC/SQL dozvolu za ovu ulogu. Dnevnik gradilišta i dalje može da se popuni ručno i pošalje Upravi.</span></div>`;
   }
 }
 
-function copySiteBossSummaryToDailyLog() {
-  const text = siteBossOverviewSummaryText();
-  if (!text) return toast("Prvo osveži pregled gradilišta.", true);
-  const area = $("#siteLogDescription");
-  if (!area) return;
-  const existing = area.value.trim();
-  area.value = existing ? `${existing}\n\n${text}` : text;
-  toast("Kratak opis iz pregleda je ubačen u Dnevnik gradilišta.");
+async function copySiteBossSummaryToDailyLog() {
+  const date = $("#siteLogDate")?.value || today();
+  const site = $("#siteLogSite")?.value || "";
+  if (!site) return toast("Prvo izaberi gradilište. Podaci se vezuju za tačan datum i gradilište.", true);
+  let data = siteBossOverviewCache;
+  if (!data) data = await refreshSiteBossOverview();
+  if (!data) return toast("Prvo osveži pregled gradilišta.", true);
+  siteLogImportedWorkerOverview = buildSiteBossImportedOverview(data, date, site);
+  scheduleSiteLogLivePreview();
+  const box = document.getElementById("siteLogPreviewBox");
+  if (box) box.scrollIntoView({ behavior:"smooth", block:"start" });
+  toast("Podaci radnika za izabrani datum i gradilište su ubačeni u desni A4 pregled. Levo dopuni radnike, sate i ugradnju ako nešto fali.");
 }
 
 function officeBuildCarnetData(from, to, site) {
@@ -13602,6 +13651,7 @@ function collectSiteLogData() {
     materials_installed: collectSiteLogMaterials("materials_installed"),
     materials_stock_on_site: collectSiteLogMaterials("materials_stock_on_site"),
     truck_tours: collectSiteLogTrucks(),
+    imported_worker_overview: siteLogImportedWorkerOverview,
     signature_mode: sig.site_log_signature_data_url ? "app_signature" : (siteLogSignedFileData ? "uploaded_signed_file" : "none"),
     signed_file: siteLogSignedFileData,
     ...sig,
@@ -13612,6 +13662,35 @@ function siteLogTable(headers, rows, cellsFn) {
   if (!rows || !rows.length) return `<p class="report-empty">Nema unosa.</p>`;
   return `<table class="report-mini-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r,i)=>`<tr>${cellsFn(r,i).map(c=>`<td>${escapeHtml(c || "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
+
+function buildSiteBossImportedOverview(data = siteBossOverviewCache, date = $("#siteLogDate")?.value || today(), site = $("#siteLogSite")?.value || "") {
+  if (!data) return null;
+  return {
+    imported_at: new Date().toISOString(),
+    date,
+    site,
+    reports_count: Array.isArray(data.reports) ? data.reports.length : 0,
+    workers: Array.isArray(data.workers) ? data.workers : [],
+    machines: Array.isArray(data.machines) ? data.machines : [],
+    vehicles: Array.isArray(data.vehicles) ? data.vehicles : [],
+    fuels: Array.isArray(data.fuels) ? data.fuels : [],
+    materials: Array.isArray(data.materials) ? data.materials : [],
+    defects: Array.isArray(data.defects) ? data.defects : []
+  };
+}
+
+function renderSiteLogImportedOverviewSection(overview = null) {
+  const o = overview || siteLogImportedWorkerOverview;
+  if (!o) return "";
+  return `<div class="report-section site-log-imported-overview"><h4>Automatski pregled radničkih izveštaja za izabrano gradilište</h4>
+    <p class="report-empty">Datum: <b>${escapeHtml(formatDateOnlyLocal(o.date) || o.date || "—")}</b> · Gradilište: <b>${escapeHtml(o.site || "—")}</b> · Izveštaji: <b>${escapeHtml(o.reports_count || 0)}</b></p>
+    <h5>Vozila / ture / materijal</h5>${siteLogTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","Relacija","Ture","Ukupno"], o.vehicles || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[8],r[9],r[10]])}
+    <h5>Mašine / MTČ</h5>${siteLogTable(["Gradilište","Broj","Mašina","Rukovalac","Ukupno MTČ","Rad"], o.machines || [], r => [r[0],r[1],r[2],r[3],r[6],r[8]])}
+    <h5>Gorivo</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], o.fuels || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7]])}
+    <h5>Kvarovi</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], o.defects || [], r => [r[0],r[1],r[2],r[3],r[4],r[5]])}
+  </div>`;
+}
+
 function renderSiteLogA4(data = collectSiteLogData()) {
   const signed = data.site_log_signature_data_url ? `<div class="paper-signature-box"><img src="${escapeHtml(data.site_log_signature_data_url)}" alt="Potpis"/><div><b>${escapeHtml(data.site_log_signature_name || data.created_by_worker || "Potpisnik")}</b><span>${escapeHtml(formatDateTimeLocal(data.site_log_signature_signed_at) || "")}</span></div></div>` : `<div class="paper-signature-line">Potpis odgovornog lica gradilišta</div>`;
   const uploaded = data.signed_file ? `<p class="signed-file-note">Dodat potpisan dokument: <b>${escapeHtml(data.signed_file.name || "fajl")}</b>. Fajl se čuva kao dokaz uz izveštaj.</p>` : "";
@@ -13625,6 +13704,7 @@ function renderSiteLogA4(data = collectSiteLogData()) {
     <div class="report-section"><h4>Evidencija zaposlenih i radnih sati</h4>${siteLogTable(["#","Ime i prezime","Sati","Napomena"], data.workers, (w,i)=>[String(i+1), w.full_name, w.hours, w.note])}</div>
     <div class="report-section"><h4>Opis radova danas</h4><p>${escapeHtml(data.today_work_description || "—")}</p></div>
     <div class="report-section"><h4>Plan radova za naredni dan</h4><p>${escapeHtml(data.tomorrow_work_plan || "—")}</p></div>
+    ${renderSiteLogImportedOverviewSection(data.imported_worker_overview)}
     <div class="report-section"><h4>Ulaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], data.material_in, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
     <div class="report-section"><h4>Izlaz materijala</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Napomena"], data.material_out, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.note])}</div>
     <div class="report-section"><h4>Ugrađeni materijali</h4>${siteLogTable(["#","Materijal","Količina","Jed.","Pozicija/rad"], data.materials_installed, (m,i)=>[String(i+1), m.material_name, m.quantity, m.unit, m.work_position || m.note])}</div>
@@ -13845,6 +13925,7 @@ function loadSiteLogDataIntoForm(d = {}, r = {}) {
   (d.materials_installed || []).forEach(x => addSiteLogMaterialEntry("materials_installed", x));
   (d.materials_stock_on_site || []).forEach(x => addSiteLogMaterialEntry("materials_stock_on_site", x));
   (d.truck_tours || []).forEach(addSiteLogTruckEntry);
+  siteLogImportedWorkerOverview = d.imported_worker_overview || null;
   siteLogSignedFileData = d.signed_file || null;
   updateSiteLogSignedFileInfo();
   refreshSiteLogSelectors();
@@ -13873,6 +13954,7 @@ function loadSiteLogDraft() {
     (d.materials_installed || []).forEach(x => addSiteLogMaterialEntry("materials_installed", x));
     (d.materials_stock_on_site || []).forEach(x => addSiteLogMaterialEntry("materials_stock_on_site", x));
     (d.truck_tours || []).forEach(addSiteLogTruckEntry);
+    siteLogImportedWorkerOverview = d.imported_worker_overview || null;
     siteLogSignedFileData = d.signed_file || null; updateSiteLogSignedFileInfo(); refreshSiteLogSelectors();
     if (d.site_name && $("#siteLogSite")) $("#siteLogSite").value = d.site_name;
     return true;
@@ -13903,9 +13985,9 @@ function initSiteLogPanel() {
   bind("#siteBossRefreshOverviewBtn", refreshSiteBossOverview);
   bind("#siteBossCopySummaryBtn", copySiteBossSummaryToDailyLog);
   const siteLogDate = $("#siteLogDate");
-  if (siteLogDate && !siteLogDate.dataset.siteBossBound) { siteLogDate.dataset.siteBossBound = "1"; siteLogDate.addEventListener("change", () => { siteBossOverviewCache = null; siteBossMetricSet(null); }); }
+  if (siteLogDate && !siteLogDate.dataset.siteBossBound) { siteLogDate.dataset.siteBossBound = "1"; siteLogDate.addEventListener("change", () => { siteBossOverviewCache = null; siteLogImportedWorkerOverview = null; siteBossMetricSet(null); }); }
   const siteLogSite = $("#siteLogSite");
-  if (siteLogSite && !siteLogSite.dataset.siteBossBound) { siteLogSite.dataset.siteBossBound = "1"; siteLogSite.addEventListener("change", () => { siteBossOverviewCache = null; siteBossMetricSet(null); }); }
+  if (siteLogSite && !siteLogSite.dataset.siteBossBound) { siteLogSite.dataset.siteBossBound = "1"; siteLogSite.addEventListener("change", () => { siteBossOverviewCache = null; siteLogImportedWorkerOverview = null; siteBossMetricSet(null); }); }
   scheduleSiteLogLivePreview();
 }
 function hasSiteLogAnyContent(d) {

@@ -9161,3 +9161,9 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
   color:#14532d!important;
   -webkit-text-fill-color:#14532d!important;
 }
+
+
+/* v1741 — šef gradilišta: automatski podaci radnika u desnom A4 pregledu */
+.site-log-imported-overview{border-left:4px solid #b91c1c;background:#fff7f7;}
+.site-log-imported-overview h5{margin:10px 0 6px;font-size:13px;color:#111827;}
+.site-log-imported-overview .report-mini-table th{white-space:nowrap;}
