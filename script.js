@@ -2583,15 +2583,46 @@ const ASSET_TANK_LABELS = {
   ostalo: "Ostalo"
 };
 
+function normalizeAssetFeatureKey(key) {
+  const k = String(key || "").trim().toLowerCase();
+  const aliases = {
+    kiper: "kipper",
+    tipper: "kipper",
+    truck_tours: "kipper",
+    labudica: "lowloader",
+    low_loader: "lowloader",
+    fuel_tank: "fuel_tanker",
+    fuel_tank_vehicle: "fuel_tanker",
+    fuel_cistern: "fuel_tanker",
+    fuel_cisterna: "fuel_tanker",
+    cisterna_gorivo: "fuel_tanker",
+    gorivo_cisterna: "fuel_tanker",
+    water_tank: "water_tanker",
+    water_cistern: "water_tanker",
+    water_cisterna: "water_tanker",
+    cisterna_voda: "water_tanker",
+    voda_cisterna: "water_tanker",
+    images: "allow_images",
+    image: "allow_images",
+    photos: "allow_images",
+    allow_photos: "allow_images",
+    fixed_pump: "fixed_fuel_pump",
+    fixed_fuel_station: "fixed_fuel_pump",
+    pumpa_baza: "fixed_fuel_pump"
+  };
+  return aliases[k] || k;
+}
+
 function normalizeAssetFeatures(raw) {
   let value = raw;
   if (typeof value === "string") {
     try { value = JSON.parse(value); } catch (_) { value = value.split(/[;,|]/).map(x => x.trim()).filter(Boolean); }
   }
-  if (Array.isArray(value)) return [...new Set(value.map(x => String(x || "").trim()).filter(Boolean))];
+  const normalizeList = list => [...new Set(list.map(x => normalizeAssetFeatureKey(x)).filter(Boolean))];
+  if (Array.isArray(value)) return normalizeList(value);
   if (value && typeof value === "object") {
     if (Array.isArray(value.features)) return normalizeAssetFeatures(value.features);
-    return Object.keys(value).filter(k => value[k] === true || value[k] === "true" || value[k] === 1 || value[k] === "1");
+    return normalizeList(Object.keys(value).filter(k => value[k] === true || value[k] === "true" || value[k] === 1 || value[k] === "1"));
   }
   return [];
 }
@@ -10327,7 +10358,20 @@ function filterAllowedWorkerModulesBySelectedAsset(allowedModules = []) {
   if (!asset) return [];
 
   const assetAllowed = workerModuleValuesForAsset(asset);
-  return allowedModules.filter(m => alwaysAllowed.has(m.value) || assetAllowed.has(m.value));
+  const allowedByPermission = new Set(allowedModules.map(m => m.value));
+
+  // v1718: Direkcija sada rubrike veže za vozilo/mašinu.
+  // Zato radnik mora videti rubrike tog sredstva čak i ako stari nalog nema ručno čekiranu dozvolu
+  // za labudicu/cisternu/kiper. U suprotnom ostaje prazan meni "Izaberi rubriku".
+  return WORKER_MODULE_DEFINITIONS.filter(m =>
+    alwaysAllowed.has(m.value) ||
+    assetAllowed.has(m.value) ||
+    allowedByPermission.has(m.value)
+  ).filter(m => {
+    if (alwaysAllowed.has(m.value)) return allowedByPermission.has(m.value);
+    if (assetAllowed.has(m.value)) return true;
+    return false;
+  });
 }
 
 function renderSelectedAssetRubricsPreview(asset) {
@@ -10420,7 +10464,7 @@ function refreshWorkerModuleSelector(perms = {}) {
   if (allowed.length === 1) select.value = allowed[0].value;
   else if (allowed.some(m => m.value === previous)) select.value = previous;
   else select.value = "";
-  if (hint) hint.textContent = "";
+  if (hint) hint.textContent = allowed.length ? "" : (getSelectedWorkerContextAsset() ? "Za ovo sredstvo nisu podešene rubrike u Direkciji. Otvori sredstvo u Direkciji i čekiraj Kiper/Labudica/Cisterna." : "");
   applyWorkerModuleSelection({ addDefaults: false });
   updateWorkerSubmitButtonLabel();
 }
