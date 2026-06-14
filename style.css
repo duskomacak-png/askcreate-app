@@ -9094,3 +9094,70 @@ body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-
     padding:9px!important;
   }
 }
+
+
+/* v1740 — šef gradilišta: tekst na dugmadima uvek vidljiv */
+body.worker-field-theme.site-log-mode #siteLogPanel button,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel button,
+body.worker-field-theme.site-log-mode #siteLogPanel .primary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .primary,
+body.worker-field-theme.site-log-mode #siteLogPanel .secondary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .secondary,
+body.worker-field-theme.site-log-mode #siteLogPanel .small-btn,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .small-btn,
+body.worker-field-theme.site-log-mode #siteLogPanel .small-action,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .small-action{
+  font-size:14px!important;
+  line-height:1.18!important;
+  font-weight:900!important;
+  letter-spacing:0!important;
+  text-indent:0!important;
+  text-shadow:none!important;
+  opacity:1!important;
+  filter:none!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  min-height:42px!important;
+  padding:10px 14px!important;
+}
+body.worker-field-theme.site-log-mode #siteLogPanel button.primary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel button.primary,
+body.worker-field-theme.site-log-mode #siteLogPanel .primary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .primary{
+  background:#14532d!important;
+  border:1px solid #14532d!important;
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+}
+body.worker-field-theme.site-log-mode #siteLogPanel button.secondary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel button.secondary,
+body.worker-field-theme.site-log-mode #siteLogPanel .secondary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .secondary{
+  background:#ffffff!important;
+  border:1px solid #94a3b8!important;
+  color:#14532d!important;
+  -webkit-text-fill-color:#14532d!important;
+}
+body.worker-field-theme.site-log-mode #siteLogPanel .site-log-subtitle button,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-subtitle button,
+body.worker-field-theme.site-log-mode #siteLogPanel .site-log-entry-actions button,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-entry-actions button,
+body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-actions button,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-actions button{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  min-width:150px!important;
+  color:inherit;
+}
+body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-actions button.primary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-actions button.primary{
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+}
+body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-actions button.secondary,
+body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-actions button.secondary{
+  color:#14532d!important;
+  -webkit-text-fill-color:#14532d!important;
+}
