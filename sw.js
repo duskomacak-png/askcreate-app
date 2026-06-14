@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1728-ture-ukupno-materijal";
+const CACHE_NAME = "askcreate-v1729-ture-materijal-u-izvestaju";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1728-ture-ukupno-materijal",
-  "./script.js?v=1728-ture-ukupno-materijal",
-  "./manifest.json?v=1728-ture-ukupno-materijal",
+  "./style.css?v=1729-ture-materijal-u-izvestaju",
+  "./script.js?v=1729-ture-materijal-u-izvestaju",
+  "./manifest.json?v=1729-ture-materijal-u-izvestaju",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

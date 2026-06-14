@@ -4994,7 +4994,8 @@ function vehicleTourOfficeRows(v = {}, reportSite = "") {
       km_end: v.km_end || "",
       km_total: kmTotal,
       tours,
-      material: item.material || item.material_name || "",
+      material: officeVehicleMaterialText(item),
+      quantity_text: officeVehicleTotalQuantityText(item),
       action,
       route: routeText || item.note || "",
       note: item.note || "",
@@ -5030,7 +5031,8 @@ function vehicleTourOfficeRows(v = {}, reportSite = "") {
   // Stari izveštaji bez tour_items ostaju kompatibilni.
   pushRow(officeEntrySiteName(v, reportSite), officeVehicleMaterialAction(v) || "prevoz", {
     tours: v.tours || "",
-    material: officeVehicleMaterialName(v)
+    material: officeVehicleMaterialText(v),
+    quantity_text: officeVehicleTotalQuantityText(v)
   }, officeVehicleRouteText(v), true);
   return out;
 }
@@ -5102,11 +5104,12 @@ function officeBuildDailyLogData(date, site) {
           row.vehicle || d.vehicle || "",
           row.registration || "",
           reportPerson,
+          row.material || "",
           row.km_start || "",
           row.km_end || "",
           row.route || "",
           row.tours || "",
-          ""
+          row.quantity_text || ""
         ]);
         if (row.material || row.tours) {
           materials.push([
@@ -5499,7 +5502,7 @@ function renderSiteBossOverview(data, date, site) {
   box.innerHTML = header + `
     <section><h4>👷 Radnici i sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workers)}</section>
     <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ poč.","MTČ kraj","Ukupno MTČ","KM","Rad"], data.machines)}</section>
-    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Vozilo","Reg.","Vozač","KM poč.","KM kraj","Relacija","Ture","m³"], data.vehicles)}</section>
+    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Vozilo","Reg.","Vozač","Materijal","KM poč.","KM kraj","Relacija","Ture","Ukupno"], data.vehicles)}</section>
     <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], data.fuels)}</section>
     <section><h4>📦 Materijal</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
     <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], data.defects)}</section>`;
@@ -6135,6 +6138,18 @@ function officeVehicleMaterialAction(v = {}) {
 
 function officeVehicleM3(v = {}) {
   return v.cubic_m3 || v.cubic_auto || v.total_m3 || v.calculated_m3 || v.volume_m3 || "";
+}
+
+function officeVehicleMaterialText(v = {}) {
+  const material = v.material_name || v.material || v.material_custom || v.cargo || v.load || "";
+  const unit = normalizeTransportUnit(v.unit || v.measure_unit || v.material_unit || "");
+  if (!material) return "";
+  const txt = String(material).trim();
+  return unit && !txt.toLowerCase().includes(unit.toLowerCase()) ? `${txt} · ${unit}` : txt;
+}
+
+function officeVehicleTotalQuantityText(v = {}) {
+  return v.quantity_text || v.total_quantity_text || v.cubic_m3 || v.cubic_auto || v.total_m3 || v.calculated_m3 || v.volume_m3 || "";
 }
 
 function officeVehicleRouteText(v = {}) {
@@ -6945,12 +6960,13 @@ function renderReportReadableDetails(d = {}, options = {}) {
     addPreview("Evidencija rada vozila", row, "Broj", v.asset_code || v.vehicle_code);
     addPreview("Evidencija rada vozila", row, "Vozilo", v.name || v.vehicle);
     addPreview("Evidencija rada vozila", row, "Registracija", v.registration);
-    addPreview("Evidencija rada vozila", row, "Kapacitet m³", v.capacity);
+    addPreview("Evidencija rada vozila", row, "Kapacitet", v.capacity);
+    addPreview("Evidencija rada vozila", row, "Materijal", officeVehicleMaterialText(v));
     addPreview("Evidencija rada vozila", row, "KM početak", v.km_start);
     addPreview("Evidencija rada vozila", row, "KM kraj", v.km_end);
     addPreview("Evidencija rada vozila", row, "Relacija", v.route);
     addPreview("Evidencija rada vozila", row, "Broj izvršenih tura", v.tours);
-    addPreview("Evidencija rada vozila", row, "Ukupno količina", v.cubic_m3 || v.cubic_auto);
+    addPreview("Evidencija rada vozila", row, "Ukupno količina", officeVehicleTotalQuantityText(v));
   });
 
   lowloaders.forEach((ll, i) => {
@@ -7092,6 +7108,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>Vozilo</th>
           <th>Reg.</th>
           <th>Kapacitet</th>
+          <th>Materijal</th>
           <th>KM početak</th>
           <th>KM kraj</th>
           <th>Relacija</th>
@@ -7107,11 +7124,12 @@ function renderReportReadableDetails(d = {}, options = {}) {
             <td>${val(v.name || v.vehicle)}</td>
             <td>${val(v.registration)}</td>
             <td>${val(v.capacity)}</td>
+            <td>${val(officeVehicleMaterialText(v))}</td>
             <td>${val(v.km_start)}</td>
             <td>${val(v.km_end)}</td>
             <td>${val(v.route)}</td>
             <td>${val(v.tours)}</td>
-            <td>${val(v.cubic_m3 || v.cubic_auto)}</td>
+            <td>${val(officeVehicleTotalQuantityText(v))}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -8081,17 +8099,18 @@ function buildSingleReportExcelHtml(r) {
 
     <div class="section-title">Vozila / ture</div>
     <table>${excelColgroup(["6%","13%","18%","12%","10%","10%","12%","9%","10%"])}
-      <tr><th>#</th><th>Broj</th><th>Vozilo</th><th>Registracija</th><th>KM početak</th><th>KM kraj</th><th>Relacija</th><th>Ture</th><th>m³</th></tr>
+      <tr><th>#</th><th>Broj</th><th>Vozilo</th><th>Registracija</th><th>Materijal</th><th>KM početak</th><th>KM kraj</th><th>Relacija</th><th>Ture</th><th>Ukupno</th></tr>
       ${excelSectionRows(vehicles, [
         {key:"i", get:(v,i)=>i+1},
         {key:"code", get:v=>v.asset_code || v.vehicle_code || ""},
         {key:"name", get:v=>v.name || v.vehicle || ""},
         {key:"registration", get:v=>v.registration || ""},
+        {key:"material", get:v=>officeVehicleMaterialText(v)},
         {key:"km_start", get:v=>v.km_start || ""},
         {key:"km_end", get:v=>v.km_end || ""},
         {key:"route", get:v=>v.route || ""},
         {key:"tours", get:v=>v.tours || ""},
-        {key:"cubic", get:v=>v.cubic_m3 || v.cubic_auto || ""}
+        {key:"cubic", get:v=>officeVehicleTotalQuantityText(v)}
       ])}
     </table>
 
@@ -8231,7 +8250,7 @@ function buildSingleReportExcelCsv(r) {
       "Vozilo / tura", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
       v.asset_code || v.vehicle_code || "", v.name || v.vehicle || v.registration || "",
       v.km_start || "", v.km_end || "", numericDiff(v.km_start, v.km_end), "", "", "",
-      "", "", "", "", "", v.route || "", "", v.tours || "", v.cubic_m3 || v.cubic_auto || "", "", "", "", "", ""
+      "", "", "", "", "", v.route || "", "", v.tours || "", officeVehicleTotalQuantityText(v), officeVehicleMaterialText(v), "", officeVehicleTotalQuantityText(v), normalizeTransportUnit((v.tour_items || [])[0]?.unit || (v.tour_items || [])[0]?.measure_unit || ""), ""
     ]));
   }
 
@@ -17645,3 +17664,5 @@ function copySupportEmail() {
     }, 900);
   });
 })();
+
+// AskCreate v1729: u izvestaju tura prikazuje se materijal iz liste Direkcije i ukupna kolicina.
