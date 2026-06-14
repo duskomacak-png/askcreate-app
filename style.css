@@ -9003,3 +9003,94 @@ body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-
     display:none!important;
   }
 }
+
+/* v1739 — šef gradilišta laptop: dugmad vidljiva + gradilište automatski popunjeno ako postoji jedno/default */
+@media (min-width: 1100px){
+  body.worker-field-theme.site-log-mode #viewWorkerForm,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #viewWorkerForm{
+    width:100%!important;
+    max-width:calc(100vw - 24px)!important;
+    overflow-x:hidden!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel{
+    grid-template-columns:minmax(0, 1.08fr) minmax(390px, .92fr)!important;
+    gap:14px!important;
+    padding:12px!important;
+    box-sizing:border-box!important;
+    overflow:visible!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel > #siteLogPreviewBox,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > #siteLogPreviewBox{
+    min-width:0!important;
+    width:100%!important;
+    padding:10px!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-a4,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-a4{
+    font-size:.88rem!important;
+    padding:12px!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-actions,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-actions{
+    position:static!important;
+    bottom:auto!important;
+    z-index:auto!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+    align-items:stretch!important;
+    margin-top:12px!important;
+    padding:12px!important;
+    background:#ffffff!important;
+    border:1px solid #d1d5db!important;
+    border-radius:16px!important;
+    box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-actions button,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-actions button{
+    width:100%!important;
+    min-height:44px!important;
+    white-space:normal!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    font-weight:900!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel button.secondary,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel button.secondary,
+  body.worker-field-theme.site-log-mode #siteLogPanel .secondary,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .secondary{
+    color:#14532d!important;
+    background:#ffffff!important;
+    border:1px solid #94a3b8!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-entry-actions,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-entry-actions{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:10px!important;
+    align-items:center!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-entry-actions button,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-entry-actions button{
+    min-width:170px!important;
+    min-height:42px!important;
+    white-space:normal!important;
+    color:inherit;
+  }
+}
+@media (min-width:1100px) and (max-width:1280px){
+  body.worker-field-theme.site-log-mode #siteLogPanel,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel{
+    grid-template-columns:minmax(0, 1.15fr) minmax(350px, .85fr)!important;
+    gap:10px!important;
+    padding:10px!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-a4,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-a4{
+    font-size:.78rem!important;
+    padding:9px!important;
+  }
+}

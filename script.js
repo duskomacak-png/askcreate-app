@@ -13346,9 +13346,33 @@ function siteLogSelectSiteOptions(selectedValue = "") {
     return `<option value="${escapeHtml(name)}" data-site-id="${escapeHtml(site.id || "")}" ${isSelected}>${escapeHtml(name + loc)}</option>`;
   }).join("");
 }
+
+function autoSelectSiteLogSiteIfPossible() {
+  const site = document.getElementById("siteLogSite");
+  if (!site || site.value) return;
+  const opts = Array.from(site.options || []).filter(o => o.value);
+  const worker = currentWorker || {};
+  const wantedRaw = worker.site_name || worker.site || worker.default_site || worker.assigned_site || worker.work_site || "";
+  const wanted = String(wantedRaw || "").trim().toLowerCase();
+  if (wanted) {
+    const match = opts.find(o => String(o.value || "").trim().toLowerCase() === wanted || String(o.textContent || "").trim().toLowerCase().includes(wanted));
+    if (match) {
+      site.value = match.value;
+      site.dispatchEvent(new Event("change", { bubbles:true }));
+      scheduleSiteLogLivePreview?.();
+      return;
+    }
+  }
+  if (opts.length === 1) {
+    site.value = opts[0].value;
+    site.dispatchEvent(new Event("change", { bubbles:true }));
+    scheduleSiteLogLivePreview?.();
+  }
+}
+
 function refreshSiteLogSelectors() {
   const site = $("#siteLogSite");
-  if (site) { const old = site.value || ""; site.innerHTML = siteLogSelectSiteOptions(old); if (old && Array.from(site.options).some(o => o.value === old)) site.value = old; }
+  if (site) { const old = site.value || ""; site.innerHTML = siteLogSelectSiteOptions(old); if (old && Array.from(site.options).some(o => o.value === old)) site.value = old; autoSelectSiteLogSiteIfPossible(); }
   $$(".site-log-material-select").forEach(sel => {
     const old = sel.value || "";
     sel.innerHTML = buildWorkerMaterialOptionsHtml(old);
@@ -13863,6 +13887,7 @@ function initSiteLogPanel() {
   initSiteLogSignaturePad();
   if ($("#siteLogDate") && !$("#siteLogDate").value) $("#siteLogDate").value = today();
   refreshSiteLogSelectors();
+  autoSelectSiteLogSiteIfPossible();
   bindSiteLogLivePreviewEvents();
   if (!$$("#siteLogWorkers .site-log-worker-entry").length) addSiteLogWorkerEntry();
   if (!$$("#siteLogMaterialIn .site-log-material-entry").length) addSiteLogMaterialEntry("material_in");
