@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "1.69.7";
+const APP_VERSION = "1.71.1-tanker-consumption";
 
 
 let sb = null;
@@ -259,43 +259,52 @@ function fuelReportDateKey(r) {
   return String(r?.report_date || r?.submitted_at || r?.created_at || "").slice(0, 10);
 }
 
-function getTodayFuelDashboardReports(reports) {
+function getTodayFuelWorkerDashboardReports(reports) {
   const todayIso = today();
   return (Array.isArray(reports) ? reports : []).filter(r => {
     if (isArchivedReport(r)) return false;
     if (fuelReportDateKey(r) !== todayIso) return false;
-    const d = r?.data || {};
-    const perms = r?.company_users?.permissions || {};
-
-    // Gorivo danas je kontrolna lista izveštaja cisterne.
-    // Zato u listu ulazi izveštaj ako je radnik imao rubriku cisterna,
-    // ili ako sam dokument nosi podatke/rubriku cisterne.
-    return !!(
-      hasFieldTankerFuelData(r) ||
-      perms.field_tanker ||
-      d.report_sections_sent?.field_tanker === true ||
-      d.report_type === "field_tanker_daily_batch" ||
-      d.source === "field_tanker_memory"
-    );
+    // Gorivo radnici: radnik sipa u svoju mašinu/vozilo i šalje odmah.
+    // Ne meša se sa dnevnikom rada i ne meša se sa cisternom.
+    return hasWorkerFuelEntryData(r) && !hasFieldTankerFuelData(r);
   });
+}
+
+function getTodayFuelTankerDashboardReports(reports) {
+  const todayIso = today();
+  return (Array.isArray(reports) ? reports : []).filter(r => {
+    if (isArchivedReport(r)) return false;
+    if (fuelReportDateKey(r) !== todayIso) return false;
+    // Gorivo cisterna: izveštaj cisterne za gorivo, zasebno od radničkih sipanja.
+    return hasFieldTankerFuelData(r);
+  });
+}
+
+function getTodayFuelDashboardReports(reports) {
+  return [
+    ...getTodayFuelWorkerDashboardReports(reports),
+    ...getTodayFuelTankerDashboardReports(reports)
+  ];
 }
 
 function businessUpdateReportsMetrics(list) {
   const reports = Array.isArray(list) ? list : [];
   const pending = reports.filter(isPendingDirectorReport).length;
   businessSetText("directorMetricPendingReports", String(pending));
-  const fuelReports = getTodayFuelDashboardReports(reports);
+  const workerFuelReports = getTodayFuelWorkerDashboardReports(reports);
+  const tankerFuelReports = getTodayFuelTankerDashboardReports(reports);
+  const fuelReports = [...workerFuelReports, ...tankerFuelReports];
   const fuel = Math.round(fuelReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
   const todayIso = today();
   const todayDefects = reports.filter(r => !isArchivedReport(r) && String(r.report_date || r.submitted_at || r.created_at || "").slice(0, 10) === todayIso && hasDefectData(r)).length;
   const archived = reports.filter(isArchivedReport).length;
   // Kvarovi se vode samo kroz karticu Kvarovi. Ne smeju dizati broj u kartici Dnevnik rada danas.
-  const todayDailyLogReports = reports.filter(r => !isArchivedReport(r) && !isDefectOnlyReport(r) && hasDailyReportData(r) && officeReportMatchesDateSite(r, todayIso, todayIso, "")).length;
+  const todayDailyLogReports = reports.filter(r => !isArchivedReport(r) && !isDefectOnlyReport(r) && !isFuelDashboardOnlyReport(r) && hasDailyReportData(r) && officeReportMatchesDateSite(r, todayIso, todayIso, "")).length;
   const todayCarnetRows = officeMetricCarnetRowsForToday(reports);
   businessSetText("directorMetricDailyLog", String(todayDailyLogReports));
   businessSetText("directorMetricCarnet", String(todayCarnetRows));
   businessSetText("directorMetricFuel", fuelReportCountLabel(fuelReports.length));
-  businessSetText("directorMetricFuelLabel", fuel > 0 ? `Gorivo danas · ${fuel} L` : "Gorivo danas");
+  businessSetText("directorMetricFuelLabel", fuel > 0 ? `Gorivo · radnici ${workerFuelReports.length} / cisterna ${tankerFuelReports.length} · ${fuel} L` : "Gorivo radnici / cisterna");
   businessSetText("directorMetricDefectsToday", String(todayDefects));
   businessSetText("directorMetricArchive", String(archived));
 }
@@ -2548,6 +2557,77 @@ window.deleteReportPermanently = async (id) => {
 };
 
 
+
+const ASSET_FEATURE_DEFINITIONS = [
+  { key: "kipper", label: "Kiper / ture / m³", emoji: "🚚" },
+  { key: "lowloader", label: "Labudica", emoji: "🚛" },
+  { key: "water_tanker", label: "Cisterna voda", emoji: "💧" },
+  { key: "fuel_tanker", label: "Cisterna gorivo", emoji: "⛽" },
+  { key: "allow_images", label: "Slike dozvoljene", emoji: "📸" }
+];
+
+function normalizeAssetFeatures(raw) {
+  let value = raw;
+  if (typeof value === "string") {
+    try { value = JSON.parse(value); } catch (_) { value = value.split(/[;,|]/).map(x => x.trim()).filter(Boolean); }
+  }
+  if (Array.isArray(value)) return [...new Set(value.map(x => String(x || "").trim()).filter(Boolean))];
+  if (value && typeof value === "object") {
+    if (Array.isArray(value.features)) return normalizeAssetFeatures(value.features);
+    return Object.keys(value).filter(k => value[k] === true || value[k] === "true" || value[k] === 1 || value[k] === "1");
+  }
+  return [];
+}
+
+function getAssetFeatures(asset = {}) {
+  return normalizeAssetFeatures(asset.asset_features || asset.features || asset.vehicle_features || asset.work_features || asset.capabilities || []);
+}
+
+function collectAssetFeatureInputs() {
+  return Array.from(document.querySelectorAll(".assetFeatureInput"))
+    .filter(input => input.checked)
+    .map(input => input.value);
+}
+
+function setAssetFeatureInputs(features) {
+  const set = new Set(normalizeAssetFeatures(features));
+  document.querySelectorAll(".assetFeatureInput").forEach(input => {
+    input.checked = set.has(input.value);
+  });
+}
+
+function assetFeatureLabel(key) {
+  const found = ASSET_FEATURE_DEFINITIONS.find(f => f.key === key);
+  return found ? `${found.emoji} ${found.label}` : key;
+}
+
+function renderAssetFeatureBadges(asset = {}) {
+  const features = getAssetFeatures(asset);
+  if (!features.length) return `<small class="muted">Nema podešenih rubrika.</small>`;
+  return `<div class="asset-feature-badges">${features.map(k => `<span class="asset-feature-badge">${escapeHtml(assetFeatureLabel(k))}</span>`).join("")}</div>`;
+}
+
+function defaultAssetFeaturesForType(assetType) {
+  const raw = rawAssetTypeValue(assetType);
+  const defaults = [];
+  if (raw === "vehicle_kiper") defaults.push("kipper");
+  if (raw === "lowloader_vehicle" || raw === "lowloader") defaults.push("lowloader");
+  if (raw === "water_tanker") defaults.push("water_tanker");
+  if (raw === "fuel_tanker_vehicle" || raw === "fuel_tanker" || raw === "small_fuel_tanker") defaults.push("fuel_tanker");
+  return defaults;
+}
+
+function applyDefaultAssetFeaturesFromType({ onlyIfEmpty = true } = {}) {
+  const inputs = Array.from(document.querySelectorAll(".assetFeatureInput"));
+  if (!inputs.length) return;
+  if (onlyIfEmpty && inputs.some(i => i.checked)) return;
+  const type = document.querySelector("#assetType")?.value || "";
+  const defaults = new Set(defaultAssetFeaturesForType(type));
+  inputs.forEach(input => {
+    if (defaults.has(input.value)) input.checked = true;
+  });
+}
+
 function defaultFuelUnitForAssetType(assetType) {
   const t = normalizeAssetType(assetType);
   if (t === "vehicle") return "l_per_100km";
@@ -2587,7 +2667,7 @@ function formatAssetTolerance(asset) {
 
 function isMissingAssetConsumptionColumnError(error) {
   const msg = String(error?.message || error?.details || "").toLowerCase();
-  return msg.includes("fuel_norm") || msg.includes("fuel_norm_unit") || msg.includes("fuel_tolerance_percent") || msg.includes("consumption");
+  return msg.includes("fuel_norm") || msg.includes("fuel_norm_unit") || msg.includes("fuel_tolerance_percent") || msg.includes("asset_features") || msg.includes("consumption");
 }
 
 function stripAssetConsumptionColumns(payload) {
@@ -2595,6 +2675,7 @@ function stripAssetConsumptionColumns(payload) {
   delete clean.fuel_norm;
   delete clean.fuel_norm_unit;
   delete clean.fuel_tolerance_percent;
+  delete clean.asset_features;
   return clean;
 }
 
@@ -2610,7 +2691,7 @@ async function saveAssetPayloadWithConsumptionFallback(payload, editingId) {
   if (!isMissingAssetConsumptionColumnError(error)) throw error;
   const retry = await runSave(stripAssetConsumptionColumns(payload));
   if (retry.error) throw retry.error;
-  return { ok: true, warning: "Sredstvo je sačuvano, ali norme potrošnje nisu upisane jer u Supabase tabeli assets još nisu dodate nove kolone. Pokreni SQL iz poruke, pa ponovo izmeni sredstvo." };
+  return { ok: true, warning: "Sredstvo je sačuvano, ali norme potrošnje ili rubrike sredstva nisu upisane jer u Supabase tabeli assets još nisu dodate nove kolone. Pokreni SQL za assets, pa ponovo izmeni sredstvo." };
 }
 
 function setAssetFormMode(mode = "add") {
@@ -2634,6 +2715,8 @@ function clearAssetForm() {
   if (type) type.value = "machine";
   const fuelUnit = document.querySelector("#assetFuelUnit");
   if (fuelUnit) fuelUnit.value = "l_per_mtc";
+  setAssetFeatureInputs([]);
+  applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true });
   editingAssetId = null;
   setAssetFormMode("add");
   setAssetCodeStatus("Interni broj sredstva mora biti jedinstven u ovoj firmi. Ne koristi isti broj za dve mašine, vozila ili opremu.", "info");
@@ -2771,6 +2854,8 @@ window.editAsset = async (id) => {
     if (document.querySelector("#assetFuelNorm")) document.querySelector("#assetFuelNorm").value = asset.fuel_norm || asset.consumption_norm || asset.fuel_consumption_norm || "";
     if (document.querySelector("#assetFuelUnit")) document.querySelector("#assetFuelUnit").value = asset.fuel_norm_unit || asset.consumption_unit || defaultFuelUnitForAssetType(asset.asset_type || "machine");
     if (document.querySelector("#assetFuelTolerance")) document.querySelector("#assetFuelTolerance").value = asset.fuel_tolerance_percent || asset.consumption_tolerance_percent || asset.tolerance_percent || "";
+    setAssetFeatureInputs(getAssetFeatures(asset));
+    applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true });
     setAssetFormMode("edit");
     checkAssetCodeAvailability(false).catch(() => {});
     toast("Sredstvo je otvoreno za izmenu.");
@@ -2794,6 +2879,7 @@ async function saveAssetForm() {
     const fuelNorm = document.querySelector("#assetFuelNorm")?.value.trim() || "";
     const fuelNormUnit = document.querySelector("#assetFuelUnit")?.value || defaultFuelUnitForAssetType(assetType);
     const fuelTolerance = document.querySelector("#assetFuelTolerance")?.value.trim() || "";
+    const assetFeatures = collectAssetFeatureInputs();
 
     if (!name) throw new Error("Upiši naziv mašine/vozila.");
 
@@ -2813,7 +2899,8 @@ async function saveAssetForm() {
       capacity,
       fuel_norm: fuelNorm,
       fuel_norm_unit: fuelNormUnit,
-      fuel_tolerance_percent: fuelTolerance
+      fuel_tolerance_percent: fuelTolerance,
+      asset_features: assetFeatures
     };
 
     const saveResult = await saveAssetPayloadWithConsumptionFallback(payload, editingAssetId);
@@ -3189,6 +3276,7 @@ function renderAssetsList() {
     <div class="director-table-row management-item asset-list-card-v1345" data-asset-type="${escapeHtml(normalizeAssetType(a.asset_type))}">
       <div class="dt-cell dt-name"><strong>${escapeHtml(formatAssetTitleWithCode(a))}</strong><small>Interni broj / naziv</small></div>
       <div class="dt-cell"><span>${escapeHtml(assetTypeLabel(a.asset_type))}</span><small>Kategorija</small></div>
+      <div class="dt-cell"><span>Rubrike</span>${renderAssetFeatureBadges(a)}</div>
       <div class="dt-cell"><span>${escapeHtml(a.registration || "—")}</span><small>Reg. oznaka</small></div>
       <div class="dt-cell"><span>${escapeHtml(formatCapacityM3(a.capacity))}</span><small>Kapacitet</small></div>
       <div class="dt-cell"><span>${escapeHtml(formatAssetFuelNorm(a) || "—")}</span><small>Norma goriva</small><small class="asset-consumption-note">Odstupanje ${escapeHtml(formatAssetTolerance(a))}</small></div>
@@ -4007,13 +4095,30 @@ function hasFieldTankerFuelData(r) {
     fieldTankers.some(item => item && Object.values(item).some(Boolean));
 }
 
+function hasWorkerFuelEntryData(r) {
+  const d = r?.data || {};
+  const entries = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+  return String(d.report_type || "") === "fuel_entry" ||
+    String(d.source || "") === "fuel_immediate" ||
+    d.report_sections_sent?.fuel === true ||
+    entries.some(item => item && Object.values(item).some(Boolean));
+}
+
+function hasAnyFuelReportData(r) {
+  return hasWorkerFuelEntryData(r) || hasFieldTankerFuelData(r);
+}
+
 function isFuelDashboardOnlyReport(r) {
   const d = r?.data || {};
   const perms = r?.company_users?.permissions || {};
-  return hasFieldTankerFuelData(r) && !!(
+  return hasAnyFuelReportData(r) && !!(
+    perms.fuel ||
     perms.field_tanker ||
+    d.report_type === "fuel_entry" ||
     d.report_type === "field_tanker_daily_batch" ||
+    d.source === "fuel_immediate" ||
     d.source === "field_tanker_memory" ||
+    d.report_sections_sent?.fuel === true ||
     d.report_sections_sent?.field_tanker === true
   );
 }
@@ -4679,7 +4784,7 @@ function vehicleTourMatchesFilter(row = {}, site = "") {
 function officeBuildDailyLogData(date, site) {
   // Dnevnik rada prikazuje samo radne izveštaje. Kvarovi idu u posebnu karticu Kvarovi,
   // a arhivirani zapisi se prikazuju samo u kartici Arhiva.
-  const reports = (directorReportsCache || []).filter(r => !isArchivedReport(r) && !isDefectOnlyReport(r) && hasDailyReportData(r) && officeReportMatchesDateSite(r, date, date, site));
+  const reports = (directorReportsCache || []).filter(r => !isArchivedReport(r) && !isDefectOnlyReport(r) && !isFuelDashboardOnlyReport(r) && hasDailyReportData(r) && officeReportMatchesDateSite(r, date, date, site));
   const workers = [];
   const machines = [];
   const vehicles = [];
@@ -5312,7 +5417,7 @@ function renderDirectorDefectNoticeInReports() {
   if (!listBox) return;
   const defects = directorReportsCache.filter(isActiveDefectReport);
   if (!defects.length) return;
-  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r));
+  const dailyReports = directorReportsCache.filter(r => !isDefectOnlyReport(r) && !isFuelDashboardOnlyReport(r) && hasDailyReportData(r));
   const notice = document.createElement("div");
   notice.className = "item report-item defect-alert-notice";
   notice.innerHTML = `<strong>🚨 Ima ${defects.length} prijavljenih kvarova</strong><p class="muted">Kvarovi nisu u listi dnevnih izveštaja. Klikni podtab <b>Kvarovi</b> u ovom ekranu da vidiš prijave kvarova.</p><button class="secondary small-action" type="button" data-business-tab="defects">Otvori kvarove</button>`;
@@ -5367,25 +5472,165 @@ function renderDefectsList() {
   box.innerHTML = summary + (defects.map(defectHtml).join("") || `<p class="muted">Nema aktivnih prijavljenih kvarova. Arhivirani kvarovi su u kartici Arhiva.</p>`);
 }
 
-function fuelReportHtml(r) {
+
+function fieldTankerEntryReadingMode(entry = {}, asset = null) {
+  const unit = asset ? assetFuelNormUnit(asset) : "";
+  const kind = String(entry.asset_kind || entry.asset_type || asset?.asset_type || "").toLowerCase();
+  if (unit === "l_per_100km") return "km";
+  if (unit === "l_per_hour" || unit === "l_per_mtc") return "mtc";
+  if (kind.includes("vehicle") || kind.includes("voz")) return "km";
+  return parseDecimalInput(entry.km || entry.current_km) ? "km" : "mtc";
+}
+
+function fieldTankerEntryReadingValue(entry = {}, mode = "mtc") {
+  if (mode === "km") return parseDecimalInput(entry.km || entry.current_km || entry.kilometers || entry.odometer || (entry.asset_kind === "vehicle" ? (entry.reading || entry.mtc_km) : ""));
+  return parseDecimalInput(entry.mtc || entry.current_mtc || entry.machine_mtc || (entry.asset_kind === "machine" ? (entry.reading || entry.mtc_km) : ""));
+}
+
+function fieldTankerEntryMatchKeys(entry = {}, asset = null) {
+  return [
+    asset?.id, entry.asset_id,
+    asset?.asset_code, asset?.machine_code, asset?.vehicle_code, entry.asset_code, entry.machine_code, entry.vehicle_code,
+    asset?.registration, entry.asset_registration, entry.registration,
+    asset?.name, asset?.asset_name, asset?.machine, asset?.vehicle, entry.asset_name, entry.machine, entry.vehicle, entry.other, entry.manual_asset_name, entry.asset_custom
+  ].map(v => normalizeVehicleSearch(v || "")).filter(Boolean);
+}
+
+function fieldTankerEntriesFromReportData(d = {}) {
+  const out = [];
+  if (Array.isArray(d.fuel_entries)) out.push(...d.fuel_entries);
+  if (Array.isArray(d.field_tanker_entries)) out.push(...d.field_tanker_entries);
+  else if (Array.isArray(d.tanker_fuel_entries)) out.push(...d.tanker_fuel_entries);
+  return out;
+}
+
+function reportTimeMs(r = {}) {
+  const raw = r.submitted_at || r.created_at || r.updated_at || r.report_date || "";
+  const t = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(t) ? t : 0;
+}
+
+function previousFuelReadingForEntry(entry = {}, currentReport = {}) {
+  const lookup = buildDirectorAssetLookup();
+  const asset = findDirectorAssetForEntry(entry, lookup);
+  const keys = fieldTankerEntryMatchKeys(entry, asset);
+  if (!keys.length) return { asset, previous: null };
+  const mode = fieldTankerEntryReadingMode(entry, asset);
+  const currentTime = reportTimeMs(currentReport) || Date.now();
+  let best = null;
+  (directorReportsCache || []).forEach(rep => {
+    if (!rep || rep.id === currentReport.id) return;
+    const t = reportTimeMs(rep);
+    if (t && currentTime && t >= currentTime) return;
+    const d = rep.data || {};
+    fieldTankerEntriesFromReportData(d).forEach(prev => {
+      const prevAsset = findDirectorAssetForEntry(prev, lookup);
+      const prevKeys = fieldTankerEntryMatchKeys(prev, prevAsset);
+      const matched = prevKeys.some(k => keys.includes(k));
+      if (!matched) return;
+      const reading = fieldTankerEntryReadingValue(prev, mode);
+      if (!reading) return;
+      if (!best || t > best.time) {
+        best = { reading, time: t, report: rep, entry: prev };
+      }
+    });
+  });
+  return { asset, previous: best, mode };
+}
+
+function calculateTankerEntryConsumption(entry = {}, currentReport = {}) {
+  const { asset, previous, mode } = previousFuelReadingForEntry(entry, currentReport);
+  const readingMode = mode || fieldTankerEntryReadingMode(entry, asset);
+  const current = fieldTankerEntryReadingValue(entry, readingMode);
+  const liters = parseDecimalInput(entry.liters || entry.fuel_liters);
+  const norm = assetFuelNormValue(asset || {});
+  const tolerance = assetFuelToleranceValue(asset || {});
+  const unit = assetFuelNormUnit(asset || {});
+  const previousValue = previous?.reading || 0;
+  const delta = current && previousValue ? current - previousValue : 0;
+  let rate = 0;
+  let expected = 0;
+  let status = { label: "Nema dovoljno podataka", cls: "" };
+  if (delta > 0 && liters > 0) {
+    rate = readingMode === "km" ? (liters / delta * 100) : (liters / delta);
+    if (norm) {
+      expected = unit === "l_per_100km" || readingMode === "km" ? (delta * norm / 100) : (delta * norm);
+      const diffPct = expected ? Math.abs(liters - expected) / expected * 100 : 0;
+      if (diffPct <= tolerance) status = { label: "U normi", cls: "consumption-status-ok" };
+      else status = { label: liters > expected ? "Povećana potrošnja" : "Manje od norme", cls: liters > expected ? "consumption-status-bad" : "consumption-status-warn" };
+    } else {
+      status = { label: "Izračunato bez norme", cls: "consumption-status-warn" };
+    }
+  } else if (!previousValue) {
+    status = { label: "Prvo sipanje / nema prethodnog stanja", cls: "" };
+  } else if (delta <= 0) {
+    status = { label: "Proveri KM/MTČ", cls: "consumption-status-warn" };
+  }
+  return { asset, mode: readingMode, current, previous: previousValue, delta, liters, rate, expected, norm, tolerance, status };
+}
+
+function formatFuelCalcNumber(n, suffix = "") {
+  const x = Number(n || 0);
+  if (!Number.isFinite(x) || !x) return "—";
+  return `${Math.round(x * 100) / 100}${suffix}`;
+}
+
+function tankerConsumptionTableHtml(entries = [], report = {}, compact = false) {
+  if (!entries.length) return "";
+  const rows = entries.map((entry, i) => {
+    const calc = calculateTankerEntryConsumption(entry, report);
+    const assetLabel = fuelAnalysisAssetLabel(calc.asset, entry);
+    const modeLabel = calc.mode === "km" ? "KM" : "MTČ";
+    const rateSuffix = calc.mode === "km" ? " L/100km" : " L/MTČ";
+    const normText = calc.norm ? `${formatFuelCalcNumber(calc.norm)} ${fuelNormUnitLabel(assetFuelNormUnit(calc.asset || {}))}` : "Nema norme";
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(assetLabel)}</td>
+      <td>${escapeHtml(modeLabel)}</td>
+      <td>${escapeHtml(formatFuelCalcNumber(calc.previous))}</td>
+      <td>${escapeHtml(formatFuelCalcNumber(calc.current))}</td>
+      <td>${escapeHtml(formatFuelCalcNumber(calc.delta))}</td>
+      <td>${escapeHtml(formatFuelCalcNumber(calc.liters, " L"))}</td>
+      <td>${escapeHtml(formatFuelCalcNumber(calc.rate, rateSuffix))}</td>
+      <td>${escapeHtml(normText)}</td>
+      <td>${escapeHtml(formatFuelCalcNumber(calc.expected, " L"))}</td>
+      <td><span class="${escapeHtml(calc.status.cls)}">${escapeHtml(calc.status.label)}</span></td>
+    </tr>`;
+  }).join("");
+  return `<div class="tanker-consumption-box">
+    <h5>📊 Potrošnja po sredstvu</h5>
+    <p class="field-hint">Računa se odmah iz poslednjeg prethodnog KM/MTČ stanja, trenutnog stanja i sipanih litara. Ako nema prethodnog stanja, prikazuje se upozorenje.</p>
+    <div class="office-table-wrap"><table class="office-table tanker-consumption-table">
+      <thead><tr><th>#</th><th>Sredstvo</th><th>Osnova</th><th>Prethodno</th><th>Trenutno</th><th>Razlika</th><th>Sipano</th><th>Potrošnja</th><th>Norma</th><th>Očekivano</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function fuelReportHtml(r, fuelKind = "worker") {
   const d = r.data || {};
   const person = reportDocumentPerson(r);
   const submitted = formatDateTimeLocal(r.submitted_at || r.created_at);
   const liters = Math.round(businessCollectFuelLiters(d) * 100) / 100;
-  const entries = Array.isArray(d.field_tanker_entries)
+  const fuelEntries = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
+  const fieldEntries = Array.isArray(d.field_tanker_entries)
     ? d.field_tanker_entries
     : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
+  const entries = fuelKind === "tanker" ? fieldEntries : fuelEntries;
   const sites = [...new Set(entries.map(x => x && x.site_name).filter(Boolean))];
-  const title = entries.length ? `Cisterna · ${entries.length} sipanja` : "Evidencija goriva – cisterna";
+  const title = fuelKind === "tanker"
+    ? `Gorivo cisterna · ${fieldEntries.length || 1} sipanje/a`
+    : `Gorivo radnici · ${fuelEntries.length || 1} sipanje/a`;
+  const archiveLabel = fuelKind === "tanker" ? "📦 Arhiviraj cisternu" : "📦 Arhiviraj gorivo radnika";
   return `
-    <article class="report-row-item report-document-card fuel-report-card">
+    <article class="report-row-item report-document-card fuel-report-card fuel-report-card-${escapeHtml(fuelKind)}">
       <div class="report-list-grid">
         <div class="report-list-date">
           <strong>${escapeHtml(r.report_date || "")}</strong>
           <small>${escapeHtml(submitted || "")}</small>
         </div>
         <div class="report-list-site">
-          <strong>${escapeHtml(sites.join(", ") || d.site_name || "Gorivo cisterna")}</strong>
+          <strong>${escapeHtml(sites.join(", ") || d.site_name || (fuelKind === "tanker" ? "Gorivo cisterna" : "Gorivo radnici"))}</strong>
           <small>${escapeHtml(title)}</small>
         </div>
         <div class="report-list-worker">
@@ -5397,8 +5642,10 @@ function fuelReportHtml(r) {
           <small>${escapeHtml(reportStatusLabel(r.status))}</small>
         </div>
       </div>
+      ${fuelKind === "tanker" ? tankerConsumptionTableHtml(entries, r, true) : ""}
       <div class="report-card-actions no-print report-row-actions fuel-row-actions">
         <button class="secondary compact-doc-btn" type="button" onclick="openReportDocumentCenter('${r.id}')">Otvori</button>
+        <button class="archive-report-btn compact-doc-btn" type="button" onclick="archiveReport('${r.id}')">${archiveLabel}</button>
       </div>
     </article>`;
 }
@@ -6141,15 +6388,35 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
     <section><h4>⛽ Povećana potrošnja</h4>${officeTable(["Sredstvo","Norma","Očekivano","Sipano","Razlika","Status"], fuelBadRows)}</section>`;
 }
 
-function renderFuelReportsList() {
-  const box = $("#fuelReportsList");
+function renderFuelReportGroup(box, reports, kind, emptyText) {
   if (!box) return;
-  const fuelReports = getTodayFuelDashboardReports(directorReportsCache);
-  const totalLiters = Math.round(fuelReports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
-  const header = fuelReports.length
-    ? `<div class="fuel-list-summary"><strong>${escapeHtml(fuelReportCountLabel(fuelReports.length))}</strong><span>${escapeHtml(totalLiters ? `${totalLiters} L goriva danas` : "Gorivo danas")}</span></div>`
+  const totalLiters = Math.round(reports.reduce((sum, r) => sum + businessCollectFuelLiters(r.data || {}), 0));
+  const title = kind === "tanker" ? "Gorivo cisterna" : "Gorivo radnici";
+  const header = reports.length
+    ? `<div class="fuel-list-summary"><strong>${escapeHtml(fuelReportCountLabel(reports.length))}</strong><span>${escapeHtml(totalLiters ? `${totalLiters} L · ${title}` : title)}</span></div>`
     : "";
-  box.innerHTML = header + (fuelReports.map(fuelReportHtml).join("") || `<p class="muted">Danas nema izveštaja od cisterne za gorivo.</p>`);
+  box.innerHTML = header + (reports.map(r => fuelReportHtml(r, kind)).join("") || `<p class="muted">${escapeHtml(emptyText)}</p>`);
+}
+
+function renderFuelReportsList() {
+  renderFuelReportGroup(
+    $("#fuelWorkerReportsList"),
+    getTodayFuelWorkerDashboardReports(directorReportsCache),
+    "worker",
+    "Danas nema goriva koje su radnici poslali za svoju mašinu/vozilo."
+  );
+  renderFuelReportGroup(
+    $("#fuelTankerReportsList"),
+    getTodayFuelTankerDashboardReports(directorReportsCache),
+    "tanker",
+    "Danas nema izveštaja cisterne za gorivo."
+  );
+  // Fallback za stariji HTML ako korisniku browser još vuče staru strukturu.
+  const oldBox = $("#fuelReportsList");
+  if (oldBox && !$("#fuelWorkerReportsList") && !$("#fuelTankerReportsList")) {
+    const all = getTodayFuelDashboardReports(directorReportsCache);
+    renderFuelReportGroup(oldBox, all, "worker", "Danas nema posebnih izveštaja za gorivo.");
+  }
 }
 
 function archiveReportHtml(r) {
@@ -6879,6 +7146,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
       ${hasFieldTankers ? `<div class="report-section">
         <h4>Evidencija goriva – cisterna${tankerHeaderText}</h4>
         ${fieldTankerTable}
+        ${tankerConsumptionTableHtml(fieldTankers, options.report || {})}
       </div>` : ""}
 
       ${hasDefect ? `
@@ -7128,7 +7396,7 @@ function buildReportPaperHtml(r, paperIdPrefix = "paper") {
 
       ${r.returned_reason ? `<div class="paper-returned-reason"><b>Razlog vraćanja na ispravku:</b> ${escapeHtml(r.returned_reason)}</div>` : ""}
 
-      ${renderReportReadableDetails(d, { showDefect: true })}
+      ${renderReportReadableDetails(d, { showDefect: true, report: r })}
 
       <div class="paper-footer-note">
         Pregled pripremljen u AskCreate.app · ${escapeHtml(formatDateTimeLocal(new Date().toISOString()))}
@@ -9798,7 +10066,7 @@ const WORKER_MODULE_DEFINITIONS = [
   },
   {
     value: "fuel_entry",
-    label: "Sipanje goriva",
+    label: "⛽ Gorivo odmah",
     requiredPerms: ["fuel"],
     sectionKeys: ["fuel"],
     needsMainSite: false,
@@ -9872,6 +10140,21 @@ function getSelectedWorkerModule() {
   return WORKER_MODULE_DEFINITIONS.find(m => m.value === value) || null;
 }
 
+function updateWorkerSubmitButtonLabel() {
+  const btn = $("#submitReportBtn");
+  const module = getSelectedWorkerModule();
+  if (!btn || !module) return;
+  const labels = {
+    fuel_entry: "⛽ Pošalji gorivo odmah",
+    field_tanker_daily_batch: "⛽ Pošalji evidenciju cisterne odmah",
+    defect_report: "Pošalji prijavu kvara",
+    worker_hours: "Pošalji dnevni izveštaj",
+    machine_work_daily: "Pošalji dnevni izveštaj",
+    truck_tours_daily: "Pošalji dnevni izveštaj"
+  };
+  btn.textContent = labels[module.reportType] || "Pošalji Upravi";
+}
+
 function activeWorkerSectionKeys(perms = {}) {
   const module = getSelectedWorkerModule();
   if (!module) return new Set();
@@ -9903,6 +10186,7 @@ function refreshWorkerModuleSelector(perms = {}) {
   else select.value = "";
   if (hint) hint.textContent = "";
   applyWorkerModuleSelection({ addDefaults: false });
+  updateWorkerSubmitButtonLabel();
 }
 
 function applyWorkerModuleSelection({ addDefaults = true } = {}) {
@@ -9911,6 +10195,7 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   const module = getSelectedWorkerModule();
   const hint = $("#wrModuleHint");
   if (hint && module) hint.textContent = "";
+  updateWorkerSubmitButtonLabel();
   if (!module || !addDefaults) return;
   if (module.value === "worker_hours" && $("#workerEntries") && !$("#workerEntries").children.length) addWorkerEntry();
   if (module.value === "machine_work" && $("#machineEntries") && !$("#machineEntries").children.length) addMachineEntry();
@@ -12450,6 +12735,8 @@ function collectWorkerData() {
   return {
     report_type: selectedModule?.reportType || "unknown_worker_report",
     report_type_label: selectedModule?.label || "Radnički izveštaj",
+    source: selectedModule?.reportType === "fuel_entry" ? "fuel_immediate" : (selectedModule?.reportType === "field_tanker_daily_batch" ? "field_tanker_memory" : "worker_form"),
+    fuel_sent_immediately: selectedModule?.reportType === "fuel_entry" || selectedModule?.reportType === "field_tanker_daily_batch",
     request_title: canLeaveRequest && hasLeaveRequestData(leaveRequest) ? "Zahtev za odsustvo / godišnji odmor" : "",
     report_sections_sent: reportSectionsSent,
     employee_number: currentWorkerEmployeeNumber(),
@@ -14256,7 +14543,7 @@ window.applySmartExportFilters = () => {
   setExportTemplateType($("#exportTemplateType")?.value || "classic");
   const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
   const reports = directorReportsCache
-    .filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r))
+    .filter(r => !isDefectOnlyReport(r) && !isFuelDashboardOnlyReport(r) && hasDailyReportData(r))
     .filter(r => smartExportReportMatches(r, settings))
     .filter(r => getSmartRowsForReport(r, settings).length > 0);
   setExportSelectedIds(reports.map(r => r.id));
@@ -14470,7 +14757,7 @@ window.renderExportPreview = () => {
     });
     const preset = SMART_EXPORT_PRESETS[settings.type] || SMART_EXPORT_PRESETS.all;
     const reports = directorReportsCache
-      .filter(r => !isDefectOnlyReport(r) && hasDailyReportData(r))
+      .filter(r => !isDefectOnlyReport(r) && !isFuelDashboardOnlyReport(r) && hasDailyReportData(r))
       .filter(r => smartExportReportMatches(r, settings))
       .filter(r => getSmartRowsForReport(r, settings).length > 0);
     setExportSelectedIds(reports.map(r => r.id));
@@ -15074,6 +15361,7 @@ function bindEvents() {
   if ($("#siteName")) $("#siteName").addEventListener("input", scheduleSiteNameAvailabilityCheck);
 
   $("#addAssetBtn").addEventListener("click", saveAssetForm);
+  if ($("#assetType")) $("#assetType").addEventListener("change", () => applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true }));
   if ($("#cancelEditAssetBtn")) $("#cancelEditAssetBtn").addEventListener("click", clearAssetForm);
   if ($("#assetCode")) $("#assetCode").addEventListener("input", scheduleAssetCodeAvailabilityCheck);
   if ($("#assetListFilter")) $("#assetListFilter").addEventListener("change", (e) => handleAssetListFilterChange(e.target.value));
@@ -15182,7 +15470,7 @@ function bindEvents() {
       if (!ensureWorkerModuleSelected()) {
         const chooser = $("#workerModuleChooser") || $("#wrModuleSelect");
         if (chooser?.scrollIntoView) chooser.scrollIntoView({ behavior: "smooth", block: "center" });
-        throw new Error("Prvo izaberi šta danas popunjavaš. Tako se radni izveštaj, gorivo, kvar i odsustvo ne mešaju.");
+        throw new Error("Prvo izaberi šta sada šalješ. Dnevni izveštaj, gorivo i kvarovi se ne mešaju.");
       }
       const data = collectWorkerData();
       const validationIssue = validateWorkerReportBeforeSubmit(data);
@@ -15212,7 +15500,8 @@ function bindEvents() {
       clearCurrentFieldTankerCistern();
       try {
         await prepareWorkerFormForNextReport();
-        toast("Izveštaj je poslat Upravi ✅ Forma je spremna za sledeći unos.");
+        const sentType = data.report_type === "fuel_entry" ? "Gorivo radnika je poslato odmah u karticu Gorivo radnici ✅" : (data.report_type === "field_tanker_daily_batch" ? "Gorivo cisterne je poslato odmah u karticu Gorivo cisterna ✅" : (data.report_type === "defect_report" ? "Kvar je poslat odmah u karticu Kvarovi ✅" : "Izveštaj je poslat Upravi ✅"));
+        toast(`${sentType} Forma je spremna za sledeći unos.`);
       } catch (resetError) {
         console.warn("AskCreate.app: izveštaj je poslat, ali priprema sledeće forme nije uspela:", resetError);
         toast("Izveštaj je poslat Upravi ✅ Ako forma ne izgleda prazno, odjavi se i uđi ponovo.");

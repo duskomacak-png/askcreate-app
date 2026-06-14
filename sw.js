@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1708-ispravka-samo-direkcija";
+const CACHE_NAME = "askcreate-app-v1712-asset-rubrike";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1708-ispravka-samo-direkcija",
-  "./script.js?v=1708-ispravka-samo-direkcija",
-  "./manifest.json?v=1708-ispravka-samo-direkcija",
+  "./style.css?v=1712-asset-rubrike",
+  "./script.js?v=1712-asset-rubrike",
+  "./manifest.json?v=1712-asset-rubrike",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

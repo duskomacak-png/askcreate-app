@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1708-ispravka-samo-direkcija" />
+  <link rel="stylesheet" href="style.css?v=1712-asset-rubrike" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -697,6 +697,17 @@
               </select>
             </div>
             <p class="field-hint">Primer: za kiper upiši 20 i izaberi m³. Za cisternu upiši 8000 i izaberi L. Za labudicu uglavnom ostavi prazno.</p>
+            <div class="asset-feature-box">
+              <label>Rubrike / mogućnosti sredstva</label>
+              <p class="field-hint">Direkcija ovo podešava jednom za vozilo ili mašinu. Kasnije, kad radnik ukuca interni broj ili tablice, aplikacija zna koje rubrike treba da mu ponudi.</p>
+              <div class="asset-feature-grid">
+                <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="kipper" /> <span>Kiper / ture / m³</span></label>
+                <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="lowloader" /> <span>Labudica / prevoz mašina</span></label>
+                <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="water_tanker" /> <span>Cisterna za vodu</span></label>
+                <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="fuel_tanker" /> <span>Cisterna za gorivo</span></label>
+                <label class="feature-check"><input type="checkbox" class="assetFeatureInput" value="allow_images" /> <span>Dozvoli dodavanje slika uz ovo sredstvo</span></label>
+              </div>
+            </div>
             <div class="asset-consumption-box">
               <label>Norma potrošnje goriva</label>
               <div class="asset-consumption-grid">
@@ -864,14 +875,26 @@
         <div class="card reports-workspace-card">
           <div class="workspace-section-head">
             <div>
-              <p class="business-eyebrow">Gorivo danas</p>
-              <h3>Izveštaji cisterne za gorivo</h3>
-              <p class="muted">Ovde se prikazuju samo današnji izveštaji radnika koji ima rubriku <b>Evidencija goriva – cisterna</b>. Ne mešaju se sa dnevnim izveštajima za odobrenje.</p>
+              <p class="business-eyebrow">Gorivo radnici</p>
+              <h3>⛽ Gorivo koje radnik sipa u svoju mašinu / vozilo</h3>
+              <p class="muted">Ovde ide samo gorivo koje radnik pošalje odmah za svoju mašinu ili vozilo. Ne ide u Dnevnik rada danas i ne meša se sa cisternom.</p>
             </div>
             <button id="refreshFuelReportsBtn" class="secondary small-action" type="button">Osveži gorivo</button>
           </div>
-          <div id="fuelReportsList" class="list"></div>
+          <div id="fuelWorkerReportsList" class="list"></div>
         </div>
+
+        <div class="card reports-workspace-card">
+          <div class="workspace-section-head">
+            <div>
+              <p class="business-eyebrow">Gorivo cisterna</p>
+              <h3>🚛 Izveštaji cisterne za gorivo</h3>
+              <p class="muted">Ovde ide samo cisterna za gorivo: više sipanja, tablice cisterne, primalac goriva, KM/MTČ i litri. Arhiva je odvojena od aktivnih kartica.</p>
+            </div>
+          </div>
+          <div id="fuelTankerReportsList" class="list"></div>
+        </div>
+
         <div class="card reports-workspace-card fuel-analysis-card">
           <div class="workspace-section-head">
             <div>
@@ -1485,7 +1508,8 @@
         </div>
 
         <div id="secFuel" class="dyn-section">
-          <h4>Sipanje goriva</h4>
+          <h4>⛽ Gorivo odmah</h4>
+          <p class="hint">Ovo se šalje odmah u karticu Gorivo. Ne čeka kraj smene i ne ulazi u Dnevnik rada danas.</p>
           <div id="fuelEntries" class="entry-list"></div>
           <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
         </div>
@@ -1649,6 +1673,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1708-ispravka-samo-direkcija"></script>
+  <script src="script.js?v=1712-asset-rubrike"></script>
 </body>
 </html>

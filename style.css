@@ -8247,3 +8247,67 @@ body.defect-image-viewer-open{overflow:hidden;}
 .owner-defect-card-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .owner-defect-card-actions small{font-size:12px}
 .owner-hidden-defects-note{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:10px 0;padding:10px 12px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:rgba(255,255,255,.04)}
+
+/* v1711 — potrošnja goriva iz izveštaja cisterne */
+.tanker-consumption-box{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(73,155,94,.35);
+  border-radius:14px;
+  background:rgba(73,155,94,.06);
+}
+.tanker-consumption-box h5{
+  margin:0 0 6px;
+  font-size:14px;
+}
+.tanker-consumption-table th,
+.tanker-consumption-table td{
+  font-size:12px;
+  white-space:nowrap;
+}
+.consumption-status-ok{font-weight:800;color:#16723a;}
+.consumption-status-warn{font-weight:800;color:#a15c00;}
+.consumption-status-bad{font-weight:900;color:#b42318;}
+@media print{
+  .tanker-consumption-box{break-inside:avoid;background:#fff;border-color:#b7c9bb;}
+  .tanker-consumption-table th,.tanker-consumption-table td{font-size:9px;padding:4px;}
+}
+
+
+/* v1712: rubrike / mogućnosti sredstva rada */
+.asset-feature-box{
+  margin:12px 0;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(255,255,255,.035);
+}
+.asset-feature-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:8px;
+  margin-top:8px;
+}
+.feature-check{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:9px 10px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:12px;
+  background:rgba(0,0,0,.12);
+  cursor:pointer;
+}
+.feature-check input{ width:auto; margin:0; }
+.asset-feature-badges{ display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
+.asset-feature-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:3px 7px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.07);
+  font-size:11px;
+  color:rgba(255,255,255,.86);
+}
