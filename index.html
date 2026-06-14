@@ -7,11 +7,11 @@
   <meta name="theme-color" content="#39b54a" />
   <meta name="description" content="AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju: terenski izveštaji, dnevnik rada, karnet, radnici, mašine, vozila, materijal, voda, labudica, gorivo, norme potrošnje i upozorenja na povećanu potrošnju po mašini ili vozilu, uz Excel izvoz i arhivu." />
   <meta name="keywords" content="AskCreate.app, aplikacija za građevinske firme, niskogradnja, terenski izveštaji, dnevnik rada, karnet radnika, karnet mehanizacije, evidencija goriva, potrošnja goriva po mašini, potrošnja goriva po vozilu, norma potrošnje goriva, velika potrošnja goriva, kvarovi mašina, građevinska mehanizacija, materijal po gradilištu, labudica, cisterna za vodu, Excel izvoz" />
-  <link rel="manifest" href="manifest.json?v=1730-broj-tablice-naziv-excel" />
+  <link rel="manifest" href="manifest.json?v=1732-materijal-direkcija-excel" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1730-broj-tablice-naziv-excel" />
+  <link rel="stylesheet" href="style.css?v=1732-materijal-direkcija-excel" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -826,7 +826,7 @@
             <div>
               <p class="business-eyebrow">Materijal po gradilištu</p>
               <h3>Pregled materijala po danu / mesecu</h3>
-              <p class="muted">Sabira ture, m³ i količine iz izveštaja vozača, bagerista i magacina. Ovo je priprema za Direkciju i Gazdin mesečni pregled.</p>
+              <p class="muted">Sabira dovezeno i izvezeno iz vozačkih tura, a ugrađeno čita iz dnevnog izveštaja šefa gradilišta. Direkcija može odmah štampati ili preuzeti Excel.</p>
             </div>
             <button id="refreshMaterialOverviewBtn" class="secondary small-action" type="button">Osveži materijal</button>
           </div>
@@ -836,7 +836,8 @@
             <label>Gradilište <input id="materialOverviewSite" list="materialOverviewSiteList" placeholder="Sva gradilišta ili izaberi jedno" /></label>
             <datalist id="materialOverviewSiteList"></datalist>
             <button id="renderMaterialOverviewBtn" class="primary" type="button">Prikaži materijal</button>
-            <button id="downloadMaterialOverviewCsvBtn" class="secondary" type="button">Excel CSV</button>
+            <button id="printMaterialOverviewBtn" class="secondary" type="button">Štampaj</button>
+            <button id="downloadMaterialOverviewCsvBtn" class="secondary" type="button">Preuzmi Excel</button>
           </div>
           <div id="materialOverviewPreview" class="office-form-preview"></div>
         </div>
@@ -1744,6 +1745,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1730-broj-tablice-naziv-excel"></script>
+  <script src="script.js?v=1732-materijal-direkcija-excel"></script>
 </body>
 </html>

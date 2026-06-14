@@ -6183,28 +6183,116 @@ function officePushDailySyntheticWorker(rows, seen, siteName, r, label, hours = 
   rows.push([siteName || "—", emp, person, role, hours || "", label || officeReportTypeLabel(r)]);
 }
 
+
+function materialOverviewUnit(value = "") {
+  const unit = normalizeTransportUnit(value || "");
+  return unit || String(value || "").trim() || "";
+}
+
+function materialOverviewQty(value) {
+  if (typeof value === "number") return value;
+  const text = String(value ?? "").replace(/m³|m3|tona|tone|t|kg|kom|litar|litara|l/gi, "").trim();
+  return parseDecimalInput(text);
+}
+
+function materialOverviewTourQuantity(item = {}, fallbackUnit = "") {
+  const unit = materialOverviewUnit(item.unit || item.measure_unit || item.material_unit || fallbackUnit || "");
+  const qty = materialOverviewQty(item.total_quantity || item.quantity || item.quantity_value || item.cubic_m3 || item.total_m3 || item.calculated_m3 || item.volume_m3 || item.quantity_text || "");
+  return { qty, unit };
+}
+
+function materialOverviewAssetLabel(v = {}) {
+  const parts = [v.asset_code || v.vehicle_code || v.internal_number || "", v.registration || v.plates || v.license_plate || "", v.name || v.vehicle || ""].filter(Boolean);
+  return parts.join(" · ") || "—";
+}
+
+function materialOverviewFlowFromAction(action = "") {
+  const a = normalizeSearch(action);
+  if (a.includes("ugrad") || a.includes("installed")) return "installed";
+  if (a.includes("uvezen") || a.includes("ulaz") || a.includes("dovezen") || a.includes("import") || a.includes("in")) return "imported";
+  if (a.includes("izvezen") || a.includes("izlaz") || a.includes("odvoz") || a.includes("export") || a.includes("out")) return "exported";
+  if (a.includes("krugu") || a.includes("lokal") || a.includes("preme")) return "internal";
+  return "other";
+}
+
+function materialOverviewPushRow(rows, row = {}) {
+  const qty = materialOverviewQty(row.quantity);
+  rows.push({
+    date: row.date || "",
+    site: row.site || "—",
+    source: row.source || "—",
+    material: row.material || "—",
+    action: row.action || "—",
+    flow: row.flow || materialOverviewFlowFromAction(row.action || ""),
+    tours: parseDecimalInput(row.tours || ""),
+    quantity: qty,
+    unit: materialOverviewUnit(row.unit || ""),
+    worker: row.worker || "—",
+    asset: row.asset || "—",
+    note: row.note || ""
+  });
+}
+
 function buildMaterialOverviewRows(from, to, site = "") {
   const rows = [];
   (directorReportsCache || []).filter(r => officeReportMatchesDateSiteDeep(r, from, to, site)).forEach(r => {
     const d = r.data || {};
     const date = officeReportDate(r);
     const reportPerson = officePersonLabel(r);
-    const reportSite = officeReportSite(r) || "—";
+    const reportSite = officeReportSite(r) || d.site_name || d.site || "—";
 
     (Array.isArray(d.vehicles) ? d.vehicles : []).forEach(v => {
+      const items = Array.isArray(v.tour_items) ? v.tour_items : [];
+      const asset = materialOverviewAssetLabel(v);
+      if (items.length) {
+        items.forEach(item => {
+          const material = item.material_name || item.material || officeVehicleMaterialText(item) || "—";
+          const { qty, unit } = materialOverviewTourQuantity(item, item.unit || item.measure_unit || "");
+          const tours = parseDecimalInput(item.tours || item.tour_count || "");
+          const route = item.route || [item.from_label || item.from_site || item.load_location, item.to_label || item.to_site || item.landfill || item.unload_location].filter(Boolean).join(" → ");
+          const type = item.tour_type || "local";
+          if (type === "site_to_site") {
+            const fromSite = item.from_site || item.from_label || item.load_location || reportSite;
+            const toSite = item.to_site || item.to_label || item.unload_location || "—";
+            if (!site || normalizeSearch(fromSite).includes(normalizeSearch(site))) {
+              materialOverviewPushRow(rows, { date, site: fromSite, source: "Vozač / ture", material, action: "Izvezeno na drugo gradilište", flow: "exported", tours, quantity: qty, unit, worker: reportPerson, asset, note: route });
+            }
+            if (!site || normalizeSearch(toSite).includes(normalizeSearch(site))) {
+              materialOverviewPushRow(rows, { date, site: toSite, source: "Vozač / ture", material, action: "Uvezeno sa drugog gradilišta", flow: "imported", tours, quantity: qty, unit, worker: reportPerson, asset, note: route });
+            }
+          } else if (type === "landfill") {
+            const fromSite = item.from_site || item.from_label || item.site_name || reportSite;
+            if (!site || normalizeSearch(fromSite).includes(normalizeSearch(site))) {
+              materialOverviewPushRow(rows, { date, site: fromSite, source: "Vozač / ture", material, action: "Izvezeno na deponiju", flow: "exported", tours, quantity: qty, unit, worker: reportPerson, asset, note: route });
+            }
+          } else if (type === "external_in") {
+            const toSite = item.to_site || item.to_label || item.site_name || reportSite;
+            if (!site || normalizeSearch(toSite).includes(normalizeSearch(site))) {
+              materialOverviewPushRow(rows, { date, site: toSite, source: "Vozač / ture", material, action: "Uvezeno spolja", flow: "imported", tours, quantity: qty, unit, worker: reportPerson, asset, note: route });
+            }
+          } else {
+            const siteName = item.site_name || item.site || item.from_site || reportSite;
+            if (!site || normalizeSearch(siteName).includes(normalizeSearch(site))) {
+              materialOverviewPushRow(rows, { date, site: siteName, source: "Vozač / ture", material, action: "Tura u krugu gradilišta", flow: "internal", tours, quantity: qty, unit, worker: reportPerson, asset, note: route || "u krugu gradilišta" });
+            }
+          }
+        });
+        return;
+      }
       if (!officeEntryMatchesSite(v, reportSite, site)) return;
       const m3 = parseDecimalInput(v.cubic_m3 || v.cubic_auto || v.total_m3 || "");
-      rows.push({
+      materialOverviewPushRow(rows, {
         date,
         site: officeEntrySiteName(v, reportSite) || "—",
-        source: "Vozilo / ture",
+        source: "Vozač / ture",
         material: v.material || v.material_name || "—",
-        action: v.direction || v.transport_direction || "—",
+        action: v.direction || v.transport_direction || "Prevoz materijala",
+        flow: materialOverviewFlowFromAction(v.direction || v.transport_direction || ""),
         tours: parseDecimalInput(v.tours || ""),
         quantity: m3,
         unit: m3 ? "m³" : "",
         worker: reportPerson,
-        asset: v.asset_code || v.vehicle_code || v.name || v.vehicle || "",
+        asset,
         note: [v.load_location && `utovar: ${v.load_location}`, v.unload_location && `istovar: ${v.unload_location}`, v.route].filter(Boolean).join(" · ")
       });
     });
@@ -6212,18 +6300,47 @@ function buildMaterialOverviewRows(from, to, site = "") {
     const mats = Array.isArray(d.material_entries) ? d.material_entries : (Array.isArray(d.material_movements) ? d.material_movements : (Array.isArray(d.materials) ? d.materials : []));
     mats.forEach(m => {
       if (!officeEntryMatchesSite(m, reportSite, site)) return;
-      rows.push({
+      const action = m.action || m.material_action || "—";
+      materialOverviewPushRow(rows, {
         date,
         site: officeEntrySiteName(m, reportSite) || "—",
         source: "Materijal / magacin",
         material: m.material || m.name || m.material_name || "—",
-        action: m.action || m.material_action || "—",
+        action,
+        flow: materialOverviewFlowFromAction(action),
         tours: parseDecimalInput(m.tours || m.material_tours || ""),
         quantity: parseDecimalInput(materialQuantityValue(m)),
         unit: materialUnitValue(m) || m.unit || "",
         worker: reportPerson,
-        asset: m.asset_code || "",
+        asset: m.asset_code || "—",
         note: m.note || materialCalcText(m) || ""
+      });
+    });
+
+    (Array.isArray(d.material_in) ? d.material_in : []).forEach(m => {
+      if (!officeEntryMatchesSite(m, reportSite, site)) return;
+      materialOverviewPushRow(rows, { date, site: officeEntrySiteName(m, reportSite), source: "Šef gradilišta", material: m.material_name || m.material || "—", action: "Uvezeno / ulaz", flow: "imported", quantity: m.quantity || m.qty || "", unit: m.unit || "", worker: reportPerson, asset: "Šef gradilišta", note: m.note || "" });
+    });
+    (Array.isArray(d.material_out) ? d.material_out : []).forEach(m => {
+      if (!officeEntryMatchesSite(m, reportSite, site)) return;
+      materialOverviewPushRow(rows, { date, site: officeEntrySiteName(m, reportSite), source: "Šef gradilišta", material: m.material_name || m.material || "—", action: "Izvezeno / izlaz", flow: "exported", quantity: m.quantity || m.qty || "", unit: m.unit || "", worker: reportPerson, asset: "Šef gradilišta", note: m.note || "" });
+    });
+    (Array.isArray(d.materials_installed) ? d.materials_installed : []).forEach(m => {
+      const siteName = officeEntrySiteName(m, reportSite) || reportSite;
+      if (site && !normalizeSearch(siteName).includes(normalizeSearch(site))) return;
+      materialOverviewPushRow(rows, {
+        date,
+        site: siteName,
+        source: "Šef gradilišta",
+        material: m.material_name || m.material || "—",
+        action: "Ugrađeno po šefu",
+        flow: "installed",
+        tours: "",
+        quantity: m.quantity || m.qty || "",
+        unit: m.unit || "",
+        worker: reportPerson,
+        asset: "Dnevnik šefa",
+        note: m.work_position || m.note || ""
       });
     });
   });
@@ -6233,24 +6350,53 @@ function buildMaterialOverviewRows(from, to, site = "") {
 function buildMaterialTotals(rows = []) {
   const bySite = new Map();
   const byMaterial = new Map();
+  const byBalance = new Map();
   rows.forEach(r => {
     const site = r.site || "—";
     const mat = r.material || "—";
-    if (!bySite.has(site)) bySite.set(site, { site, tours: 0, m3: 0, qty: 0, rows: 0 });
-    const srow = bySite.get(site);
-    srow.tours += Number(r.tours || 0);
-    if (String(r.unit || "").toLowerCase().includes("m")) srow.m3 += Number(r.quantity || 0);
-    else srow.qty += Number(r.quantity || 0);
-    srow.rows += 1;
+    const unit = r.unit || "";
+    const flow = r.flow || materialOverviewFlowFromAction(r.action || "");
+    const qty = Number(r.quantity || 0);
+    const tours = Number(r.tours || 0);
 
-    const key = `${mat}||${r.unit || ""}`;
-    if (!byMaterial.has(key)) byMaterial.set(key, { material: mat, unit: r.unit || "", tours: 0, quantity: 0, rows: 0 });
-    const mrow = byMaterial.get(key);
-    mrow.tours += Number(r.tours || 0);
-    mrow.quantity += Number(r.quantity || 0);
+    if (!bySite.has(site)) bySite.set(site, { site, rows: 0, tours: 0, imported: 0, exported: 0, installed: 0, internal: 0 });
+    const srow = bySite.get(site);
+    srow.rows += 1;
+    srow.tours += tours;
+    if (flow === "imported") srow.imported += qty;
+    else if (flow === "exported") srow.exported += qty;
+    else if (flow === "installed") srow.installed += qty;
+    else if (flow === "internal") srow.internal += qty;
+
+    const matKey = `${mat}||${unit}`;
+    if (!byMaterial.has(matKey)) byMaterial.set(matKey, { material: mat, unit, rows: 0, tours: 0, imported: 0, exported: 0, installed: 0, internal: 0 });
+    const mrow = byMaterial.get(matKey);
     mrow.rows += 1;
+    mrow.tours += tours;
+    if (flow === "imported") mrow.imported += qty;
+    else if (flow === "exported") mrow.exported += qty;
+    else if (flow === "installed") mrow.installed += qty;
+    else if (flow === "internal") mrow.internal += qty;
+
+    const balKey = `${site}||${mat}||${unit}`;
+    if (!byBalance.has(balKey)) byBalance.set(balKey, { site, material: mat, unit, imported: 0, exported: 0, installed: 0, internal: 0, tours: 0, rows: 0 });
+    const brow = byBalance.get(balKey);
+    brow.rows += 1;
+    brow.tours += tours;
+    if (flow === "imported") brow.imported += qty;
+    else if (flow === "exported") brow.exported += qty;
+    else if (flow === "installed") brow.installed += qty;
+    else if (flow === "internal") brow.internal += qty;
   });
-  return { bySite: Array.from(bySite.values()), byMaterial: Array.from(byMaterial.values()) };
+  const balance = Array.from(byBalance.values()).map(r => {
+    const stock = round2(Number(r.imported || 0) - Number(r.exported || 0) - Number(r.installed || 0));
+    let status = "Čeka / lager";
+    if (stock === 0 && (r.imported || r.installed || r.exported)) status = "Poravnato";
+    if (stock < 0) status = "Proveriti — više ugrađeno/izvezeno";
+    if (!r.imported && r.installed) status = "Ugrađeno iz ranijeg lagera";
+    return { ...r, stock, status };
+  });
+  return { bySite: Array.from(bySite.values()), byMaterial: Array.from(byMaterial.values()), balance };
 }
 
 function ensureOverviewDatalists() {
@@ -6270,36 +6416,63 @@ function ensureOverviewDefaultDates(prefix) {
   if (toEl && !toEl.value) toEl.value = to;
 }
 
+function materialOverviewCurrentFilters() {
+  ensureOverviewDefaultDates("materialOverview");
+  return {
+    from: document.getElementById("materialOverviewFrom")?.value || today().slice(0, 8) + "01",
+    to: document.getElementById("materialOverviewTo")?.value || today(),
+    site: document.getElementById("materialOverviewSite")?.value || ""
+  };
+}
+
+function materialOverviewData() {
+  const f = materialOverviewCurrentFilters();
+  const rows = buildMaterialOverviewRows(f.from, f.to, f.site);
+  const totals = buildMaterialTotals(rows);
+  return { ...f, rows, totals };
+}
+
 function renderMaterialOverview() {
   ensureOverviewDatalists();
-  ensureOverviewDefaultDates("materialOverview");
-  const from = document.getElementById("materialOverviewFrom")?.value || today().slice(0, 8) + "01";
-  const to = document.getElementById("materialOverviewTo")?.value || today();
-  const site = document.getElementById("materialOverviewSite")?.value || "";
-  const rows = buildMaterialOverviewRows(from, to, site);
-  const totals = buildMaterialTotals(rows);
+  const { from, to, site, rows, totals } = materialOverviewData();
   const box = document.getElementById("materialOverviewPreview");
   if (!box) return;
   const totalTours = round2(rows.reduce((s, r) => s + Number(r.tours || 0), 0));
-  const totalM3 = round2(rows.filter(r => String(r.unit || "").toLowerCase().includes("m")).reduce((s, r) => s + Number(r.quantity || 0), 0));
+  const imported = round2(totals.balance.reduce((s, r) => s + Number(r.imported || 0), 0));
+  const exported = round2(totals.balance.reduce((s, r) => s + Number(r.exported || 0), 0));
+  const installed = round2(totals.balance.reduce((s, r) => s + Number(r.installed || 0), 0));
   box.innerHTML = `
     <div class="office-form-titlebar">
       <div><b>Materijal po gradilištu</b><span>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</span></div>
-      <div class="office-badges"><span>${rows.length} stavki</span><span>${totalTours} tura</span><span>${totalM3} m³</span></div>
+      <div class="office-badges"><span>${rows.length} stavki</span><span>${totalTours} tura</span><span>Uvezeno ${imported}</span><span>Izvezeno ${exported}</span><span>Ugrađeno ${installed}</span></div>
     </div>
-    <section><h4>🏗️ Ukupno po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], totals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
-    <section><h4>📦 Ukupno po materijalu</h4>${officeTable(["Materijal","Jedinica","Stavki","Ture","Količina"], totals.byMaterial.map(r => [r.material, r.unit, r.rows, round2(r.tours), round2(r.quantity)]))}</section>
-    <section><h4>📋 Detaljne stavke</h4>${officeTable(["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jed.","Radnik","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]))}</section>`;
+    <section><h4>📦 Kontrola po gradilištu i materijalu</h4>${officeTable(["Gradilište","Materijal","Jed.","Dovezeno","Izvezeno","Ugrađeno po šefu","Preostalo / čeka","Ture","Status"], totals.balance.map(r => [r.site, r.material, r.unit, round2(r.imported), round2(r.exported), round2(r.installed), round2(r.stock), round2(r.tours), r.status]))}</section>
+    <section><h4>🏗️ Ukupno po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","Dovezeno","Izvezeno","Ugrađeno po šefu","U krugu"], totals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.imported), round2(r.exported), round2(r.installed), round2(r.internal)]))}</section>
+    <section><h4>📦 Ukupno po materijalu</h4>${officeTable(["Materijal","Jedinica","Stavki","Ture","Dovezeno","Izvezeno","Ugrađeno po šefu","U krugu"], totals.byMaterial.map(r => [r.material, r.unit, r.rows, round2(r.tours), round2(r.imported), round2(r.exported), round2(r.installed), round2(r.internal)]))}</section>
+    <section><h4>📋 Detaljne stavke</h4>${officeTable(["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jed.","Radnik/šef","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]))}</section>`;
+}
+
+function printMaterialOverview() {
+  renderMaterialOverview();
+  const box = document.getElementById("materialOverviewPreview");
+  if (!box || !box.innerHTML.trim()) return toast("Prvo prikaži materijal za štampu.", true);
+  printOfficePreview("Materijal po gradilištu", "materialOverviewPreview");
+}
+
+function materialOverviewTableHtml(title, headers, rows) {
+  return `<h2>${escapeHtml(title)}</h2><table border="1"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(c => `<td>${escapeHtml(c ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
 
 function downloadMaterialOverviewCsv() {
-  ensureOverviewDefaultDates("materialOverview");
-  const from = document.getElementById("materialOverviewFrom")?.value || today().slice(0, 8) + "01";
-  const to = document.getElementById("materialOverviewTo")?.value || today();
-  const site = document.getElementById("materialOverviewSite")?.value || "";
-  const rows = buildMaterialOverviewRows(from, to, site);
+  const { from, to, site, rows, totals } = materialOverviewData();
   if (!rows.length) return toast("Nema materijala za izabrani period.", true);
-  officeCsvDownload(`materijal_po_gradilistu_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.csv`, ["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jedinica","Radnik","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]));
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>table{border-collapse:collapse}td,th{border:1px solid #999;padding:4px 6px}th{background:#eee}</style></head><body>
+    <h1>Materijal po gradilištu</h1>
+    <p>${escapeHtml(formatDateOnlyLocal(from))} — ${escapeHtml(formatDateOnlyLocal(to))} · ${escapeHtml(site || "Sva gradilišta")}</p>
+    ${materialOverviewTableHtml("Pregled po gradilištu i materijalu", ["Gradilište","Materijal","Jed.","Dovezeno","Izvezeno","Ugrađeno po šefu","Preostalo / čeka","Ture","Status"], totals.balance.map(r => [r.site, r.material, r.unit, round2(r.imported), round2(r.exported), round2(r.installed), round2(r.stock), round2(r.tours), r.status]))}
+    ${materialOverviewTableHtml("Detalji tura i ugradnje", ["Datum","Gradilište","Izvor","Materijal","Smer/radnja","Ture","Količina","Jed.","Radnik/šef","Sredstvo","Napomena"], rows.map(r => [r.date, r.site, r.source, r.material, r.action, round2(r.tours), round2(r.quantity), r.unit, r.worker, r.asset, r.note]))}
+  </body></html>`;
+  downloadBlob(new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" }), `materijal_po_gradilistu_${safeFilePart(currentCompany?.company_code || "firma")}_${from}_${to}.xls`);
 }
 
 function ownerReportMatchesDateSiteAny(r, from = "", to = "", site = "") {
@@ -6658,7 +6831,7 @@ function renderOwnerDashboard(prefix = "ownerDashboard", previewId = "") {
         ${ownerDashboardDefectImagesPreviewHtml(prefix)}
       </div>
     </section>
-    <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","m³","Ostala količina"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.m3), round2(r.qty)]))}</section>
+    <section><h4>📦 Materijal po gradilištu</h4>${officeTable(["Gradilište","Stavki","Ture","Dovezeno","Izvezeno","Ugrađeno po šefu"], materialTotals.bySite.map(r => [r.site, r.rows, round2(r.tours), round2(r.imported), round2(r.exported), round2(r.installed)]))}</section>
     <section><h4>⛽ Povećana potrošnja</h4>${officeTable(["Sredstvo","Norma","Očekivano","Sipano","Razlika","Status"], fuelBadRows)}</section>`;
 }
 
@@ -16205,6 +16378,7 @@ function bindEvents() {
   if ($("#refreshMaterialOverviewBtn")) $("#refreshMaterialOverviewBtn").addEventListener("click", () => renderMaterialOverview());
   if ($("#renderMaterialOverviewBtn")) $("#renderMaterialOverviewBtn").addEventListener("click", () => renderMaterialOverview());
   if ($("#downloadMaterialOverviewCsvBtn")) $("#downloadMaterialOverviewCsvBtn").addEventListener("click", downloadMaterialOverviewCsv);
+  if ($("#printMaterialOverviewBtn")) $("#printMaterialOverviewBtn").addEventListener("click", printMaterialOverview);
   ["materialOverviewFrom", "materialOverviewTo", "materialOverviewSite"].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener("change", renderMaterialOverview); });
   if ($("#refreshOwnerDashboardBtn")) $("#refreshOwnerDashboardBtn").addEventListener("click", () => renderOwnerDashboard());
   if ($("#renderOwnerDashboardBtn")) $("#renderOwnerDashboardBtn").addEventListener("click", () => renderOwnerDashboard());
