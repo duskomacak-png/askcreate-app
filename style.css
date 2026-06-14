@@ -8756,3 +8756,17 @@ body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-
   color: #111827 !important;
   border: 1px solid #cbd5e1 !important;
 }
+
+
+/* v1728: prikaz obračuna tura po materijalu */
+.tour-quantity-preview{
+  margin:10px 0 12px;
+  padding:10px 12px;
+  border:1px solid #d6dbe2;
+  border-left:4px solid #d63131;
+  border-radius:12px;
+  background:#f8fafc;
+  color:#1f2937;
+  font-weight:800;
+}
+.tour-quantity-preview.ok{background:#f0fdf4;border-color:#bbf7d0;border-left-color:#22c55e;color:#14532d}

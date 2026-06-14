@@ -6950,7 +6950,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
     addPreview("Evidencija rada vozila", row, "KM kraj", v.km_end);
     addPreview("Evidencija rada vozila", row, "Relacija", v.route);
     addPreview("Evidencija rada vozila", row, "Broj izvršenih tura", v.tours);
-    addPreview("Evidencija rada vozila", row, "Ukupno m³", v.cubic_m3 || v.cubic_auto);
+    addPreview("Evidencija rada vozila", row, "Ukupno količina", v.cubic_m3 || v.cubic_auto);
   });
 
   lowloaders.forEach((ll, i) => {
@@ -7096,7 +7096,7 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <th>KM kraj</th>
           <th>Relacija</th>
           <th>Ture</th>
-          <th>Ukupno m³</th>
+          <th>Ukupno</th>
         </tr>
       </thead>
       <tbody>
@@ -9491,6 +9491,71 @@ function calculateVehicleCubic(capacity, tours) {
   return Number.isInteger(total) ? String(total) : String(Math.round(total * 100) / 100);
 }
 
+function normalizeTransportUnit(unit = "") {
+  const u = String(unit || "").trim().toLowerCase().replace("³", "3");
+  if (["m3", "m³", "kubik", "kubika", "metar kubni", "metara kubnih"].includes(u)) return "m³";
+  if (["t", "tona", "tone", "tonaža", "ton"].includes(u)) return "t";
+  if (["kg", "kilogram", "kilograma"].includes(u)) return "kg";
+  if (["kom", "komad", "komada"].includes(u)) return "kom";
+  return unit || "";
+}
+
+function materialUnitFromNameOrOption(material = "", option = null) {
+  const byOption = option?.dataset?.unit || "";
+  if (byOption) return normalizeTransportUnit(byOption);
+  const text = String(material || "").toLowerCase().replace("³", "3");
+  if (text.includes("m3") || text.includes("kub")) return "m³";
+  if (text.includes("tona") || text.includes(" t") || text.endsWith(" t")) return "t";
+  if (text.includes("kg")) return "kg";
+  return "";
+}
+
+function formatTransportQuantity(value, unit = "") {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "";
+  const rounded = Math.round(n * 100) / 100;
+  const txt = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
+  return unit ? `${txt} ${normalizeTransportUnit(unit)}` : txt;
+}
+
+function calculateTransportQuantity(capacity, tours, unit = "") {
+  const cap = parseDecimal(capacity);
+  const t = parseDecimal(tours);
+  if (!cap || !t) return "";
+  return formatTransportQuantity(cap * t, unit);
+}
+
+function summarizeTourQuantities(tourItems = []) {
+  const map = new Map();
+  (Array.isArray(tourItems) ? tourItems : []).forEach(t => {
+    const unit = normalizeTransportUnit(t.unit || t.measure_unit || "");
+    const n = parseDecimal(t.total_quantity || t.quantity || t.cubic_m3 || "");
+    if (!unit || !n) return;
+    map.set(unit, (map.get(unit) || 0) + n);
+  });
+  return Array.from(map.entries()).map(([unit, val]) => formatTransportQuantity(val, unit)).filter(Boolean).join(" | ");
+}
+
+function updateTourQuantityPreview(row, vehicleCard) {
+  if (!row || !vehicleCard) return;
+  const selected = getSelectedVehicleFromEntry(vehicleCard);
+  const materialSelect = row.querySelector(".tour-material");
+  const material = materialSelect?.value || "";
+  const option = materialSelect?.options ? materialSelect.options[materialSelect.selectedIndex] : null;
+  const unit = materialUnitFromNameOrOption(material, option);
+  const tours = row.querySelector(".tour-count")?.value || "";
+  const quantityText = calculateTransportQuantity(selected.capacity, tours, unit);
+  const preview = row.querySelector(".tour-quantity-preview");
+  if (!preview) return;
+  if (quantityText) {
+    preview.textContent = `Ukupno: ${quantityText} (${selected.capacity || "0"} × ${tours || "0"} tura)`;
+    preview.classList.add("ok");
+  } else {
+    preview.textContent = "Ukupno će se izračunati kada postoje kapacitet vozila, broj tura i jedinica materijala.";
+    preview.classList.remove("ok");
+  }
+}
+
 
 function vehicleLastKmStorageKey(assetCode = "", assetId = "", name = "") {
   const company = currentWorker?.company_id || currentWorker?.company_code || currentCompany?.id || currentCompany?.company_code || "no_company";
@@ -9540,14 +9605,17 @@ function updateVehicleCubic(entryEl) {
   const kmTotal = decimalDiffText(kmStart, kmEnd) || "";
   const kmEl = entryEl.querySelector(".v-total-km");
   if (kmEl) kmEl.textContent = kmTotal || "—";
+  entryEl.querySelectorAll(".vehicle-tour-row").forEach(row => updateTourQuantityPreview(row, entryEl));
+  const tourItemsForSummary = getVehicleTourItemsFromEntry(entryEl, selected);
+  const summaryQty = summarizeTourQuantities(tourItemsForSummary);
   const legacyTours = entryEl.querySelector(".v-tours")?.value || "";
-  const auto = calculateVehicleCubic(selected.capacity, legacyTours || tourTotal);
+  const auto = summaryQty || calculateVehicleCubic(selected.capacity, legacyTours || tourTotal);
   const autoEl = entryEl.querySelector(".v-cubic-auto");
   if (autoEl) autoEl.value = auto;
   const hint = entryEl.querySelector(".v-cubic-hint");
   if (hint) {
     hint.textContent = auto
-      ? `Automatski: ${selected.capacity || 0} × ${legacyTours || tourTotal || 0} tura = ${auto}`
+      ? `Automatski ukupno: ${auto}`
       : "Ture se vode po stavkama. Ukupna kilometraža je završna minus početna km.";
   }
 }
@@ -9722,6 +9790,8 @@ function addVehicleTourRow(vehicleCard, values = {}) {
       </div>
     </div>
 
+    <div class="tour-quantity-preview">Ukupno će se izračunati po materijalu i kapacitetu vozila.</div>
+
     <div class="tour-route-box">
       <h4>Polazište</h4>
       <label>Sa gradilišta</label>
@@ -9869,8 +9939,13 @@ function addVehicleEntry(values = {}) {
 
 function getVehicleTourItemsFromEntry(el, selected = {}) {
   return Array.from(el.querySelectorAll(".vehicle-tour-row")).map((row, idx) => {
-    const material = row.querySelector(".tour-material")?.value.trim() || "";
+    const materialSelect = row.querySelector(".tour-material");
+    const material = materialSelect?.value.trim() || "";
+    const materialOption = materialSelect?.options ? materialSelect.options[materialSelect.selectedIndex] : null;
+    const unit = materialUnitFromNameOrOption(material, materialOption);
     const tours = row.querySelector(".tour-count")?.value.trim() || "";
+    const totalRaw = parseDecimal(selected.capacity) && parseDecimal(tours) ? parseDecimal(selected.capacity) * parseDecimal(tours) : 0;
+    const totalText = totalRaw ? formatTransportQuantity(totalRaw, unit) : "";
     const from = getTourPlaceFromRow(row, "from");
     const to = getTourPlaceFromRow(row, "to");
     let tourType = "site_to_site";
@@ -9897,7 +9972,14 @@ function getVehicleTourItemsFromEntry(el, selected = {}) {
       route: routeText,
       material,
       material_name: material,
+      unit,
+      measure_unit: unit,
+      capacity_per_tour: selected.capacity || "",
       tours,
+      total_quantity: totalRaw ? String(Math.round(totalRaw * 100) / 100) : "",
+      quantity: totalRaw ? String(Math.round(totalRaw * 100) / 100) : "",
+      quantity_text: totalText,
+      cubic_m3: normalizeTransportUnit(unit) === "m³" && totalRaw ? String(Math.round(totalRaw * 100) / 100) : "",
       note: row.querySelector(".tour-note")?.value.trim() || "",
       direction: tourType === "landfill" ? "landfill" : (tourType === "local" ? "local" : "transfer")
     };
@@ -9939,9 +10021,9 @@ function getVehicleEntries() {
       material_name: tourItems.map(t => t.material).filter(Boolean).join(" | "),
       direction: "tour_items",
       transport_direction: "tour_items",
-      cubic_auto: "",
+      cubic_auto: summarizeTourQuantities(tourItems),
       cubic_manual: "",
-      cubic_m3: ""
+      cubic_m3: summarizeTourQuantities(tourItems)
     };
   }).filter(v => v.name || v.site_name || v.km_start || v.km_end || v.tours || (v.tour_items || []).length);
 }
