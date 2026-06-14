@@ -8334,3 +8334,26 @@ body.defect-image-viewer-open{overflow:hidden;}
 /* v1715: tank capacity fields returned in asset form */
 .asset-tank-box{margin-top:12px;padding:12px;border:1px solid rgba(148,163,184,.25);border-radius:14px;background:rgba(15,23,42,.04)}
 .asset-tank-box.hidden{display:none!important}.asset-feature-grid.small-grid{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}.capacity-split-row .unit-suffix{align-self:center;padding:0 10px;font-weight:800}
+
+/* v1716: Radnik bira Vozilo/Mašina pa rubrike po sredstvu */
+.worker-asset-context-box{
+  margin: 12px 0 14px;
+  padding: 12px;
+  border: 1px solid rgba(34,197,94,.18);
+  border-radius: 16px;
+  background: rgba(15,23,42,.04);
+}
+.worker-asset-context-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.worker-asset-rubrics-preview{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+@media (max-width: 720px){
+  .worker-asset-context-grid{ grid-template-columns: 1fr; }
+}

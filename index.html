@@ -1482,10 +1482,31 @@
           <input id="wrDate" type="date" />
         </div>
 
+        <div id="workerAssetContextBox" class="worker-asset-context-box">
+          <div class="worker-asset-context-grid">
+            <div>
+              <label>Šta danas koristiš</label>
+              <select id="wrAssetKind">
+                <option value="">Izaberi...</option>
+                <option value="vehicle">Vozilo</option>
+                <option value="machine">Mašina</option>
+              </select>
+            </div>
+            <div>
+              <label id="wrAssetSelectLabel">Vozilo / mašina iz Direkcije</label>
+              <select id="wrAssetSelect">
+                <option value="">Prvo izaberi Vozilo ili Mašina</option>
+              </select>
+            </div>
+          </div>
+          <div id="wrAssetContextInfo" class="asset-smart-result">Izaberi vozilo ili mašinu iz Direkcije, pa će se pojaviti samo rubrike koje to sredstvo ima.</div>
+          <div id="wrAssetRubricsPreview" class="worker-asset-rubrics-preview"></div>
+        </div>
+
         <div id="workerModuleChooser" class="worker-module-chooser worker-module-chooser-simple">
-          <label>Odaberi rubriku</label>
+          <label>Rubrika za popunjavanje</label>
           <select id="wrModuleSelect">
-            <option value="">Izaberi rubriku...</option>
+            <option value="">Prvo izaberi vozilo ili mašinu...</option>
           </select>
         </div>
 

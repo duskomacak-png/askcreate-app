@@ -9163,6 +9163,8 @@ async function loadWorkerAssets() {
   refreshFieldTankerSelectors();
   refreshFuelMachineOptions();
   refreshSiteLogTruckAssetSelectors();
+  refreshWorkerAssetContextControls();
+  refreshWorkerModuleSelector(currentWorker?.permissions || {});
 
   const machineCount = workerAssetOptions.filter(isMachineAsset).length;
   const vehicleCount = workerAssetOptions.filter(isVehicleAsset).length;
@@ -10269,13 +10271,152 @@ function workerModuleValueFromReportType(reportType = "") {
   return found?.value || "";
 }
 
+
+function getSelectedWorkerAssetKind() {
+  return String(document.querySelector("#wrAssetKind")?.value || "").trim();
+}
+
+function getSelectedWorkerAssetId() {
+  return String(document.querySelector("#wrAssetSelect")?.value || "").trim();
+}
+
+function getSelectedWorkerContextAsset() {
+  const id = getSelectedWorkerAssetId();
+  if (!id) return null;
+  return (workerAssetOptions || []).find(a => String(a.id || "") === id) || null;
+}
+
+function workerContextAssetMatchesKind(asset, kind) {
+  if (!asset) return false;
+  if (kind === "vehicle") return isVehicleAsset(asset);
+  if (kind === "machine") return isMachineAsset(asset);
+  return false;
+}
+
+function getWorkerAssetsForKind(kind) {
+  return (workerAssetOptions || [])
+    .filter(a => a && a.active !== false)
+    .filter(a => workerContextAssetMatchesKind(a, kind))
+    .sort((a, b) => formatAssetTitleWithCode(a).localeCompare(formatAssetTitleWithCode(b), "sr"));
+}
+
+function workerModuleValuesForAsset(asset) {
+  if (!asset) return new Set();
+  const features = new Set(getAssetFeatures(asset));
+  const values = new Set(["defect_report", "fuel_entry"]); // kvar i sipanje goriva mogu za svako sredstvo rada
+  if (isMachineAsset(asset)) values.add("machine_work");
+  if (isVehicleAsset(asset)) {
+    if (features.has("kipper")) values.add("truck_tours");
+    if (features.has("lowloader")) values.add("lowloader");
+    if (features.has("water_tanker")) values.add("water_tanker");
+    if (features.has("fuel_tanker") || features.has("fixed_fuel_pump")) values.add("field_tanker");
+    if (features.has("service_vehicle") || !features.size) values.add("truck_tours");
+  }
+  if (features.has("fuel_tanker") || features.has("fixed_fuel_pump")) values.add("field_tanker");
+  if (features.has("water_tanker")) values.add("water_tanker");
+  return values;
+}
+
+function filterAllowedWorkerModulesBySelectedAsset(allowedModules = []) {
+  const kind = getSelectedWorkerAssetKind();
+  const asset = getSelectedWorkerContextAsset();
+
+  // Rubrike koje nisu vezane za sredstvo ostaju dostupne i bez izbora sredstva.
+  const alwaysAllowed = new Set(["worker_hours", "leave_request", "warehouse", "material_entry"]);
+  if (!kind) return allowedModules.filter(m => alwaysAllowed.has(m.value));
+  if (!asset) return [];
+
+  const assetAllowed = workerModuleValuesForAsset(asset);
+  return allowedModules.filter(m => alwaysAllowed.has(m.value) || assetAllowed.has(m.value));
+}
+
+function renderSelectedAssetRubricsPreview(asset) {
+  const box = document.querySelector("#wrAssetRubricsPreview");
+  const info = document.querySelector("#wrAssetContextInfo");
+  if (!box) return;
+  if (!asset) {
+    box.innerHTML = "";
+    if (info) {
+      const kind = getSelectedWorkerAssetKind();
+      info.className = "asset-smart-result";
+      info.textContent = kind ? "Izaberi konkretno sredstvo iz Direkcije." : "Izaberi vozilo ili mašinu iz Direkcije, pa će se pojaviti samo rubrike koje to sredstvo ima.";
+    }
+    return;
+  }
+  const features = getAssetFeatures(asset);
+  const labels = features.length ? features.map(assetFeatureLabel) : [isVehicleAsset(asset) ? "🚚 Vozilo" : "⚙️ Mašina"];
+  if (getAssetFuelTypes(asset).length) labels.push("⛽ " + getAssetFuelTypes(asset).map(t => ASSET_FUEL_TYPE_LABELS[t] || t).join(" + "));
+  if (asset.fuel_tank_capacity) labels.push("🛢️ " + asset.fuel_tank_capacity + " L gorivo");
+  if (asset.water_tank_capacity) labels.push("💧 " + asset.water_tank_capacity + " L voda");
+  box.innerHTML = labels.map(x => `<span class="asset-feature-badge">${escapeHtml(x)}</span>`).join("");
+  if (info) {
+    info.className = "asset-smart-result ok";
+    info.textContent = `Izabrano: ${formatAssetLabel(asset)}. Rubrike su filtrirane prema ovom sredstvu.`;
+  }
+}
+
+function refreshWorkerAssetContextControls({ keepSelected = true } = {}) {
+  const kindEl = document.querySelector("#wrAssetKind");
+  const assetEl = document.querySelector("#wrAssetSelect");
+  const label = document.querySelector("#wrAssetSelectLabel");
+  if (!kindEl || !assetEl) return;
+  const kind = getSelectedWorkerAssetKind();
+  const oldId = keepSelected ? getSelectedWorkerAssetId() : "";
+  if (label) label.textContent = kind === "vehicle" ? "Vozilo iz Direkcije" : kind === "machine" ? "Mašina iz Direkcije" : "Vozilo / mašina iz Direkcije";
+  if (!kind) {
+    assetEl.innerHTML = `<option value="">Prvo izaberi Vozilo ili Mašina</option>`;
+    renderSelectedAssetRubricsPreview(null);
+    return;
+  }
+  const assets = getWorkerAssetsForKind(kind);
+  const emptyText = kind === "vehicle" ? "Nema vozila iz Direkcije" : "Nema mašina iz Direkcije";
+  const chooseText = kind === "vehicle" ? "Izaberi vozilo..." : "Izaberi mašinu...";
+  assetEl.innerHTML = `<option value="">${escapeHtml(assets.length ? chooseText : emptyText)}</option>` + assets.map(a => `<option value="${escapeHtml(a.id || "")}">${escapeHtml(formatAssetLabel(a))}</option>`).join("");
+  if (oldId && assets.some(a => String(a.id || "") === oldId)) assetEl.value = oldId;
+  renderSelectedAssetRubricsPreview(getSelectedWorkerContextAsset());
+}
+
+function prefillSelectedWorkerAssetIntoActiveModule() {
+  const asset = getSelectedWorkerContextAsset();
+  if (!asset) return;
+  const module = getSelectedWorkerModule();
+  if (!module) return;
+  const searchValue = getAssetCode(asset) || getAssetRegistration(asset) || getAssetName(asset) || "";
+  if (!searchValue) return;
+
+  if (module.value === "machine_work") {
+    const entry = document.querySelector("#machineEntries .machine-entry") || (addMachineEntry(), document.querySelector("#machineEntries .machine-entry"));
+    const input = entry?.querySelector(".m-search");
+    if (input && !input.value.trim()) { input.value = searchValue; refreshOneMachineSelect(entry); }
+  }
+  if (module.value === "truck_tours") {
+    const entry = document.querySelector("#vehicleEntries .vehicle-entry") || (addVehicleEntry(), document.querySelector("#vehicleEntries .vehicle-entry"));
+    const input = entry?.querySelector(".v-search");
+    if (input && !input.value.trim()) { input.value = searchValue; refreshOneVehicleSelect(entry); }
+  }
+  if (module.value === "defect_report") {
+    const input = document.querySelector("#wrDefectAssetName");
+    if (input && !input.value.trim()) { input.value = searchValue; updateDefectAssetSmartResult(); }
+  }
+  if (module.value === "fuel_entry") {
+    const entry = document.querySelector("#fuelEntries .fuel-entry") || (addFuelEntry(), document.querySelector("#fuelEntries .fuel-entry"));
+    const input = entry?.querySelector(".f-asset-search");
+    if (input && !input.value.trim()) { input.value = searchValue; refreshOneFuelAssetSelect(entry); }
+  }
+  if (module.value === "field_tanker") {
+    const input = document.querySelector("#fieldTankerCisternSearch");
+    if (input && !input.value.trim()) { input.value = searchValue; refreshGlobalFieldTankerCisternSelect(); }
+  }
+}
+
 function refreshWorkerModuleSelector(perms = {}) {
   const select = $("#wrModuleSelect");
   const hint = $("#wrModuleHint");
   if (!select) return;
-  const allowed = getAllowedWorkerModules(perms);
+  const allowed = filterAllowedWorkerModulesBySelectedAsset(getAllowedWorkerModules(perms));
   const previous = select.value;
-  select.innerHTML = `<option value="">Izaberi rubriku...</option>` + allowed.map(m => `<option value="${escapeHtml(m.value)}">${escapeHtml(m.label)}</option>`).join("");
+  const emptyLabel = getSelectedWorkerAssetKind() && !getSelectedWorkerContextAsset() ? "Prvo izaberi konkretno sredstvo..." : "Izaberi rubriku...";
+  select.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + allowed.map(m => `<option value="${escapeHtml(m.value)}">${escapeHtml(m.label)}</option>`).join("");
   if (allowed.length === 1) select.value = allowed[0].value;
   else if (allowed.some(m => m.value === previous)) select.value = previous;
   else select.value = "";
@@ -10300,6 +10441,7 @@ function applyWorkerModuleSelection({ addDefaults = true } = {}) {
   if (module.value === "lowloader" && $("#lowloaderEntries") && !$("#lowloaderEntries").children.length) addLowloaderEntry();
   if (module.value === "water_tanker" && $("#waterTankerEntries") && !$("#waterTankerEntries").children.length) addWaterTankerEntry();
   if ((module.value === "truck_tours" || module.value === "material_entry") && $("#materialEntries") && !$("#materialEntries").children.length && perms.materials) addMaterialEntry();
+  prefillSelectedWorkerAssetIntoActiveModule();
   updateLeaveRequestVisibility();
 }
 
@@ -15547,6 +15689,14 @@ function bindEvents() {
 
   $("#saveDraftBtn").addEventListener("click", saveDraft);
   if ($("#wrLeaveType")) $("#wrLeaveType").addEventListener("change", updateLeaveRequestVisibility);
+  if ($("#wrAssetKind")) $("#wrAssetKind").addEventListener("change", () => {
+    refreshWorkerAssetContextControls({ keepSelected: false });
+    refreshWorkerModuleSelector(currentWorker?.permissions || {});
+  });
+  if ($("#wrAssetSelect")) $("#wrAssetSelect").addEventListener("change", () => {
+    renderSelectedAssetRubricsPreview(getSelectedWorkerContextAsset());
+    refreshWorkerModuleSelector(currentWorker?.permissions || {});
+  });
   if ($("#wrModuleSelect")) $("#wrModuleSelect").addEventListener("change", () => applyWorkerModuleSelection({ addDefaults: true }));
   initSignaturePad();
   if ($("#clearSignatureBtn")) $("#clearSignatureBtn").addEventListener("click", () => clearSignatureCanvas(true));
