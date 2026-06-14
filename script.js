@@ -10283,12 +10283,28 @@ function updateWorkerSubmitButtonLabel() {
   btn.textContent = labels[module.reportType] || "Pošalji Upravi";
 }
 
+function selectedWorkerAssetAllowsModuleValue(moduleValue) {
+  const asset = getSelectedWorkerContextAsset();
+  if (!asset || !moduleValue) return false;
+  return workerModuleValuesForAsset(asset).has(moduleValue);
+}
+
 function activeWorkerSectionKeys(perms = {}) {
   const module = getSelectedWorkerModule();
   if (!module) return new Set();
   const normalized = normalizePermissions(perms);
-  const keys = new Set(module.sectionKeys.filter(key => !!normalized[key]));
-  if (module.needsMainSite && (normalized.daily_work || normalized.daily_work_site || true)) keys.add("daily_work");
+
+  // v1719: Ako je rubrika došla iz podešenog vozila/mašine, ne sme više da zavisi
+  // od starih ručnih dozvola radnika. Ranije se meni pojavio, ali sekcija ostane sakrivena
+  // jer normalized[field_tanker/fuel/defects...] nije bio čekiran na radniku.
+  const assetDriven = selectedWorkerAssetAllowsModuleValue(module.value);
+
+  const keys = new Set();
+  module.sectionKeys.forEach(key => {
+    if (assetDriven || normalized[key]) keys.add(key);
+  });
+
+  if (module.needsMainSite && (assetDriven || normalized.daily_work || normalized.daily_work_site)) keys.add("daily_work");
   return keys;
 }
 

@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-app-v1718-rubrike-po-sredstvu-fix";
+const CACHE_NAME = "askcreate-app-v1719-rubrike-otvaraju-sekcije";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1718-rubrike-po-sredstvu-fix",
-  "./script.js?v=1718-rubrike-po-sredstvu-fix",
-  "./manifest.json?v=1718-rubrike-po-sredstvu-fix",
+  "./style.css?v=1719-rubrike-otvaraju-sekcije",
+  "./script.js?v=1719-rubrike-otvaraju-sekcije",
+  "./manifest.json?v=1719-rubrike-otvaraju-sekcije",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
