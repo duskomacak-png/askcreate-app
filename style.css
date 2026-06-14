@@ -8311,3 +8311,22 @@ body.defect-image-viewer-open{overflow:hidden;}
   font-size:11px;
   color:rgba(255,255,255,.86);
 }
+
+/* v1713: detalji cisterne / pumpa / gorivo po sredstvu */
+.asset-tank-box{
+  margin:12px 0;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(255,255,255,.035);
+}
+.asset-tank-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:10px;
+  margin:8px 0 10px;
+}
+.asset-fuel-type-grid{
+  grid-template-columns:repeat(auto-fit,minmax(135px,1fr));
+  margin-bottom:10px;
+}

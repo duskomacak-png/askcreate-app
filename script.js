@@ -2563,8 +2563,25 @@ const ASSET_FEATURE_DEFINITIONS = [
   { key: "lowloader", label: "Labudica", emoji: "🚛" },
   { key: "water_tanker", label: "Cisterna voda", emoji: "💧" },
   { key: "fuel_tanker", label: "Cisterna gorivo", emoji: "⛽" },
+  { key: "service_vehicle", label: "Servisno vozilo", emoji: "🧰" },
+  { key: "fixed_fuel_pump", label: "Fiksna pumpa baza", emoji: "🏠" },
   { key: "allow_images", label: "Slike dozvoljene", emoji: "📸" }
 ];
+
+const ASSET_FUEL_TYPE_LABELS = {
+  dizel: "Dizel",
+  benzin: "Benzin",
+  adblue: "AdBlue",
+  ostalo: "Ostalo"
+};
+
+const ASSET_TANK_LABELS = {
+  mala: "Mala",
+  velika: "Velika",
+  prikolica: "Prikolica",
+  pumpa_baza: "Fiksna pumpa u bazi",
+  ostalo: "Ostalo"
+};
 
 function normalizeAssetFeatures(raw) {
   let value = raw;
@@ -2596,6 +2613,32 @@ function setAssetFeatureInputs(features) {
   });
 }
 
+function collectAssetFuelTypeInputs() {
+  return Array.from(document.querySelectorAll(".assetFuelTypeInput"))
+    .filter(input => input.checked)
+    .map(input => input.value);
+}
+
+function setAssetFuelTypeInputs(types) {
+  const set = new Set(normalizeAssetFeatures(types));
+  document.querySelectorAll(".assetFuelTypeInput").forEach(input => {
+    input.checked = set.has(input.value);
+  });
+}
+
+function getAssetFuelTypes(asset = {}) {
+  return normalizeAssetFeatures(asset.fuel_types || asset.asset_fuel_types || asset.supported_fuel_types || []);
+}
+
+function formatAssetLiters(value) {
+  const v = String(value || "").trim();
+  return v ? `${escapeHtml(v)} L` : "";
+}
+
+function assetTankLabel(value) {
+  return ASSET_TANK_LABELS[String(value || "")] || String(value || "");
+}
+
 function assetFeatureLabel(key) {
   const found = ASSET_FEATURE_DEFINITIONS.find(f => f.key === key);
   return found ? `${found.emoji} ${found.label}` : key;
@@ -2603,8 +2646,13 @@ function assetFeatureLabel(key) {
 
 function renderAssetFeatureBadges(asset = {}) {
   const features = getAssetFeatures(asset);
-  if (!features.length) return `<small class="muted">Nema podešenih rubrika.</small>`;
-  return `<div class="asset-feature-badges">${features.map(k => `<span class="asset-feature-badge">${escapeHtml(assetFeatureLabel(k))}</span>`).join("")}</div>`;
+  const badges = features.map(k => `<span class="asset-feature-badge">${escapeHtml(assetFeatureLabel(k))}</span>`);
+  const fuelTypes = getAssetFuelTypes(asset);
+  if (fuelTypes.length) badges.push(`<span class="asset-feature-badge">⛽ ${escapeHtml(fuelTypes.map(t => ASSET_FUEL_TYPE_LABELS[t] || t).join(" + "))}</span>`);
+  if (asset.fuel_tank_capacity) badges.push(`<span class="asset-feature-badge">🛢️ ${formatAssetLiters(asset.fuel_tank_capacity)}${asset.fuel_tank_label ? ` · ${escapeHtml(assetTankLabel(asset.fuel_tank_label))}` : ""}</span>`);
+  if (asset.water_tank_capacity) badges.push(`<span class="asset-feature-badge">💧 ${formatAssetLiters(asset.water_tank_capacity)}${asset.water_tank_label ? ` · ${escapeHtml(assetTankLabel(asset.water_tank_label))}` : ""}</span>`);
+  if (!badges.length) return `<small class="muted">Nema podešenih rubrika.</small>`;
+  return `<div class="asset-feature-badges">${badges.join("")}</div>`;
 }
 
 function defaultAssetFeaturesForType(assetType) {
@@ -2614,6 +2662,8 @@ function defaultAssetFeaturesForType(assetType) {
   if (raw === "lowloader_vehicle" || raw === "lowloader") defaults.push("lowloader");
   if (raw === "water_tanker") defaults.push("water_tanker");
   if (raw === "fuel_tanker_vehicle" || raw === "fuel_tanker" || raw === "small_fuel_tanker") defaults.push("fuel_tanker");
+  if (raw === "pickup_service") defaults.push("service_vehicle");
+  if (raw === "fixed_fuel_pump") defaults.push("fixed_fuel_pump", "fuel_tanker");
   return defaults;
 }
 
@@ -2667,7 +2717,7 @@ function formatAssetTolerance(asset) {
 
 function isMissingAssetConsumptionColumnError(error) {
   const msg = String(error?.message || error?.details || "").toLowerCase();
-  return msg.includes("fuel_norm") || msg.includes("fuel_norm_unit") || msg.includes("fuel_tolerance_percent") || msg.includes("asset_features") || msg.includes("consumption");
+  return msg.includes("fuel_norm") || msg.includes("fuel_norm_unit") || msg.includes("fuel_tolerance_percent") || msg.includes("asset_features") || msg.includes("fuel_tank_capacity") || msg.includes("fuel_tank_label") || msg.includes("fuel_types") || msg.includes("water_tank_capacity") || msg.includes("water_tank_label") || msg.includes("consumption");
 }
 
 function stripAssetConsumptionColumns(payload) {
@@ -2676,6 +2726,11 @@ function stripAssetConsumptionColumns(payload) {
   delete clean.fuel_norm_unit;
   delete clean.fuel_tolerance_percent;
   delete clean.asset_features;
+  delete clean.fuel_tank_capacity;
+  delete clean.fuel_tank_label;
+  delete clean.fuel_types;
+  delete clean.water_tank_capacity;
+  delete clean.water_tank_label;
   return clean;
 }
 
@@ -2705,7 +2760,7 @@ function setAssetFormMode(mode = "add") {
 }
 
 function clearAssetForm() {
-  ["assetCode", "assetName", "assetReg", "assetCapacity", "assetFuelNorm", "assetFuelTolerance"].forEach(id => {
+  ["assetCode", "assetName", "assetReg", "assetCapacity", "assetFuelNorm", "assetFuelTolerance", "assetFuelTankCapacity", "assetWaterTankCapacity"].forEach(id => {
     const el = document.querySelector("#" + id);
     if (el) el.value = "";
   });
@@ -2715,7 +2770,12 @@ function clearAssetForm() {
   if (type) type.value = "machine";
   const fuelUnit = document.querySelector("#assetFuelUnit");
   if (fuelUnit) fuelUnit.value = "l_per_mtc";
+  const fuelTankLabel = document.querySelector("#assetFuelTankLabel");
+  if (fuelTankLabel) fuelTankLabel.value = "";
+  const waterTankLabel = document.querySelector("#assetWaterTankLabel");
+  if (waterTankLabel) waterTankLabel.value = "";
   setAssetFeatureInputs([]);
+  setAssetFuelTypeInputs([]);
   applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true });
   editingAssetId = null;
   setAssetFormMode("add");
@@ -2768,8 +2828,8 @@ function normalizeAssetType(value) {
   const v = rawAssetTypeValue(value);
   if (["machine", "masina", "mašina"].includes(v)) return "machine";
   if (["vehicle", "vozilo", "truck", "kamion", "vehicle_kiper", "kiper", "lowloader", "lowloader_vehicle", "labudica", "water_tanker", "cisterna_voda", "cisterna za vodu", "fuel_tanker_vehicle", "fuel_tanker", "cisterna_gorivo", "small_fuel_tanker", "mala_cisterna", "pickup_service", "pickup", "pikap", "kombi"].includes(v)) return "vehicle";
-  if (["fixed_fuel_pump", "fuel_canister", "other", "ostalo", "oprema"].includes(v)) return "other";
-  return v || "other";
+  if (["fixed_fuel_pump", "fuel_canister", "other", "ostalo", "oprema"].includes(v)) return "machine";
+  return v === "vehicle" ? "vehicle" : "machine";
 }
 
 function assetTypeLabel(value) {
@@ -2848,13 +2908,19 @@ window.editAsset = async (id) => {
     editingAssetId = asset.id;
     document.querySelector("#assetCode").value = asset.asset_code || asset.internal_code || asset.code || "";
     document.querySelector("#assetName").value = asset.name || "";
-    document.querySelector("#assetType").value = asset.asset_type || "machine";
+    document.querySelector("#assetType").value = normalizeAssetType(asset.asset_type || "machine") === "vehicle" ? "vehicle" : "machine";
     document.querySelector("#assetReg").value = asset.registration || "";
     setAssetCapacityInputs(asset.capacity || "");
     if (document.querySelector("#assetFuelNorm")) document.querySelector("#assetFuelNorm").value = asset.fuel_norm || asset.consumption_norm || asset.fuel_consumption_norm || "";
     if (document.querySelector("#assetFuelUnit")) document.querySelector("#assetFuelUnit").value = asset.fuel_norm_unit || asset.consumption_unit || defaultFuelUnitForAssetType(asset.asset_type || "machine");
     if (document.querySelector("#assetFuelTolerance")) document.querySelector("#assetFuelTolerance").value = asset.fuel_tolerance_percent || asset.consumption_tolerance_percent || asset.tolerance_percent || "";
-    setAssetFeatureInputs(getAssetFeatures(asset));
+    const storedFeatures = getAssetFeatures(asset);
+    setAssetFeatureInputs(storedFeatures.length ? storedFeatures : defaultAssetFeaturesForType(asset.asset_type || ""));
+    setAssetFuelTypeInputs(getAssetFuelTypes(asset));
+    if (document.querySelector("#assetFuelTankCapacity")) document.querySelector("#assetFuelTankCapacity").value = asset.fuel_tank_capacity || "";
+    if (document.querySelector("#assetFuelTankLabel")) document.querySelector("#assetFuelTankLabel").value = asset.fuel_tank_label || "";
+    if (document.querySelector("#assetWaterTankCapacity")) document.querySelector("#assetWaterTankCapacity").value = asset.water_tank_capacity || "";
+    if (document.querySelector("#assetWaterTankLabel")) document.querySelector("#assetWaterTankLabel").value = asset.water_tank_label || "";
     applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true });
     setAssetFormMode("edit");
     checkAssetCodeAvailability(false).catch(() => {});
@@ -2880,6 +2946,11 @@ async function saveAssetForm() {
     const fuelNormUnit = document.querySelector("#assetFuelUnit")?.value || defaultFuelUnitForAssetType(assetType);
     const fuelTolerance = document.querySelector("#assetFuelTolerance")?.value.trim() || "";
     const assetFeatures = collectAssetFeatureInputs();
+    const assetFuelTypes = collectAssetFuelTypeInputs();
+    const fuelTankCapacity = document.querySelector("#assetFuelTankCapacity")?.value.trim() || "";
+    const fuelTankLabel = document.querySelector("#assetFuelTankLabel")?.value || "";
+    const waterTankCapacity = document.querySelector("#assetWaterTankCapacity")?.value.trim() || "";
+    const waterTankLabel = document.querySelector("#assetWaterTankLabel")?.value || "";
 
     if (!name) throw new Error("Upiši naziv mašine/vozila.");
 
@@ -2900,7 +2971,12 @@ async function saveAssetForm() {
       fuel_norm: fuelNorm,
       fuel_norm_unit: fuelNormUnit,
       fuel_tolerance_percent: fuelTolerance,
-      asset_features: assetFeatures
+      asset_features: assetFeatures,
+      fuel_tank_capacity: fuelTankCapacity,
+      fuel_tank_label: fuelTankLabel,
+      fuel_types: assetFuelTypes,
+      water_tank_capacity: waterTankCapacity,
+      water_tank_label: waterTankLabel
     };
 
     const saveResult = await saveAssetPayloadWithConsumptionFallback(payload, editingAssetId);
@@ -15361,7 +15437,12 @@ function bindEvents() {
   if ($("#siteName")) $("#siteName").addEventListener("input", scheduleSiteNameAvailabilityCheck);
 
   $("#addAssetBtn").addEventListener("click", saveAssetForm);
-  if ($("#assetType")) $("#assetType").addEventListener("change", () => applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true }));
+  if ($("#assetType")) $("#assetType").addEventListener("change", () => {
+    applyDefaultAssetFeaturesFromType({ onlyIfEmpty: true });
+    const fuelUnit = $("#assetFuelUnit");
+    if (fuelUnit && !(fuelUnit.dataset.userChanged === "1")) fuelUnit.value = defaultFuelUnitForAssetType($("#assetType").value);
+  });
+  if ($("#assetFuelUnit")) $("#assetFuelUnit").addEventListener("change", () => { $("#assetFuelUnit").dataset.userChanged = "1"; });
   if ($("#cancelEditAssetBtn")) $("#cancelEditAssetBtn").addEventListener("click", clearAssetForm);
   if ($("#assetCode")) $("#assetCode").addEventListener("input", scheduleAssetCodeAvailabilityCheck);
   if ($("#assetListFilter")) $("#assetListFilter").addEventListener("change", (e) => handleAssetListFilterChange(e.target.value));
