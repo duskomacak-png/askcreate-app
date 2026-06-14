@@ -8848,3 +8848,158 @@ body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-
 @media (max-width:1049px){
   body.site-log-mode #siteLogPanel .site-log-live-title{display:none;}
 }
+
+/* =========================================================
+   v1738 — Šef gradilišta: pravi laptop layout fix
+   Cilj: ukloniti uski mobilni prikaz; unos levo, A4 pregled desno.
+   Ne menja poslovnu logiku, samo raspored za site-log na laptopu.
+   ========================================================= */
+@media (min-width: 1100px){
+  body.worker-field-theme.worker-desktop-panel.site-log-mode,
+  body.worker-field-theme.site-log-mode{
+    background:#eef5f0!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode .shell,
+  body.worker-field-theme.site-log-mode .shell{
+    width:100%!important;
+    max-width:none!important;
+    padding:14px 18px 22px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #viewWorkerForm,
+  body.worker-field-theme.site-log-mode #viewWorkerForm{
+    width:min(98vw, 1760px)!important;
+    max-width:none!important;
+    margin:0 auto!important;
+    padding:10px 12px 22px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #viewWorkerForm .dashboard-head,
+  body.worker-field-theme.site-log-mode #viewWorkerForm .dashboard-head{
+    width:min(98vw, 1760px)!important;
+    max-width:none!important;
+    margin:0 auto 12px!important;
+    padding:14px 18px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel,
+  body.worker-field-theme.site-log-mode #siteLogPanel{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:16px!important;
+    display:grid!important;
+    grid-template-columns:minmax(520px, 0.98fr) minmax(620px, 1.02fr)!important;
+    gap:18px!important;
+    align-items:start!important;
+    overflow:visible!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-head,
+  body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-head{
+    grid-column:1 / -1!important;
+    grid-row:auto!important;
+    margin:0!important;
+    padding:14px 16px!important;
+    background:#ffffff!important;
+    border:1px solid #cbd5e1!important;
+    border-radius:16px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-form-grid,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-boss-overview,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-section,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site-log-actions,
+  body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-form-grid,
+  body.worker-field-theme.site-log-mode #siteLogPanel > .site-boss-overview,
+  body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-section,
+  body.worker-field-theme.site-log-mode #siteLogPanel > .site-log-actions{
+    grid-column:1!important;
+    width:100%!important;
+    max-width:none!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > #siteLogPreviewBox,
+  body.worker-field-theme.site-log-mode #siteLogPanel > #siteLogPreviewBox{
+    grid-column:2!important;
+    grid-row:2 / span 80!important;
+    display:block!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    position:sticky!important;
+    top:76px!important;
+    max-height:calc(100vh - 92px)!important;
+    margin:0!important;
+    padding:14px!important;
+    overflow:auto!important;
+    background:#e5e7eb!important;
+    border:1px solid #cbd5e1!important;
+    border-radius:18px!important;
+    box-shadow:0 16px 36px rgba(15,23,42,.14)!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > #siteLogPreviewBox.hidden,
+  body.worker-field-theme.site-log-mode #siteLogPanel > #siteLogPreviewBox.hidden{
+    display:block!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-live-title,
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-live-title{
+    position:sticky!important;
+    top:0!important;
+    z-index:5!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:12px!important;
+    margin:0 0 12px!important;
+    padding:10px 12px!important;
+    background:#ffffff!important;
+    border:1px solid #cbd5e1!important;
+    border-radius:12px!important;
+    box-shadow:0 8px 18px rgba(15,23,42,.08)!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-a4,
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-a4{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:auto!important;
+    margin:0 auto!important;
+    padding:18px 16px!important;
+    box-sizing:border-box!important;
+    background:#ffffff!important;
+    border:1px solid #9ca3af!important;
+    box-shadow:none!important;
+    transform:none!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-form-grid,
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-form-grid{
+    grid-template-columns:1fr 1fr!important;
+    gap:12px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .grid.three,
+  body.worker-field-theme.site-log-mode #siteLogPanel .grid.three,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .grid.four,
+  body.worker-field-theme.site-log-mode #siteLogPanel .grid.four{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media (min-width:1100px) and (max-width:1250px){
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel,
+  body.worker-field-theme.site-log-mode #siteLogPanel{
+    grid-template-columns:minmax(480px, .96fr) minmax(520px, 1.04fr)!important;
+    gap:14px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > #siteLogPreviewBox,
+  body.worker-field-theme.site-log-mode #siteLogPanel > #siteLogPreviewBox{
+    padding:10px!important;
+  }
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-a4,
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-a4{
+    padding:14px 12px!important;
+    font-size:.92rem!important;
+  }
+}
+@media (max-width:1099px){
+  body.worker-field-theme.site-log-mode #siteLogPanel,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel{
+    display:block!important;
+  }
+  body.worker-field-theme.site-log-mode #siteLogPanel .site-log-live-title,
+  body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel .site-log-live-title{
+    display:none!important;
+  }
+}
