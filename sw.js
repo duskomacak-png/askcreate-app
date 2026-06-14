@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1729-ture-materijal-u-izvestaju";
+const CACHE_NAME = "askcreate-v1730-broj-tablice-naziv-excel";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1729-ture-materijal-u-izvestaju",
-  "./script.js?v=1729-ture-materijal-u-izvestaju",
-  "./manifest.json?v=1729-ture-materijal-u-izvestaju",
+  "./style.css?v=1730-broj-tablice-naziv-excel",
+  "./script.js?v=1730-broj-tablice-naziv-excel",
+  "./manifest.json?v=1730-broj-tablice-naziv-excel",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

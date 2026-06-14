@@ -5101,8 +5101,8 @@ function officeBuildDailyLogData(date, site) {
         vehicles.push([
           row.site_name,
           row.asset_code,
-          row.vehicle || d.vehicle || "",
           row.registration || "",
+          row.vehicle || d.vehicle || "",
           reportPerson,
           row.material || "",
           row.km_start || "",
@@ -5502,7 +5502,7 @@ function renderSiteBossOverview(data, date, site) {
   box.innerHTML = header + `
     <section><h4>👷 Radnici i sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workers)}</section>
     <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ poč.","MTČ kraj","Ukupno MTČ","KM","Rad"], data.machines)}</section>
-    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Vozilo","Reg.","Vozač","Materijal","KM poč.","KM kraj","Relacija","Ture","Ukupno"], data.vehicles)}</section>
+    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","KM poč.","KM kraj","Relacija","Ture","Ukupno"], data.vehicles)}</section>
     <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], data.fuels)}</section>
     <section><h4>📦 Materijal</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
     <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], data.defects)}</section>`;
@@ -7105,8 +7105,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
         <tr>
           <th>#</th>
           <th>Broj</th>
-          <th>Vozilo</th>
-          <th>Reg.</th>
+          <th>Tablice</th>
+          <th>Naziv</th>
           <th>Kapacitet</th>
           <th>Materijal</th>
           <th>KM početak</th>
@@ -7121,8 +7121,8 @@ function renderReportReadableDetails(d = {}, options = {}) {
           <tr>
             <td>${i + 1}</td>
             <td>${val(v.asset_code || v.vehicle_code)}</td>
-            <td>${val(v.name || v.vehicle)}</td>
             <td>${val(v.registration)}</td>
+            <td>${val(v.name || v.vehicle)}</td>
             <td>${val(v.capacity)}</td>
             <td>${val(officeVehicleMaterialText(v))}</td>
             <td>${val(v.km_start)}</td>
@@ -8098,13 +8098,13 @@ function buildSingleReportExcelHtml(r) {
     </table>
 
     <div class="section-title">Vozila / ture</div>
-    <table>${excelColgroup(["6%","13%","18%","12%","10%","10%","12%","9%","10%"])}
-      <tr><th>#</th><th>Broj</th><th>Vozilo</th><th>Registracija</th><th>Materijal</th><th>KM početak</th><th>KM kraj</th><th>Relacija</th><th>Ture</th><th>Ukupno</th></tr>
+    <table>${excelColgroup(["5%","9%","12%","16%","10%","9%","9%","12%","8%","10%"])}
+      <tr><th>#</th><th>Broj</th><th>Tablice</th><th>Naziv</th><th>Materijal</th><th>KM početak</th><th>KM kraj</th><th>Relacija</th><th>Ture</th><th>Ukupno</th></tr>
       ${excelSectionRows(vehicles, [
         {key:"i", get:(v,i)=>i+1},
         {key:"code", get:v=>v.asset_code || v.vehicle_code || ""},
-        {key:"name", get:v=>v.name || v.vehicle || ""},
         {key:"registration", get:v=>v.registration || ""},
+        {key:"name", get:v=>v.name || v.vehicle || ""},
         {key:"material", get:v=>officeVehicleMaterialText(v)},
         {key:"km_start", get:v=>v.km_start || ""},
         {key:"km_end", get:v=>v.km_end || ""},
@@ -8201,12 +8201,12 @@ function buildSingleReportExcelCsv(r) {
   rows.push(["sep=;"]);
   rows.push(["DNEVNI RADNI IZVEŠTAJ SA TERENA - KANCELARIJSKI EXCEL IZVOZ"]);
   rows.push([]);
-  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Broj radnika", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna koja je sipala gorivo", "Tablice cisterne koja je sipala gorivo", "Izvor goriva", "Litara vode", "Punjenja vode", "Punjenje vode", "Istovar/prskanje vode", "Namena vode"]);
+  rows.push(["Tip reda", "Datum", "Firma", "Gradilište", "Zaposleni", "Broj radnika", "Radno mesto", "Status", "Vreme slanja", "Broj dokumenta", "Opis rada", "Broj", "Tablice / oznaka", "Sredstvo / mašina / vozilo", "KM početak", "KM kraj", "Ukupno KM", "MTČ početak", "MTČ kraj", "Ukupno MTČ", "Litara goriva", "KM gorivo", "MTČ gorivo", "Gorivo sipao", "Gorivo primio", "Relacija / Od", "Do", "Ture", "m³", "Materijal", "Količina po turi", "Ukupno", "Jedinica", "Napomena", "Broj cisterne", "Cisterna koja je sipala gorivo", "Tablice cisterne koja je sipala gorivo", "Izvor goriva", "Litara vode", "Punjenja vode", "Punjenje vode", "Istovar/prskanje vode", "Namena vode"]);
 
   if (machines.length) {
     machines.forEach((m) => rows.push([
       "Rad mašine", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
-      m.asset_code || m.machine_code || "", m.name || "",
+      m.asset_code || m.machine_code || "", "", m.name || "",
       machineKmStart(m), machineKmEnd(m), machineKmTotal(m),
       machineMtcStart(m), machineMtcEnd(m), machineMtcTotal(m),
       "", "", "", "", "", "", "", "", "", "", "", "", "", m.work || m.description || m.note || ""
@@ -8216,7 +8216,7 @@ function buildSingleReportExcelCsv(r) {
   if (fuels.length) {
     fuels.forEach((f) => rows.push([
       "Gorivo", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
-      f.asset_code || "", f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
+      f.asset_code || "", f.registration || f.asset_registration || "", f.asset_name || f.machine || f.vehicle || f.other || f.manual_asset_name || "",
       "", "", "", "", "", "",
       f.liters || "",
       f.km || f.current_km || (f.asset_kind === "vehicle" ? (f.reading || f.mtc_km) : "") || "",
@@ -8231,7 +8231,7 @@ function buildSingleReportExcelCsv(r) {
   if (fieldTankers.length) {
     fieldTankers.forEach((ft) => rows.push([
       "Gorivo cisterna", base.datum, base.firma, ft.site_name || base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
-      ft.asset_code || "", ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
+      ft.asset_code || "", ft.registration || ft.asset_registration || "", ft.asset_name || ft.machine || ft.vehicle || ft.other || ft.manual_asset_name || "",
       "", "", "", "", "", "",
       ft.liters || "",
       ft.km || ft.current_km || (ft.asset_kind === "vehicle" ? (ft.reading || ft.mtc_km) : "") || "",
@@ -8248,7 +8248,7 @@ function buildSingleReportExcelCsv(r) {
   if (vehicles.length) {
     vehicles.forEach((v) => rows.push([
       "Vozilo / tura", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
-      v.asset_code || v.vehicle_code || "", v.name || v.vehicle || v.registration || "",
+      v.asset_code || v.vehicle_code || "", v.registration || "", v.name || v.vehicle || "",
       v.km_start || "", v.km_end || "", numericDiff(v.km_start, v.km_end), "", "", "",
       "", "", "", "", "", v.route || "", "", v.tours || "", officeVehicleTotalQuantityText(v), officeVehicleMaterialText(v), "", officeVehicleTotalQuantityText(v), normalizeTransportUnit((v.tour_items || [])[0]?.unit || (v.tour_items || [])[0]?.measure_unit || ""), ""
     ]));
@@ -8257,7 +8257,7 @@ function buildSingleReportExcelCsv(r) {
   if (materials.length) {
     materials.forEach((m) => rows.push([
       "Materijal", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
-      "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", m.tours || m.material_tours || "", "",
+      "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", m.tours || m.material_tours || "", "",
       m.material || m.name || "", m.per_tour || m.quantity_per_tour || m.material_per_tour || "", materialQuantityValue(m), materialUnitValue(m), m.note || materialCalcText(m) || ""
     ]));
   }
@@ -8265,7 +8265,7 @@ function buildSingleReportExcelCsv(r) {
   if (waters.length) {
     waters.forEach((wt) => rows.push([
       "Cisterna za vodu", base.datum, base.firma, officeEntrySiteName(wt, base.gradiliste), base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
-      wt.asset_code || wt.vehicle_code || "", wt.vehicle || wt.asset_name || wt.tanker_vehicle || "",
+      wt.asset_code || wt.vehicle_code || "", wt.registration || wt.plates || "", wt.vehicle || wt.asset_name || wt.tanker_vehicle || "",
       wt.km_start || "", wt.km_end || "", waterTankerKmTotal(wt), "", "", "",
       "", "", "", "", "",
       wt.fill_location || "", wt.unload_location || wt.spray_location || "", waterTankerLoads(wt) || "", "", "Voda", "", waterTankerLiters(wt) || "", "L", wt.note || "",
@@ -8276,7 +8276,7 @@ function buildSingleReportExcelCsv(r) {
   if (lowloaders.length) {
     lowloaders.forEach((ll) => rows.push([
       "Transport labudicom", base.datum, base.firma, base.gradiliste, base.zaposleni, base.brojRadnika, base.radnoMesto, base.status, base.vremeSlanja, base.dokument, base.opis,
-      ll.plates || ll.registration || "", [ll.machine, ll.accompanying_tools || ll.tools].filter(Boolean).join(" / "),
+      "", ll.plates || ll.registration || "", [ll.machine, ll.accompanying_tools || ll.tools].filter(Boolean).join(" / "),
       ll.km_start || "", ll.km_end || "", numericDiff(ll.km_start, ll.km_end), "", "", "",
       "", "", "", "", "", ll.from_site || ll.from_address || "", ll.to_site || ll.to_address || "", "", "", "", "", "", "", ""
     ]));
