@@ -10390,6 +10390,93 @@ function filterAllowedWorkerModulesBySelectedAsset(allowedModules = []) {
   });
 }
 
+
+function workerPrimaryModuleValuesForAsset(asset) {
+  const values = [];
+  if (!asset) return values;
+  const features = new Set(getAssetFeatures(asset));
+  const push = (value) => { if (value && !values.includes(value)) values.push(value); };
+
+  // v1724: radnik ne treba da bira rubriku ako je sredstvo jasno podešeno u Direkciji.
+  // Glavne rubrike se izvode iz samog vozila/mašine. Kvar i "gorivo odmah" ostaju brze opcije,
+  // ali ne smeju da spreče automatsko otvaranje cisterne/kiper/labudice/mašine.
+  if (features.has("fuel_tanker") || features.has("fixed_fuel_pump")) push("field_tanker");
+  if (features.has("water_tanker")) push("water_tanker");
+  if (features.has("kipper")) push("truck_tours");
+  if (features.has("lowloader")) push("lowloader");
+  if (isMachineAsset(asset)) push("machine_work");
+  if (isVehicleAsset(asset) && (features.has("service_vehicle") || (!features.size && !values.length))) push("truck_tours");
+  return values;
+}
+
+function workerModuleDefinitionByValue(value) {
+  return WORKER_MODULE_DEFINITIONS.find(m => m.value === value) || null;
+}
+
+function ensureWorkerAssetAutoActionsBox() {
+  const context = document.querySelector("#workerAssetContextBox");
+  if (!context) return null;
+  let box = document.querySelector("#wrAssetAutoActions");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "wrAssetAutoActions";
+    box.className = "worker-asset-auto-actions hidden";
+    context.appendChild(box);
+  }
+  return box;
+}
+
+function selectWorkerModuleValue(value, { addDefaults = true } = {}) {
+  const select = document.querySelector("#wrModuleSelect");
+  if (!select || !value) return false;
+  const hasOption = Array.from(select.options || []).some(o => o.value === value);
+  if (!hasOption) return false;
+  select.value = value;
+  updateWorkerModuleSelectedLabel();
+  applyWorkerModuleSelection({ addDefaults });
+  return true;
+}
+
+function renderWorkerAssetAutoActions(allowed = []) {
+  const box = ensureWorkerAssetAutoActionsBox();
+  if (!box) return;
+  const asset = getSelectedWorkerContextAsset();
+  if (!asset) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+
+  const allowedSet = new Set((allowed || []).map(m => m.value));
+  const primaryValues = workerPrimaryModuleValuesForAsset(asset).filter(v => allowedSet.has(v));
+  const quickValues = ["defect_report", "fuel_entry"].filter(v => allowedSet.has(v) && !primaryValues.includes(v));
+  const current = document.querySelector("#wrModuleSelect")?.value || "";
+  const buttons = [...primaryValues, ...quickValues]
+    .map(value => workerModuleDefinitionByValue(value))
+    .filter(Boolean)
+    .map(m => `<button type="button" class="${primaryValues.includes(m.value) ? "primary" : "secondary"} worker-auto-module-btn" data-module-value="${escapeHtml(m.value)}">${escapeHtml(m.label)}</button>`)
+    .join("");
+
+  const mainText = primaryValues.length === 1
+    ? `Automatski otvoreno: ${workerModuleDefinitionByValue(primaryValues[0])?.label || "rubrika"}`
+    : primaryValues.length > 1
+      ? "Ovo sredstvo ima više rubrika. Izaberi šta trenutno popunjavaš."
+      : "Za ovo sredstvo možeš otvoriti brze prijave.";
+
+  box.innerHTML = `
+    <div class="worker-auto-module-info">
+      <strong>${escapeHtml(mainText)}</strong>
+      <small>${escapeHtml(formatAssetLabel(asset))}</small>
+      ${current ? `<span>Trenutno aktivno: ${escapeHtml(workerModuleDefinitionByValue(current)?.label || current)}</span>` : ""}
+    </div>
+    ${buttons ? `<div class="worker-auto-module-buttons">${buttons}</div>` : ""}
+  `;
+  box.classList.remove("hidden");
+  box.querySelectorAll(".worker-auto-module-btn").forEach(btn => {
+    btn.addEventListener("click", () => selectWorkerModuleValue(btn.dataset.moduleValue || "", { addDefaults: true }));
+  });
+}
+
 function renderSelectedAssetRubricsPreview(asset) {
   const box = document.querySelector("#wrAssetRubricsPreview");
   const info = document.querySelector("#wrAssetContextInfo");
@@ -10565,17 +10652,42 @@ function refreshWorkerModuleSelector(perms = {}) {
   const select = $("#wrModuleSelect");
   const hint = $("#wrModuleHint");
   if (!select) return;
+  const asset = getSelectedWorkerContextAsset();
   const allowed = filterAllowedWorkerModulesBySelectedAsset(getAllowedWorkerModules(perms));
   const previous = select.value;
-  const emptyLabel = getSelectedWorkerAssetKind() && !getSelectedWorkerContextAsset() ? "Prvo izaberi konkretno sredstvo..." : "Izaberi rubriku...";
+  const emptyLabel = getSelectedWorkerAssetKind() && !asset ? "Prvo izaberi konkretno sredstvo..." : "Rubrika se otvara automatski po sredstvu...";
   select.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + allowed.map(m => `<option value="${escapeHtml(m.value)}">${escapeHtml(m.label)}</option>`).join("");
-  if (allowed.length === 1) select.value = allowed[0].value;
-  else if (allowed.some(m => m.value === previous)) select.value = previous;
-  else select.value = "";
-  if (hint) hint.textContent = allowed.length ? "" : (getSelectedWorkerContextAsset() ? "Za ovo sredstvo nisu podešene rubrike u Direkciji. Otvori sredstvo u Direkciji i čekiraj Kiper/Labudica/Cisterna." : "");
-  applyWorkerModuleSelection({ addDefaults: false });
+
+  const allowedValues = new Set(allowed.map(m => m.value));
+  const primaryValues = workerPrimaryModuleValuesForAsset(asset).filter(v => allowedValues.has(v));
+  let autoOpened = false;
+
+  if (asset && primaryValues.length === 1) {
+    select.value = primaryValues[0];
+    autoOpened = true;
+  } else if (allowed.some(m => m.value === previous)) {
+    select.value = previous;
+  } else if (allowed.length === 1) {
+    select.value = allowed[0].value;
+    autoOpened = true;
+  } else {
+    select.value = "";
+  }
+
+  if (hint) {
+    if (!allowed.length && asset) hint.textContent = "Za ovo sredstvo nisu podešene rubrike u Direkciji. Otvori sredstvo u Direkciji i čekiraj Kiper/Labudica/Cisterna.";
+    else if (asset && primaryValues.length === 1) hint.textContent = "Obrazac je otvoren automatski prema podešenju sredstva u Direkciji.";
+    else if (asset && primaryValues.length > 1) hint.textContent = "Ovo sredstvo ima više rubrika. Izaberi dugme ispod za ono što trenutno radiš.";
+    else hint.textContent = "";
+  }
+
+  applyWorkerModuleSelection({ addDefaults: !!select.value });
   updateWorkerSubmitButtonLabel();
   updateWorkerModuleSelectedLabel();
+  renderWorkerAssetAutoActions(allowed);
+
+  const chooser = document.querySelector("#workerModuleChooser");
+  if (chooser) chooser.classList.toggle("worker-module-auto-mode", !!asset && primaryValues.length === 1);
 }
 
 function applyWorkerModuleSelection({ addDefaults = true } = {}) {
@@ -15858,6 +15970,7 @@ function bindEvents() {
   if ($("#wrModuleSelect")) $("#wrModuleSelect").addEventListener("change", () => {
     updateWorkerModuleSelectedLabel();
     applyWorkerModuleSelection({ addDefaults: true });
+    renderWorkerAssetAutoActions(filterAllowedWorkerModulesBySelectedAsset(getAllowedWorkerModules(currentWorker?.permissions || {})));
   });
   initSignaturePad();
   if ($("#clearSignatureBtn")) $("#clearSignatureBtn").addEventListener("click", () => clearSignatureCanvas(true));

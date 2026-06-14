@@ -1,4 +1,4 @@
-const CACHE_NAME = "askcreate-v1723-radnik-tok-rubrika";
+const CACHE_NAME = "askcreate-v1724-auto-rubrike-po-sredstvu";
 const APP_SHELL = [
   "./",
   "./index.html",

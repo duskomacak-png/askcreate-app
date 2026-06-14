@@ -8659,3 +8659,48 @@ body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module
 body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section .muted{
   color:#64748b!important;
 }
+
+/* v1724: radnik - automatsko otvaranje rubrike po izabranom sredstvu */
+body.worker-field-theme #viewWorkerForm .worker-asset-auto-actions{
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #c44a3d;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15,23,42,.06);
+}
+body.worker-field-theme #viewWorkerForm .worker-asset-auto-actions.hidden{display:none!important;}
+body.worker-field-theme #viewWorkerForm .worker-auto-module-info{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin-bottom:10px;
+  color:#111827;
+}
+body.worker-field-theme #viewWorkerForm .worker-auto-module-info strong{
+  color:#111827;
+  font-weight:900;
+  font-size:15px;
+}
+body.worker-field-theme #viewWorkerForm .worker-auto-module-info small,
+body.worker-field-theme #viewWorkerForm .worker-auto-module-info span{
+  color:#4b5563;
+  font-weight:700;
+}
+body.worker-field-theme #viewWorkerForm .worker-auto-module-buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+body.worker-field-theme #viewWorkerForm .worker-auto-module-buttons button{
+  min-height:42px;
+  border-radius:14px;
+  font-weight:900;
+}
+body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-mode select{
+  display:none!important;
+}
+body.worker-field-theme #viewWorkerForm #workerModuleChooser.worker-module-auto-mode > label{
+  display:none!important;
+}
