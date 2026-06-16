@@ -1496,14 +1496,32 @@
         <div id="siteLogPreviewBox" class="site-log-preview-box hidden"></div>
       </div>
 
-      <div id="normalWorkerFormCard" class="card worker-compact-card">
-        <div class="worker-simple-top">
-          <label>Datum</label>
-          <input id="wrDate" type="date" />
+      <div id="normalWorkerFormCard" class="card worker-compact-card worker-phone-look-card">
+        <div class="worker-app-topbar" aria-label="AskCreate radnički prikaz">
+          <div class="worker-brand-lockup">
+            <div class="worker-brand-mark">A</div>
+            <div>
+              <strong>Ask<span>Create</span><small>.app</small></strong>
+              <em>Radnik</em>
+            </div>
+          </div>
+          <div class="worker-top-actions">
+            <input id="wrDate" type="date" aria-label="Datum izveštaja" />
+            <span class="worker-bell" aria-hidden="true">🔔</span>
+          </div>
         </div>
 
-        <div id="workerAssetContextBox" class="worker-asset-context-box">
-          <div class="worker-asset-context-grid">
+        <div class="worker-company-strip">
+          <span class="worker-company-icon" aria-hidden="true">▥</span>
+          <strong id="workerCompanyMiniLabel">Gradilišna firma</strong>
+        </div>
+
+        <div id="workerAssetContextBox" class="worker-asset-context-box worker-phone-asset-box">
+          <div class="worker-kind-toggle" role="group" aria-label="Vozilo ili mašina">
+            <button type="button" class="worker-kind-btn" data-worker-kind="vehicle"><span>🚚</span><b>Vozilo</b></button>
+            <button type="button" class="worker-kind-btn" data-worker-kind="machine"><span>🚜</span><b>Mašina</b></button>
+          </div>
+          <div class="worker-asset-context-grid worker-native-selects">
             <div>
               <label>Šta danas koristiš</label>
               <select id="wrAssetKind">
@@ -1513,7 +1531,7 @@
               </select>
             </div>
             <div>
-              <label id="wrAssetSelectLabel">Vozilo / mašina iz Direkcije</label>
+              <label id="wrAssetSelectLabel">Izaberi iz Direkcije</label>
               <select id="wrAssetSelect">
                 <option value="">Prvo izaberi Vozilo ili Mašina</option>
               </select>
@@ -1580,7 +1598,7 @@
         </div>
 
         <div id="secFuel" class="dyn-section">
-          <h4>⛽ Gorivo odmah</h4>
+          <h4><span class="worker-section-icon">⛽</span><span>1. Gorivo</span></h4>
           <p class="hint">Jednostavno sipanje za već izabrano vozilo/mašinu. Ne bira se cisterna, izvor ni gradilište.</p>
           <div id="fuelEntries" class="entry-list"></div>
           <button id="addFuelBtn" class="secondary hidden" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
@@ -1620,7 +1638,7 @@
         </div>
 
         <div id="secMaterials" class="dyn-section">
-          <h4>Materijal</h4>
+          <h4><span class="worker-section-icon">🚚</span><span>2. Ture / materijal</span></h4>
           <div id="materialEntries" class="entry-list"></div>
           <button id="addWorkerMaterialEntryBtn" class="secondary" type="button" onclick="addMaterialEntry()">+ Dodaj materijal</button>
         </div>
@@ -1682,7 +1700,7 @@
         </div>
 
         <div id="secDefects" class="dyn-section">
-          <h4>Evidencija kvara</h4>
+          <h4><span class="worker-section-icon">🛠️</span><span>3. Kvarovi</span></h4>
           <p class="hint">Ovo je važno da Odgovorno lice mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
           <label>Sredstvo u kvaru / interni broj</label>
@@ -1732,7 +1750,11 @@
           <p class="hint">Ako je kvar hitan, prvo obavesti odgovorno lice. Ova prijava ostaje kao evidencija za Upravu i tehničku službu.</p>
         </div>
 
-        <div class="row">
+        <div class="worker-bottom-note">
+          <span aria-hidden="true">🛡️</span>
+          <div><b>Sve ostalo bira se iz liste Direkcije</b><small>Malo kucanja · brz unos · zatvoren sistem</small></div>
+        </div>
+        <div class="row worker-submit-row">
           <button id="saveDraftBtn" class="secondary">Sačuvaj kao nacrt</button>
           <button id="submitReportBtn" class="primary">Pošalji Upravi</button>
         </div>
@@ -1745,6 +1767,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1748-gorivo-radnik-jednostavno"></script>
+  <script src="script.js?v=1751-radnik-phone-look"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "askcreate-v1748-gorivo-radnik-jednostavno";
+const CACHE_NAME = "askcreate-v1750-klasifikacija-izvestaja";
 const APP_SHELL = [
   "./",
   "./index.html",
