@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1758-final-radnik-samo-dizel";
+const CACHE_NAME = "askcreate-v1759-google-load-safe";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1757-final-radnik-samo-dizel",
-  "./script.js?v=1757-final-radnik-samo-dizel",
-  "./manifest.json?v=1757-final-radnik-samo-dizel",
+  "./style.css?v=1759-google-load-safe",
+  "./script.js?v=1759-google-load-safe",
+  "./manifest.json?v=1759-google-load-safe",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
@@ -47,14 +47,28 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const isNavigation = event.request.mode === "navigate" ||
+    (event.request.headers.get("accept") || "").includes("text/html");
+
   event.respondWith((async () => {
+    if (isNavigation) {
+      try {
+        const fresh = await fetch(event.request);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(event.request, fresh.clone()).catch(() => {});
+        return fresh;
+      } catch (e) {
+        return (await caches.match(event.request)) || (await caches.match("./index.html"));
+      }
+    }
+
     const cached = await caches.match(event.request);
     if (cached) return cached;
 
     try {
       return await fetch(event.request);
     } catch (e) {
-      return caches.match("./index.html");
+      return new Response("", { status: 504, statusText: "AskCreate offline asset unavailable" });
     }
   })());
 });
@@ -79,20 +93,15 @@ self.addEventListener("push", (event) => {
     body: data.body || "Otvorite AskCreate panel šefa mehanizacije.",
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
-
-    // Ne koristimo stalno isti tag, da Android ne zameni staru notifikaciju bez nove vizuelne značke.
     tag: data.tag || ("askcreate-mechanic-defect-" + Date.now()),
-
     renotify: true,
     requireInteraction: true,
     silent: false,
     vibrate: [300, 120, 300, 120, 500],
     timestamp: Date.now(),
-
     actions: [
       { action: "open", title: "Otvori kvar" }
     ],
-
     data: {
       url: targetUrl,
       badgeCount,
