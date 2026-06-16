@@ -18896,3 +18896,51 @@ function copySupportEmail() {
   else initQuickScreenWhenReady();
   window.initWorkerQuickScreenV1751 = initQuickScreenWhenReady;
 })();
+
+// AskCreate v1752: Radnik jedan displej - prisilno ukloni stari prikaz i drži samo kompaktni ekran
+(function(){
+  function $(s,r=document){ return r.querySelector(s); }
+  function $all(s,r=document){ return Array.from(r.querySelectorAll(s)); }
+  function applyWorkerQuickOnly(){
+    var view = $("#viewWorkerForm");
+    var card = $("#normalWorkerFormCard");
+    var quick = $("#workerQuickScreen");
+    if (!view || !card) return;
+    if (typeof window.initWorkerQuickScreenV1751 === "function" && !quick) {
+      try { window.initWorkerQuickScreenV1751(); } catch(e) {}
+      quick = $("#workerQuickScreen");
+    }
+    if (!quick) return;
+    view.classList.add("worker-quick-mode");
+    card.classList.add("quick-screen-active");
+    $all(":scope > *", card).forEach(function(el){
+      if (el.id === "workerQuickScreen") {
+        el.style.display = "flex";
+        el.style.visibility = "visible";
+        el.style.opacity = "1";
+        el.removeAttribute("aria-hidden");
+      } else {
+        el.style.setProperty("display", "none", "important");
+        el.style.setProperty("visibility", "hidden", "important");
+        el.style.setProperty("opacity", "0", "important");
+        el.style.setProperty("height", "0", "important");
+        el.style.setProperty("overflow", "hidden", "important");
+        el.setAttribute("aria-hidden", "true");
+      }
+    });
+    // ne dozvoli da stari select helperi prave dodatne "Izabrano" kartice u brzom ekranu
+    $all("#workerQuickScreen .worker-select-visible-value").forEach(function(el){ el.remove(); });
+  }
+  function wireQuickReapply(){
+    var view = $("#viewWorkerForm");
+    if (!view) return;
+    applyWorkerQuickOnly();
+    if (window.MutationObserver && !view.__workerQuickOnlyObserver) {
+      view.__workerQuickOnlyObserver = new MutationObserver(function(){ setTimeout(applyWorkerQuickOnly, 10); });
+      view.__workerQuickOnlyObserver.observe(view, {childList:true, subtree:true, attributes:true, attributeFilter:["class","style","aria-hidden"]});
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wireQuickReapply);
+  else wireQuickReapply();
+  setInterval(applyWorkerQuickOnly, 800);
+})();
