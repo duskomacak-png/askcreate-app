@@ -11,7 +11,7 @@ const SUPABASE_KEY = "sb_publishable_tounvJXNQqJmmkeEfm84Ow_rncVTr3V";
 // VAPID public key nije tajna. Zalepi ovde PUBLIC key iz Supabase Edge Function Secrets kada spremimo push.
 // Dok je prazno/placeholder, dugme za obaveštenja će jasno javiti šta fali.
 const MECHANIC_VAPID_PUBLIC_KEY = "BPariq57Qi11Lw_CgoWwgaazc9G3M-YOaZS1BAZ3a6Z5422DfxDgYdaxRTJfIwMPf63aPhwxXVLKNlw6WsIvTsk";
-const APP_VERSION = "v1761-clean-upload-samo-dizel";
+const APP_VERSION = "v1762-no-freeze-samo-dizel";
 
 
 let sb = null;
@@ -17280,7 +17280,7 @@ function stopMechanicBossWatcher() {
 
 async function registerAskCreateServiceWorker(forceUpdate = false) {
   if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.register("./sw.js?v=1761-clean-upload", { updateViaCache: "none" });
+  const reg = await navigator.serviceWorker.register("./sw.js?v=1762-no-freeze", { updateViaCache: "none" });
   if (forceUpdate && reg.update) {
     try { await reg.update(); } catch (e) { console.warn("SW update failed:", e); }
   }
@@ -18310,9 +18310,9 @@ function copySupportEmail() {
       if (!sel || !sel.closest || !sel.closest("#viewWorkerForm")) return;
       var txt = selectText(sel);
       var val = String(sel.value || "").trim();
-      sel.style.setProperty("color", "#111827", "important");
-      sel.style.setProperty("-webkit-text-fill-color", "#111827", "important");
-      sel.style.setProperty("background-color", "#ffffff", "important");
+      if (sel.style.color !== "rgb(17, 24, 39)") sel.style.setProperty("color", "#111827", "important");
+      if (sel.style.webkitTextFillColor !== "rgb(17, 24, 39)") sel.style.setProperty("-webkit-text-fill-color", "#111827", "important");
+      if (sel.style.backgroundColor !== "rgb(255, 255, 255)") sel.style.setProperty("background-color", "#ffffff", "important");
       var mirror = sel.nextElementSibling;
       if (!mirror || !mirror.classList || !mirror.classList.contains("worker-select-visible-value")) {
         mirror = document.createElement("div");
@@ -18348,15 +18348,11 @@ function copySupportEmail() {
   }, true);
   document.addEventListener("DOMContentLoaded", function(){
     setTimeout(window.refreshWorkerSelectVisibleValues, 200);
-    var form = document.querySelector("#viewWorkerForm");
-    if (form && window.MutationObserver) {
-      var obs = new MutationObserver(function(){ setTimeout(window.refreshWorkerSelectVisibleValues, 40); });
-      obs.observe(form, { childList:true, subtree:true, attributes:true, attributeFilter:["value", "class", "style"] });
-    }
-    setInterval(function(){
-      var formNow = document.querySelector("#viewWorkerForm");
-      if (formNow && !formNow.classList.contains("hidden")) window.refreshWorkerSelectVisibleValues();
-    }, 900);
+    // v1762: bez MutationObserver-a nad style/class atributima.
+    // Stara verzija je stalno menjala style select polja, observer je to ponovo hvatao
+    // i na slabijim laptopovima/browserima je mogao da zakuca celu stranicu.
+    setTimeout(window.refreshWorkerSelectVisibleValues, 700);
+    setTimeout(window.refreshWorkerSelectVisibleValues, 1500);
   });
 })();
 

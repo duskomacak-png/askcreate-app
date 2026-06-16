@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1761-clean-upload";
+const CACHE_NAME = "askcreate-v1762-no-freeze";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1761-clean-upload",
-  "./script.js?v=1761-clean-upload",
-  "./manifest.json?v=1761-clean-upload",
+  "./style.css?v=1762-no-freeze",
+  "./script.js?v=1762-no-freeze",
+  "./manifest.json?v=1762-no-freeze",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
