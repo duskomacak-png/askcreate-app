@@ -10196,3 +10196,176 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
     padding:8px 8px !important;
   }
 }
+
+
+/* === AskCreate v1754: Radnik telefon 5x10 cm kompaktno + stabilna širina === */
+#viewWorkerForm.worker-quick-mode{
+  overflow-x:hidden !important;
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+#normalWorkerFormCard.quick-screen-active{
+  width: min(100%, 5cm) !important;
+  max-width: 5cm !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: 5px !important;
+  border-radius: 12px !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+#workerQuickScreen,
+#workerQuickScreen *{
+  box-sizing: border-box !important;
+}
+#workerQuickScreen.worker-quick-screen{
+  gap: 4px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+#workerQuickScreen .worker-quick-head{
+  gap: 4px !important;
+  padding: 0 !important;
+}
+#workerQuickScreen .worker-quick-brand strong{
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+#workerQuickScreen .worker-quick-brand span{
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+#workerQuickScreen .worker-quick-online{
+  font-size: 9px !important;
+  padding: 3px 5px !important;
+  border-radius: 999px !important;
+}
+#workerQuickScreen .worker-quick-company{
+  font-size: 13px !important;
+  line-height: 1.05 !important;
+  margin: 0 !important;
+  word-break: break-word !important;
+}
+#workerQuickScreen .worker-quick-kind{
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px !important;
+}
+#workerQuickScreen .worker-quick-kind button{
+  min-height: 28px !important;
+  padding: 5px 4px !important;
+  font-size: 11px !important;
+  border-radius: 8px !important;
+  gap: 3px !important;
+}
+#workerQuickScreen .worker-quick-field label,
+#workerQuickScreen .worker-quick-card label{
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+  margin: 0 0 2px !important;
+}
+#workerQuickScreen .worker-quick-field select,
+#workerQuickScreen .worker-quick-card select,
+#workerQuickScreen .worker-quick-card input,
+#workerQuickScreen .worker-quick-card textarea{
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 4px 6px !important;
+  border-radius: 8px !important;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+#workerQuickScreen .worker-quick-card{
+  padding: 5px !important;
+  border-radius: 10px !important;
+  margin: 0 !important;
+  box-shadow: 0 2px 8px rgba(15,23,42,.04) !important;
+}
+#workerQuickScreen .worker-quick-card-title{
+  font-size: 12px !important;
+  gap: 4px !important;
+  margin: 0 0 4px !important;
+  line-height: 1.05 !important;
+}
+#workerQuickScreen .worker-quick-card-title .ico{
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  font-size: 11px !important;
+}
+#workerQuickScreen .worker-quick-fuel-grid{
+  grid-template-columns: minmax(0,1fr) 34px 34px 44px !important;
+  gap: 3px !important;
+}
+#workerQuickScreen .worker-quick-fuel-type{
+  height: 28px !important;
+  border-radius: 8px !important;
+}
+#workerQuickScreen .worker-quick-fuel-type button,
+#workerQuickScreen .worker-quick-dest button{
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 3px 1px !important;
+  font-size: 8.5px !important;
+  line-height: 1 !important;
+}
+#workerQuickScreen .worker-quick-send,
+#workerQuickScreen .worker-quick-secondary{
+  min-height: 28px !important;
+  height: 28px !important;
+  min-width: 0 !important;
+  padding: 4px 5px !important;
+  border-radius: 8px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+}
+#workerQuickScreen .worker-quick-tours-grid{
+  grid-template-columns: 1fr !important;
+  gap: 4px !important;
+}
+#workerQuickScreen .worker-quick-dest{
+  grid-template-columns: 1fr 1fr 1fr !important;
+  border-radius: 8px !important;
+}
+#workerQuickScreen .worker-quick-tours-bottom{
+  grid-template-columns: minmax(0,1fr) 34px 44px !important;
+  gap: 3px !important;
+  margin-top: 4px !important;
+}
+#workerQuickScreen .worker-quick-extra-destination{
+  min-height: 0 !important;
+  margin-top: 4px !important;
+}
+#workerQuickScreen .worker-quick-defect-actions{
+  grid-template-columns: 1fr 44px !important;
+  gap: 4px !important;
+  margin-top: 4px !important;
+}
+#workerQuickScreen .worker-quick-note{
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+  padding-top: 4px !important;
+  margin-top: 1px !important;
+}
+#workerQuickScreen .worker-quick-note strong{
+  font-size: 10px !important;
+}
+#workerQuickScreen .worker-quick-note span{
+  font-size: 9px !important;
+}
+@media (min-width: 431px){
+  #viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+  #normalWorkerFormCard.quick-screen-active{
+    width: min(100%, 5cm) !important;
+    max-width: 5cm !important;
+  }
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+#normalWorkerFormCard.quick-screen-active{
+  max-height: 10cm !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: none !important;
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard::-webkit-scrollbar,
+#normalWorkerFormCard.quick-screen-active::-webkit-scrollbar{display:none!important;}

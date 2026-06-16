@@ -18796,8 +18796,10 @@ function copySupportEmail() {
     if (company) company.textContent = (currentWorker?.company_name || currentWorker?.company || q$("#workerCompanyLabel")?.textContent || "Firma").replace(/\s*·.*$/, "").trim() || "Firma";
     const assetLabel = q$("#qWorkerAssetSummary");
     if (assetLabel) assetLabel.textContent = selectedQuickAssetLabel();
-    const kind = q$("#wrAssetKind")?.value || "vehicle";
-    qa(".q-kind-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.kind === kind));
+    const kind = q$("#wrAssetKind")?.value || "";
+    qa(".q-kind-btn").forEach(btn => btn.classList.toggle("active", !!kind && btn.dataset.kind === kind));
+    const assetLabelEl = q$("#qWorkerAssetLabel");
+    if (assetLabelEl) assetLabelEl.textContent = kind === "vehicle" ? "Odaberi vozilo" : kind === "machine" ? "Odaberi mašinu" : "Odaberi vozilo ili mašinu";
     const fuelTitle = q$("#qWorkerFuelTitle");
     if (fuelTitle) fuelTitle.textContent = kind === "machine" ? "1. Gorivo mašine" : "1. Gorivo";
     const readingLabel = q$("#qWorkerFuelReadingLabel");
@@ -18826,12 +18828,12 @@ function copySupportEmail() {
       </div>
       <div class="worker-quick-company" id="qWorkerCompany">Firma</div>
       <div class="worker-quick-kind">
-        <button type="button" class="q-kind-btn active" data-kind="vehicle">🚚 Vozilo</button>
+        <button type="button" class="q-kind-btn" data-kind="vehicle">🚚 Vozilo</button>
         <button type="button" class="q-kind-btn" data-kind="machine">🚜 Mašina</button>
       </div>
       <div class="worker-quick-field">
-        <label>Izaberi iz Direkcije</label>
-        <select id="qWorkerAssetSelect"><option value="">Prvo izaberi Vozilo ili Mašina</option></select>
+        <label id="qWorkerAssetLabel">Odaberi vozilo ili mašinu</label>
+        <select id="qWorkerAssetSelect"><option value="">Klikni Vozilo ili Mašina</option></select>
         <div id="qWorkerAssetSummary" class="worker-quick-hidden"></div>
       </div>
       <div class="worker-quick-card" id="qWorkerFuelCard">

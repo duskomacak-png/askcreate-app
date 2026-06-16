@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1750-klasifikacija-izvestaja";
+const CACHE_NAME = "askcreate-v1754-radnik-5x10cm";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1748-gorivo-radnik-jednostavno",
-  "./script.js?v=1748-gorivo-radnik-jednostavno",
-  "./manifest.json?v=1748-gorivo-radnik-jednostavno",
+  "./style.css?v=1754-radnik-5x10cm",
+  "./script.js?v=1754-radnik-5x10cm",
+  "./manifest.json?v=1754-radnik-5x10cm",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
