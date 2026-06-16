@@ -19641,3 +19641,266 @@ function copySupportEmail() {
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   setInterval(lockButtons,1500);
 })();
+
+// === AskCreate v1760: radnik - gorivo samo KM/MTČ + litara, dizel podrazumevano, bager ikona ===
+(function(){
+  function qs(s,r=document){return r.querySelector(s);}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
+  function fire(el){ if(!el) return; ['input','change'].forEach(t=>el.dispatchEvent(new Event(t,{bubbles:true}))); }
+  function setVal(el,val){ if(!el) return; el.value = val == null ? '' : String(val); fire(el); }
+  const truckSvg = '<svg class="stable-choice-svg" viewBox="0 0 96 60" aria-hidden="true"><path d="M8 18h50v24H8zM58 27h15l12 13v2H58z" fill="currentColor"/><circle cx="24" cy="45" r="7" fill="#fff"/><circle cx="70" cy="45" r="7" fill="#fff"/><circle cx="24" cy="45" r="3.5" fill="currentColor"/><circle cx="70" cy="45" r="3.5" fill="currentColor"/></svg>';
+  const excavatorSvg = '<svg class="stable-choice-svg stable-excavator-svg" viewBox="0 0 96 60" aria-hidden="true"><path d="M18 39h44c7 0 12 4 12 9H11c0-5 3-9 7-9z" fill="currentColor"/><path d="M23 26h22c8 0 14 6 15 13H17c1-7 3-13 6-13z" fill="currentColor"/><path d="M46 26l18-15 5 6-18 16z" fill="currentColor"/><path d="M66 12l9-6 10 17-8 5z" fill="currentColor"/><path d="M76 28l13-3-3 10-12 2z" fill="currentColor"/><rect x="18" y="44" width="50" height="5" rx="2.5" fill="#fff" opacity=".95"/><circle cx="26" cy="46.5" r="2.7" fill="currentColor"/><circle cx="40" cy="46.5" r="2.7" fill="currentColor"/><circle cx="54" cy="46.5" r="2.7" fill="currentColor"/></svg>';
+
+  function ensureChoiceHeader(){
+    const stable = qs('#workerStableScreen');
+    if(!stable) return;
+    let title = qs('#stableChoiceTitle', stable);
+    if(!title){
+      title = document.createElement('div');
+      title.id = 'stableChoiceTitle';
+      title.className = 'stable-choice-title';
+      stable.insertBefore(title, stable.firstChild);
+    }
+    title.textContent = 'Izaberi vozilo ili mašinu';
+    const v = qs('.stable-kind-btn[data-kind="vehicle"]', stable);
+    const m = qs('.stable-kind-btn[data-kind="machine"]', stable);
+    if(v) v.innerHTML = truckSvg + '<b>Vozilo</b>';
+    if(m) m.innerHTML = excavatorSvg + '<b>Mašina</b>';
+  }
+
+  function syncAsset(){
+    const stableSel = qs('#stableAssetSelect');
+    const realSel = qs('#wrAssetSelect');
+    if(!stableSel || !realSel) return;
+    if(stableSel.value && realSel.value !== stableSel.value) setVal(realSel, stableSel.value);
+    if(realSel.value && stableSel.value !== realSel.value) stableSel.value = realSel.value;
+    window.__askcreateStableWorkerAssetId = realSel.value || stableSel.value || '';
+  }
+
+  function refreshRealLists(kind){
+    const kindEl = qs('#wrAssetKind');
+    setVal(kindEl, kind);
+    try{ if(typeof refreshWorkerAssetContextControls === 'function') refreshWorkerAssetContextControls({ keepSelected:false }); }catch(e){}
+    try{ if(typeof refreshWorkerModuleSelector === 'function') refreshWorkerModuleSelector(window.currentWorker?.permissions || {}); }catch(e){}
+    try{ if(typeof window.initWorkerStableOneScreenV1755 === 'function') window.initWorkerStableOneScreenV1755(); }catch(e){}
+    const stableSel = qs('#stableAssetSelect');
+    if(stableSel){
+      const first = stableSel.querySelector('option');
+      if(first) first.textContent = kind === 'machine' ? 'Izaberi mašinu...' : 'Izaberi vozilo...';
+      stableSel.setAttribute('aria-label', kind === 'machine' ? 'Izaberi mašinu iz Direkcije' : 'Izaberi vozilo iz Direkcije');
+    }
+  }
+
+  function openAssetPicker(){
+    const sel = qs('#stableAssetSelect');
+    if(!sel) return;
+    try{ sel.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+    try{ sel.focus({preventScroll:true}); }catch(e){ try{ sel.focus(); }catch(_){} }
+    try{ if(typeof sel.showPicker === 'function') sel.showPicker(); }catch(e){}
+    try{ sel.click(); }catch(e){}
+  }
+
+  function wireChoiceButtons(){
+    qsa('#workerStableScreen .stable-kind-btn').forEach(btn=>{
+      btn.onclick = function(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        const kind = btn.dataset.kind || 'vehicle';
+        qsa('#workerStableScreen .stable-kind-btn').forEach(b=>b.classList.toggle('active', b===btn));
+        refreshRealLists(kind);
+        const stableSel = qs('#stableAssetSelect');
+        const realSel = qs('#wrAssetSelect');
+        if(stableSel) stableSel.value = '';
+        if(realSel) setVal(realSel, '');
+        openAssetPicker();
+        setTimeout(function(){ refreshRealLists(kind); openAssetPicker(); }, 80);
+        return false;
+      };
+    });
+    const sel = qs('#stableAssetSelect');
+    if(sel && !sel.dataset.v1760Sync){
+      sel.dataset.v1760Sync='1';
+      sel.addEventListener('change', syncAsset, true);
+      sel.addEventListener('input', syncAsset, true);
+    }
+  }
+
+  function simplifyFuel(){
+    const stable = qs('#workerStableScreen');
+    const fuel = qs('.stable-row-card.fuel', stable || document);
+    if(!fuel) return;
+    const hidden = qs('#stableFuelType', fuel) || qs('#stableFuelType');
+    if(hidden) hidden.value = 'diesel';
+    qsa('.stable-fuel-type', fuel).forEach(el=>{ el.style.display='none'; el.setAttribute('aria-hidden','true'); });
+    if(!fuel.dataset.v1760FuelSimple){
+      fuel.dataset.v1760FuelSimple='1';
+      const title = qs('.stable-row-title', fuel);
+      const readingLabel = qs('#stableFuelReadingLabel', fuel);
+      const reading = qs('#stableFuelReading', fuel);
+      const litersLabel = Array.from(fuel.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'L');
+      const liters = qs('#stableFuelLiters', fuel);
+      const send = qs('#stableSendFuel', fuel);
+      const h = hidden || document.createElement('input');
+      if(!h.id) { h.id = 'stableFuelType'; h.type = 'hidden'; h.value = 'diesel'; }
+      function field(label, control, cls){ const d=document.createElement('div'); d.className='stable-field '+(cls||''); if(label)d.appendChild(label); if(control)d.appendChild(control); return d; }
+      fuel.innerHTML='';
+      if(title) fuel.appendChild(title);
+      fuel.appendChild(h);
+      fuel.appendChild(field(readingLabel, reading, ''));
+      fuel.appendChild(field(litersLabel, liters, ''));
+      if(send){ send.classList.add('stable-send-fuel','stable-field-full'); fuel.appendChild(send); }
+    }
+  }
+
+  function normalize(){
+    document.body && document.body.setAttribute('data-worker-mobile-version','1760-dizel-default-bager');
+    ensureChoiceHeader();
+    simplifyFuel();
+    wireChoiceButtons();
+    const label = qs('#stableAssetLabel');
+    if(label) label.textContent = 'Izaberi vozilo ili mašinu';
+    const sel = qs('#stableAssetSelect');
+    if(sel && !qs('#wrAssetKind')?.value){
+      const first = sel.querySelector('option');
+      if(first) first.textContent = 'Izaberi vozilo ili mašinu';
+    }
+    syncAsset();
+  }
+  function boot(){ normalize(); setTimeout(normalize,80); setTimeout(normalize,350); setTimeout(normalize,1200); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  setInterval(normalize,1500);
+})();
+
+// === AskCreate v1761: zaključan ceo tok radnika - Vozilo ili Mašina ===
+(function(){
+  function qs(s,r=document){return r.querySelector(s);}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
+  function fire(el){ if(!el) return; ['input','change'].forEach(t=>el.dispatchEvent(new Event(t,{bubbles:true}))); }
+  function setVal(el,val){ if(!el) return; el.value = val == null ? '' : String(val); fire(el); }
+  const truckSvg = '<svg class="stable-choice-svg stable-truck-svg" viewBox="0 0 96 60" aria-hidden="true"><path d="M7 17h50v26H7zM57 27h16l13 14v2H57z" fill="currentColor"/><rect x="13" y="22" width="18" height="8" rx="1" fill="#fff" opacity=".92"/><circle cx="25" cy="47" r="8" fill="#fff"/><circle cx="72" cy="47" r="8" fill="#fff"/><circle cx="25" cy="47" r="4" fill="currentColor"/><circle cx="72" cy="47" r="4" fill="currentColor"/></svg>';
+  const excavatorSvg = '<svg class="stable-choice-svg stable-excavator-svg stable-excavator-icon" viewBox="0 0 120 72" aria-hidden="true" role="img"><title>excavator bager</title><path d="M16 52h63c10 0 18 5 20 12H8c1-7 4-12 8-12z" fill="currentColor"/><path d="M25 34h31c10 0 20 8 23 18H18c1-9 3-15 7-18z" fill="currentColor"/><path d="M57 34L84 10l7 8-29 27z" fill="currentColor"/><path d="M87 11l14-7 12 27-12 6z" fill="currentColor"/><path d="M101 37l16-4-5 15-17 2 4-9z" fill="currentColor"/><path d="M22 58h66" stroke="#fff" stroke-width="7" stroke-linecap="round"/><circle cx="32" cy="58" r="4" fill="currentColor"/><circle cx="52" cy="58" r="4" fill="currentColor"/><circle cx="72" cy="58" r="4" fill="currentColor"/></svg>';
+
+  function kind(){ return (qs('#wrAssetKind')?.value || ''); }
+  function assetSelected(){ return !!(qs('#stableAssetSelect')?.value || qs('#wrAssetSelect')?.value || ''); }
+  function setKind(kindValue, open){
+    const realKind = qs('#wrAssetKind');
+    setVal(realKind, kindValue);
+    const realAsset = qs('#wrAssetSelect');
+    const stableAsset = qs('#stableAssetSelect');
+    if(realAsset) setVal(realAsset, '');
+    if(stableAsset) stableAsset.value = '';
+    try{ if(typeof refreshWorkerAssetContextControls === 'function') refreshWorkerAssetContextControls({ keepSelected:false }); }catch(e){}
+    try{ if(typeof updateWorkerAssetContextInfo === 'function') updateWorkerAssetContextInfo(); }catch(e){}
+    try{ if(typeof window.initWorkerStableOneScreenV1755 === 'function') window.initWorkerStableOneScreenV1755(); }catch(e){}
+    setTimeout(function(){
+      copyRealAssetOptions();
+      applyFlowState();
+      if(open) openAssetPicker();
+    }, 60);
+  }
+  function copyRealAssetOptions(){
+    const stable = qs('#stableAssetSelect');
+    const real = qs('#wrAssetSelect');
+    if(!stable || !real) return;
+    const current = stable.value || real.value || '';
+    if(real.innerHTML && stable.innerHTML !== real.innerHTML) stable.innerHTML = real.innerHTML;
+    if(current) stable.value = current;
+    const first = stable.querySelector('option');
+    if(first){
+      if(kind() === 'vehicle') first.textContent = 'Izaberi vozilo...';
+      else if(kind() === 'machine') first.textContent = 'Izaberi mašinu...';
+      else first.textContent = 'Prvo izaberi Vozilo ili Mašina';
+    }
+    stable.setAttribute('aria-label', kind() === 'machine' ? 'Lista mašina iz Direkcije' : (kind() === 'vehicle' ? 'Lista vozila iz Direkcije' : 'Izbor vozila ili mašine'));
+  }
+  function syncAsset(){
+    const stable = qs('#stableAssetSelect');
+    const real = qs('#wrAssetSelect');
+    if(!stable || !real) return;
+    if(stable.value) setVal(real, stable.value);
+    else if(real.value) stable.value = real.value;
+    window.__askcreateStableWorkerAssetId = stable.value || real.value || '';
+    try{ if(typeof updateWorkerAssetContextInfo === 'function') updateWorkerAssetContextInfo(); }catch(e){}
+    applyFlowState();
+  }
+  function openAssetPicker(){
+    const sel = qs('#stableAssetSelect');
+    if(!sel) return;
+    try{ sel.focus({preventScroll:true}); }catch(e){ try{ sel.focus(); }catch(_){} }
+    try{ if(typeof sel.showPicker === 'function') sel.showPicker(); }catch(e){}
+    try{ sel.click(); }catch(e){}
+  }
+  function ensureTop(){
+    const stable = qs('#workerStableScreen');
+    if(!stable) return;
+    let title = qs('#stableChoiceTitle', stable);
+    if(!title){
+      title = document.createElement('div');
+      title.id = 'stableChoiceTitle';
+      title.className = 'stable-choice-title';
+      stable.insertBefore(title, stable.firstChild);
+    }
+    title.textContent = 'Izaberi vozilo ili mašinu';
+    const v = qs('.stable-kind-btn[data-kind="vehicle"]', stable);
+    const m = qs('.stable-kind-btn[data-kind="machine"]', stable);
+    if(v) v.innerHTML = truckSvg + '<b>Vozilo</b>';
+    if(m) m.innerHTML = excavatorSvg + '<b>Mašina</b>';
+  }
+  function simplifyFuelAlways(){
+    const fuel = qs('#workerStableScreen .stable-row-card.fuel');
+    if(!fuel) return;
+    qsa('.stable-fuel-type', fuel).forEach(el=>el.remove());
+    let hidden = qs('#stableFuelType');
+    if(!hidden){ hidden = document.createElement('input'); hidden.type='hidden'; hidden.id='stableFuelType'; fuel.insertBefore(hidden, fuel.firstChild.nextSibling); }
+    hidden.value = 'diesel';
+  }
+  function applyFlowState(){
+    const k = kind();
+    const selected = assetSelected();
+    const stable = qs('#workerStableScreen');
+    if(!stable) return;
+    stable.classList.toggle('stable-no-kind', !k);
+    stable.classList.toggle('stable-no-asset', !selected);
+    qsa('.stable-kind-btn', stable).forEach(btn=>btn.classList.toggle('active', btn.dataset.kind === k));
+    const label = qs('#stableAssetLabel');
+    if(label) label.textContent = 'Izaberi vozilo ili mašinu';
+    const fuelTitle = qs('#stableFuelTitle');
+    if(fuelTitle) fuelTitle.textContent = k === 'machine' ? 'Gorivo mašine' : 'Gorivo vozila';
+    const fuelReading = qs('#stableFuelReadingLabel');
+    if(fuelReading) fuelReading.textContent = k === 'machine' ? 'MTČ' : 'KM';
+    const vehicleBlock = qs('#stableVehicleBlock');
+    const machineBlock = qs('#stableMachineBlock');
+    if(vehicleBlock) vehicleBlock.classList.toggle('stable-hidden', k !== 'vehicle');
+    if(machineBlock) machineBlock.classList.toggle('stable-hidden', k !== 'machine');
+    const defectTitle = qs('#workerStableScreen .stable-row-card.defect .stable-row-title');
+    if(defectTitle) defectTitle.textContent = k === 'machine' ? '3. Kvar mašine' : '3. Kvar vozila';
+    const note = qs('#workerStableScreen .stable-note');
+    if(note){
+      if(!k) note.textContent = 'Prvo klikni Vozilo ili Mašina.';
+      else if(!selected) note.textContent = k === 'machine' ? 'Izaberi mašinu iz Direkcije.' : 'Izaberi vozilo iz Direkcije.';
+      else note.textContent = k === 'machine' ? 'Izabrana mašina važi za gorivo, rad mašine i kvar.' : 'Izabrano vozilo važi za gorivo, ture i kvar.';
+    }
+  }
+  function lockEvents(){
+    qsa('#workerStableScreen .stable-kind-btn').forEach(btn=>{
+      btn.onclick = function(ev){ ev.preventDefault(); ev.stopPropagation(); setKind(btn.dataset.kind || 'vehicle', true); return false; };
+    });
+    const sel = qs('#stableAssetSelect');
+    if(sel && !sel.dataset.v1761Flow){
+      sel.dataset.v1761Flow = '1';
+      sel.addEventListener('change', syncAsset, true);
+      sel.addEventListener('input', syncAsset, true);
+    }
+  }
+  function boot(){
+    document.body && document.body.setAttribute('data-worker-mobile-version','1762-excavator-ceo-tok');
+    ensureTop();
+    copyRealAssetOptions();
+    simplifyFuelAlways();
+    lockEvents();
+    applyFlowState();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  setTimeout(boot,80); setTimeout(boot,350); setTimeout(boot,1200); setInterval(boot,1800);
+})();
+
+// === AskCreate v1762: naziv ikonice zaključan kao excavator / bager, bez traktora ===

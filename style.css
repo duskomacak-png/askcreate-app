@@ -10782,3 +10782,112 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
   #workerStableScreen .stable-kind-btn .stable-choice-svg{width:42px!important;height:28px!important;}
   #workerStableScreen .stable-kind-btn b{font-size:19px!important;}
 }
+
+/* === AskCreate v1760: gorivo bez Dizel/Benzin dugmadi, dizel je podrazumevan === */
+#workerStableScreen .stable-excavator-svg{
+  width:58px!important;
+  height:36px!important;
+}
+#workerStableScreen .stable-fuel-type{
+  display:none!important;
+  visibility:hidden!important;
+  height:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+#viewWorkerForm.worker-stable-mode-v1758 #workerStableScreen .stable-row-card.fuel,
+#workerStableScreen .stable-row-card.fuel[data-v1760-fuel-simple="1"]{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:12px!important;
+  align-items:end!important;
+}
+#workerStableScreen .stable-row-card.fuel[data-v1760-fuel-simple="1"] .stable-row-title{
+  grid-column:1/-1!important;
+}
+#workerStableScreen .stable-row-card.fuel[data-v1760-fuel-simple="1"] #stableFuelType{
+  display:none!important;
+}
+#workerStableScreen .stable-row-card.fuel[data-v1760-fuel-simple="1"] .stable-send-fuel{
+  grid-column:1/-1!important;
+  max-width:220px!important;
+}
+@media(max-width:420px){
+  #workerStableScreen .stable-excavator-svg{width:52px!important;height:34px!important;}
+  #workerStableScreen .stable-row-card.fuel[data-v1760-fuel-simple="1"] .stable-send-fuel{max-width:none!important;}
+}
+
+/* === AskCreate v1761: zaključan tok Vozilo/Mašina === */
+#workerStableScreen .stable-choice-title{
+  display:block!important;
+  font-size:24px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  color:#111827!important;
+  margin:0 0 8px!important;
+}
+#workerStableScreen .stable-kind-btn{
+  min-height:96px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  border-radius:18px!important;
+}
+#workerStableScreen .stable-kind-btn .stable-choice-svg{
+  width:58px!important;
+  height:38px!important;
+  display:block!important;
+  color:#fff!important;
+}
+#workerStableScreen .stable-kind-btn b{
+  font-size:24px!important;
+  line-height:1!important;
+}
+#workerStableScreen .stable-kind-btn small{display:none!important;}
+#workerStableScreen .stable-no-kind #stableAssetSelect{
+  opacity:.92!important;
+}
+#workerStableScreen.stable-no-kind .stable-row-card,
+#workerStableScreen.stable-no-asset .stable-row-card{
+  display:none!important;
+}
+#workerStableScreen.stable-no-kind .stable-note,
+#workerStableScreen.stable-no-asset .stable-note{
+  display:block!important;
+  background:#fff7ed!important;
+  border:1px solid #fed7aa!important;
+  border-radius:14px!important;
+  padding:12px!important;
+  color:#7c2d12!important;
+  font-size:15px!important;
+}
+#workerStableScreen .stable-row-card.fuel{
+  grid-template-columns:1fr 1fr!important;
+}
+#workerStableScreen .stable-row-card.fuel .stable-row-title,
+#workerStableScreen .stable-row-card.fuel #stableFuelType,
+#workerStableScreen .stable-row-card.fuel .stable-send-fuel,
+#workerStableScreen .stable-row-card.fuel .stable-field-full{
+  grid-column:1/-1!important;
+}
+#workerStableScreen .stable-row-card.fuel .stable-send-fuel{
+  max-width:260px!important;
+}
+
+
+/* === AskCreate v1762: jasna excavator/bager ikona na dugmetu Mašina === */
+#workerStableScreen .stable-kind-btn[data-kind="machine"] .stable-excavator-icon{
+  width:72px!important;
+  height:44px!important;
+}
+#workerStableScreen .stable-kind-btn[data-kind="machine"]::before,
+#workerStableScreen .stable-kind-btn[data-kind="machine"] small::before{
+  content:""!important;
+}
+#workerStableScreen .stable-kind-btn[data-kind="machine"] b::after{
+  content:""!important;
+}
