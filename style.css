@@ -9167,3 +9167,54 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
 .site-log-imported-overview{border-left:4px solid #b91c1c;background:#fff7f7;}
 .site-log-imported-overview h5{margin:10px 0 6px;font-size:13px;color:#111827;}
 .site-log-imported-overview .report-mini-table th{white-space:nowrap;}
+
+/* v1742 — Šef gradilišta: složen sažetak radničkih podataka u A4 pregledu */
+.site-boss-auto-summary {
+  border: 1px solid #d9dde3;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  margin: 10px 0 12px;
+}
+.site-boss-auto-summary h4 {
+  margin: 0 0 10px;
+  color: #111827;
+}
+.site-boss-summary-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  padding: 8px 10px;
+  margin: 8px 0;
+}
+.site-boss-summary-block h5 {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 13px;
+}
+.site-boss-summary-block ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.site-boss-summary-block li {
+  margin: 4px 0;
+  color: #111827;
+  line-height: 1.35;
+}
+.site-boss-summary-block small {
+  display: block;
+  color: #6b7280;
+  margin-top: 2px;
+}
+.site-boss-raw-details {
+  margin-top: 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+}
+.site-boss-raw-details summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #991b1b;
+}

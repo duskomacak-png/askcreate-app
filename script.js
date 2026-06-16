@@ -4976,6 +4976,140 @@ function fuelSourceText(entry = {}) {
 
 
 
+
+function officeSplitQuantityText(text = "") {
+  const raw = String(text || "").trim();
+  if (!raw) return { value:"", unit:"" };
+  const m = raw.match(/(-?\d+(?:[\.,]\d+)?)/);
+  const value = m ? m[1].replace(",", ".") : "";
+  let unit = raw.replace(m ? m[0] : "", "").trim();
+  unit = unit.replace(/^\s*[x×]\s*/i, "").trim();
+  return { value, unit };
+}
+
+function siteBossFlowFromAction(action = "") {
+  const a = normalizeSearch(action);
+  if (a.includes("ugrad")) return "installed";
+  if (a.includes("ulaz") || a.includes("uvezen") || a.includes("dovezen") || a.includes("spolja")) return "imported";
+  if (a.includes("izlaz") || a.includes("izvezen") || a.includes("odvoz") || a.includes("depon")) return "exported";
+  if (a.includes("lokal") || a.includes("krug")) return "internal";
+  return "other";
+}
+
+function siteBossFlowLabel(flow = "") {
+  if (flow === "imported") return "Uvezeno";
+  if (flow === "exported") return "Izvezeno";
+  if (flow === "internal") return "U krugu gradilišta";
+  if (flow === "installed") return "Ugrađeno po šefu";
+  return "Ostalo";
+}
+
+function siteBossNum(v) {
+  const n = parseDecimalInput(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function siteBossFormatQty(v, unit = "") {
+  const n = siteBossNum(v);
+  const rounded = Math.round(n * 100) / 100;
+  return `${rounded}${unit ? " " + unit : ""}`;
+}
+
+function siteBossAddGrouped(map, key, payload = {}) {
+  const k = key || "—";
+  if (!map.has(k)) map.set(k, { label:k, quantity:0, tours:0, unit:payload.unit || "", rows:0, notes:[] });
+  const item = map.get(k);
+  item.quantity += siteBossNum(payload.quantity);
+  item.tours += siteBossNum(payload.tours);
+  if (!item.unit && payload.unit) item.unit = payload.unit;
+  item.rows += 1;
+  if (payload.note) item.notes.push(payload.note);
+  return item;
+}
+
+function siteBossBuildStructuredSummary(data = {}) {
+  const matsByFlow = { imported:new Map(), exported:new Map(), internal:new Map(), installed:new Map(), other:new Map() };
+  (Array.isArray(data.materials) ? data.materials : []).forEach(r => {
+    const action = r[1] || "";
+    const flow = siteBossFlowFromAction(action);
+    const material = r[2] || "Materijal";
+    siteBossAddGrouped(matsByFlow[flow] || matsByFlow.other, material, { tours:r[3], quantity:r[4], unit:r[5], note:r[6] });
+  });
+  // Ako je količina ostala samo u tabeli vozila, dopuni materijal iz redova vozila.
+  (Array.isArray(data.vehicles) ? data.vehicles : []).forEach(r => {
+    const material = r[5] || "";
+    if (!material) return;
+    const qty = officeSplitQuantityText(r[10] || "");
+    const route = String(r[8] || "").toLowerCase();
+    let flow = "other";
+    if (route.includes("→")) {
+      const parts = route.split("→").map(x => normalizeSearch(x.trim()));
+      // Ako je u relaciji cilj izabrano gradilište, to je uvoz; ako je polazište izabrano gradilište, izvoz.
+      const target = normalizeSearch((data.site || siteLogImportedWorkerOverview?.site || $("#siteLogSite")?.value || ""));
+    }
+    const actionFromMaterial = (Array.isArray(data.materials) ? data.materials : []).find(m => normalizeSearch(m[2] || "") === normalizeSearch(material) && siteBossNum(m[3]) === siteBossNum(r[9]));
+    flow = siteBossFlowFromAction(actionFromMaterial?.[1] || route || "");
+    if (flow === "other" && route.includes("depon")) flow = "exported";
+    siteBossAddGrouped(matsByFlow[flow] || matsByFlow.other, material, { tours:r[9], quantity:qty.value, unit:qty.unit, note:r[8] });
+  });
+  const machines = new Map();
+  (Array.isArray(data.machines) ? data.machines : []).forEach(r => {
+    const label = [r[1], r[2]].filter(Boolean).join(" · ") || r[2] || "Mašina";
+    siteBossAddGrouped(machines, label, { quantity:r[6], unit:"MTČ", note:r[8] });
+  });
+  const fuels = new Map();
+  (Array.isArray(data.fuels) ? data.fuels : []).forEach(r => {
+    const label = [r[1], r[2]].filter(Boolean).join(" · ") || r[2] || "Sredstvo";
+    siteBossAddGrouped(fuels, label, { quantity:r[3], unit:"L", note:[r[6], r[7]].filter(Boolean).join(" / ") });
+  });
+  const workers = new Map();
+  (Array.isArray(data.workers) ? data.workers : []).forEach(r => {
+    const label = r[2] || "Radnik";
+    siteBossAddGrouped(workers, label, { quantity:r[4], unit:"h", note:r[5] });
+  });
+  const toRows = map => Array.from(map.values()).map(x => ({
+    label:x.label, quantity:Math.round(x.quantity * 100) / 100, tours:Math.round(x.tours * 100) / 100, unit:x.unit || "", rows:x.rows, notes:x.notes.filter(Boolean).slice(0,3)
+  }));
+  return {
+    materials: {
+      imported: toRows(matsByFlow.imported),
+      exported: toRows(matsByFlow.exported),
+      internal: toRows(matsByFlow.internal),
+      installed: toRows(matsByFlow.installed),
+      other: toRows(matsByFlow.other)
+    },
+    machines: toRows(machines),
+    fuels: toRows(fuels),
+    workers: toRows(workers),
+    defects_count: Array.isArray(data.defects) ? data.defects.length : 0
+  };
+}
+
+function siteBossSummaryList(title, rows = [], kind = "material") {
+  if (!rows || !rows.length) return "";
+  const items = rows.map(r => {
+    const qty = r.quantity ? siteBossFormatQty(r.quantity, r.unit) : "—";
+    const tours = r.tours ? ` · ${r.tours} tura` : "";
+    const notes = r.notes?.length ? ` <small>${escapeHtml(r.notes.join("; "))}</small>` : "";
+    return `<li><b>${escapeHtml(r.label)}</b>: ${escapeHtml(qty)}${escapeHtml(tours)}${notes}</li>`;
+  }).join("");
+  return `<div class="site-boss-summary-block"><h5>${escapeHtml(title)}</h5><ul>${items}</ul></div>`;
+}
+
+function renderSiteBossStructuredSummary(summary = {}) {
+  const mats = summary.materials || {};
+  const blocks = [
+    siteBossSummaryList("Uvezeno na gradilište", mats.imported || []),
+    siteBossSummaryList("Izvezeno sa gradilišta", mats.exported || []),
+    siteBossSummaryList("U krugu gradilišta", mats.internal || []),
+    siteBossSummaryList("Rad mašina / MTČ", summary.machines || []),
+    siteBossSummaryList("Sipanje goriva", summary.fuels || []),
+    siteBossSummaryList("Radnici iz radničkih prijava", summary.workers || [])
+  ].filter(Boolean).join("");
+  if (!blocks && !summary.defects_count) return `<p class="report-empty">Nema automatski pronađenih stavki za izabrani datum i gradilište.</p>`;
+  return `<div class="site-boss-auto-summary"><h4>Sažetak radničkih izveštaja za isti datum i gradilište</h4>${blocks}${summary.defects_count ? `<p><b>Kvarovi:</b> ${escapeHtml(summary.defects_count)} prijava</p>` : ""}<p class="report-empty">Šef gradilišta proverava ovaj sažetak, levo dopunjava radnike/sate, stvarnu ugradnju i sve što fali.</p></div>`;
+}
+
 function vehicleTourOfficeRows(v = {}, reportSite = "") {
   const items = Array.isArray(v.tour_items) ? v.tour_items : [];
   const baseVehicle = v.name || v.vehicle || "";
@@ -5112,13 +5246,14 @@ function officeBuildDailyLogData(date, site) {
           row.quantity_text || ""
         ]);
         if (row.material || row.tours) {
+          const qtyInfo = officeSplitQuantityText(row.quantity_text || "");
           materials.push([
             row.site_name,
             row.action || "prevoz",
             row.material || "Materijal iz ture",
             row.tours || "",
-            "",
-            "",
+            qtyInfo.value || "",
+            qtyInfo.unit || "",
             row.route || row.note || ""
           ]);
         }
@@ -5589,7 +5724,7 @@ async function copySiteBossSummaryToDailyLog() {
   scheduleSiteLogLivePreview();
   const box = document.getElementById("siteLogPreviewBox");
   if (box) box.scrollIntoView({ behavior:"smooth", block:"start" });
-  toast("Podaci radnika za izabrani datum i gradilište su ubačeni u desni A4 pregled. Levo dopuni radnike, sate i ugradnju ako nešto fali.");
+  toast("Svi radnički podaci za isti datum i isto gradilište su složeni u desni A4 pregled. Levo dopuni radnike, sate, stvarnu ugradnju i ono što fali.");
 }
 
 function officeBuildCarnetData(from, to, site) {
@@ -13665,7 +13800,7 @@ function siteLogTable(headers, rows, cellsFn) {
 
 function buildSiteBossImportedOverview(data = siteBossOverviewCache, date = $("#siteLogDate")?.value || today(), site = $("#siteLogSite")?.value || "") {
   if (!data) return null;
-  return {
+  const base = {
     imported_at: new Date().toISOString(),
     date,
     site,
@@ -13677,17 +13812,24 @@ function buildSiteBossImportedOverview(data = siteBossOverviewCache, date = $("#
     materials: Array.isArray(data.materials) ? data.materials : [],
     defects: Array.isArray(data.defects) ? data.defects : []
   };
+  base.summary = siteBossBuildStructuredSummary({ ...base, site });
+  return base;
 }
 
 function renderSiteLogImportedOverviewSection(overview = null) {
   const o = overview || siteLogImportedWorkerOverview;
   if (!o) return "";
+  const summary = o.summary || siteBossBuildStructuredSummary(o);
   return `<div class="report-section site-log-imported-overview"><h4>Automatski pregled radničkih izveštaja za izabrano gradilište</h4>
-    <p class="report-empty">Datum: <b>${escapeHtml(formatDateOnlyLocal(o.date) || o.date || "—")}</b> · Gradilište: <b>${escapeHtml(o.site || "—")}</b> · Izveštaji: <b>${escapeHtml(o.reports_count || 0)}</b></p>
-    <h5>Vozila / ture / materijal</h5>${siteLogTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","Relacija","Ture","Ukupno"], o.vehicles || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[8],r[9],r[10]])}
-    <h5>Mašine / MTČ</h5>${siteLogTable(["Gradilište","Broj","Mašina","Rukovalac","Ukupno MTČ","Rad"], o.machines || [], r => [r[0],r[1],r[2],r[3],r[6],r[8]])}
-    <h5>Gorivo</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], o.fuels || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7]])}
-    <h5>Kvarovi</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], o.defects || [], r => [r[0],r[1],r[2],r[3],r[4],r[5]])}
+    <p class="report-empty">Datum rada: <b>${escapeHtml(formatDateOnlyLocal(o.date) || o.date || "—")}</b> · Gradilište: <b>${escapeHtml(o.site || "—")}</b> · Pronađeno izveštaja: <b>${escapeHtml(o.reports_count || 0)}</b></p>
+    ${renderSiteBossStructuredSummary(summary)}
+    <details class="site-boss-raw-details"><summary>Prikaži detaljne stavke koje su ušle u sažetak</summary>
+      <h5>Vozila / ture / materijal</h5>${siteLogTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","Relacija","Ture","Ukupno"], o.vehicles || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[8],r[9],r[10]])}
+      <h5>Materijalne stavke</h5>${siteLogTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], o.materials || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6]])}
+      <h5>Mašine / MTČ</h5>${siteLogTable(["Gradilište","Broj","Mašina","Rukovalac","Ukupno MTČ","Rad"], o.machines || [], r => [r[0],r[1],r[2],r[3],r[6],r[8]])}
+      <h5>Gorivo</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], o.fuels || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7]])}
+      <h5>Kvarovi</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], o.defects || [], r => [r[0],r[1],r[2],r[3],r[4],r[5]])}
+    </details>
   </div>`;
 }
 
