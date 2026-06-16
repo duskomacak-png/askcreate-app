@@ -11544,6 +11544,7 @@ function renderSelectedAssetRubricsPreview(asset) {
   if (!asset) {
     box.innerHTML = "";
     if (info) {
+      info.style.display = "";
       const kind = getSelectedWorkerAssetKind();
       info.className = "asset-smart-result worker-step-help";
       info.textContent = kind ? "Korak 1: izaberi konkretno sredstvo iz Direkcije." : "Korak 1: izaberi Vozilo ili Mašina, pa konkretno sredstvo iz Direkcije.";
@@ -11567,8 +11568,11 @@ function renderSelectedAssetRubricsPreview(asset) {
       <div class="worker-selected-asset-badges">${labels.map(x => `<span>${escapeHtml(x)}</span>`).join("")}</div>
     </div>`;
   if (info) {
+    // v1746: ne prikazuj dodatnu zelenu potvrdu kada već postoji jasna kartica "Izabrano sredstvo".
+    // Manje ponavljanja i nema problema sa slabim kontrastom na zelenoj kartici.
+    info.style.display = "none";
     info.className = "asset-smart-result ok worker-step-help";
-    info.textContent = "Sredstvo je izabrano. App sada nudi samo radnje koje pripadaju tom sredstvu.";
+    info.textContent = "";
   }
 }
 function refreshWorkerAssetContextControls({ keepSelected = true } = {}) {

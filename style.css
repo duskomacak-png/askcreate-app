@@ -9566,3 +9566,68 @@ body.worker-field-theme #viewWorkerForm #saveDraftBtn{
   color:#344054!important;
   border:1px solid #d0d5dd!important;
 }
+
+
+/* === AskCreate v1746: radnik — čitljiv prikaz izabranog sredstva i bez bledih zelenih kartica === */
+body.worker-field-theme #viewWorkerForm .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .dyn-section .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .entry-card .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .dyn-section .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .entry-card .asset-smart-result.ok{
+  background:#ffffff!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  border:1px solid #d0d5dd!important;
+  border-left:5px solid #dc2626!important;
+  border-radius:16px!important;
+  font-weight:900!important;
+  opacity:1!important;
+  text-shadow:none!important;
+}
+
+body.worker-field-theme #viewWorkerForm .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .dyn-section .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .entry-card .asset-smart-result.ok{
+  background:#f8fafc!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card{
+  background:#ffffff!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  border:1px solid #d0d5dd!important;
+  border-left:6px solid #dc2626!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card strong{
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  font-weight:950!important;
+  font-size:18px!important;
+  line-height:1.25!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card small{
+  color:#475467!important;
+  -webkit-text-fill-color:#475467!important;
+  font-weight:800!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-badges span{
+  background:#fff5f5!important;
+  border:1px solid #fecaca!important;
+  color:#b42318!important;
+  -webkit-text-fill-color:#b42318!important;
+  font-weight:900!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-current-asset-mini{
+  background:#f8fafc!important;
+  border:1px solid #d0d5dd!important;
+  border-left:5px solid #dc2626!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  font-weight:900!important;
+}

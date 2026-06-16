@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1745-radnik-moderan-tok";
+const CACHE_NAME = "askcreate-v1746-radnik-sredstvo-citljivo";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1745-radnik-moderan-tok",
-  "./script.js?v=1745-radnik-moderan-tok",
-  "./manifest.json?v=1745-radnik-moderan-tok",
+  "./style.css?v=1746-radnik-sredstvo-citljivo",
+  "./script.js?v=1746-radnik-sredstvo-citljivo",
+  "./manifest.json?v=1746-radnik-sredstvo-citljivo",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
