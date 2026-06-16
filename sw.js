@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1762-no-freeze";
+const CACHE_NAME = "askcreate-v1764-radnik-one-screen";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1762-no-freeze",
-  "./script.js?v=1762-no-freeze",
-  "./manifest.json?v=1762-no-freeze",
+  "./style.css?v=1764-radnik-one-screen",
+  "./script.js?v=1764-radnik-one-screen",
+  "./manifest.json?v=1764-radnik-one-screen",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

@@ -11368,8 +11368,20 @@ function ensureWorkerAssetAutoActionsBox() {
 function selectWorkerModuleValue(value, { addDefaults = true } = {}) {
   const select = document.querySelector("#wrModuleSelect");
   if (!select || !value) return false;
-  const hasOption = Array.from(select.options || []).some(o => o.value === value);
-  if (!hasOption) return false;
+  let hasOption = Array.from(select.options || []).some(o => o.value === value);
+  if (!hasOption) {
+    const def = workerModuleDefinitionByValue(value);
+    const asset = getSelectedWorkerContextAsset();
+    const assetAllows = !!asset && workerModuleValuesForAsset(asset).has(value);
+    const alwaysAllowed = ["defect_report", "fuel_entry"].includes(value);
+    if (!def || (!assetAllows && !alwaysAllowed)) return false;
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = def.label || value;
+    opt.dataset.temporaryWorkerOption = "1";
+    select.appendChild(opt);
+    hasOption = true;
+  }
   select.value = value;
   updateWorkerModuleSelectedLabel();
   applyWorkerModuleSelection({ addDefaults });
@@ -13083,7 +13095,7 @@ function addFuelEntry(values = {}) {
     </div>
 
 
-    <div class="grid two">
+    <div class="grid two worker-fuel-source-grid">
       <div>
         <label>Izvor goriva</label>
         <select class="f-source-type">
@@ -13359,17 +13371,21 @@ window.loadReturnedReportIntoForm = async (reportId) => {
 
 
 function setWorkerModernSectionMode(perms = currentWorker?.permissions || {}) {
-  const visibleIds = ["secFuel","secVehicles","secDefects"];
-  visibleIds.forEach(id => {
+  ["secFuel","secVehicles","secDefects"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('worker-hide-section');
   });
-  const normalized = normalizePermissions(perms);
-  const maps = { secFuel: !!normalized.fuel, secVehicles: !!normalized.vehicles, secDefects: !!normalized.defects };
-  Object.entries(maps).forEach(([id, ok]) => {
-    const el = document.getElementById(id);
-    if (el && !ok) el.classList.add('worker-hide-section');
-  });
+  const kind = (document.getElementById('wrAssetKind')?.value || '').trim();
+  const fuel = document.getElementById('secFuel');
+  const tours = document.getElementById('secVehicles');
+  if (fuel) {
+    fuel.classList.toggle('worker-kind-vehicle', kind === 'vehicle');
+    fuel.classList.toggle('worker-kind-machine', kind === 'machine');
+  }
+  if (tours) {
+    tours.classList.toggle('worker-kind-vehicle', kind === 'vehicle');
+    tours.classList.toggle('worker-kind-machine', kind === 'machine');
+  }
 }
 
 function syncWorkerKindButtons() {
@@ -13433,6 +13449,26 @@ function submitWorkerModuleFromQuickSection(moduleValue) {
   return true;
 }
 
+function ensureWorkerOneScreenEntries() {
+  try {
+    if (document.getElementById('fuelEntries') && !document.querySelector('#fuelEntries .fuel-entry')) addFuelEntry({ asset_kind: getSelectedWorkerAssetKind() === 'vehicle' ? 'vehicle' : 'machine' });
+  } catch(e) {}
+  try {
+    if (document.getElementById('vehicleEntries') && !document.querySelector('#vehicleEntries .vehicle-entry')) addVehicleEntry({});
+  } catch(e) {}
+  try { syncQuickWorkerEntriesFromSelectedAsset(); } catch(e) {}
+}
+
+function ensureWorkerOneScreenFooter() {
+  const card = document.getElementById('normalWorkerFormCard');
+  if (!card || document.getElementById('workerMobileFooterNote')) return;
+  const div = document.createElement('div');
+  div.id = 'workerMobileFooterNote';
+  div.className = 'worker-mobile-footer-note';
+  div.innerHTML = '<b>Sve ostalo bira se iz liste Direkcije</b><span>Malo kucanja · brz unos · zatvoren sistem</span>';
+  card.appendChild(div);
+}
+
 function initWorkerModernUi() {
   const view = document.getElementById('viewWorkerForm');
   if (!view || view.dataset.workerModernReady === '1') return;
@@ -13445,10 +13481,10 @@ function initWorkerModernUi() {
   const fuelSendBtn = document.getElementById('workerFuelSendBtn');
   const toursSendBtn = document.getElementById('workerToursSendBtn');
 
-  if (vehicleBtn && kindSelect) vehicleBtn.addEventListener('click', () => { kindSelect.value = 'vehicle'; kindSelect.dispatchEvent(new Event('change', { bubbles: true })); syncWorkerKindButtons(); });
-  if (machineBtn && kindSelect) machineBtn.addEventListener('click', () => { kindSelect.value = 'machine'; kindSelect.dispatchEvent(new Event('change', { bubbles: true })); syncWorkerKindButtons(); });
+  if (vehicleBtn && kindSelect) vehicleBtn.addEventListener('click', () => { kindSelect.value = 'vehicle'; kindSelect.dispatchEvent(new Event('change', { bubbles: true })); syncWorkerKindButtons(); setWorkerModernSectionMode(); ensureWorkerOneScreenEntries(); });
+  if (machineBtn && kindSelect) machineBtn.addEventListener('click', () => { kindSelect.value = 'machine'; kindSelect.dispatchEvent(new Event('change', { bubbles: true })); syncWorkerKindButtons(); setWorkerModernSectionMode(); ensureWorkerOneScreenEntries(); });
   if (kindSelect) kindSelect.addEventListener('change', () => { syncWorkerKindButtons(); setWorkerModernSectionMode(); });
-  if (assetSelect) assetSelect.addEventListener('change', () => { syncQuickWorkerEntriesFromSelectedAsset(); });
+  if (assetSelect) assetSelect.addEventListener('change', () => { ensureWorkerOneScreenEntries(); syncQuickWorkerEntriesFromSelectedAsset(); });
 
   ['secFuel','secVehicles','secDefects'].forEach((id) => {
     const section = document.getElementById(id);
@@ -13465,6 +13501,8 @@ function initWorkerModernUi() {
   syncWorkerKindButtons();
   syncWorkerCompanyCompactLabel();
   setWorkerModernSectionMode();
+  ensureWorkerOneScreenEntries();
+  ensureWorkerOneScreenFooter();
 }
 
 function updateLeaveRequestVisibility() {
@@ -18275,7 +18313,9 @@ async function openWorkerForm() {
   syncWorkerCompanyCompactLabel();
   syncWorkerKindButtons();
   setWorkerModernSectionMode(perms);
-  setTimeout(() => { try { syncQuickWorkerEntriesFromSelectedAsset(); } catch(e) {} }, 120);
+  ensureWorkerOneScreenFooter();
+  ensureWorkerOneScreenEntries();
+  setTimeout(() => { try { ensureWorkerOneScreenEntries(); syncQuickWorkerEntriesFromSelectedAsset(); } catch(e) {} }, 120);
 }
 
 

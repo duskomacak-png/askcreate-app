@@ -9249,9 +9249,7 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
 #viewWorkerForm.worker-mobile-panel .worker-mobile-select-block label{font-size:14px!important;color:#6b7280!important;margin-bottom:8px!important;}
 #viewWorkerForm.worker-mobile-panel #wrAssetSelect{height:60px!important;border-radius:18px!important;font-size:18px!important;padding:0 16px!important;}
 #viewWorkerForm.worker-mobile-panel .worker-mobile-helper{margin:0!important;border-radius:16px!important;background:#f9fafb!important;border:1px solid #e5e7eb!important;color:#374151!important;}
-#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only{display:block!important;border:1px dashed #d1d5db!important;border-radius:18px!important;padding:12px!important;background:#fafafa!important;margin-top:2px!important;}
-#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only label{font-size:13px!important;color:#6b7280!important;}
-#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only select{height:48px!important;border-radius:14px!important;font-size:15px!important;}
+#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only{display:none!important;}
 #viewWorkerForm.worker-mobile-panel #secFuel,
 #viewWorkerForm.worker-mobile-panel #secVehicles,
 #viewWorkerForm.worker-mobile-panel #secDefects{display:block!important;}
@@ -9275,8 +9273,7 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
 #viewWorkerForm.worker-mobile-panel .truck-summary-line{grid-template-columns:1fr 1fr!important;gap:8px!important;}
 #viewWorkerForm.worker-mobile-panel .worker-asset-rubrics-preview{display:flex;flex-wrap:wrap;gap:8px;}
 #viewWorkerForm.worker-mobile-panel .asset-feature-badge{padding:6px 10px;border-radius:999px;background:#fff5f5;border:1px solid #fecaca;color:#b91c1c;font-size:12px;font-weight:800;}
-#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard > .row:last-child{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px!important;}
-#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard > .row:last-child button{width:100%!important;}
+#viewWorkerForm.worker-mobile-panel .row:last-child{display:none!important;}
 @media(max-width:420px){
   #viewWorkerForm.worker-mobile-panel{padding:10px 10px 90px!important;}
   #viewWorkerForm.worker-mobile-panel #workerHello{font-size:28px!important;}
@@ -9286,4 +9283,142 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
   #viewWorkerForm.worker-mobile-panel .mini-grid,
   #viewWorkerForm.worker-mobile-panel .worker-inline-actions,
   #viewWorkerForm.worker-mobile-panel .truck-summary-line{grid-template-columns:1fr!important;}
+}
+
+
+/* v1764 — RADNIK: jedan stalni mobilni ekran, bez skakanja i bez biranja rubrike */
+#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only,
+#viewWorkerForm.worker-mobile-panel #workerModuleChooser,
+#viewWorkerForm.worker-mobile-panel #wrModuleFlowBox,
+#viewWorkerForm.worker-mobile-panel #wrAssetAutoActions,
+#viewWorkerForm.worker-mobile-panel #saveDraftBtn,
+#viewWorkerForm.worker-mobile-panel #submitReportBtn,
+#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard > .row:last-child{
+  display:none!important;
+}
+#viewWorkerForm.worker-mobile-panel #secFuel,
+#viewWorkerForm.worker-mobile-panel #secVehicles,
+#viewWorkerForm.worker-mobile-panel #secDefects{
+  display:block!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+#viewWorkerForm.worker-mobile-panel .worker-hide-section{display:none!important;}
+#viewWorkerForm.worker-mobile-panel #secWorkers,
+#viewWorkerForm.worker-mobile-panel #secMachines,
+#viewWorkerForm.worker-mobile-panel #secLowloader,
+#viewWorkerForm.worker-mobile-panel #secWaterTanker,
+#viewWorkerForm.worker-mobile-panel #secFieldTanker,
+#viewWorkerForm.worker-mobile-panel #secMaterials,
+#viewWorkerForm.worker-mobile-panel #secSignature,
+#viewWorkerForm.worker-mobile-panel #secLeaveRequest,
+#viewWorkerForm.worker-mobile-panel #secWarehouse,
+#viewWorkerForm.worker-mobile-panel #secWorkerSite{
+  display:none!important;
+}
+#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard{
+  max-width:440px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding:18px!important;
+  border-radius:26px!important;
+}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-brand-row{margin-bottom:2px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-date-top{display:none!important;}
+#viewWorkerForm.worker-mobile-panel #secFuel .entry-card-head,
+#viewWorkerForm.worker-mobile-panel #secVehicles .entry-card-head,
+#viewWorkerForm.worker-mobile-panel #secDefects .hint,
+#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(1),
+#viewWorkerForm.worker-mobile-panel #wrDefectAssetName,
+#viewWorkerForm.worker-mobile-panel #wrDefectAssetPicked,
+#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(2),
+#viewWorkerForm.worker-mobile-panel #wrDefectSiteName,
+#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(3),
+#viewWorkerForm.worker-mobile-panel #wrDefectSiteManual,
+#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(6),
+#viewWorkerForm.worker-mobile-panel #wrDefectStopsWork,
+#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(7),
+#viewWorkerForm.worker-mobile-panel #wrDefectUrgency,
+#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(8),
+#viewWorkerForm.worker-mobile-panel #wrDefectCalledMechanic{
+  display:none!important;
+}
+#viewWorkerForm.worker-mobile-panel #secFuel .fuel-entry,
+#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-entry{
+  border:0!important;
+  padding:0!important;
+  margin:0!important;
+  background:transparent!important;
+}
+#viewWorkerForm.worker-mobile-panel #secFuel .worker-fuel-source-grid,
+#viewWorkerForm.worker-mobile-panel #secFuel .worker-fuel-source-grid + label,
+#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-kind,
+#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-kind + label,
+#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-search,
+#viewWorkerForm.worker-mobile-panel #secFuel .f-picked,
+#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-select,
+#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-custom,
+#viewWorkerForm.worker-mobile-panel #secFuel .f-by,
+#viewWorkerForm.worker-mobile-panel #secFuel label:has(+ .f-by),
+#viewWorkerForm.worker-mobile-panel #secFuel p.hint{
+  display:none!important;
+}
+#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:12px!important;
+  align-items:end!important;
+}
+#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-mtc),
+#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-km){display:block!important;}
+#viewWorkerForm.worker-mobile-panel #secFuel.worker-kind-vehicle .mini-grid > div:has(.f-mtc){display:none!important;}
+#viewWorkerForm.worker-mobile-panel #secFuel.worker-kind-machine .mini-grid > div:has(.f-km){display:none!important;}
+#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:first-child{order:2;}
+#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-km),
+#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-mtc){order:1;}
+#viewWorkerForm.worker-mobile-panel #secFuel .f-liters + *{display:none!important;}
+#viewWorkerForm.worker-mobile-panel #secFuel label{font-size:14px!important;}
+#viewWorkerForm.worker-mobile-panel #secFuel label:has(+ .f-liters)::after{content:' dizela';}
+#viewWorkerForm.worker-mobile-panel #secVehicles .v-search,
+#viewWorkerForm.worker-mobile-panel #secVehicles .v-picked,
+#viewWorkerForm.worker-mobile-panel #secVehicles .refresh-vehicle-assets,
+#viewWorkerForm.worker-mobile-panel #secVehicles .hidden-asset-select,
+#viewWorkerForm.worker-mobile-panel #secVehicles .hidden-asset-custom,
+#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-entry > label:first-of-type,
+#viewWorkerForm.worker-mobile-panel #secVehicles .truck-summary-line,
+#viewWorkerForm.worker-mobile-panel #secVehicles .add-tour-row{
+  display:none!important;
+}
+#viewWorkerForm.worker-mobile-panel #secVehicles .truck-km-box{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;margin-bottom:12px!important;}
+#viewWorkerForm.worker-mobile-panel #secVehicles.worker-kind-machine{display:none!important;}
+#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-tour-row{border:0!important;padding:0!important;margin:0!important;background:transparent!important;}
+#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-tour-head,
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-quantity-preview,
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-manual-quantity-wrap,
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box h4,
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box .from-current-preview,
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box .to-current-preview,
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-note,
+#viewWorkerForm.worker-mobile-panel #secVehicles label:has(+ .tour-note){display:none!important;}
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-count-box{display:grid!important;grid-template-columns:1.4fr .65fr!important;gap:10px!important;}
+#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box{margin-top:10px!important;}
+#viewWorkerForm.worker-mobile-panel #secVehicles .to-kind{display:grid!important;}
+#viewWorkerForm.worker-mobile-panel #secVehicles .to-site-wrap,
+#viewWorkerForm.worker-mobile-panel #secVehicles .to-landfill-wrap{margin-top:10px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-inline-actions{display:flex!important;justify-content:flex-end!important;gap:10px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-inline-actions .secondary{display:none!important;}
+#viewWorkerForm.worker-mobile-panel .worker-inline-actions .primary{width:min(180px,100%)!important;min-height:52px!important;border-radius:16px!important;font-size:18px!important;}
+#viewWorkerForm.worker-mobile-panel #secDefects #wrDefect{min-height:58px!important;height:58px!important;}
+#viewWorkerForm.worker-mobile-panel #wrDefectImages{display:none!important;}
+#viewWorkerForm.worker-mobile-panel #wrDefectImagesPreview{margin:0!important;}
+#viewWorkerForm.worker-mobile-panel #wrDefectImagesPreview:before{content:'📷 Dodaj slike';display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 18px;border:1px solid #d1d5db;border-radius:14px;background:#fff;color:#111827;font-weight:900;}
+#viewWorkerForm.worker-mobile-panel #sendDefectNowBtn{width:min(180px,100%)!important;float:right!important;background:linear-gradient(180deg,#ef4444,#dc2626)!important;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-footer-note{display:block!important;text-align:center;color:#6b7280;font-size:13px;font-weight:700;margin-top:18px;border-top:1px solid #e5e7eb;padding-top:16px;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-footer-note b{display:block;color:#374151;font-size:16px;margin-bottom:2px;}
+@media(max-width:420px){
+  #viewWorkerForm.worker-mobile-panel #normalWorkerFormCard{padding:14px!important;}
+  #viewWorkerForm.worker-mobile-panel #secFuel .mini-grid,
+  #viewWorkerForm.worker-mobile-panel #secVehicles .truck-km-box,
+  #viewWorkerForm.worker-mobile-panel #secVehicles .tour-count-box{grid-template-columns:1fr 1fr!important;gap:8px!important;}
+  #viewWorkerForm.worker-mobile-panel .dyn-section{padding:13px!important;}
 }
