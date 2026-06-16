@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1744-cisti-tok-sef-gradilista";
+const CACHE_NAME = "askcreate-v1745-radnik-moderan-tok";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1744-cisti-tok-sef-gradilista",
-  "./script.js?v=1744-cisti-tok-sef-gradilista",
-  "./manifest.json?v=1744-cisti-tok-sef-gradilista",
+  "./style.css?v=1745-radnik-moderan-tok",
+  "./script.js?v=1745-radnik-moderan-tok",
+  "./manifest.json?v=1745-radnik-moderan-tok",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

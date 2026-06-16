@@ -9288,3 +9288,281 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
   .site-boss-excel-table td { padding: 3px 4px; }
   .site-boss-excel-block { break-inside: avoid; }
 }
+
+/* === AskCreate v1745: radnik moderni jednostavan tok === */
+body.worker-field-theme #viewWorkerForm #normalWorkerFormCard{
+  background:#f8fafc!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:12px!important;
+  max-width:760px!important;
+  margin:0 auto 100px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-simple-top,
+body.worker-field-theme #viewWorkerForm #workerAssetContextBox,
+body.worker-field-theme #viewWorkerForm .worker-asset-auto-actions,
+body.worker-field-theme #viewWorkerForm #workerModuleChooser,
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section{
+  background:#fff!important;
+  border:1px solid #d0d5dd!important;
+  border-radius:22px!important;
+  padding:16px!important;
+  box-shadow:0 10px 26px rgba(15,23,42,.06)!important;
+  margin:12px 0!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-simple-top label,
+body.worker-field-theme #viewWorkerForm #workerAssetContextBox label,
+body.worker-field-theme #viewWorkerForm .dyn-section label{
+  color:#111827!important;
+  font-weight:900!important;
+  font-size:14px!important;
+}
+body.worker-field-theme #viewWorkerForm input,
+body.worker-field-theme #viewWorkerForm select,
+body.worker-field-theme #viewWorkerForm textarea{
+  background:#fff!important;
+  color:#111827!important;
+  border:1px solid #cbd5e1!important;
+  border-radius:16px!important;
+  min-height:48px!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+}
+body.worker-field-theme #viewWorkerForm input:focus,
+body.worker-field-theme #viewWorkerForm select:focus,
+body.worker-field-theme #viewWorkerForm textarea:focus{
+  border-color:#dc2626!important;
+  box-shadow:0 0 0 3px rgba(220,38,38,.12)!important;
+  outline:none!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-asset-context-grid{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:12px!important;
+}
+@media (min-width:760px){
+  body.worker-field-theme #viewWorkerForm .worker-asset-context-grid{grid-template-columns:1fr 1.35fr!important;}
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result.worker-step-help{
+  margin-top:12px!important;
+  border-radius:16px!important;
+  padding:12px!important;
+  font-weight:800!important;
+  color:#475467!important;
+  background:#f9fafb!important;
+  border:1px solid #eaecf0!important;
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result.ok.worker-step-help{
+  color:#065f46!important;
+  background:#ecfdf5!important;
+  border-color:#bbf7d0!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card{
+  margin-top:12px!important;
+  padding:14px!important;
+  border:1px solid #e5e7eb!important;
+  border-left:5px solid #dc2626!important;
+  border-radius:18px!important;
+  background:#ffffff!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-head,
+body.worker-field-theme #viewWorkerForm .worker-step-title,
+body.worker-field-theme #viewWorkerForm .worker-active-step-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  gap:10px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-step-pill{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 auto!important;
+  width:28px!important;
+  height:28px!important;
+  border-radius:999px!important;
+  background:#dc2626!important;
+  color:#fff!important;
+  font-weight:900!important;
+  font-size:14px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-head strong,
+body.worker-field-theme #viewWorkerForm .worker-step-title strong,
+body.worker-field-theme #viewWorkerForm .worker-active-step-head strong{
+  color:#111827!important;
+  font-size:18px!important;
+  line-height:1.2!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-head small,
+body.worker-field-theme #viewWorkerForm .worker-step-title small,
+body.worker-field-theme #viewWorkerForm .worker-active-step-head small{
+  display:block!important;
+  margin-top:3px!important;
+  color:#667085!important;
+  font-weight:800!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-badges{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:7px!important;
+  margin-top:12px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-badges span,
+body.worker-field-theme #viewWorkerForm .asset-feature-badge{
+  display:inline-flex!important;
+  align-items:center!important;
+  border-radius:999px!important;
+  padding:6px 10px!important;
+  background:#fff7f7!important;
+  color:#b42318!important;
+  border:1px solid #fecaca!important;
+  font-weight:850!important;
+  font-size:13px!important;
+}
+body.worker-field-theme #viewWorkerForm #workerModuleChooser{
+  padding:0!important;
+  border:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+body.worker-field-theme #viewWorkerForm #workerModuleChooser > label,
+body.worker-field-theme #viewWorkerForm #wrModuleSelect,
+body.worker-field-theme #viewWorkerForm #wrModuleSelectedLabel{
+  display:none!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-action-grid{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+  margin-top:12px!important;
+}
+@media (min-width:620px){
+  body.worker-field-theme #viewWorkerForm .worker-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+body.worker-field-theme #viewWorkerForm .worker-action-chip{
+  min-height:54px!important;
+  border-radius:18px!important;
+  border:1px solid #d0d5dd!important;
+  background:#fff!important;
+  color:#111827!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  padding:12px 14px!important;
+  font-weight:950!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-action-chip.primary,
+body.worker-field-theme #viewWorkerForm .worker-action-chip.active{
+  background:linear-gradient(135deg,#dc2626,#ef4444)!important;
+  color:#fff!important;
+  border-color:#dc2626!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-action-chip small{
+  color:inherit!important;
+  opacity:.9!important;
+  font-size:12px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-current-asset-mini,
+body.worker-field-theme #viewWorkerForm .worker-active-step-asset{
+  margin-top:10px!important;
+  padding:10px 12px!important;
+  border-radius:14px!important;
+  background:#f9fafb!important;
+  border:1px solid #e5e7eb!important;
+  color:#344054!important;
+  font-weight:900!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-module-flow{
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-active-step-card{
+  background:#fff7f7!important;
+  border:1px solid #fecaca!important;
+  border-left:6px solid #dc2626!important;
+  border-radius:20px!important;
+  padding:14px!important;
+  box-shadow:0 10px 24px rgba(220,38,38,.08)!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-close-module-btn{
+  margin-top:12px!important;
+  width:100%!important;
+  min-height:46px!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  color:#b42318!important;
+  border:1px solid #fca5a5!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section{
+  border-left:6px solid #dc2626!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section > h4{
+  font-size:20px!important;
+  margin-bottom:12px!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card{
+  background:#fff!important;
+  border:1px solid #e5e7eb!important;
+  border-radius:20px!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.05)!important;
+  padding:14px!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card-head{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin-bottom:10px!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card-head strong{
+  color:#111827!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card-head .remove-entry,
+body.worker-field-theme #viewWorkerForm button.remove-entry{
+  background:#fff!important;
+  color:#b42318!important;
+  border:1px solid #fca5a5!important;
+  border-radius:14px!important;
+  font-weight:950!important;
+  min-height:40px!important;
+}
+body.worker-field-theme #viewWorkerForm #secSignature{display:none!important;}
+body.worker-field-theme #viewWorkerForm .row:has(#saveDraftBtn){
+  position:sticky!important;
+  bottom:0!important;
+  z-index:50!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+  background:rgba(248,250,252,.94)!important;
+  backdrop-filter:blur(10px)!important;
+  border-top:1px solid #e5e7eb!important;
+  padding:12px!important;
+  margin:20px -12px -12px!important;
+}
+@media (min-width:520px){
+  body.worker-field-theme #viewWorkerForm .row:has(#saveDraftBtn){grid-template-columns:1fr 1fr!important;}
+}
+body.worker-field-theme #viewWorkerForm #saveDraftBtn,
+body.worker-field-theme #viewWorkerForm #submitReportBtn{
+  min-height:54px!important;
+  border-radius:18px!important;
+  font-size:16px!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm #submitReportBtn{
+  background:linear-gradient(135deg,#dc2626,#ef4444)!important;
+  color:#fff!important;
+  border:0!important;
+}
+body.worker-field-theme #viewWorkerForm #saveDraftBtn{
+  background:#fff!important;
+  color:#344054!important;
+  border:1px solid #d0d5dd!important;
+}

@@ -11499,32 +11499,44 @@ function renderWorkerAssetAutoActions(allowed = []) {
   const primaryValues = workerPrimaryModuleValuesForAsset(asset).filter(v => allowedSet.has(v));
   const quickValues = ["defect_report", "fuel_entry"].filter(v => allowedSet.has(v) && !primaryValues.includes(v));
   const current = document.querySelector("#wrModuleSelect")?.value || "";
-  const buttons = [...primaryValues, ...quickValues]
+  const assetName = formatAssetLabel(asset);
+  const values = [...primaryValues, ...quickValues];
+  const buttons = values
     .map(value => workerModuleDefinitionByValue(value))
     .filter(Boolean)
-    .map(m => `<button type="button" class="${primaryValues.includes(m.value) ? "primary" : "secondary"} worker-auto-module-btn" data-module-value="${escapeHtml(m.value)}">${escapeHtml(m.label)}</button>`)
+    .map(m => {
+      const isPrimary = primaryValues.includes(m.value);
+      const isActive = current === m.value;
+      const cls = ["worker-action-chip", isPrimary ? "primary" : "secondary", isActive ? "active" : ""].join(" ").trim();
+      return `<button type="button" class="${cls}" data-module-value="${escapeHtml(m.value)}"><span>${escapeHtml(m.label)}</span>${isActive ? "<small>otvoreno</small>" : ""}</button>`;
+    })
     .join("");
 
-  const mainText = primaryValues.length === 1
-    ? `Automatski otvoreno: ${workerModuleDefinitionByValue(primaryValues[0])?.label || "rubrika"}`
-    : primaryValues.length > 1
-      ? "Ovo sredstvo ima više rubrika. Izaberi šta trenutno popunjavaš."
-      : "Za ovo sredstvo možeš otvoriti brze prijave.";
-
   const currentLabel = current ? (workerModuleDefinitionByValue(current)?.label || current) : "";
+  const stepText = currentLabel
+    ? `Trenutno popunjavaš: ${currentLabel}`
+    : primaryValues.length === 1
+      ? `Obrazac se otvara automatski za ovo sredstvo.`
+      : primaryValues.length > 1
+        ? "Izaberi jednu radnju za ovo sredstvo."
+        : "Izaberi brzu prijavu ako treba.";
+
   box.innerHTML = `
-    <div class="worker-auto-module-info compact-worker-info">
-      <strong>${escapeHtml(currentLabel || mainText)}</strong>
-      <small>${primaryValues.length === 1 ? "Obrazac je otvoren automatski po podešenju iz Direkcije." : "Izaberi samo ono što trenutno popunjavaš."}</small>
+    <div class="worker-step-title">
+      <span class="worker-step-pill">2</span>
+      <div>
+        <strong>Radnja za danas</strong>
+        <small>${escapeHtml(stepText)}</small>
+      </div>
     </div>
-    ${buttons ? `<div class="worker-auto-module-buttons">${buttons}</div>` : ""}
+    <div class="worker-current-asset-mini">${escapeHtml(assetName)}</div>
+    ${buttons ? `<div class="worker-action-grid">${buttons}</div>` : `<p class="hint">Za ovo sredstvo nema podešenih radnji u Direkciji.</p>`}
   `;
   box.classList.remove("hidden");
-  box.querySelectorAll(".worker-auto-module-btn").forEach(btn => {
+  box.querySelectorAll(".worker-action-chip").forEach(btn => {
     btn.addEventListener("click", () => selectWorkerModuleValue(btn.dataset.moduleValue || "", { addDefaults: true }));
   });
 }
-
 function renderSelectedAssetRubricsPreview(asset) {
   const box = document.querySelector("#wrAssetRubricsPreview");
   const info = document.querySelector("#wrAssetContextInfo");
@@ -11533,8 +11545,8 @@ function renderSelectedAssetRubricsPreview(asset) {
     box.innerHTML = "";
     if (info) {
       const kind = getSelectedWorkerAssetKind();
-      info.className = "asset-smart-result";
-      info.textContent = kind ? "Izaberi konkretno sredstvo iz Direkcije." : "Izaberi vozilo ili mašinu iz Direkcije, pa će se pojaviti samo rubrike koje to sredstvo ima.";
+      info.className = "asset-smart-result worker-step-help";
+      info.textContent = kind ? "Korak 1: izaberi konkretno sredstvo iz Direkcije." : "Korak 1: izaberi Vozilo ili Mašina, pa konkretno sredstvo iz Direkcije.";
     }
     return;
   }
@@ -11543,13 +11555,22 @@ function renderSelectedAssetRubricsPreview(asset) {
   if (getAssetFuelTypes(asset).length) labels.push("⛽ " + getAssetFuelTypes(asset).map(t => ASSET_FUEL_TYPE_LABELS[t] || t).join(" + "));
   if (asset.fuel_tank_capacity) labels.push("🛢️ " + asset.fuel_tank_capacity + " L gorivo");
   if (asset.water_tank_capacity) labels.push("💧 " + asset.water_tank_capacity + " L voda");
-  box.innerHTML = labels.map(x => `<span class="asset-feature-badge">${escapeHtml(x)}</span>`).join("");
+  box.innerHTML = `
+    <div class="worker-selected-asset-card">
+      <div class="worker-selected-asset-head">
+        <span class="worker-step-pill">1</span>
+        <div>
+          <strong>${escapeHtml(formatAssetLabel(asset))}</strong>
+          <small>Izabrano sredstvo iz Direkcije</small>
+        </div>
+      </div>
+      <div class="worker-selected-asset-badges">${labels.map(x => `<span>${escapeHtml(x)}</span>`).join("")}</div>
+    </div>`;
   if (info) {
-    info.className = "asset-smart-result ok";
-    info.textContent = "Rubrike su spremne prema izabranom sredstvu.";
+    info.className = "asset-smart-result ok worker-step-help";
+    info.textContent = "Sredstvo je izabrano. App sada nudi samo radnje koje pripadaju tom sredstvu.";
   }
 }
-
 function refreshWorkerAssetContextControls({ keepSelected = true } = {}) {
   const kindEl = document.querySelector("#wrAssetKind");
   const assetEl = document.querySelector("#wrAssetSelect");
@@ -11645,31 +11666,35 @@ function updateWorkerModuleFlowBox() {
     box.innerHTML = "";
     return;
   }
-  const assetLabel = asset ? formatAssetLabel(asset) : "nije izabrano sredstvo";
   const texts = {
-    fuel_entry: ["Otvoren je obrazac: Gorivo odmah", "Popuni sredstvo, litre, KM/MTČ i ko je sipao."],
-    field_tanker: ["Otvoren je obrazac: Cisterna goriva", "Popuni izvor/cisternu, svako sipanje, KM/MTČ, litre i ko je primio gorivo."],
-    defect_report: ["Otvoren je obrazac: Prijava kvara", "Popuni opis kvara, lokaciju, hitnost i slike ako postoje."],
-    truck_tours: ["Otvoren je obrazac: Vožnja / ture / materijal", "Popuni ture, materijal, m³/tona i relacije."],
-    lowloader: ["Otvoren je obrazac: Labudica / transport mašine", "Popuni koju mašinu prevoziš, odakle, dokle i kilometre."],
-    water_tanker: ["Otvoren je obrazac: Cisterna za vodu", "Popuni odakle je voda, gde je isporučena i količinu/ture."],
-    machine_work: ["Otvoren je obrazac: Rad mašine / MTČ", "Popuni gradilište, MTČ i šta je rađeno."],
-    worker_hours: ["Otvoren je obrazac: Dnevni radni izveštaj", "Popuni radnike, sate i opis rada."],
-    leave_request: ["Otvoren je obrazac: Slobodan dan / godišnji", "Popuni datum i napomenu ako treba."],
-    warehouse: ["Otvoren je obrazac: Magacin", "Popuni ulaz/izlaz, artikal i količinu."],
-    material_entry: ["Otvoren je obrazac: Materijal", "Popuni materijal i količinu."]
+    fuel_entry: ["Gorivo odmah", "Popuni litre, KM/MTČ i pošalji odmah Direkciji."],
+    field_tanker: ["Cisterna goriva", "Dodaj svako sipanje: sredstvo, KM/MTČ, litre i primalac."],
+    defect_report: ["Prijava kvara", "Upiši kvar, dodaj slike ako treba i pošalji odmah."],
+    truck_tours: ["Vožnja / ture / materijal", "Popuni relaciju, materijal, ture i količinu."],
+    lowloader: ["Labudica / transport mašine", "Upiši koju mašinu voziš, odakle, dokle i kilometre."],
+    water_tanker: ["Cisterna za vodu", "Popuni izvor, odredište i količinu vode."],
+    machine_work: ["Rad mašine / MTČ", "Popuni gradilište, MTČ i opis rada."],
+    worker_hours: ["Dnevni radni izveštaj", "Popuni radnike, sate i opis rada."],
+    leave_request: ["Slobodan dan / godišnji", "Popuni datum i napomenu ako treba."],
+    warehouse: ["Magacin", "Popuni ulaz/izlaz, artikal i količinu."],
+    material_entry: ["Materijal", "Popuni materijal i količinu."]
   };
-  const [title, desc] = texts[module.value] || ["Otvoren je obrazac: " + module.label, "Popuni polja ispod i pošalji Upravi."];
+  const [title, desc] = texts[module.value] || [module.label, "Popuni polja ispod i pošalji Upravi."];
   box.innerHTML = `
-    <div class="worker-flow-title-row">
-      <strong>${escapeHtml(title)}</strong>
+    <div class="worker-active-step-card">
+      <div class="worker-active-step-head">
+        <span class="worker-step-pill">3</span>
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(desc)}</small>
+        </div>
+      </div>
+      ${asset ? `<div class="worker-active-step-asset">${escapeHtml(formatAssetLabel(asset))}</div>` : ""}
       <button type="button" class="secondary small-btn worker-close-module-btn" onclick="closeWorkerActiveModule()">Zatvori rubriku</button>
     </div>
-    <small>${escapeHtml(desc)}</small>
   `;
   box.classList.remove("hidden");
 }
-
 function markAndScrollWorkerActiveSection({ scroll = false } = {}) {
   const module = getSelectedWorkerModule();
   const keys = module?.sectionKeys || [];
