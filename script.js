@@ -19410,3 +19410,139 @@ function copySupportEmail() {
   else boot();
   setInterval(removeOldQuick, 1000);
 })();
+
+
+// === AskCreate v1758: radnik mobilni prikaz - cleanup i normalizacija layouta ===
+(function(){
+  function qs(s,r=document){return r.querySelector(s);}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
+  function wrapField(labelNode, controlNode, cls){
+    const box = document.createElement('div');
+    box.className = 'stable-field' + (cls ? ' ' + cls : '');
+    if (labelNode) box.appendChild(labelNode);
+    if (controlNode) box.appendChild(controlNode);
+    return box;
+  }
+  function movePreserve(card, nodes){
+    card.innerHTML = '';
+    nodes.forEach(function(n){ if (n) card.appendChild(n); });
+  }
+  function normalize(){
+    const view = qs('#viewWorkerForm');
+    const card = qs('#normalWorkerFormCard');
+    const stable = qs('#workerStableScreen');
+    if (!view || !card || !stable) return;
+
+    view.classList.add('worker-stable-mode','worker-stable-mode-v1758');
+    qsa('#workerQuickScreen').forEach(el => { try { el.remove(); } catch(e){ el.style.display='none'; } });
+    qsa('#viewWorkerForm > .dashboard-head, #viewWorkerForm > .worker-simple-top, #viewWorkerForm > #workerReturnedReports').forEach(el => {
+      el.classList.add('stable-force-hide-outside');
+    });
+    qsa(':scope > *', card).forEach(el => { if (el.id !== 'workerStableScreen') el.classList.add('stable-force-hide'); });
+
+    const fuel = stable.querySelector('.stable-row-card.fuel');
+    const tours = stable.querySelector('.stable-row-card.tours');
+    const machine = stable.querySelector('.stable-row-card.machine');
+    const defect = stable.querySelector('.stable-row-card.defect');
+
+    if (fuel && !fuel.dataset.v1758Normalized) {
+      fuel.dataset.v1758Normalized = '1';
+      const title = fuel.querySelector('.stable-row-title');
+      const type = fuel.querySelector('.stable-fuel-type');
+      const readingLabel = qs('#stableFuelReadingLabel', fuel);
+      const reading = qs('#stableFuelReading', fuel);
+      const litersLabel = Array.from(fuel.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'L');
+      const liters = qs('#stableFuelLiters', fuel);
+      const send = qs('#stableSendFuel', fuel);
+      movePreserve(fuel, [
+        title,
+        wrapField(null, type, 'stable-field-span-2'),
+        wrapField(readingLabel, reading),
+        wrapField(litersLabel, liters),
+        send
+      ]);
+      send.classList.add('stable-send-fuel');
+    }
+
+    if (tours && !tours.dataset.v1758Normalized) {
+      tours.dataset.v1758Normalized = '1';
+      const title = tours.querySelector('.stable-row-title');
+      const kmStartL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').includes('Poč. KM'));
+      const kmStart = qs('#stableKmStart', tours);
+      const kmEndL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').includes('Zav. KM'));
+      const kmEnd = qs('#stableKmEnd', tours);
+      const siteL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Gradilište');
+      const site = qs('#stableSite', tours);
+      const destL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Odredište');
+      const destHidden = qs('#stableDestKind', tours);
+      const dest = tours.querySelector('.stable-dest');
+      const toSiteWrap = qs('#stableToSiteWrap', tours);
+      const depotWrap = qs('#stableDepotWrap', tours);
+      const matL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Materijal');
+      const mat = qs('#stableMaterial', tours);
+      const toursL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Ture');
+      const toursInput = qs('#stableTours', tours);
+      const send = qs('#stableSendTours', tours);
+      movePreserve(tours, [
+        title,
+        wrapField(kmStartL, kmStart),
+        wrapField(kmEndL, kmEnd),
+        wrapField(siteL, site),
+        wrapField(destL, dest, 'stable-field-full'),
+        destHidden,
+        toSiteWrap,
+        depotWrap,
+        wrapField(matL, mat),
+        wrapField(toursL, toursInput),
+        send
+      ]);
+      send.classList.add('stable-send-tours');
+      toSiteWrap.classList.add('stable-field-full','stable-extra-wrap');
+      depotWrap.classList.add('stable-field-full','stable-extra-wrap');
+    }
+
+    if (machine && !machine.dataset.v1758Normalized) {
+      machine.dataset.v1758Normalized = '1';
+      const title = machine.querySelector('.stable-row-title');
+      const siteL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Gradilište');
+      const site = qs('#stableMachineSite', machine);
+      const startL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').includes('Poč. MTČ'));
+      const start = qs('#stableMtcStart', machine);
+      const endL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').includes('Zav. MTČ'));
+      const end = qs('#stableMtcEnd', machine);
+      const descL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Opis');
+      const desc = qs('#stableMachineDesc', machine);
+      const send = qs('#stableSendMachine', machine);
+      movePreserve(machine, [
+        title,
+        wrapField(siteL, site),
+        wrapField(startL, start),
+        wrapField(endL, end),
+        wrapField(descL, desc, 'stable-field-full'),
+        send
+      ]);
+      send.classList.add('stable-send-machine');
+    }
+
+    if (defect && !defect.dataset.v1758Normalized) {
+      defect.dataset.v1758Normalized = '1';
+      const title = defect.querySelector('.stable-row-title');
+      const text = qs('#stableDefectText', defect);
+      const file = qs('#stableDefectImages', defect);
+      const label = defect.querySelector('.stable-file-label');
+      const send = qs('#stableSendDefect', defect);
+      movePreserve(defect, [title, wrapField(null, text, 'stable-field-full'), file, label, send]);
+      label.classList.add('stable-defect-add');
+      send.classList.add('stable-defect-send');
+    }
+  }
+  function boot(){
+    normalize();
+    setTimeout(normalize, 50);
+    setTimeout(normalize, 300);
+    setTimeout(normalize, 1200);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  setInterval(normalize, 1500);
+})();
