@@ -11112,3 +11112,44 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
   #workerCleanScreen input,#workerCleanScreen select{height:54px!important;min-height:54px!important;font-size:18px!important;}
   #workerCleanScreen .clean-send,#workerCleanScreen .clean-secondary{height:56px!important;min-height:56px!important;font-size:20px!important;}
 }
+
+
+/* === AskCreate v1764: clean radnik mora biti vidljiv, bez blank ekrana === */
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard,
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard.worker-clean-card,
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard.stable-screen-active{
+  max-width:520px!important;
+  width:100%!important;
+  margin:0 auto!important;
+  padding:12px!important;
+  background:#f8fafc!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard > #workerCleanScreen,
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard.stable-screen-active > #workerCleanScreen,
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard.quick-screen-active > #workerCleanScreen,
+#viewWorkerForm.worker-clean-mode #workerCleanScreen.stable-force-hide,
+#viewWorkerForm.worker-clean-mode #workerCleanScreen.clean-hide-old{
+  display:block!important;
+  visibility:visible!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+}
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard > :not(#workerCleanScreen),
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard.stable-screen-active > :not(#workerCleanScreen),
+#viewWorkerForm.worker-clean-mode #normalWorkerFormCard.quick-screen-active > :not(#workerCleanScreen),
+#viewWorkerForm.worker-clean-mode #workerQuickScreen,
+#viewWorkerForm.worker-clean-mode #workerStableScreen{
+  display:none!important;
+  visibility:hidden!important;
+  height:0!important;
+  overflow:hidden!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+}

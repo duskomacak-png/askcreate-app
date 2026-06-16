@@ -19259,3 +19259,57 @@ function copySupportEmail() {
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   window.initWorkerCleanFlowV1763 = boot;
 })();
+
+
+// === AskCreate v1764: FIX blank radnički ekran - clean screen ima prednost nad starim stable/quick slojevima ===
+(function(){
+  function qs(s,r=document){return r.querySelector(s)}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s))}
+  function forceCleanVisible(){
+    const view=qs('#viewWorkerForm');
+    const card=qs('#normalWorkerFormCard');
+    const clean=qs('#workerCleanScreen');
+    if(!view || !card || !clean) return;
+
+    view.classList.add('worker-clean-mode');
+    view.classList.remove('worker-quick-mode','worker-stable-mode','worker-stable-mode-v1758');
+    card.classList.add('worker-clean-card');
+    card.classList.remove('stable-screen-active','quick-screen-active');
+
+    // Stari intervali su dodavali klase koje sakriju svaki novi ekran.
+    clean.classList.remove('stable-force-hide','clean-hide-old','hidden');
+    clean.style.display='block';
+    clean.style.visibility='visible';
+    clean.style.height='auto';
+    clean.style.overflow='visible';
+
+    qsa('#workerQuickScreen,#workerStableScreen').forEach(el=>{
+      el.classList.add('clean-hide-old');
+      el.style.display='none';
+      el.style.visibility='hidden';
+      el.style.height='0';
+      el.style.overflow='hidden';
+    });
+    qsa(':scope > *', card).forEach(el=>{
+      if(el.id==='workerCleanScreen'){
+        el.classList.remove('stable-force-hide','clean-hide-old','hidden');
+        el.style.display='block';
+        el.style.visibility='visible';
+      }else{
+        el.classList.add('clean-hide-old');
+      }
+    });
+    qsa('#viewWorkerForm > .dashboard-head,#viewWorkerForm > #workerReturnedReports').forEach(el=>el.classList.add('clean-hide-old'));
+  }
+  function boot(){
+    // neutralizuj stare boot funkcije koje vraćaju quick/stable ekran posle logina
+    try{ window.initWorkerQuickScreenV1751=function(){ setTimeout(forceCleanVisible,0); }; }catch(e){}
+    try{ window.initWorkerStableOneScreenV1755=function(){ setTimeout(forceCleanVisible,0); }; }catch(e){}
+    forceCleanVisible();
+    setTimeout(forceCleanVisible,50);
+    setTimeout(forceCleanVisible,250);
+    setTimeout(forceCleanVisible,900);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+  setInterval(forceCleanVisible,800);
+})();
