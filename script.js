@@ -18622,53 +18622,277 @@ function copySupportEmail() {
 
 // AskCreate v1729: u izvestaju tura prikazuje se materijal iz liste Direkcije i ukupna kolicina.
 
-
-// === AskCreate v1751: sigurni vizuelni prekidači Vozilo/Mašina + naziv firme u radničkom prikazu ===
+// v1751 — Radnik: kompaktan mobilni prikaz kao na predlogu sa slike
 (function(){
-  function qs(sel){ return document.querySelector(sel); }
-  function setMiniCompanyLabel(){
-    try{
-      var mini = qs('#workerCompanyMiniLabel');
-      if (!mini) return;
-      var txt = '';
-      var company = qs('#workerCompanyLabel');
-      if (company) txt = (company.textContent || '').trim();
-      if ((!txt || txt === 'Terenski obrazac') && window.currentCompany && currentCompany.name) txt = currentCompany.name;
-      if ((!txt || txt === 'Terenski obrazac') && window.currentWorker && currentWorker.company_name) txt = currentWorker.company_name;
-      if (txt && txt !== 'Terenski obrazac') mini.textContent = txt;
-    }catch(e){}
+  function q$(sel, root=document){ return root.querySelector(sel); }
+  function qa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+  function safeText(v){ return String(v ?? "").trim(); }
+  function setValueAndFire(el, value){
+    if (!el) return;
+    el.value = value;
+    el.dispatchEvent(new Event("input", { bubbles:true }));
+    el.dispatchEvent(new Event("change", { bubbles:true }));
   }
-  function syncWorkerKindButtons(){
-    try{
-      var val = qs('#wrAssetKind') ? qs('#wrAssetKind').value : '';
-      document.querySelectorAll('.worker-kind-btn').forEach(function(btn){
-        btn.classList.toggle('is-active', (btn.getAttribute('data-worker-kind') || '') === val);
-      });
-      setMiniCompanyLabel();
-    }catch(e){}
+  function makeOptionsFrom(select){
+    return Array.from(select?.options || []).map(o => `<option value="${escapeHtml(o.value || "")}" ${o.selected ? "selected" : ""}>${escapeHtml(o.textContent || "")}</option>`).join("");
   }
-  document.addEventListener('click', function(e){
-    var btn = e.target && e.target.closest ? e.target.closest('.worker-kind-btn') : null;
-    if (!btn) return;
-    var sel = qs('#wrAssetKind');
-    if (!sel) return;
-    var next = btn.getAttribute('data-worker-kind') || '';
-    if (!next) return;
-    if (sel.value !== next) {
-      sel.value = next;
-      sel.dispatchEvent(new Event('change', { bubbles:true }));
+  function selectedQuickAssetLabel(){
+    const asset = (typeof getSelectedWorkerContextAsset === "function") ? getSelectedWorkerContextAsset() : null;
+    if (asset && typeof formatAssetLabel === "function") return formatAssetLabel(asset);
+    const opt = q$("#wrAssetSelect")?.selectedOptions?.[0];
+    return opt?.textContent?.trim() || "Izaberi iz Direkcije";
+  }
+  function ensureQuickVehicleEntry(){
+    let card = q$("#vehicleEntries .vehicle-entry");
+    if (!card && typeof addVehicleEntry === "function") {
+      addVehicleEntry({});
+      card = q$("#vehicleEntries .vehicle-entry");
     }
-    syncWorkerKindButtons();
-  }, true);
-  document.addEventListener('change', function(e){
-    if (e.target && e.target.matches && e.target.matches('#wrAssetKind')) syncWorkerKindButtons();
-  }, true);
-  document.addEventListener('DOMContentLoaded', function(){
-    setTimeout(syncWorkerKindButtons, 100);
-    setTimeout(setMiniCompanyLabel, 250);
-    setInterval(function(){
-      var form = qs('#viewWorkerForm');
-      if (form && !form.classList.contains('hidden')) { syncWorkerKindButtons(); setMiniCompanyLabel(); }
-    }, 1200);
-  });
+    const asset = (typeof getSelectedWorkerContextAsset === "function") ? getSelectedWorkerContextAsset() : null;
+    if (card && asset) {
+      const search = card.querySelector(".v-search");
+      const wanted = (typeof getAssetCode === "function" ? getAssetCode(asset) : "") || (typeof getAssetRegistration === "function" ? getAssetRegistration(asset) : "") || (typeof getAssetName === "function" ? getAssetName(asset) : "");
+      if (search && wanted && !String(search.value || "").trim()) {
+        setValueAndFire(search, wanted);
+        try { if (typeof refreshOneVehicleSelect === "function") refreshOneVehicleSelect(card); } catch(e) {}
+      }
+      try { if (typeof updateVehicleCubic === "function") updateVehicleCubic(card); } catch(e) {}
+    }
+    return card;
+  }
+  function ensureQuickVehicleTour(card){
+    let row = card?.querySelector(".vehicle-tour-row");
+    if (!row && card && typeof addVehicleTourRow === "function") {
+      addVehicleTourRow(card, {});
+      row = card.querySelector(".vehicle-tour-row");
+    }
+    return row;
+  }
+  function quickFillToursFromUi(){
+    const card = ensureQuickVehicleEntry();
+    const row = ensureQuickVehicleTour(card);
+    if (!card || !row) return false;
+    const site = q$("#qWorkerTourSite")?.value || "";
+    const destKind = q$("#qWorkerDestKind")?.value || "current";
+    const toSite = q$("#qWorkerToSite")?.value || "";
+    const depot = q$("#qWorkerDepot")?.value || "";
+    const material = q$("#qWorkerMaterial")?.value || "";
+    const tours = q$("#qWorkerTours")?.value || "";
+    const fromSite = row.querySelector(".from-site");
+    const toKind = row.querySelector(".to-kind");
+    const toSiteSel = row.querySelector(".to-site");
+    const toLandfill = row.querySelector(".to-landfill");
+    const matSel = row.querySelector(".tour-material");
+    const toursInput = row.querySelector(".tour-count");
+    if (fromSite) setValueAndFire(fromSite, site);
+    if (toKind) setValueAndFire(toKind, destKind);
+    if (toSiteSel) setValueAndFire(toSiteSel, destKind === "site" ? toSite : "");
+    if (toLandfill) setValueAndFire(toLandfill, destKind === "landfill" ? depot : "");
+    if (matSel) setValueAndFire(matSel, material);
+    if (toursInput) setValueAndFire(toursInput, tours);
+    try { if (typeof refreshTourPlaceVisibility === "function") refreshTourPlaceVisibility(row); } catch(e) {}
+    try { if (typeof updateVehicleCubic === "function") updateVehicleCubic(card); } catch(e) {}
+    return true;
+  }
+  function quickFillFuelFromUi(){
+    if (!q$("#fuelEntries .fuel-entry") && typeof addFuelEntry === "function") addFuelEntry({});
+    const entry = q$("#fuelEntries .fuel-entry");
+    if (!entry) return false;
+    const kind = q$("#wrAssetKind")?.value || "vehicle";
+    const reading = q$("#qWorkerFuelReading")?.value || "";
+    const liters = q$("#qWorkerFuelLiters")?.value || "";
+    const fuelType = q$("#qWorkerFuelType")?.value || "diesel";
+    const km = entry.querySelector(".f-km");
+    const mtc = entry.querySelector(".f-mtc");
+    if (kind === "machine") {
+      if (mtc) setValueAndFire(mtc, reading);
+      if (km) setValueAndFire(km, "");
+    } else {
+      if (km) setValueAndFire(km, reading);
+      if (mtc) setValueAndFire(mtc, "");
+    }
+    const litersInput = entry.querySelector(".f-liters");
+    if (litersInput) setValueAndFire(litersInput, liters);
+    const typeSel = entry.querySelector(".f-fuel-type");
+    if (typeSel) setValueAndFire(typeSel, fuelType);
+    return true;
+  }
+  function quickFillDefectFromUi(){
+    const asset = (typeof getSelectedWorkerContextAsset === "function") ? getSelectedWorkerContextAsset() : null;
+    const assetInput = q$("#wrDefectAssetName");
+    const desc = q$("#wrDefect");
+    const quickDesc = q$("#qWorkerDefectText")?.value || "";
+    if (assetInput && asset) {
+      const v = (typeof getAssetCode === "function" ? getAssetCode(asset) : "") || (typeof getAssetRegistration === "function" ? getAssetRegistration(asset) : "") || (typeof getAssetName === "function" ? getAssetName(asset) : "") || selectedQuickAssetLabel();
+      setValueAndFire(assetInput, v);
+      try { if (typeof updateDefectAssetSmartResult === "function") updateDefectAssetSmartResult(); } catch(e) {}
+    }
+    if (desc) setValueAndFire(desc, quickDesc);
+    return true;
+  }
+  function quickSelectModule(value){
+    if (typeof selectWorkerModuleValue === "function") return selectWorkerModuleValue(value, { addDefaults:true });
+    const sel = q$("#wrModuleSelect");
+    if (!sel) return false;
+    setValueAndFire(sel, value);
+    try { if (typeof applyWorkerModuleSelection === "function") applyWorkerModuleSelection({ addDefaults:true }); } catch(e) {}
+    return true;
+  }
+  function quickSubmitModule(value){
+    if (!quickSelectModule(value)) {
+      if (typeof toast === "function") toast("Prvo izaberi vozilo ili mašinu iz Direkcije.", true);
+      return;
+    }
+    if (value === "fuel_entry") quickFillFuelFromUi();
+    if (value === "truck_tours") quickFillToursFromUi();
+    if (value === "defect_report") quickFillDefectFromUi();
+    setTimeout(() => {
+      const btn = value === "defect_report" ? (q$("#sendDefectNowBtn") || q$("#submitReportBtn")) : q$("#submitReportBtn");
+      if (btn) btn.click();
+    }, 100);
+  }
+  function quickRefreshSelects(){
+    const qAsset = q$("#qWorkerAssetSelect");
+    const realAsset = q$("#wrAssetSelect");
+    if (qAsset && realAsset) {
+      const old = qAsset.value;
+      qAsset.innerHTML = makeOptionsFrom(realAsset);
+      qAsset.value = realAsset.value || old || "";
+    }
+    const qSite = q$("#qWorkerTourSite");
+    if (qSite) qSite.innerHTML = (typeof buildTruckTourSiteOptionsHtml === "function") ? buildTruckTourSiteOptionsHtml(qSite.value || "") : makeOptionsFrom(q$("#wrSiteName"));
+    const qToSite = q$("#qWorkerToSite");
+    if (qToSite) qToSite.innerHTML = (typeof buildTruckTourSiteOptionsHtml === "function") ? buildTruckTourSiteOptionsHtml(qToSite.value || "") : makeOptionsFrom(q$("#wrSiteName"));
+    const qDepot = q$("#qWorkerDepot");
+    if (qDepot && typeof buildWorkerDepotOptionsHtml === "function") qDepot.innerHTML = buildWorkerDepotOptionsHtml(qDepot.value || "");
+    const qMaterial = q$("#qWorkerMaterial");
+    if (qMaterial && typeof buildWorkerMaterialOptionsHtml === "function") qMaterial.innerHTML = buildWorkerMaterialOptionsHtml(qMaterial.value || "");
+    quickUpdateLabels();
+    quickUpdateDestinationVisibility();
+  }
+  function quickUpdateLabels(){
+    const company = q$("#qWorkerCompany");
+    if (company) company.textContent = (currentWorker?.company_name || currentWorker?.company || q$("#workerCompanyLabel")?.textContent || "Firma").replace(/\s*·.*$/, "").trim() || "Firma";
+    const assetLabel = q$("#qWorkerAssetSummary");
+    if (assetLabel) assetLabel.textContent = selectedQuickAssetLabel();
+    const kind = q$("#wrAssetKind")?.value || "vehicle";
+    qa(".q-kind-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.kind === kind));
+    const fuelTitle = q$("#qWorkerFuelTitle");
+    if (fuelTitle) fuelTitle.textContent = kind === "machine" ? "1. Gorivo mašine" : "1. Gorivo";
+    const readingLabel = q$("#qWorkerFuelReadingLabel");
+    if (readingLabel) readingLabel.textContent = kind === "machine" ? "MTČ" : "KM";
+  }
+  function quickUpdateDestinationVisibility(){
+    const kind = q$("#qWorkerDestKind")?.value || "current";
+    qa(".q-dest-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.dest === kind));
+    q$("#qWorkerDepotWrap")?.classList.toggle("worker-quick-hidden", kind !== "landfill");
+    q$("#qWorkerToSiteWrap")?.classList.toggle("worker-quick-hidden", kind !== "site");
+  }
+  function quickSetFuelType(type){
+    setValueAndFire(q$("#qWorkerFuelType"), type);
+    qa(".q-fuel-type-btn").forEach(b => b.classList.toggle("active", b.dataset.fuel === type));
+  }
+  function buildQuickScreen(){
+    const card = q$("#normalWorkerFormCard");
+    if (!card || q$("#workerQuickScreen")) return;
+    const box = document.createElement("div");
+    box.id = "workerQuickScreen";
+    box.className = "worker-quick-screen";
+    box.innerHTML = `
+      <div class="worker-quick-head">
+        <div class="worker-quick-brand"><strong>AskCreate.app</strong><span>Radnik</span></div>
+        <div class="worker-quick-online">● Online</div>
+      </div>
+      <div class="worker-quick-company" id="qWorkerCompany">Firma</div>
+      <div class="worker-quick-kind">
+        <button type="button" class="q-kind-btn active" data-kind="vehicle">🚚 Vozilo</button>
+        <button type="button" class="q-kind-btn" data-kind="machine">🚜 Mašina</button>
+      </div>
+      <div class="worker-quick-field">
+        <label>Izaberi iz Direkcije</label>
+        <select id="qWorkerAssetSelect"><option value="">Prvo izaberi Vozilo ili Mašina</option></select>
+        <div id="qWorkerAssetSummary" class="worker-quick-hidden"></div>
+      </div>
+      <div class="worker-quick-card" id="qWorkerFuelCard">
+        <div class="worker-quick-card-title"><span class="ico">⛽</span><span id="qWorkerFuelTitle">1. Gorivo</span></div>
+        <div class="worker-quick-fuel-grid">
+          <div>
+            <label>Dizel / Benzin</label>
+            <input id="qWorkerFuelType" type="hidden" value="diesel" />
+            <div class="worker-quick-fuel-type">
+              <button type="button" class="q-fuel-type-btn active" data-fuel="diesel">Dizel</button>
+              <button type="button" class="q-fuel-type-btn" data-fuel="petrol">Benzin</button>
+            </div>
+          </div>
+          <div><label id="qWorkerFuelReadingLabel">KM</label><input id="qWorkerFuelReading" inputmode="decimal" placeholder="150200" /></div>
+          <div><label>Litara</label><input id="qWorkerFuelLiters" inputmode="decimal" placeholder="120" /></div>
+          <button type="button" class="worker-quick-send" data-submit-module="fuel_entry">Pošalji</button>
+        </div>
+        <div class="worker-quick-center"><button type="button" class="worker-quick-secondary" id="qAddFuelBtn">+ Dodaj gorivo</button></div>
+      </div>
+      <div class="worker-quick-card" id="qWorkerToursCard">
+        <div class="worker-quick-card-title"><span class="ico">🚚</span><span>2. Ture / materijal</span></div>
+        <div class="worker-quick-tours-grid">
+          <div><label>Gradilište</label><select id="qWorkerTourSite"><option value="">Učitavam...</option></select></div>
+          <div><label>Odredište</label><input id="qWorkerDestKind" type="hidden" value="current" /><div class="worker-quick-dest"><button type="button" class="q-dest-btn" data-dest="site">Drugo</button><button type="button" class="q-dest-btn" data-dest="landfill">Deponija</button><button type="button" class="q-dest-btn active" data-dest="current">U krugu</button></div></div>
+        </div>
+        <div class="worker-quick-extra-destination worker-quick-hidden" id="qWorkerToSiteWrap"><label>Drugo gradilište</label><select id="qWorkerToSite"></select></div>
+        <div class="worker-quick-extra-destination worker-quick-hidden" id="qWorkerDepotWrap"><label>Deponija</label><select id="qWorkerDepot"></select></div>
+        <div class="worker-quick-tours-bottom">
+          <div><label>Materijal</label><select id="qWorkerMaterial"><option value="">Učitavam...</option></select></div>
+          <div><label>Ture</label><input id="qWorkerTours" inputmode="decimal" placeholder="5" /></div>
+          <button type="button" class="worker-quick-send" data-submit-module="truck_tours">Pošalji</button>
+        </div>
+        <div class="worker-quick-center"><button type="button" class="worker-quick-secondary" id="qAddToursBtn">+ Dodaj ture</button></div>
+      </div>
+      <div class="worker-quick-card" id="qWorkerDefectCard">
+        <div class="worker-quick-card-title"><span class="ico">🛠️</span><span>3. Kvarovi</span></div>
+        <label>Kratak opis kvara</label>
+        <input id="qWorkerDefectText" placeholder="Unesi kratak opis kvara..." />
+        <div class="worker-quick-defect-actions">
+          <button type="button" class="worker-quick-secondary" id="qOpenDefectImages">📷 Dodaj slike</button>
+          <button type="button" class="worker-quick-send" data-submit-module="defect_report">Prijavi</button>
+        </div>
+      </div>
+      <div class="worker-quick-note"><strong>Sve ostalo bira se iz liste Direkcije</strong><span>Malo kucanja · brz unos · zatvoren sistem</span></div>
+    `;
+    card.insertBefore(box, card.firstChild);
+    q$("#viewWorkerForm")?.classList.add("worker-quick-mode");
+
+    qa(".q-kind-btn", box).forEach(btn => btn.addEventListener("click", () => {
+      const real = q$("#wrAssetKind");
+      setValueAndFire(real, btn.dataset.kind || "vehicle");
+      setTimeout(() => { quickRefreshSelects(); quickUpdateLabels(); }, 160);
+    }));
+    q$("#qWorkerAssetSelect", box)?.addEventListener("change", (e) => {
+      setValueAndFire(q$("#wrAssetSelect"), e.target.value || "");
+      setTimeout(() => { quickRefreshSelects(); quickUpdateLabels(); }, 160);
+    });
+    qa(".q-fuel-type-btn", box).forEach(btn => btn.addEventListener("click", () => quickSetFuelType(btn.dataset.fuel || "diesel")));
+    qa(".q-dest-btn", box).forEach(btn => btn.addEventListener("click", () => {
+      setValueAndFire(q$("#qWorkerDestKind"), btn.dataset.dest || "current");
+      quickUpdateDestinationVisibility();
+    }));
+    qa("[data-submit-module]", box).forEach(btn => btn.addEventListener("click", () => quickSubmitModule(btn.dataset.submitModule)));
+    q$("#qAddFuelBtn", box)?.addEventListener("click", () => { q$("#qWorkerFuelLiters")?.focus(); if (typeof toast === "function") toast("Upiši litre i klikni Pošalji."); });
+    q$("#qAddToursBtn", box)?.addEventListener("click", () => { q$("#qWorkerTours")?.focus(); if (typeof toast === "function") toast("Popuni ture i klikni Pošalji."); });
+    q$("#qOpenDefectImages", box)?.addEventListener("click", () => {
+      quickSelectModule("defect_report");
+      quickFillDefectFromUi();
+      setTimeout(() => q$("#wrDefectImages")?.click(), 120);
+    });
+
+    const assetReal = q$("#wrAssetSelect");
+    if (assetReal) new MutationObserver(() => quickRefreshSelects()).observe(assetReal, { childList:true, subtree:true, attributes:true });
+    ["#wrAssetKind", "#wrAssetSelect", "#wrDate"].forEach(sel => q$(sel)?.addEventListener("change", () => setTimeout(() => { quickRefreshSelects(); quickUpdateLabels(); }, 100)));
+    setInterval(() => { if (q$("#workerQuickScreen")) quickRefreshSelects(); }, 2500);
+    quickRefreshSelects();
+  }
+  function initQuickScreenWhenReady(){
+    if (!q$("#normalWorkerFormCard")) return;
+    buildQuickScreen();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initQuickScreenWhenReady);
+  else initQuickScreenWhenReady();
+  window.initWorkerQuickScreenV1751 = initQuickScreenWhenReady;
 })();

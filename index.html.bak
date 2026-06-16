@@ -1581,9 +1581,9 @@
 
         <div id="secFuel" class="dyn-section">
           <h4>⛽ Gorivo odmah</h4>
-          <p class="hint">Jednostavno sipanje za već izabrano vozilo/mašinu. Ne bira se cisterna, izvor ni gradilište.</p>
+          <p class="hint">Ovo se šalje odmah u karticu Gorivo. Ne čeka kraj smene i ne ulazi u Dnevnik rada danas.</p>
           <div id="fuelEntries" class="entry-list"></div>
-          <button id="addFuelBtn" class="secondary hidden" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
+          <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
         </div>
 
 
@@ -1745,6 +1745,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1751-radnik-jedan-displej"></script>
+  <script src="script.js?v=1748-gorivo-radnik-jednostavno"></script>
 </body>
 </html>
