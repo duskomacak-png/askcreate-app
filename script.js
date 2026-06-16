@@ -18977,930 +18977,285 @@ function copySupportEmail() {
 })();
 
 
-/* === AskCreate v1755: RADNIK STABILAN JEDAN MOBILNI PRIKAZ ===
-   Cilj: nema starog prikaza, nema traktora, samo Kamion/Vozilo i Bager/Mašina.
-   Pravi ekran je mali i vezan za postojeće skrivene forme, da ne ruši slanje. */
+/* === AskCreate v1763: ČIST RADNIČKI TOK - VOZILO / MAŠINA ===
+   Ne koristi stari quick/stable ekran. Jedan čist ekran povezan na postojeće skrivene forme. */
 (function(){
   function qs(sel, root=document){ return root.querySelector(sel); }
   function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
-  function fire(el){
-    if (!el) return;
-    el.dispatchEvent(new Event("input", {bubbles:true}));
-    el.dispatchEvent(new Event("change", {bubbles:true}));
-  }
-  function setVal(el, val){
-    if (!el) return;
-    el.value = val == null ? "" : String(val);
-    fire(el);
-  }
+  function fire(el){ if(!el) return; el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function setVal(el, val){ if(!el) return; el.value = val == null ? '' : String(val); fire(el); }
   function esc(v){
-    if (typeof escapeHtml === "function") return escapeHtml(v);
-    return String(v ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    if (typeof escapeHtml === 'function') return escapeHtml(v);
+    return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
-  function realKind(){
-    return qs("#wrAssetKind")?.value || "vehicle";
-  }
-  function openStableAssetList(){
-    const sel = qs("#stableAssetSelect");
-    if (!sel) return;
-    try { sel.scrollIntoView({block:"center", behavior:"smooth"}); } catch(e){}
+  function currentKind(){ return qs('#wrAssetKind')?.value || ''; }
+  function currentAssetId(){ return qs('#wrAssetSelect')?.value || ''; }
+  function currentAssetLabel(){ return (qs('#wrAssetSelect')?.selectedOptions?.[0]?.textContent || '').trim(); }
+  function openPicker(sel){
+    if(!sel) return;
+    try { sel.scrollIntoView({block:'center', behavior:'smooth'}); } catch(e){}
     try { sel.focus({preventScroll:true}); } catch(e){ try { sel.focus(); } catch(_){} }
-    try { if (typeof sel.showPicker === "function") sel.showPicker(); } catch(e){}
+    try { if (typeof sel.showPicker === 'function') sel.showPicker(); } catch(e){}
     try { sel.click(); } catch(e){}
   }
-  function setKind(kind){
-    setVal(qs("#wrAssetKind"), kind);
-    // Otvaranje select liste mora biti direktno u klik događaju; timeout na mobilnom često blokira showPicker.
-    refreshStableOptions();
-    openStableAssetList();
-    setTimeout(() => { refreshStableOptions(); }, 80);
-    setTimeout(() => { refreshStableOptions(); }, 260);
-    refreshStableState();
+  function syncAssetOptions(){
+    const real = qs('#wrAssetSelect');
+    const mini = qs('#cleanWorkerAssetSelect');
+    if(!real || !mini) return;
+    const old = mini.value || real.value || '';
+    mini.innerHTML = Array.from(real.options || []).map(o => `<option value="${esc(o.value||'')}" ${o.selected?'selected':''}>${esc((o.textContent||'').trim())}</option>`).join('');
+    if (old && Array.from(mini.options).some(o => o.value === old)) mini.value = old;
+    else mini.value = real.value || '';
   }
-  function optionHtmlFrom(select){
-    return Array.from(select?.options || []).map(o => {
-      const val = esc(o.value || "");
-      const txt = esc((o.textContent || "").trim());
-      return `<option value="${val}" ${o.selected ? "selected" : ""}>${txt}</option>`;
-    }).join("");
+  function syncSiteMaterialOptions(){
+    const pairs = [
+      ['#cleanTourSite', () => typeof buildTruckTourSiteOptionsHtml === 'function' ? buildTruckTourSiteOptionsHtml(qs('#cleanTourSite')?.value || '') : ''],
+      ['#cleanTourToSite', () => typeof buildTruckTourSiteOptionsHtml === 'function' ? buildTruckTourSiteOptionsHtml(qs('#cleanTourToSite')?.value || '') : ''],
+      ['#cleanTourDepot', () => typeof buildWorkerDepotOptionsHtml === 'function' ? buildWorkerDepotOptionsHtml(qs('#cleanTourDepot')?.value || '') : '<option value="">Deponija</option>'],
+      ['#cleanTourMaterial', () => typeof buildWorkerMaterialOptionsHtml === 'function' ? buildWorkerMaterialOptionsHtml(qs('#cleanTourMaterial')?.value || '') : '<option value="">Materijal</option>'],
+      ['#cleanMachineSite', () => typeof buildTruckTourSiteOptionsHtml === 'function' ? buildTruckTourSiteOptionsHtml(qs('#cleanMachineSite')?.value || '') : '']
+    ];
+    pairs.forEach(([id, build]) => {
+      const el = qs(id); if(!el) return;
+      const old = el.value || '';
+      const html = build();
+      if (html && el.innerHTML !== html) el.innerHTML = html;
+      if (old && Array.from(el.options||[]).some(o => o.value === old)) el.value = old;
+    });
   }
-  function selectedAssetLabel(){
-    const opt = qs("#wrAssetSelect")?.selectedOptions?.[0];
-    const txt = (opt?.textContent || "").trim();
-    return txt || "Izaberi iz Direkcije";
-  }
-  function selectedAssetId(){
-    return qs("#wrAssetSelect")?.value || "";
+  function selectKind(kind, open){
+    const kindEl = qs('#wrAssetKind');
+    const assetEl = qs('#wrAssetSelect');
+    setVal(kindEl, kind);
+    if (assetEl) setVal(assetEl, '');
+    try { if (typeof refreshWorkerAssetContextControls === 'function') refreshWorkerAssetContextControls({keepSelected:false}); } catch(e){}
+    try { if (typeof refreshWorkerModuleSelector === 'function') refreshWorkerModuleSelector(window.currentWorker?.permissions || currentWorker?.permissions || {}); } catch(e){}
+    syncAssetOptions();
+    renderState();
+    if(open) setTimeout(() => openPicker(qs('#cleanWorkerAssetSelect')), 40);
   }
   function ensureModule(value){
-    if (typeof selectWorkerModuleValue === "function") {
+    if (typeof selectWorkerModuleValue === 'function') {
       try { selectWorkerModuleValue(value, {addDefaults:true}); return true; } catch(e){}
     }
-    const sel = qs("#wrModuleSelect");
-    if (!sel) return false;
+    const sel = qs('#wrModuleSelect');
+    if(!sel) return false;
     setVal(sel, value);
-    try { if (typeof applyWorkerModuleSelection === "function") applyWorkerModuleSelection({addDefaults:true}); } catch(e){}
+    try { if (typeof applyWorkerModuleSelection === 'function') applyWorkerModuleSelection({addDefaults:true}); } catch(e){}
     return true;
   }
-  function ensureFuelEntry(){
-    ensureModule("fuel_entry");
-    if (!qs("#fuelEntries .fuel-entry") && typeof addFuelEntry === "function") {
-      try { addFuelEntry({}); } catch(e){}
-    }
-    return qs("#fuelEntries .fuel-entry");
+  function selectedAssetSearchValue(){
+    const asset = (typeof getSelectedWorkerContextAsset === 'function') ? getSelectedWorkerContextAsset() : null;
+    if (!asset) return currentAssetLabel();
+    return (typeof getAssetCode === 'function' && getAssetCode(asset)) ||
+      (typeof getAssetRegistration === 'function' && getAssetRegistration(asset)) ||
+      (typeof getAssetName === 'function' && getAssetName(asset)) || currentAssetLabel();
   }
-  function fillFuel(){
-    const e = ensureFuelEntry();
-    if (!e) return false;
-    const kind = realKind();
-    const km = e.querySelector(".f-km");
-    const mtc = e.querySelector(".f-mtc");
-    const reading = qs("#stableFuelReading")?.value || "";
-    if (kind === "machine") {
-      setVal(mtc, reading);
-      setVal(km, "");
-    } else {
-      setVal(km, reading);
-      setVal(mtc, "");
-    }
-    setVal(e.querySelector(".f-liters"), qs("#stableFuelLiters")?.value || "");
-    setVal(e.querySelector(".f-fuel-type"), qs("#stableFuelType")?.value || "diesel");
-    return true;
+  function requireAsset(kindText){
+    if(currentAssetId()) return true;
+    if (typeof toast === 'function') toast('Prvo izaberi ' + kindText + ' iz Direkcije.', true);
+    return false;
   }
   function sendFuel(){
-    if (!selectedAssetId()) return toast && toast("Prvo izaberi vozilo ili mašinu iz Direkcije.", true);
-    fillFuel();
-    setTimeout(() => qs("#submitReportBtn")?.click(), 100);
-  }
-  function ensureVehicleEntry(){
-    ensureModule("truck_tours");
-    let card = qs("#vehicleEntries .vehicle-entry");
-    if (!card && typeof addVehicleEntry === "function") {
-      try { addVehicleEntry({}); } catch(e){}
-      card = qs("#vehicleEntries .vehicle-entry");
-    }
-    const asset = (typeof getSelectedWorkerContextAsset === "function") ? getSelectedWorkerContextAsset() : null;
-    if (card && asset) {
-      const search = card.querySelector(".v-search");
-      const code = (typeof getAssetCode === "function" ? getAssetCode(asset) : "") || (typeof getAssetRegistration === "function" ? getAssetRegistration(asset) : "") || "";
-      if (search && code && search.value !== code) {
-        setVal(search, code);
-        try { if (typeof refreshOneVehicleSelect === "function") refreshOneVehicleSelect(card); } catch(e){}
-      }
-    }
-    return card;
-  }
-  function ensureTourRow(card){
-    let row = card?.querySelector(".vehicle-tour-row");
-    if (!row && card && typeof addVehicleTourRow === "function") {
-      try { addVehicleTourRow(card, {}); } catch(e){}
-      row = card.querySelector(".vehicle-tour-row");
-    }
-    return row;
-  }
-  function fillTours(){
-    const card = ensureVehicleEntry();
-    const row = ensureTourRow(card);
-    if (!card || !row) return false;
-    setVal(card.querySelector(".v-km-start"), qs("#stableKmStart")?.value || "");
-    setVal(card.querySelector(".v-km-end"), qs("#stableKmEnd")?.value || "");
-    setVal(row.querySelector(".from-site"), qs("#stableSite")?.value || "");
-    setVal(row.querySelector(".to-kind"), qs("#stableDestKind")?.value || "current");
-    setVal(row.querySelector(".to-site"), qs("#stableToSite")?.value || "");
-    setVal(row.querySelector(".to-landfill"), qs("#stableDepot")?.value || "");
-    setVal(row.querySelector(".tour-material"), qs("#stableMaterial")?.value || "");
-    setVal(row.querySelector(".tour-count"), qs("#stableTours")?.value || "");
-    try { if (typeof refreshTourPlaceVisibility === "function") refreshTourPlaceVisibility(row); } catch(e){}
-    try { if (typeof updateVehicleCubic === "function") updateVehicleCubic(card); } catch(e){}
-    return true;
+    const kind = currentKind() || 'vehicle';
+    if(!requireAsset(kind === 'machine' ? 'mašinu' : 'vozilo')) return;
+    ensureModule('fuel_entry');
+    const list = qs('#fuelEntries'); if (list) list.innerHTML = '';
+    if (typeof addFuelEntry === 'function') addFuelEntry({});
+    const entry = qs('#fuelEntries .fuel-entry');
+    if(!entry) return;
+    const reading = qs('#cleanFuelReading')?.value || '';
+    setVal(entry.querySelector('.f-fuel-type'), 'diesel');
+    if(kind === 'machine') { setVal(entry.querySelector('.f-mtc'), reading); setVal(entry.querySelector('.f-km'), ''); }
+    else { setVal(entry.querySelector('.f-km'), reading); setVal(entry.querySelector('.f-mtc'), ''); }
+    setVal(entry.querySelector('.f-liters'), qs('#cleanFuelLiters')?.value || '');
+    setTimeout(() => qs('#submitReportBtn')?.click(), 80);
   }
   function sendTours(){
-    if (!selectedAssetId()) return toast && toast("Prvo izaberi vozilo iz Direkcije.", true);
-    fillTours();
-    setTimeout(() => qs("#submitReportBtn")?.click(), 100);
-  }
-  function ensureMachineEntry(){
-    // v1756: vrednost modula je machine_work, a report_type je machine_work_daily.
-    ensureModule("machine_work");
-    let card = qs("#machineEntries .machine-entry");
-    if (!card && typeof addMachineEntry === "function") {
-      try { addMachineEntry({}); } catch(e){}
-      card = qs("#machineEntries .machine-entry");
+    if(!requireAsset('vozilo')) return;
+    ensureModule('truck_tours');
+    const list = qs('#vehicleEntries'); if (list) list.innerHTML = '';
+    if (typeof addVehicleEntry === 'function') addVehicleEntry({});
+    const card = qs('#vehicleEntries .vehicle-entry'); if(!card) return;
+    const search = selectedAssetSearchValue();
+    setVal(card.querySelector('.v-search'), search);
+    try { if (typeof refreshOneVehicleSelect === 'function') refreshOneVehicleSelect(card); } catch(e){}
+    setVal(card.querySelector('.v-km-start'), qs('#cleanKmStart')?.value || '');
+    setVal(card.querySelector('.v-km-end'), qs('#cleanKmEnd')?.value || '');
+    if (typeof addVehicleTourRow === 'function') addVehicleTourRow(card, {});
+    const row = card.querySelector('.vehicle-tour-row'); if(row){
+      setVal(row.querySelector('.from-site'), qs('#cleanTourSite')?.value || '');
+      setVal(row.querySelector('.to-kind'), qs('#cleanDestKind')?.value || 'current');
+      setVal(row.querySelector('.to-site'), qs('#cleanTourToSite')?.value || '');
+      setVal(row.querySelector('.to-landfill'), qs('#cleanTourDepot')?.value || '');
+      setVal(row.querySelector('.tour-material'), qs('#cleanTourMaterial')?.value || '');
+      setVal(row.querySelector('.tour-count'), qs('#cleanTourCount')?.value || '');
+      try { if (typeof refreshTourPlaceVisibility === 'function') refreshTourPlaceVisibility(row); } catch(e){}
     }
-    return card;
-  }
-  function fillMachineWork(){
-    const card = ensureMachineEntry();
-    if (!card) return false;
-    const asset = (typeof getSelectedWorkerContextAsset === "function") ? getSelectedWorkerContextAsset() : null;
-    if (asset) {
-      const search = card.querySelector(".m-search, .machine-search, .asset-code-search");
-      const code = (typeof getAssetCode === "function" ? getAssetCode(asset) : "") || (typeof getAssetName === "function" ? getAssetName(asset) : "");
-      if (search && code) setVal(search, code);
-    }
-    setVal(card.querySelector(".m-site, .entry-site-select"), qs("#stableMachineSite")?.value || "");
-    setVal(card.querySelector(".m-mtc-start, .mtc-start"), qs("#stableMtcStart")?.value || "");
-    setVal(card.querySelector(".m-mtc-end, .mtc-end"), qs("#stableMtcEnd")?.value || "");
-    setVal(card.querySelector(".m-work, .m-description, .machine-description, textarea, input[placeholder*='iskop']"), qs("#stableMachineDesc")?.value || "");
-    return true;
+    try { if (typeof updateVehicleCubic === 'function') updateVehicleCubic(card); } catch(e){}
+    setTimeout(() => qs('#submitReportBtn')?.click(), 80);
   }
   function sendMachineWork(){
-    if (!selectedAssetId()) return toast && toast("Prvo izaberi mašinu iz Direkcije.", true);
-    fillMachineWork();
-    setTimeout(() => qs("#submitReportBtn")?.click(), 100);
-  }
-  function fillDefect(){
-    ensureModule("defect_report");
-    const asset = (typeof getSelectedWorkerContextAsset === "function") ? getSelectedWorkerContextAsset() : null;
-    const assetInput = qs("#wrDefectAssetName");
-    const desc = qs("#wrDefect");
-    const label = selectedAssetLabel();
-    if (assetInput) {
-      const v = asset ? ((typeof getAssetCode === "function" ? getAssetCode(asset) : "") || (typeof getAssetRegistration === "function" ? getAssetRegistration(asset) : "") || (typeof getAssetName === "function" ? getAssetName(asset) : "")) : label;
-      setVal(assetInput, v);
-      try { if (typeof updateDefectAssetSmartResult === "function") updateDefectAssetSmartResult(); } catch(e){}
-    }
-    setVal(desc, qs("#stableDefectText")?.value || "");
-    return true;
+    if(!requireAsset('mašinu')) return;
+    ensureModule('machine_work');
+    const list = qs('#machineEntries'); if (list) list.innerHTML = '';
+    if (typeof addMachineEntry === 'function') addMachineEntry({});
+    const card = qs('#machineEntries .machine-entry'); if(!card) return;
+    setVal(card.querySelector('.m-search'), selectedAssetSearchValue());
+    try { if (typeof refreshOneMachineSelect === 'function') refreshOneMachineSelect(card); } catch(e){}
+    setVal(card.querySelector('.m-site'), qs('#cleanMachineSite')?.value || '');
+    setVal(card.querySelector('.m-mtc-start, .m-start'), qs('#cleanMtcStart')?.value || '');
+    setVal(card.querySelector('.m-mtc-end, .m-end'), qs('#cleanMtcEnd')?.value || '');
+    setVal(card.querySelector('.m-work'), qs('#cleanMachineDesc')?.value || '');
+    setTimeout(() => qs('#submitReportBtn')?.click(), 80);
   }
   function sendDefect(){
-    if (!selectedAssetId()) return toast && toast("Prvo izaberi sredstvo iz Direkcije.", true);
-    fillDefect();
-    setTimeout(() => (qs("#sendDefectNowBtn") || qs("#submitReportBtn"))?.click(), 100);
+    if(!requireAsset(currentKind()==='machine' ? 'mašinu' : 'vozilo')) return;
+    ensureModule('defect_report');
+    setVal(qs('#wrDefectAssetName'), selectedAssetSearchValue());
+    try { if (typeof updateDefectAssetSmartResult === 'function') updateDefectAssetSmartResult(); } catch(e){}
+    setVal(qs('#wrDefect'), qs('#cleanDefectText')?.value || '');
+    setTimeout(() => (qs('#sendDefectNowBtn') || qs('#submitReportBtn'))?.click(), 80);
   }
-  function optionsSites(selected=""){
-    if (typeof buildTruckTourSiteOptionsHtml === "function") return buildTruckTourSiteOptionsHtml(selected);
-    return optionHtmlFrom(qs("#wrSiteName"));
-  }
-  function optionsDepots(selected=""){
-    if (typeof buildWorkerDepotOptionsHtml === "function") return buildWorkerDepotOptionsHtml(selected);
-    return `<option value="">Odaberi deponiju</option>`;
-  }
-  function optionsMaterials(selected=""){
-    if (typeof buildWorkerMaterialOptionsHtml === "function") return buildWorkerMaterialOptionsHtml(selected);
-    return `<option value="">Odaberi materijal</option>`;
-  }
-  function refreshStableOptions(){
-    const assetSel = qs("#stableAssetSelect");
-    const realAsset = qs("#wrAssetSelect");
-    if (assetSel && realAsset) {
-      const old = assetSel.value || realAsset.value || "";
-      const html = optionHtmlFrom(realAsset);
-      if (assetSel.innerHTML !== html) assetSel.innerHTML = html;
-      assetSel.value = realAsset.value || old || "";
-    }
-    [["#stableSite", optionsSites], ["#stableToSite", optionsSites], ["#stableDepot", optionsDepots], ["#stableMaterial", optionsMaterials], ["#stableMachineSite", optionsSites]].forEach(([id, builder])=>{
-      const el = qs(id);
-      if (!el) return;
-      const old = el.value || "";
-      const html = builder(old);
-      if (el.innerHTML !== html) el.innerHTML = html;
-      if (old) el.value = old;
-    });
-    refreshStableState();
-  }
-  function refreshStableState(){
-    const kind = realKind();
-    qsa(".stable-kind-btn").forEach(b => b.classList.toggle("active", b.dataset.kind === kind));
-    qs("#stableAssetLabel") && (qs("#stableAssetLabel").textContent = kind === "machine" ? "Mašina iz Direkcije" : "Vozilo iz Direkcije");
-    qs("#stableFuelTitle") && (qs("#stableFuelTitle").textContent = kind === "machine" ? "Gorivo mašine" : "Gorivo vozila");
-    qs("#stableFuelReadingLabel") && (qs("#stableFuelReadingLabel").textContent = kind === "machine" ? "MTČ" : "KM");
-    qs("#stableVehicleBlock")?.classList.toggle("stable-hidden", kind !== "vehicle");
-    qs("#stableMachineBlock")?.classList.toggle("stable-hidden", kind !== "machine");
-    const dest = qs("#stableDestKind")?.value || "current";
-    qsa(".stable-dest-btn").forEach(b => b.classList.toggle("active", b.dataset.dest === dest));
-    qs("#stableToSiteWrap")?.classList.toggle("stable-hidden", dest !== "site");
-    qs("#stableDepotWrap")?.classList.toggle("stable-hidden", dest !== "landfill");
-  }
-  function buildStableScreen(){
-    const form = qs("#viewWorkerForm");
-    const card = qs("#normalWorkerFormCard");
-    if (!form || !card) return;
-    let box = qs("#workerStableScreen");
-    if (!box) {
-      box = document.createElement("div");
-      box.id = "workerStableScreen";
-      box.className = "worker-stable-screen";
-      box.innerHTML = `
-        <div class="stable-kind">
-          <button type="button" class="stable-kind-btn active" data-kind="vehicle"><small>Kamion</small><b>Vozilo</b></button>
-          <button type="button" class="stable-kind-btn" data-kind="machine"><small>Bager</small><b>Mašina</b></button>
-        </div>
-
-        <label class="stable-label" id="stableAssetLabel">Vozilo iz Direkcije</label>
-        <select id="stableAssetSelect" class="stable-select"><option value="">Prvo izaberi vozilo ili mašinu</option></select>
-
-        <div class="stable-row-card fuel">
-          <div class="stable-row-title">1. <span id="stableFuelTitle">Gorivo vozila</span></div>
-          <input id="stableFuelType" type="hidden" value="diesel">
-          <div class="stable-fuel-type">
-            <button type="button" class="stable-fuel-btn active" data-fuel="diesel">Dizel</button>
-            <button type="button" class="stable-fuel-btn" data-fuel="petrol">Benzin</button>
-          </div>
-          <label id="stableFuelReadingLabel">KM</label>
-          <input id="stableFuelReading" inputmode="decimal" placeholder="150200">
-          <label>L</label>
-          <input id="stableFuelLiters" inputmode="decimal" placeholder="120">
-          <button type="button" class="stable-send" id="stableSendFuel">Pošalji</button>
-        </div>
-
-        <div id="stableVehicleBlock" class="stable-row-card tours">
-          <div class="stable-row-title">2. Ture / materijal</div>
-          <label>Poč. KM</label><input id="stableKmStart" inputmode="decimal" placeholder="početna">
-          <label>Zav. KM</label><input id="stableKmEnd" inputmode="decimal" placeholder="završna">
-          <label>Gradilište</label><select id="stableSite"></select>
-          <label>Odredište</label>
-          <input id="stableDestKind" type="hidden" value="current">
-          <div class="stable-dest">
-            <button type="button" class="stable-dest-btn" data-dest="site">Drugo</button>
-            <button type="button" class="stable-dest-btn" data-dest="landfill">Deponija</button>
-            <button type="button" class="stable-dest-btn active" data-dest="current">U krugu</button>
-          </div>
-          <div id="stableToSiteWrap" class="stable-extra stable-hidden"><label>Drugo grad.</label><select id="stableToSite"></select></div>
-          <div id="stableDepotWrap" class="stable-extra stable-hidden"><label>Deponija</label><select id="stableDepot"></select></div>
-          <label>Materijal</label><select id="stableMaterial"></select>
-          <label>Ture</label><input id="stableTours" inputmode="decimal" placeholder="5">
-          <button type="button" class="stable-send" id="stableSendTours">Pošalji</button>
-        </div>
-
-        <div id="stableMachineBlock" class="stable-row-card machine stable-hidden">
-          <div class="stable-row-title">2. Rad mašine</div>
-          <label>Gradilište</label><select id="stableMachineSite"></select>
-          <label>Poč. MTČ</label><input id="stableMtcStart" inputmode="decimal" placeholder="1500">
-          <label>Zav. MTČ</label><input id="stableMtcEnd" inputmode="decimal" placeholder="1508">
-          <label>Opis</label><input id="stableMachineDesc" placeholder="npr. iskop">
-          <button type="button" class="stable-send" id="stableSendMachine">Pošalji</button>
-        </div>
-
-        <div class="stable-row-card defect">
-          <div class="stable-row-title">3. Kvar</div>
-          <input id="stableDefectText" placeholder="kratak opis kvara">
-          <input id="stableDefectImages" class="stable-file-input" type="file" accept="image/*" multiple>
-          <label for="stableDefectImages" class="stable-secondary stable-file-label">Slike <span id="stableImageCount">0/5</span></label>
-          <button type="button" class="stable-send" id="stableSendDefect">Prijavi</button>
-        </div>
-
-        <div class="stable-note">Sve ostalo bira se iz liste Direkcije</div>
-      `;
-      card.insertBefore(box, card.firstChild);
-    }
-    form.classList.add("worker-stable-mode");
-    card.classList.add("stable-screen-active");
-    qsa(":scope > *", card).forEach(el => {
-      if (el.id !== "workerStableScreen") el.classList.add("stable-force-hide");
-    });
-
-
-    qsa(".stable-kind-btn", box).forEach(btn => btn.onclick = () => setKind(btn.dataset.kind || "vehicle"));
-    qs("#stableAssetSelect").onchange = e => { setVal(qs("#wrAssetSelect"), e.target.value || ""); setTimeout(refreshStableOptions, 80); };
-    qsa(".stable-fuel-btn", box).forEach(btn => btn.onclick = () => {
-      setVal(qs("#stableFuelType"), btn.dataset.fuel || "diesel");
-      qsa(".stable-fuel-btn").forEach(b => b.classList.toggle("active", b === btn));
-    });
-    qsa(".stable-dest-btn", box).forEach(btn => btn.onclick = () => { setVal(qs("#stableDestKind"), btn.dataset.dest || "current"); refreshStableState(); });
-    qs("#stableSendFuel").onclick = sendFuel;
-    qs("#stableSendTours").onclick = sendTours;
-    qs("#stableSendMachine").onclick = sendMachineWork;
-    qs("#stableSendDefect").onclick = sendDefect;
-    const stableImages = qs("#stableDefectImages");
-    if (stableImages) stableImages.onchange = async (e) => {
-      fillDefect();
-      if (typeof handleDefectImagesInput === "function") await handleDefectImagesInput(e);
-      const cnt = qs("#wrDefectImagesCount")?.textContent || (Array.isArray(window.defectImagesDraft) ? `${window.defectImagesDraft.length}/5 slika` : "");
-      const label = qs("#stableImageCount");
-      if (label) label.textContent = (cnt || "0/5").replace(" slika", "");
-      stableImages.value = "";
-    };
-
-    refreshStableOptions();
-  }
-  function boot(){
-    buildStableScreen();
-    const view = qs("#viewWorkerForm");
-    if (view && window.MutationObserver && !view.__stableOneScreenObserver) {
-      view.__stableOneScreenObserver = new MutationObserver(() => setTimeout(buildStableScreen, 20));
-      view.__stableOneScreenObserver.observe(view, {childList:true, subtree:true});
-    }
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
-  window.initWorkerStableOneScreenV1755 = boot;
-})();
-
-
-// === AskCreate v1756: stabilizacija radničkog jednog mobilnog prikaza ===
-(function(){
-  function qs(s,r=document){return r.querySelector(s);}
-  function setBodyMarker(){
-    try{ document.body && document.body.setAttribute("data-worker-mobile-version", "1756-stabilan-jedan-prikaz"); }catch(e){}
-  }
-  function keepStableAboveOldScreens(){
-    const stable = qs("#workerStableScreen");
-    const card = qs("#normalWorkerFormCard");
-    const view = qs("#viewWorkerForm");
-    if (!stable || !card || !view) return;
-    view.classList.add("worker-stable-mode");
-    card.classList.add("stable-screen-active");
-    Array.from(card.children || []).forEach(el => {
-      if (el.id !== "workerStableScreen") el.classList.add("stable-force-hide");
-    });
-    stable.style.display = "grid";
-  }
-  function boot(){
-    setBodyMarker();
-    keepStableAboveOldScreens();
-    setTimeout(keepStableAboveOldScreens, 250);
-    setTimeout(keepStableAboveOldScreens, 900);
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
-  setInterval(keepStableAboveOldScreens, 1200);
-})();
-
-
-// === AskCreate v1757: Radnik - samo Kamion/Vozilo i Bager/Mašina, klik odmah otvara listu ===
-(function(){
-  function qs(s,r=document){return r.querySelector(s);}
-  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
-  function removeOldQuick(){
-    qsa("#workerQuickScreen").forEach(el => { try { el.remove(); } catch(e){ el.style.display="none"; } });
-    const view = qs("#viewWorkerForm");
-    const card = qs("#normalWorkerFormCard");
-    const stable = qs("#workerStableScreen");
-    if (view && stable) {
-      view.classList.remove("worker-quick-mode");
-      view.classList.add("worker-stable-mode");
-    }
-    if (card && stable) {
-      card.classList.remove("quick-screen-active");
-      card.classList.add("stable-screen-active");
-      Array.from(card.children || []).forEach(el => {
-        if (el.id !== "workerStableScreen") el.classList.add("stable-force-hide");
-      });
-      stable.style.display = "grid";
-      stable.style.visibility = "visible";
-    }
-    const machineBtn = qs('#workerStableScreen .stable-kind-btn[data-kind="machine"] small');
-    if (machineBtn) machineBtn.textContent = "Bager";
-    const vehicleBtn = qs('#workerStableScreen .stable-kind-btn[data-kind="vehicle"] small');
-    if (vehicleBtn) vehicleBtn.textContent = "Kamion";
-  }
-  function openAssetSelect(){
-    const sel = qs("#stableAssetSelect");
-    if (!sel) return;
-    try { sel.scrollIntoView({block:"center", behavior:"smooth"}); } catch(e){}
-    try { sel.focus({preventScroll:true}); } catch(e){ try { sel.focus(); } catch(_){} }
-    try { if (typeof sel.showPicker === "function") sel.showPicker(); } catch(e){}
-    try { sel.click(); } catch(e){}
-  }
-  function rewireButtons(){
-    qsa('#workerStableScreen .stable-kind-btn').forEach(btn => {
-      btn.addEventListener('click', () => setTimeout(openAssetSelect, 120), false);
-    });
-  }
-  function boot(){
-    try { window.initWorkerQuickScreenV1751 = function(){ removeOldQuick(); if (typeof window.initWorkerStableOneScreenV1755 === "function") window.initWorkerStableOneScreenV1755(); }; } catch(e){}
-    removeOldQuick();
-    rewireButtons();
-    setTimeout(removeOldQuick, 250);
-    setTimeout(rewireButtons, 300);
-    setTimeout(removeOldQuick, 900);
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
-  setInterval(removeOldQuick, 1000);
-})();
-
-
-// === AskCreate v1758: radnik mobilni prikaz - cleanup i normalizacija layouta ===
-(function(){
-  function qs(s,r=document){return r.querySelector(s);}
-  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
-  function wrapField(labelNode, controlNode, cls){
-    const box = document.createElement('div');
-    box.className = 'stable-field' + (cls ? ' ' + cls : '');
-    if (labelNode) box.appendChild(labelNode);
-    if (controlNode) box.appendChild(controlNode);
-    return box;
-  }
-  function movePreserve(card, nodes){
-    card.innerHTML = '';
-    nodes.forEach(function(n){ if (n) card.appendChild(n); });
-  }
-  function normalize(){
-    const view = qs('#viewWorkerForm');
+  function build(){
+    const form = qs('#viewWorkerForm');
     const card = qs('#normalWorkerFormCard');
-    const stable = qs('#workerStableScreen');
-    if (!view || !card || !stable) return;
+    if(!form || !card) return;
+    qsa('#workerQuickScreen,#workerStableScreen,#workerCleanScreen').forEach(el => el.remove());
+    const box = document.createElement('div');
+    box.id = 'workerCleanScreen';
+    box.innerHTML = `
+      <h2 class="clean-title">Izaberi vozilo ili mašinu</h2>
+      <div class="clean-kind-grid">
+        <button type="button" class="clean-kind-btn" data-kind="vehicle" aria-label="Vozilo">
+          <svg viewBox="0 0 96 56" aria-hidden="true"><rect x="8" y="20" width="46" height="18" rx="3"></rect><path d="M54 25h17l12 13v8H54z"></path><circle cx="27" cy="46" r="7"></circle><circle cx="70" cy="46" r="7"></circle></svg>
+          <b>Vozilo</b>
+        </button>
+        <button type="button" class="clean-kind-btn" data-kind="machine" aria-label="Mašina">
+          <svg viewBox="0 0 96 56" aria-hidden="true"><rect x="24" y="30" width="34" height="12" rx="3"></rect><circle cx="33" cy="45" r="6"></circle><circle cx="51" cy="45" r="6"></circle><path d="M45 30l12-14h14"></path><path d="M70 16l12 9-9 7"></path><path d="M58 30l18 5"></path><rect x="18" y="24" width="12" height="8" rx="2"></rect></svg>
+          <b>Mašina</b>
+        </button>
+      </div>
+      <select id="cleanWorkerAssetSelect" class="clean-asset-select"><option value="">Prvo izaberi Vozilo ili Mašina</option></select>
+      <div id="cleanPickedAsset" class="clean-picked hidden"></div>
 
-    view.classList.add('worker-stable-mode','worker-stable-mode-v1758');
-    qsa('#workerQuickScreen').forEach(el => { try { el.remove(); } catch(e){ el.style.display='none'; } });
-    qsa('#viewWorkerForm > .dashboard-head, #viewWorkerForm > .worker-simple-top, #viewWorkerForm > #workerReturnedReports').forEach(el => {
-      el.classList.add('stable-force-hide-outside');
-    });
-    qsa(':scope > *', card).forEach(el => { if (el.id !== 'workerStableScreen') el.classList.add('stable-force-hide'); });
+      <div id="cleanForms" class="hidden">
+        <section class="clean-card" id="cleanFuelCard">
+          <h3>1. <span id="cleanFuelTitle">Gorivo vozila</span></h3>
+          <p class="clean-mini-note">Gorivo: Dizel</p>
+          <div class="clean-two">
+            <label><span id="cleanFuelReadingLabel">KM</span><input id="cleanFuelReading" inputmode="decimal" placeholder="150200"></label>
+            <label>Litara<input id="cleanFuelLiters" inputmode="decimal" placeholder="120"></label>
+          </div>
+          <button type="button" class="clean-send" id="cleanSendFuel">Pošalji</button>
+        </section>
 
-    const fuel = stable.querySelector('.stable-row-card.fuel');
-    const tours = stable.querySelector('.stable-row-card.tours');
-    const machine = stable.querySelector('.stable-row-card.machine');
-    const defect = stable.querySelector('.stable-row-card.defect');
+        <section class="clean-card" id="cleanVehicleFlow">
+          <h3>2. Ture / materijal</h3>
+          <div class="clean-two">
+            <label>Početna KM<input id="cleanKmStart" inputmode="decimal" placeholder="početna"></label>
+            <label>Završna KM<input id="cleanKmEnd" inputmode="decimal" placeholder="završna"></label>
+          </div>
+          <label>Gradilište<select id="cleanTourSite"></select></label>
+          <label>Odredište</label>
+          <input id="cleanDestKind" type="hidden" value="current">
+          <div class="clean-dest-grid">
+            <button type="button" data-dest="site">Drugo gradilište</button>
+            <button type="button" data-dest="landfill">Deponija</button>
+            <button type="button" data-dest="current" class="active">U krugu</button>
+          </div>
+          <label id="cleanToSiteWrap" class="hidden">Drugo gradilište<select id="cleanTourToSite"></select></label>
+          <label id="cleanDepotWrap" class="hidden">Deponija<select id="cleanTourDepot"></select></label>
+          <div class="clean-two">
+            <label>Materijal<select id="cleanTourMaterial"></select></label>
+            <label>Broj tura<input id="cleanTourCount" inputmode="decimal" placeholder="5"></label>
+          </div>
+          <button type="button" class="clean-send" id="cleanSendTours">Pošalji</button>
+        </section>
 
-    if (fuel && !fuel.dataset.v1758Normalized) {
-      fuel.dataset.v1758Normalized = '1';
-      const title = fuel.querySelector('.stable-row-title');
-      const type = fuel.querySelector('.stable-fuel-type');
-      const readingLabel = qs('#stableFuelReadingLabel', fuel);
-      const reading = qs('#stableFuelReading', fuel);
-      const litersLabel = Array.from(fuel.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'L');
-      const liters = qs('#stableFuelLiters', fuel);
-      const send = qs('#stableSendFuel', fuel);
-      movePreserve(fuel, [
-        title,
-        wrapField(null, type, 'stable-field-span-2'),
-        wrapField(readingLabel, reading),
-        wrapField(litersLabel, liters),
-        send
-      ]);
-      send.classList.add('stable-send-fuel');
+        <section class="clean-card hidden" id="cleanMachineFlow">
+          <h3>2. Rad mašine</h3>
+          <label>Gradilište<select id="cleanMachineSite"></select></label>
+          <div class="clean-two">
+            <label>Početni MTČ<input id="cleanMtcStart" inputmode="decimal" placeholder="1500"></label>
+            <label>Završni MTČ<input id="cleanMtcEnd" inputmode="decimal" placeholder="1508"></label>
+          </div>
+          <label>Opis rada<input id="cleanMachineDesc" placeholder="npr. iskop, utovar..."></label>
+          <button type="button" class="clean-send" id="cleanSendMachine">Pošalji</button>
+        </section>
+
+        <section class="clean-card" id="cleanDefectCard">
+          <h3>3. <span id="cleanDefectTitle">Kvar vozila</span></h3>
+          <label>Kratak opis<input id="cleanDefectText" placeholder="kratak opis kvara"></label>
+          <div class="clean-two clean-actions">
+            <input id="cleanDefectImages" type="file" accept="image/*" multiple class="clean-file">
+            <label for="cleanDefectImages" class="clean-secondary">Slike <span id="cleanImageCount">0/5</span></label>
+            <button type="button" class="clean-send" id="cleanSendDefect">Prijavi</button>
+          </div>
+        </section>
+      </div>`;
+    card.insertBefore(box, card.firstChild);
+    form.classList.add('worker-clean-mode');
+    card.classList.add('worker-clean-card');
+    qsa(':scope > *', card).forEach(el => { if(el.id !== 'workerCleanScreen') el.classList.add('clean-hide-old'); });
+    qsa('#viewWorkerForm > .dashboard-head, #viewWorkerForm > #workerReturnedReports').forEach(el => el.classList.add('clean-hide-old'));
+    wire();
+    syncAssetOptions(); syncSiteMaterialOptions(); renderState();
+  }
+  function renderState(){
+    const kind = currentKind();
+    const hasAsset = !!currentAssetId();
+    qsa('.clean-kind-btn').forEach(b => b.classList.toggle('active', b.dataset.kind === kind));
+    const sel = qs('#cleanWorkerAssetSelect');
+    if(sel){
+      sel.classList.toggle('ready', !!kind);
+      if(!kind) sel.innerHTML = '<option value="">Prvo izaberi Vozilo ili Mašina</option>';
     }
-
-    if (tours && !tours.dataset.v1758Normalized) {
-      tours.dataset.v1758Normalized = '1';
-      const title = tours.querySelector('.stable-row-title');
-      const kmStartL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').includes('Poč. KM'));
-      const kmStart = qs('#stableKmStart', tours);
-      const kmEndL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').includes('Zav. KM'));
-      const kmEnd = qs('#stableKmEnd', tours);
-      const siteL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Gradilište');
-      const site = qs('#stableSite', tours);
-      const destL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Odredište');
-      const destHidden = qs('#stableDestKind', tours);
-      const dest = tours.querySelector('.stable-dest');
-      const toSiteWrap = qs('#stableToSiteWrap', tours);
-      const depotWrap = qs('#stableDepotWrap', tours);
-      const matL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Materijal');
-      const mat = qs('#stableMaterial', tours);
-      const toursL = Array.from(tours.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Ture');
-      const toursInput = qs('#stableTours', tours);
-      const send = qs('#stableSendTours', tours);
-      movePreserve(tours, [
-        title,
-        wrapField(kmStartL, kmStart),
-        wrapField(kmEndL, kmEnd),
-        wrapField(siteL, site),
-        wrapField(destL, dest, 'stable-field-full'),
-        destHidden,
-        toSiteWrap,
-        depotWrap,
-        wrapField(matL, mat),
-        wrapField(toursL, toursInput),
-        send
-      ]);
-      send.classList.add('stable-send-tours');
-      toSiteWrap.classList.add('stable-field-full','stable-extra-wrap');
-      depotWrap.classList.add('stable-field-full','stable-extra-wrap');
+    const picked = qs('#cleanPickedAsset');
+    if(picked){
+      picked.classList.toggle('hidden', !hasAsset);
+      picked.textContent = hasAsset ? ('Izabrano: ' + currentAssetLabel()) : '';
     }
-
-    if (machine && !machine.dataset.v1758Normalized) {
-      machine.dataset.v1758Normalized = '1';
-      const title = machine.querySelector('.stable-row-title');
-      const siteL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Gradilište');
-      const site = qs('#stableMachineSite', machine);
-      const startL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').includes('Poč. MTČ'));
-      const start = qs('#stableMtcStart', machine);
-      const endL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').includes('Zav. MTČ'));
-      const end = qs('#stableMtcEnd', machine);
-      const descL = Array.from(machine.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'Opis');
-      const desc = qs('#stableMachineDesc', machine);
-      const send = qs('#stableSendMachine', machine);
-      movePreserve(machine, [
-        title,
-        wrapField(siteL, site),
-        wrapField(startL, start),
-        wrapField(endL, end),
-        wrapField(descL, desc, 'stable-field-full'),
-        send
-      ]);
-      send.classList.add('stable-send-machine');
-    }
-
-    if (defect && !defect.dataset.v1758Normalized) {
-      defect.dataset.v1758Normalized = '1';
-      const title = defect.querySelector('.stable-row-title');
-      const text = qs('#stableDefectText', defect);
-      const file = qs('#stableDefectImages', defect);
-      const label = defect.querySelector('.stable-file-label');
-      const send = qs('#stableSendDefect', defect);
-      movePreserve(defect, [title, wrapField(null, text, 'stable-field-full'), file, label, send]);
-      label.classList.add('stable-defect-add');
-      send.classList.add('stable-defect-send');
-    }
+    qs('#cleanForms')?.classList.toggle('hidden', !hasAsset);
+    const isMachine = kind === 'machine';
+    qs('#cleanFuelTitle') && (qs('#cleanFuelTitle').textContent = isMachine ? 'Gorivo mašine' : 'Gorivo vozila');
+    qs('#cleanFuelReadingLabel') && (qs('#cleanFuelReadingLabel').textContent = isMachine ? 'MTČ' : 'KM');
+    qs('#cleanDefectTitle') && (qs('#cleanDefectTitle').textContent = isMachine ? 'Kvar mašine' : 'Kvar vozila');
+    qs('#cleanVehicleFlow')?.classList.toggle('hidden', isMachine);
+    qs('#cleanMachineFlow')?.classList.toggle('hidden', !isMachine);
+    const dest = qs('#cleanDestKind')?.value || 'current';
+    qsa('.clean-dest-grid button').forEach(b => b.classList.toggle('active', b.dataset.dest === dest));
+    qs('#cleanToSiteWrap')?.classList.toggle('hidden', dest !== 'site');
+    qs('#cleanDepotWrap')?.classList.toggle('hidden', dest !== 'landfill');
+  }
+  function wire(){
+    qsa('.clean-kind-btn').forEach(btn => btn.onclick = () => selectKind(btn.dataset.kind, true));
+    const asset = qs('#cleanWorkerAssetSelect');
+    if(asset) asset.onchange = () => {
+      setVal(qs('#wrAssetSelect'), asset.value || '');
+      try { if (typeof renderSelectedAssetRubricsPreview === 'function') renderSelectedAssetRubricsPreview(typeof getSelectedWorkerContextAsset === 'function' ? getSelectedWorkerContextAsset() : null); } catch(e){}
+      try { if (typeof refreshWorkerModuleSelector === 'function') refreshWorkerModuleSelector(window.currentWorker?.permissions || currentWorker?.permissions || {}); } catch(e){}
+      syncAssetOptions(); syncSiteMaterialOptions(); renderState();
+    };
+    qsa('.clean-dest-grid button').forEach(btn => btn.onclick = () => { setVal(qs('#cleanDestKind'), btn.dataset.dest || 'current'); renderState(); });
+    qs('#cleanSendFuel') && (qs('#cleanSendFuel').onclick = sendFuel);
+    qs('#cleanSendTours') && (qs('#cleanSendTours').onclick = sendTours);
+    qs('#cleanSendMachine') && (qs('#cleanSendMachine').onclick = sendMachineWork);
+    qs('#cleanSendDefect') && (qs('#cleanSendDefect').onclick = sendDefect);
+    const imgs = qs('#cleanDefectImages');
+    if(imgs) imgs.onchange = async (e) => {
+      ensureModule('defect_report');
+      if (typeof handleDefectImagesInput === 'function') await handleDefectImagesInput(e);
+      const cnt = qs('#wrDefectImagesCount')?.textContent || (Array.isArray(window.defectImagesDraft) ? `${window.defectImagesDraft.length}/5` : '0/5');
+      qs('#cleanImageCount') && (qs('#cleanImageCount').textContent = String(cnt).replace(' slika',''));
+      imgs.value = '';
+    };
   }
   function boot(){
-    normalize();
-    setTimeout(normalize, 50);
-    setTimeout(normalize, 300);
-    setTimeout(normalize, 1200);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
-  setInterval(normalize, 1500);
-})();
-
-
-// === AskCreate v1759: izbor sredstva zaključan - kamion/vozilo, bager/mašina ===
-(function(){
-  function qs(s,r=document){return r.querySelector(s);}
-  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
-  function fire(el){ if(!el) return; ['input','change'].forEach(t=>el.dispatchEvent(new Event(t,{bubbles:true}))); }
-  function setVal(el,val){ if(!el) return; el.value = val == null ? '' : String(val); fire(el); }
-  const truckSvg = '<svg class="stable-choice-svg" viewBox="0 0 64 40" aria-hidden="true"><path d="M4 11h34v18H4zM38 17h10l8 8v4H38z" fill="currentColor" opacity=".95"/><circle cx="17" cy="31" r="5" fill="#fff"/><circle cx="48" cy="31" r="5" fill="#fff"/><circle cx="17" cy="31" r="2.7" fill="currentColor"/><circle cx="48" cy="31" r="2.7" fill="currentColor"/></svg>';
-  const excavatorSvg = '<svg class="stable-choice-svg" viewBox="0 0 64 40" aria-hidden="true"><path d="M8 28h30v6H8zM15 20h16l6 8H12zM37 18l9-8 4 4-9 8zM49 12l9 4-2 5-10-3z" fill="currentColor"/><circle cx="17" cy="34" r="3" fill="#fff"/><circle cx="31" cy="34" r="3" fill="#fff"/></svg>';
-  function openSelectNow(){
-    const sel = qs('#stableAssetSelect');
-    if(!sel) return;
-    try{ sel.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
-    try{ sel.focus({preventScroll:true}); }catch(e){ try{ sel.focus(); }catch(_){} }
-    try{ if(typeof sel.showPicker === 'function') sel.showPicker(); }catch(e){}
-    try{ sel.click(); }catch(e){}
-  }
-  function syncAssetSelection(){
-    const stable = qs('#stableAssetSelect');
-    const real = qs('#wrAssetSelect');
-    if(!stable || !real) return;
-    if(stable.value && real.value !== stable.value){ setVal(real, stable.value); }
-    if(real.value && stable.value !== real.value){ stable.value = real.value; }
-    window.__askcreateStableWorkerAssetId = real.value || stable.value || '';
-  }
-  function renderChoiceHeader(){
-    const stable = qs('#workerStableScreen');
-    if(!stable) return;
-    let title = qs('#stableChoiceTitle', stable);
-    if(!title){
-      title = document.createElement('div');
-      title.id = 'stableChoiceTitle';
-      title.className = 'stable-choice-title';
-      title.textContent = 'Izaberi vozilo ili mašinu';
-      stable.insertBefore(title, stable.firstChild);
-    }
-    const vehicle = qs('.stable-kind-btn[data-kind="vehicle"]', stable);
-    const machine = qs('.stable-kind-btn[data-kind="machine"]', stable);
-    if(vehicle && !vehicle.dataset.v1759Icon){
-      vehicle.dataset.v1759Icon='1';
-      vehicle.innerHTML = truckSvg + '<b>Vozilo</b>';
-    }
-    if(machine && !machine.dataset.v1759Icon){
-      machine.dataset.v1759Icon='1';
-      machine.innerHTML = excavatorSvg + '<b>Mašina</b>';
-    }
-  }
-  function setKindAndOpen(kind){
-    const realKind = qs('#wrAssetKind');
-    setVal(realKind, kind);
-    qsa('#workerStableScreen .stable-kind-btn').forEach(b=>b.classList.toggle('active', b.dataset.kind===kind));
-    const label = qs('#stableAssetLabel');
-    if(label) label.textContent = 'Izaberi vozilo ili mašinu';
-    const stableSel = qs('#stableAssetSelect');
-    if(stableSel){
-      stableSel.value='';
-      stableSel.setAttribute('aria-label', kind === 'machine' ? 'Izaberi mašinu iz Direkcije' : 'Izaberi vozilo iz Direkcije');
-    }
-    setTimeout(function(){
-      try{ if(typeof window.initWorkerStableOneScreenV1755 === 'function') window.initWorkerStableOneScreenV1755(); }catch(e){}
-      const sel = qs('#stableAssetSelect');
-      if(sel){
-        const first = sel.querySelector('option');
-        if(first) first.textContent = kind === 'machine' ? 'Izaberi mašinu...' : 'Izaberi vozilo...';
-      }
-    }, 0);
-    // showPicker mora odmah iz klika; Chrome mobile inače često blokira automatsko otvaranje.
-    openSelectNow();
-  }
-  function lockButtons(){
-    renderChoiceHeader();
-    qsa('#workerStableScreen .stable-kind-btn').forEach(btn=>{
-      if(btn.dataset.v1759Locked) return;
-      btn.dataset.v1759Locked='1';
-      btn.onclick = function(ev){ ev.preventDefault(); ev.stopPropagation(); setKindAndOpen(btn.dataset.kind || 'vehicle'); return false; };
-    });
-    const sel = qs('#stableAssetSelect');
-    if(sel && !sel.dataset.v1759Locked){
-      sel.dataset.v1759Locked='1';
-      sel.addEventListener('change', syncAssetSelection, true);
-      sel.addEventListener('input', syncAssetSelection, true);
-    }
-    syncAssetSelection();
-  }
-  function boot(){
-    document.body && document.body.setAttribute('data-worker-mobile-version','1759-izbor-sredstva');
-    lockButtons();
-    setTimeout(lockButtons,80);
-    setTimeout(lockButtons,350);
-    setTimeout(lockButtons,1000);
+    build();
+    setTimeout(() => { syncAssetOptions(); syncSiteMaterialOptions(); renderState(); }, 250);
+    setTimeout(() => { syncAssetOptions(); syncSiteMaterialOptions(); renderState(); }, 1000);
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  setInterval(lockButtons,1500);
+  window.initWorkerCleanFlowV1763 = boot;
 })();
-
-// === AskCreate v1760: radnik - gorivo samo KM/MTČ + litara, dizel podrazumevano, bager ikona ===
-(function(){
-  function qs(s,r=document){return r.querySelector(s);}
-  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
-  function fire(el){ if(!el) return; ['input','change'].forEach(t=>el.dispatchEvent(new Event(t,{bubbles:true}))); }
-  function setVal(el,val){ if(!el) return; el.value = val == null ? '' : String(val); fire(el); }
-  const truckSvg = '<svg class="stable-choice-svg" viewBox="0 0 96 60" aria-hidden="true"><path d="M8 18h50v24H8zM58 27h15l12 13v2H58z" fill="currentColor"/><circle cx="24" cy="45" r="7" fill="#fff"/><circle cx="70" cy="45" r="7" fill="#fff"/><circle cx="24" cy="45" r="3.5" fill="currentColor"/><circle cx="70" cy="45" r="3.5" fill="currentColor"/></svg>';
-  const excavatorSvg = '<svg class="stable-choice-svg stable-excavator-svg" viewBox="0 0 96 60" aria-hidden="true"><path d="M18 39h44c7 0 12 4 12 9H11c0-5 3-9 7-9z" fill="currentColor"/><path d="M23 26h22c8 0 14 6 15 13H17c1-7 3-13 6-13z" fill="currentColor"/><path d="M46 26l18-15 5 6-18 16z" fill="currentColor"/><path d="M66 12l9-6 10 17-8 5z" fill="currentColor"/><path d="M76 28l13-3-3 10-12 2z" fill="currentColor"/><rect x="18" y="44" width="50" height="5" rx="2.5" fill="#fff" opacity=".95"/><circle cx="26" cy="46.5" r="2.7" fill="currentColor"/><circle cx="40" cy="46.5" r="2.7" fill="currentColor"/><circle cx="54" cy="46.5" r="2.7" fill="currentColor"/></svg>';
-
-  function ensureChoiceHeader(){
-    const stable = qs('#workerStableScreen');
-    if(!stable) return;
-    let title = qs('#stableChoiceTitle', stable);
-    if(!title){
-      title = document.createElement('div');
-      title.id = 'stableChoiceTitle';
-      title.className = 'stable-choice-title';
-      stable.insertBefore(title, stable.firstChild);
-    }
-    title.textContent = 'Izaberi vozilo ili mašinu';
-    const v = qs('.stable-kind-btn[data-kind="vehicle"]', stable);
-    const m = qs('.stable-kind-btn[data-kind="machine"]', stable);
-    if(v) v.innerHTML = truckSvg + '<b>Vozilo</b>';
-    if(m) m.innerHTML = excavatorSvg + '<b>Mašina</b>';
-  }
-
-  function syncAsset(){
-    const stableSel = qs('#stableAssetSelect');
-    const realSel = qs('#wrAssetSelect');
-    if(!stableSel || !realSel) return;
-    if(stableSel.value && realSel.value !== stableSel.value) setVal(realSel, stableSel.value);
-    if(realSel.value && stableSel.value !== realSel.value) stableSel.value = realSel.value;
-    window.__askcreateStableWorkerAssetId = realSel.value || stableSel.value || '';
-  }
-
-  function refreshRealLists(kind){
-    const kindEl = qs('#wrAssetKind');
-    setVal(kindEl, kind);
-    try{ if(typeof refreshWorkerAssetContextControls === 'function') refreshWorkerAssetContextControls({ keepSelected:false }); }catch(e){}
-    try{ if(typeof refreshWorkerModuleSelector === 'function') refreshWorkerModuleSelector(window.currentWorker?.permissions || {}); }catch(e){}
-    try{ if(typeof window.initWorkerStableOneScreenV1755 === 'function') window.initWorkerStableOneScreenV1755(); }catch(e){}
-    const stableSel = qs('#stableAssetSelect');
-    if(stableSel){
-      const first = stableSel.querySelector('option');
-      if(first) first.textContent = kind === 'machine' ? 'Izaberi mašinu...' : 'Izaberi vozilo...';
-      stableSel.setAttribute('aria-label', kind === 'machine' ? 'Izaberi mašinu iz Direkcije' : 'Izaberi vozilo iz Direkcije');
-    }
-  }
-
-  function openAssetPicker(){
-    const sel = qs('#stableAssetSelect');
-    if(!sel) return;
-    try{ sel.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
-    try{ sel.focus({preventScroll:true}); }catch(e){ try{ sel.focus(); }catch(_){} }
-    try{ if(typeof sel.showPicker === 'function') sel.showPicker(); }catch(e){}
-    try{ sel.click(); }catch(e){}
-  }
-
-  function wireChoiceButtons(){
-    qsa('#workerStableScreen .stable-kind-btn').forEach(btn=>{
-      btn.onclick = function(ev){
-        ev.preventDefault(); ev.stopPropagation();
-        const kind = btn.dataset.kind || 'vehicle';
-        qsa('#workerStableScreen .stable-kind-btn').forEach(b=>b.classList.toggle('active', b===btn));
-        refreshRealLists(kind);
-        const stableSel = qs('#stableAssetSelect');
-        const realSel = qs('#wrAssetSelect');
-        if(stableSel) stableSel.value = '';
-        if(realSel) setVal(realSel, '');
-        openAssetPicker();
-        setTimeout(function(){ refreshRealLists(kind); openAssetPicker(); }, 80);
-        return false;
-      };
-    });
-    const sel = qs('#stableAssetSelect');
-    if(sel && !sel.dataset.v1760Sync){
-      sel.dataset.v1760Sync='1';
-      sel.addEventListener('change', syncAsset, true);
-      sel.addEventListener('input', syncAsset, true);
-    }
-  }
-
-  function simplifyFuel(){
-    const stable = qs('#workerStableScreen');
-    const fuel = qs('.stable-row-card.fuel', stable || document);
-    if(!fuel) return;
-    const hidden = qs('#stableFuelType', fuel) || qs('#stableFuelType');
-    if(hidden) hidden.value = 'diesel';
-    qsa('.stable-fuel-type', fuel).forEach(el=>{ el.style.display='none'; el.setAttribute('aria-hidden','true'); });
-    if(!fuel.dataset.v1760FuelSimple){
-      fuel.dataset.v1760FuelSimple='1';
-      const title = qs('.stable-row-title', fuel);
-      const readingLabel = qs('#stableFuelReadingLabel', fuel);
-      const reading = qs('#stableFuelReading', fuel);
-      const litersLabel = Array.from(fuel.querySelectorAll('label')).find(l => (l.textContent||'').trim() === 'L');
-      const liters = qs('#stableFuelLiters', fuel);
-      const send = qs('#stableSendFuel', fuel);
-      const h = hidden || document.createElement('input');
-      if(!h.id) { h.id = 'stableFuelType'; h.type = 'hidden'; h.value = 'diesel'; }
-      function field(label, control, cls){ const d=document.createElement('div'); d.className='stable-field '+(cls||''); if(label)d.appendChild(label); if(control)d.appendChild(control); return d; }
-      fuel.innerHTML='';
-      if(title) fuel.appendChild(title);
-      fuel.appendChild(h);
-      fuel.appendChild(field(readingLabel, reading, ''));
-      fuel.appendChild(field(litersLabel, liters, ''));
-      if(send){ send.classList.add('stable-send-fuel','stable-field-full'); fuel.appendChild(send); }
-    }
-  }
-
-  function normalize(){
-    document.body && document.body.setAttribute('data-worker-mobile-version','1760-dizel-default-bager');
-    ensureChoiceHeader();
-    simplifyFuel();
-    wireChoiceButtons();
-    const label = qs('#stableAssetLabel');
-    if(label) label.textContent = 'Izaberi vozilo ili mašinu';
-    const sel = qs('#stableAssetSelect');
-    if(sel && !qs('#wrAssetKind')?.value){
-      const first = sel.querySelector('option');
-      if(first) first.textContent = 'Izaberi vozilo ili mašinu';
-    }
-    syncAsset();
-  }
-  function boot(){ normalize(); setTimeout(normalize,80); setTimeout(normalize,350); setTimeout(normalize,1200); }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  setInterval(normalize,1500);
-})();
-
-// === AskCreate v1761: zaključan ceo tok radnika - Vozilo ili Mašina ===
-(function(){
-  function qs(s,r=document){return r.querySelector(s);}
-  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
-  function fire(el){ if(!el) return; ['input','change'].forEach(t=>el.dispatchEvent(new Event(t,{bubbles:true}))); }
-  function setVal(el,val){ if(!el) return; el.value = val == null ? '' : String(val); fire(el); }
-  const truckSvg = '<svg class="stable-choice-svg stable-truck-svg" viewBox="0 0 96 60" aria-hidden="true"><path d="M7 17h50v26H7zM57 27h16l13 14v2H57z" fill="currentColor"/><rect x="13" y="22" width="18" height="8" rx="1" fill="#fff" opacity=".92"/><circle cx="25" cy="47" r="8" fill="#fff"/><circle cx="72" cy="47" r="8" fill="#fff"/><circle cx="25" cy="47" r="4" fill="currentColor"/><circle cx="72" cy="47" r="4" fill="currentColor"/></svg>';
-  const excavatorSvg = '<svg class="stable-choice-svg stable-excavator-svg stable-excavator-icon" viewBox="0 0 120 72" aria-hidden="true" role="img"><title>excavator bager</title><path d="M16 52h63c10 0 18 5 20 12H8c1-7 4-12 8-12z" fill="currentColor"/><path d="M25 34h31c10 0 20 8 23 18H18c1-9 3-15 7-18z" fill="currentColor"/><path d="M57 34L84 10l7 8-29 27z" fill="currentColor"/><path d="M87 11l14-7 12 27-12 6z" fill="currentColor"/><path d="M101 37l16-4-5 15-17 2 4-9z" fill="currentColor"/><path d="M22 58h66" stroke="#fff" stroke-width="7" stroke-linecap="round"/><circle cx="32" cy="58" r="4" fill="currentColor"/><circle cx="52" cy="58" r="4" fill="currentColor"/><circle cx="72" cy="58" r="4" fill="currentColor"/></svg>';
-
-  function kind(){ return (qs('#wrAssetKind')?.value || ''); }
-  function assetSelected(){ return !!(qs('#stableAssetSelect')?.value || qs('#wrAssetSelect')?.value || ''); }
-  function setKind(kindValue, open){
-    const realKind = qs('#wrAssetKind');
-    setVal(realKind, kindValue);
-    const realAsset = qs('#wrAssetSelect');
-    const stableAsset = qs('#stableAssetSelect');
-    if(realAsset) setVal(realAsset, '');
-    if(stableAsset) stableAsset.value = '';
-    try{ if(typeof refreshWorkerAssetContextControls === 'function') refreshWorkerAssetContextControls({ keepSelected:false }); }catch(e){}
-    try{ if(typeof updateWorkerAssetContextInfo === 'function') updateWorkerAssetContextInfo(); }catch(e){}
-    try{ if(typeof window.initWorkerStableOneScreenV1755 === 'function') window.initWorkerStableOneScreenV1755(); }catch(e){}
-    setTimeout(function(){
-      copyRealAssetOptions();
-      applyFlowState();
-      if(open) openAssetPicker();
-    }, 60);
-  }
-  function copyRealAssetOptions(){
-    const stable = qs('#stableAssetSelect');
-    const real = qs('#wrAssetSelect');
-    if(!stable || !real) return;
-    const current = stable.value || real.value || '';
-    if(real.innerHTML && stable.innerHTML !== real.innerHTML) stable.innerHTML = real.innerHTML;
-    if(current) stable.value = current;
-    const first = stable.querySelector('option');
-    if(first){
-      if(kind() === 'vehicle') first.textContent = 'Izaberi vozilo...';
-      else if(kind() === 'machine') first.textContent = 'Izaberi mašinu...';
-      else first.textContent = 'Prvo izaberi Vozilo ili Mašina';
-    }
-    stable.setAttribute('aria-label', kind() === 'machine' ? 'Lista mašina iz Direkcije' : (kind() === 'vehicle' ? 'Lista vozila iz Direkcije' : 'Izbor vozila ili mašine'));
-  }
-  function syncAsset(){
-    const stable = qs('#stableAssetSelect');
-    const real = qs('#wrAssetSelect');
-    if(!stable || !real) return;
-    if(stable.value) setVal(real, stable.value);
-    else if(real.value) stable.value = real.value;
-    window.__askcreateStableWorkerAssetId = stable.value || real.value || '';
-    try{ if(typeof updateWorkerAssetContextInfo === 'function') updateWorkerAssetContextInfo(); }catch(e){}
-    applyFlowState();
-  }
-  function openAssetPicker(){
-    const sel = qs('#stableAssetSelect');
-    if(!sel) return;
-    try{ sel.focus({preventScroll:true}); }catch(e){ try{ sel.focus(); }catch(_){} }
-    try{ if(typeof sel.showPicker === 'function') sel.showPicker(); }catch(e){}
-    try{ sel.click(); }catch(e){}
-  }
-  function ensureTop(){
-    const stable = qs('#workerStableScreen');
-    if(!stable) return;
-    let title = qs('#stableChoiceTitle', stable);
-    if(!title){
-      title = document.createElement('div');
-      title.id = 'stableChoiceTitle';
-      title.className = 'stable-choice-title';
-      stable.insertBefore(title, stable.firstChild);
-    }
-    title.textContent = 'Izaberi vozilo ili mašinu';
-    const v = qs('.stable-kind-btn[data-kind="vehicle"]', stable);
-    const m = qs('.stable-kind-btn[data-kind="machine"]', stable);
-    if(v) v.innerHTML = truckSvg + '<b>Vozilo</b>';
-    if(m) m.innerHTML = excavatorSvg + '<b>Mašina</b>';
-  }
-  function simplifyFuelAlways(){
-    const fuel = qs('#workerStableScreen .stable-row-card.fuel');
-    if(!fuel) return;
-    qsa('.stable-fuel-type', fuel).forEach(el=>el.remove());
-    let hidden = qs('#stableFuelType');
-    if(!hidden){ hidden = document.createElement('input'); hidden.type='hidden'; hidden.id='stableFuelType'; fuel.insertBefore(hidden, fuel.firstChild.nextSibling); }
-    hidden.value = 'diesel';
-  }
-  function applyFlowState(){
-    const k = kind();
-    const selected = assetSelected();
-    const stable = qs('#workerStableScreen');
-    if(!stable) return;
-    stable.classList.toggle('stable-no-kind', !k);
-    stable.classList.toggle('stable-no-asset', !selected);
-    qsa('.stable-kind-btn', stable).forEach(btn=>btn.classList.toggle('active', btn.dataset.kind === k));
-    const label = qs('#stableAssetLabel');
-    if(label) label.textContent = 'Izaberi vozilo ili mašinu';
-    const fuelTitle = qs('#stableFuelTitle');
-    if(fuelTitle) fuelTitle.textContent = k === 'machine' ? 'Gorivo mašine' : 'Gorivo vozila';
-    const fuelReading = qs('#stableFuelReadingLabel');
-    if(fuelReading) fuelReading.textContent = k === 'machine' ? 'MTČ' : 'KM';
-    const vehicleBlock = qs('#stableVehicleBlock');
-    const machineBlock = qs('#stableMachineBlock');
-    if(vehicleBlock) vehicleBlock.classList.toggle('stable-hidden', k !== 'vehicle');
-    if(machineBlock) machineBlock.classList.toggle('stable-hidden', k !== 'machine');
-    const defectTitle = qs('#workerStableScreen .stable-row-card.defect .stable-row-title');
-    if(defectTitle) defectTitle.textContent = k === 'machine' ? '3. Kvar mašine' : '3. Kvar vozila';
-    const note = qs('#workerStableScreen .stable-note');
-    if(note){
-      if(!k) note.textContent = 'Prvo klikni Vozilo ili Mašina.';
-      else if(!selected) note.textContent = k === 'machine' ? 'Izaberi mašinu iz Direkcije.' : 'Izaberi vozilo iz Direkcije.';
-      else note.textContent = k === 'machine' ? 'Izabrana mašina važi za gorivo, rad mašine i kvar.' : 'Izabrano vozilo važi za gorivo, ture i kvar.';
-    }
-  }
-  function lockEvents(){
-    qsa('#workerStableScreen .stable-kind-btn').forEach(btn=>{
-      btn.onclick = function(ev){ ev.preventDefault(); ev.stopPropagation(); setKind(btn.dataset.kind || 'vehicle', true); return false; };
-    });
-    const sel = qs('#stableAssetSelect');
-    if(sel && !sel.dataset.v1761Flow){
-      sel.dataset.v1761Flow = '1';
-      sel.addEventListener('change', syncAsset, true);
-      sel.addEventListener('input', syncAsset, true);
-    }
-  }
-  function boot(){
-    document.body && document.body.setAttribute('data-worker-mobile-version','1762-excavator-ceo-tok');
-    ensureTop();
-    copyRealAssetOptions();
-    simplifyFuelAlways();
-    lockEvents();
-    applyFlowState();
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  setTimeout(boot,80); setTimeout(boot,350); setTimeout(boot,1200); setInterval(boot,1800);
-})();
-
-// === AskCreate v1762: naziv ikonice zaključan kao excavator / bager, bez traktora ===
