@@ -18835,7 +18835,7 @@ function copySupportEmail() {
       <div class="worker-quick-company" id="qWorkerCompany">Firma</div>
       <div class="worker-quick-kind">
         <button type="button" class="q-kind-btn active" data-kind="vehicle">🚚 Vozilo</button>
-        <button type="button" class="q-kind-btn" data-kind="machine">🚜 Mašina</button>
+        <button type="button" class="q-kind-btn" data-kind="machine">🏗️ Mašina</button>
       </div>
       <div class="worker-quick-field">
         <label>Izaberi iz Direkcije</label>
@@ -19000,11 +19000,21 @@ function copySupportEmail() {
   function realKind(){
     return qs("#wrAssetKind")?.value || "vehicle";
   }
+  function openStableAssetList(){
+    const sel = qs("#stableAssetSelect");
+    if (!sel) return;
+    try { sel.scrollIntoView({block:"center", behavior:"smooth"}); } catch(e){}
+    try { sel.focus({preventScroll:true}); } catch(e){ try { sel.focus(); } catch(_){} }
+    try { if (typeof sel.showPicker === "function") sel.showPicker(); } catch(e){}
+    try { sel.click(); } catch(e){}
+  }
   function setKind(kind){
     setVal(qs("#wrAssetKind"), kind);
-    // Ako stari kod puni listu tek posle promene, daj mu trenutak pa osveži naš select.
-    setTimeout(refreshStableOptions, 80);
-    setTimeout(refreshStableOptions, 250);
+    // Otvaranje select liste mora biti direktno u klik događaju; timeout na mobilnom često blokira showPicker.
+    refreshStableOptions();
+    openStableAssetList();
+    setTimeout(() => { refreshStableOptions(); }, 80);
+    setTimeout(() => { refreshStableOptions(); }, 260);
     refreshStableState();
   }
   function optionHtmlFrom(select){
@@ -19212,11 +19222,6 @@ function copySupportEmail() {
       box.id = "workerStableScreen";
       box.className = "worker-stable-screen";
       box.innerHTML = `
-        <div class="stable-top">
-          <div><b>AskCreate.app</b><span>Radnik</span></div>
-          <strong id="stableCompanyName">Firma</strong>
-        </div>
-
         <div class="stable-kind">
           <button type="button" class="stable-kind-btn active" data-kind="vehicle"><small>Kamion</small><b>Vozilo</b></button>
           <button type="button" class="stable-kind-btn" data-kind="machine"><small>Bager</small><b>Mašina</b></button>
@@ -19285,7 +19290,6 @@ function copySupportEmail() {
       if (el.id !== "workerStableScreen") el.classList.add("stable-force-hide");
     });
 
-    qs("#stableCompanyName").textContent = (currentWorker?.company_name || currentWorker?.company || qs("#workerCompanyLabel")?.textContent || "Firma").replace(/\s*·.*$/, "").trim() || "Firma";
 
     qsa(".stable-kind-btn", box).forEach(btn => btn.onclick = () => setKind(btn.dataset.kind || "vehicle"));
     qs("#stableAssetSelect").onchange = e => { setVal(qs("#wrAssetSelect"), e.target.value || ""); setTimeout(refreshStableOptions, 80); };
@@ -19351,4 +19355,58 @@ function copySupportEmail() {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
   setInterval(keepStableAboveOldScreens, 1200);
+})();
+
+
+// === AskCreate v1757: Radnik - samo Kamion/Vozilo i Bager/Mašina, klik odmah otvara listu ===
+(function(){
+  function qs(s,r=document){return r.querySelector(s);}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
+  function removeOldQuick(){
+    qsa("#workerQuickScreen").forEach(el => { try { el.remove(); } catch(e){ el.style.display="none"; } });
+    const view = qs("#viewWorkerForm");
+    const card = qs("#normalWorkerFormCard");
+    const stable = qs("#workerStableScreen");
+    if (view && stable) {
+      view.classList.remove("worker-quick-mode");
+      view.classList.add("worker-stable-mode");
+    }
+    if (card && stable) {
+      card.classList.remove("quick-screen-active");
+      card.classList.add("stable-screen-active");
+      Array.from(card.children || []).forEach(el => {
+        if (el.id !== "workerStableScreen") el.classList.add("stable-force-hide");
+      });
+      stable.style.display = "grid";
+      stable.style.visibility = "visible";
+    }
+    const machineBtn = qs('#workerStableScreen .stable-kind-btn[data-kind="machine"] small');
+    if (machineBtn) machineBtn.textContent = "Bager";
+    const vehicleBtn = qs('#workerStableScreen .stable-kind-btn[data-kind="vehicle"] small');
+    if (vehicleBtn) vehicleBtn.textContent = "Kamion";
+  }
+  function openAssetSelect(){
+    const sel = qs("#stableAssetSelect");
+    if (!sel) return;
+    try { sel.scrollIntoView({block:"center", behavior:"smooth"}); } catch(e){}
+    try { sel.focus({preventScroll:true}); } catch(e){ try { sel.focus(); } catch(_){} }
+    try { if (typeof sel.showPicker === "function") sel.showPicker(); } catch(e){}
+    try { sel.click(); } catch(e){}
+  }
+  function rewireButtons(){
+    qsa('#workerStableScreen .stable-kind-btn').forEach(btn => {
+      btn.addEventListener('click', () => setTimeout(openAssetSelect, 120), false);
+    });
+  }
+  function boot(){
+    try { window.initWorkerQuickScreenV1751 = function(){ removeOldQuick(); if (typeof window.initWorkerStableOneScreenV1755 === "function") window.initWorkerStableOneScreenV1755(); }; } catch(e){}
+    removeOldQuick();
+    rewireButtons();
+    setTimeout(removeOldQuick, 250);
+    setTimeout(rewireButtons, 300);
+    setTimeout(removeOldQuick, 900);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+  setInterval(removeOldQuick, 1000);
 })();

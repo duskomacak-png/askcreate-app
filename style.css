@@ -10617,3 +10617,17 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
 #workerStableScreen .stable-file-input{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important;}
 #workerStableScreen .stable-file-label{cursor:pointer!important;}
 #workerStableScreen .stable-file-label span{font-size:10px!important;font-weight:950!important;margin-left:3px!important;}
+
+
+/* === AskCreate v1757: radnik top samo dva dugmeta, bez traktora i bez starog quick ekrana === */
+#viewWorkerForm #workerQuickScreen{display:none!important;visibility:hidden!important;height:0!important;overflow:hidden!important;margin:0!important;padding:0!important;}
+#workerStableScreen .stable-top{display:none!important;}
+#workerStableScreen .stable-kind{margin:0 0 2px!important;}
+#workerStableScreen .stable-kind-btn{min-height:50px!important;border-radius:14px!important;}
+#workerStableScreen .stable-kind-btn small{font-size:14px!important;font-weight:950!important;}
+#workerStableScreen .stable-kind-btn b{font-size:18px!important;}
+#workerStableScreen .stable-kind-btn[data-kind="vehicle"] small::before{content:""!important;}
+#workerStableScreen .stable-kind-btn[data-kind="machine"] small::before{content:""!important;}
+#workerStableScreen .stable-label{display:none!important;}
+#workerStableScreen #stableAssetSelect{margin:0 0 2px!important;height:38px!important;min-height:38px!important;font-size:14px!important;}
+@media(max-width:390px){#workerStableScreen .stable-kind-btn{min-height:46px!important;}#workerStableScreen .stable-kind-btn b{font-size:17px!important;}#workerStableScreen #stableAssetSelect{height:36px!important;min-height:36px!important;}}
