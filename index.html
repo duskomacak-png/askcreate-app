@@ -7,11 +7,11 @@
   <meta name="theme-color" content="#39b54a" />
   <meta name="description" content="AskCreate.app je PWA aplikacija za građevinske firme i niskogradnju: terenski izveštaji, dnevnik rada, karnet, radnici, mašine, vozila, materijal, voda, labudica, gorivo, norme potrošnje i upozorenja na povećanu potrošnju po mašini ili vozilu, uz Excel izvoz i arhivu." />
   <meta name="keywords" content="AskCreate.app, aplikacija za građevinske firme, niskogradnja, terenski izveštaji, dnevnik rada, karnet radnika, karnet mehanizacije, evidencija goriva, potrošnja goriva po mašini, potrošnja goriva po vozilu, norma potrošnje goriva, velika potrošnja goriva, kvarovi mašina, građevinska mehanizacija, materijal po gradilištu, labudica, cisterna za vodu, Excel izvoz" />
-  <link rel="manifest" href="manifest.json?v=1759-google-load-safe" />
+  <link rel="manifest" href="manifest.json?v=1761-clean-upload" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=1759-google-load-safe" />
+  <link rel="stylesheet" href="style.css?v=1761-clean-upload" />
 
   <meta property="og:title" content="AskCreate.app — terenski sistem za građevinske firme" />
   <meta property="og:description" content="Dnevnik rada, karnet, gorivo, norme potrošnje po mašini/vozilu, materijal po gradilištu, voda, labudica, kvarovi, arhiva i Excel izvoz za niskogradnju." />
@@ -87,7 +87,7 @@
         </div>
 
         <div class="home-access-stack narrow-phone-width">
-          <button class="home-director-btn" data-goto="DirectorLogin" type="button">
+          <button class="home-director-btn" data-goto="DirectorLogin" type="button" onclick="show('DirectorLogin')">
             <span class="home-access-icon">🏢</span>
             <span class="home-access-text">
               <strong>Ulaz za Direkciju</strong>
@@ -95,7 +95,7 @@
             </span>
           </button>
 
-          <button class="home-admin-btn" data-goto="AdminLogin" type="button">
+          <button class="home-admin-btn" data-goto="AdminLogin" type="button" onclick="show('AdminLogin')">
             <span>🛡️</span>
             <strong>Admin ulaz</strong>
           </button>
@@ -1578,9 +1578,9 @@
 
         <div id="secFuel" class="dyn-section">
           <h4>⛽ Gorivo odmah</h4>
-          <p class="hint">Jednostavno sipanje za već izabrano vozilo/mašinu. Ne bira se cisterna, izvor ni gradilište.</p>
+          <p class="hint">Ovo se šalje odmah u karticu Gorivo. Ne čeka kraj smene i ne ulazi u Dnevnik rada danas.</p>
           <div id="fuelEntries" class="entry-list"></div>
-          <button id="addFuelBtn" class="secondary hidden" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
+          <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
         </div>
 
 
@@ -1742,6 +1742,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" referrerpolicy="no-referrer"></script>
-  <script src="script.js?v=1759-google-load-safe"></script>
+  <script src="script.js?v=1761-clean-upload"></script>
 </body>
 </html>
