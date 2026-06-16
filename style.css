@@ -10734,3 +10734,51 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
   #viewWorkerForm.worker-stable-mode-v1758 #workerStableScreen .stable-kind-btn small{font-size:14px!important;}
   #viewWorkerForm.worker-stable-mode-v1758 #workerStableScreen .stable-kind-btn b{font-size:18px!important;}
 }
+
+
+/* === AskCreate v1759: tačan izbor vozilo/mašina sa ikonama === */
+#viewWorkerForm.worker-stable-mode-v1758 #workerStableScreen #stableAssetLabel,
+#workerStableScreen #stableAssetLabel{
+  display:none!important;
+  visibility:hidden!important;
+  height:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+#workerStableScreen .stable-choice-title{
+  display:block!important;
+  font-size:20px!important;
+  font-weight:950!important;
+  line-height:1.15!important;
+  color:#111827!important;
+  margin:0 0 4px!important;
+}
+#workerStableScreen .stable-kind-btn{
+  min-height:70px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+}
+#workerStableScreen .stable-kind-btn .stable-choice-svg{
+  width:46px!important;
+  height:30px!important;
+  display:block!important;
+  color:currentColor!important;
+}
+#workerStableScreen .stable-kind-btn b{
+  font-size:20px!important;
+  line-height:1!important;
+}
+#workerStableScreen .stable-kind-btn small{display:none!important;}
+#viewWorkerForm.worker-stable-mode-v1758 #workerStableScreen #stableAssetSelect{
+  margin-top:2px!important;
+}
+@media(max-width:420px){
+  #workerStableScreen .stable-choice-title{font-size:19px!important;}
+  #workerStableScreen .stable-kind-btn{min-height:66px!important;}
+  #workerStableScreen .stable-kind-btn .stable-choice-svg{width:42px!important;height:28px!important;}
+  #workerStableScreen .stable-kind-btn b{font-size:19px!important;}
+}

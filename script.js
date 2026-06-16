@@ -19546,3 +19546,98 @@ function copySupportEmail() {
   else boot();
   setInterval(normalize, 1500);
 })();
+
+
+// === AskCreate v1759: izbor sredstva zaključan - kamion/vozilo, bager/mašina ===
+(function(){
+  function qs(s,r=document){return r.querySelector(s);}
+  function qsa(s,r=document){return Array.from(r.querySelectorAll(s));}
+  function fire(el){ if(!el) return; ['input','change'].forEach(t=>el.dispatchEvent(new Event(t,{bubbles:true}))); }
+  function setVal(el,val){ if(!el) return; el.value = val == null ? '' : String(val); fire(el); }
+  const truckSvg = '<svg class="stable-choice-svg" viewBox="0 0 64 40" aria-hidden="true"><path d="M4 11h34v18H4zM38 17h10l8 8v4H38z" fill="currentColor" opacity=".95"/><circle cx="17" cy="31" r="5" fill="#fff"/><circle cx="48" cy="31" r="5" fill="#fff"/><circle cx="17" cy="31" r="2.7" fill="currentColor"/><circle cx="48" cy="31" r="2.7" fill="currentColor"/></svg>';
+  const excavatorSvg = '<svg class="stable-choice-svg" viewBox="0 0 64 40" aria-hidden="true"><path d="M8 28h30v6H8zM15 20h16l6 8H12zM37 18l9-8 4 4-9 8zM49 12l9 4-2 5-10-3z" fill="currentColor"/><circle cx="17" cy="34" r="3" fill="#fff"/><circle cx="31" cy="34" r="3" fill="#fff"/></svg>';
+  function openSelectNow(){
+    const sel = qs('#stableAssetSelect');
+    if(!sel) return;
+    try{ sel.scrollIntoView({block:'center', behavior:'smooth'}); }catch(e){}
+    try{ sel.focus({preventScroll:true}); }catch(e){ try{ sel.focus(); }catch(_){} }
+    try{ if(typeof sel.showPicker === 'function') sel.showPicker(); }catch(e){}
+    try{ sel.click(); }catch(e){}
+  }
+  function syncAssetSelection(){
+    const stable = qs('#stableAssetSelect');
+    const real = qs('#wrAssetSelect');
+    if(!stable || !real) return;
+    if(stable.value && real.value !== stable.value){ setVal(real, stable.value); }
+    if(real.value && stable.value !== real.value){ stable.value = real.value; }
+    window.__askcreateStableWorkerAssetId = real.value || stable.value || '';
+  }
+  function renderChoiceHeader(){
+    const stable = qs('#workerStableScreen');
+    if(!stable) return;
+    let title = qs('#stableChoiceTitle', stable);
+    if(!title){
+      title = document.createElement('div');
+      title.id = 'stableChoiceTitle';
+      title.className = 'stable-choice-title';
+      title.textContent = 'Izaberi vozilo ili mašinu';
+      stable.insertBefore(title, stable.firstChild);
+    }
+    const vehicle = qs('.stable-kind-btn[data-kind="vehicle"]', stable);
+    const machine = qs('.stable-kind-btn[data-kind="machine"]', stable);
+    if(vehicle && !vehicle.dataset.v1759Icon){
+      vehicle.dataset.v1759Icon='1';
+      vehicle.innerHTML = truckSvg + '<b>Vozilo</b>';
+    }
+    if(machine && !machine.dataset.v1759Icon){
+      machine.dataset.v1759Icon='1';
+      machine.innerHTML = excavatorSvg + '<b>Mašina</b>';
+    }
+  }
+  function setKindAndOpen(kind){
+    const realKind = qs('#wrAssetKind');
+    setVal(realKind, kind);
+    qsa('#workerStableScreen .stable-kind-btn').forEach(b=>b.classList.toggle('active', b.dataset.kind===kind));
+    const label = qs('#stableAssetLabel');
+    if(label) label.textContent = 'Izaberi vozilo ili mašinu';
+    const stableSel = qs('#stableAssetSelect');
+    if(stableSel){
+      stableSel.value='';
+      stableSel.setAttribute('aria-label', kind === 'machine' ? 'Izaberi mašinu iz Direkcije' : 'Izaberi vozilo iz Direkcije');
+    }
+    setTimeout(function(){
+      try{ if(typeof window.initWorkerStableOneScreenV1755 === 'function') window.initWorkerStableOneScreenV1755(); }catch(e){}
+      const sel = qs('#stableAssetSelect');
+      if(sel){
+        const first = sel.querySelector('option');
+        if(first) first.textContent = kind === 'machine' ? 'Izaberi mašinu...' : 'Izaberi vozilo...';
+      }
+    }, 0);
+    // showPicker mora odmah iz klika; Chrome mobile inače često blokira automatsko otvaranje.
+    openSelectNow();
+  }
+  function lockButtons(){
+    renderChoiceHeader();
+    qsa('#workerStableScreen .stable-kind-btn').forEach(btn=>{
+      if(btn.dataset.v1759Locked) return;
+      btn.dataset.v1759Locked='1';
+      btn.onclick = function(ev){ ev.preventDefault(); ev.stopPropagation(); setKindAndOpen(btn.dataset.kind || 'vehicle'); return false; };
+    });
+    const sel = qs('#stableAssetSelect');
+    if(sel && !sel.dataset.v1759Locked){
+      sel.dataset.v1759Locked='1';
+      sel.addEventListener('change', syncAssetSelection, true);
+      sel.addEventListener('input', syncAssetSelection, true);
+    }
+    syncAssetSelection();
+  }
+  function boot(){
+    document.body && document.body.setAttribute('data-worker-mobile-version','1759-izbor-sredstva');
+    lockButtons();
+    setTimeout(lockButtons,80);
+    setTimeout(lockButtons,350);
+    setTimeout(lockButtons,1000);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  setInterval(lockButtons,1500);
+})();
