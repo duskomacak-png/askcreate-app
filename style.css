@@ -9218,3 +9218,72 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
   font-weight: 800;
   color: #991b1b;
 }
+
+
+/* v1763 — radnički mobilni prikaz kao referentni mockup */
+#viewWorkerForm.worker-mobile-panel{max-width:520px!important;padding:12px 12px 96px!important;background:#f3f4f6!important;}
+#viewWorkerForm.worker-mobile-panel > .dashboard-head{background:#fff!important;border:1px solid #e5e7eb!important;border-radius:22px!important;padding:18px!important;gap:12px!important;box-shadow:0 10px 28px rgba(15,23,42,.06)!important;}
+#viewWorkerForm.worker-mobile-panel #workerHello{font-size:34px!important;line-height:1.05!important;font-weight:900!important;letter-spacing:-.03em!important;}
+#viewWorkerForm.worker-mobile-panel #workerCompanyLabel{font-size:18px!important;color:#6b7280!important;}
+#viewWorkerForm.worker-mobile-panel #workerLogoutBtn{border-radius:16px!important;min-height:52px!important;padding:0 22px!important;font-size:17px!important;}
+#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard{border-radius:28px!important;padding:16px!important;border:1px solid #ececec!important;box-shadow:0 14px 34px rgba(15,23,42,.06)!important;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-hero{display:grid;gap:14px;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-brand-left{display:flex;align-items:center;gap:12px;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-logo{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(180deg,#ef4444,#dc2626);color:#fff;font-size:28px;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-app-name{font-size:18px;font-weight:900;color:#111827;line-height:1.1;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-app-name span{color:#dc2626;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-role{font-size:13px;font-weight:700;color:#6b7280;margin-top:2px;}
+#viewWorkerForm.worker-mobile-panel .worker-online-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:999px;padding:9px 12px;font-size:14px;font-weight:800;}
+#viewWorkerForm.worker-mobile-panel .worker-online-dot{width:10px;height:10px;border-radius:999px;background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.15);}
+#viewWorkerForm.worker-mobile-panel .worker-company-line{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:900;color:#111827;}
+#viewWorkerForm.worker-mobile-panel .worker-company-icon{font-size:22px;}
+#viewWorkerForm.worker-mobile-panel .worker-date-top{margin:0!important;}
+#viewWorkerForm.worker-mobile-panel .worker-date-top input{max-width:240px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-context-box{display:grid;gap:12px;border:1px solid #ececec!important;background:#fff!important;padding:0!important;margin:0!important;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-label{font-size:14px;font-weight:800;color:#6b7280;margin-bottom:-2px;}
+#viewWorkerForm.worker-mobile-panel .worker-kind-native-select{position:absolute!important;left:-9999px!important;opacity:0!important;pointer-events:none!important;}
+#viewWorkerForm.worker-mobile-panel .worker-kind-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+#viewWorkerForm.worker-mobile-panel .worker-kind-btn{min-height:64px!important;border-radius:18px!important;border:1px solid #d1d5db!important;background:#fff!important;color:#111827!important;font-size:20px!important;font-weight:900!important;padding:14px 16px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-kind-btn.is-active{background:linear-gradient(180deg,#ef4444,#dc2626)!important;border-color:#b91c1c!important;color:#fff!important;-webkit-text-fill-color:#fff!important;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-select-block label{font-size:14px!important;color:#6b7280!important;margin-bottom:8px!important;}
+#viewWorkerForm.worker-mobile-panel #wrAssetSelect{height:60px!important;border-radius:18px!important;font-size:18px!important;padding:0 16px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-mobile-helper{margin:0!important;border-radius:16px!important;background:#f9fafb!important;border:1px solid #e5e7eb!important;color:#374151!important;}
+#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only{display:block!important;border:1px dashed #d1d5db!important;border-radius:18px!important;padding:12px!important;background:#fafafa!important;margin-top:2px!important;}
+#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only label{font-size:13px!important;color:#6b7280!important;}
+#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only select{height:48px!important;border-radius:14px!important;font-size:15px!important;}
+#viewWorkerForm.worker-mobile-panel #secFuel,
+#viewWorkerForm.worker-mobile-panel #secVehicles,
+#viewWorkerForm.worker-mobile-panel #secDefects{display:block!important;}
+#viewWorkerForm.worker-mobile-panel .worker-hide-section{display:none!important;}
+#viewWorkerForm.worker-mobile-panel .dyn-section{border:1px solid #e5e7eb!important;border-radius:20px!important;padding:16px!important;background:#fff!important;margin:14px 0!important;}
+#viewWorkerForm.worker-mobile-panel .dyn-section h4{font-size:22px!important;margin-bottom:14px!important;color:#111827!important;}
+#viewWorkerForm.worker-mobile-panel .dyn-section label{font-size:13px!important;color:#374151!important;font-weight:800!important;}
+#viewWorkerForm.worker-mobile-panel .dyn-section input,
+#viewWorkerForm.worker-mobile-panel .dyn-section select,
+#viewWorkerForm.worker-mobile-panel .dyn-section textarea{height:52px!important;border-radius:14px!important;font-size:17px!important;}
+#viewWorkerForm.worker-mobile-panel .dyn-section textarea{min-height:64px!important;padding-top:12px!important;}
+#viewWorkerForm.worker-mobile-panel .entry-card{border-radius:18px!important;background:#fff!important;border:1px solid #ececec!important;padding:14px!important;}
+#viewWorkerForm.worker-mobile-panel .entry-card-head strong{font-size:18px!important;}
+#viewWorkerForm.worker-mobile-panel .mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+#viewWorkerForm.worker-mobile-panel .truck-km-box{grid-template-columns:1fr 1fr!important;gap:10px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-inline-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+#viewWorkerForm.worker-mobile-panel .worker-inline-actions button{width:100%!important;}
+#viewWorkerForm.worker-mobile-panel #sendDefectNowBtn{width:100%!important;min-height:52px!important;border-radius:16px!important;font-size:18px!important;}
+#viewWorkerForm.worker-mobile-panel .remove-entry{min-height:38px!important;font-size:13px!important;}
+#viewWorkerForm.worker-mobile-panel .asset-smart-result{border-radius:14px!important;}
+#viewWorkerForm.worker-mobile-panel .truck-summary-line{grid-template-columns:1fr 1fr!important;gap:8px!important;}
+#viewWorkerForm.worker-mobile-panel .worker-asset-rubrics-preview{display:flex;flex-wrap:wrap;gap:8px;}
+#viewWorkerForm.worker-mobile-panel .asset-feature-badge{padding:6px 10px;border-radius:999px;background:#fff5f5;border:1px solid #fecaca;color:#b91c1c;font-size:12px;font-weight:800;}
+#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard > .row:last-child{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px!important;}
+#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard > .row:last-child button{width:100%!important;}
+@media(max-width:420px){
+  #viewWorkerForm.worker-mobile-panel{padding:10px 10px 90px!important;}
+  #viewWorkerForm.worker-mobile-panel #workerHello{font-size:28px!important;}
+  #viewWorkerForm.worker-mobile-panel .worker-company-line{font-size:18px!important;}
+  #viewWorkerForm.worker-mobile-panel .worker-kind-btn{font-size:18px!important;min-height:58px!important;}
+  #viewWorkerForm.worker-mobile-panel .truck-km-box,
+  #viewWorkerForm.worker-mobile-panel .mini-grid,
+  #viewWorkerForm.worker-mobile-panel .worker-inline-actions,
+  #viewWorkerForm.worker-mobile-panel .truck-summary-line{grid-template-columns:1fr!important;}
+}

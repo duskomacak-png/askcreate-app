@@ -13357,6 +13357,116 @@ window.loadReturnedReportIntoForm = async (reportId) => {
   }
 };
 
+
+function setWorkerModernSectionMode(perms = currentWorker?.permissions || {}) {
+  const visibleIds = ["secFuel","secVehicles","secDefects"];
+  visibleIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('worker-hide-section');
+  });
+  const normalized = normalizePermissions(perms);
+  const maps = { secFuel: !!normalized.fuel, secVehicles: !!normalized.vehicles, secDefects: !!normalized.defects };
+  Object.entries(maps).forEach(([id, ok]) => {
+    const el = document.getElementById(id);
+    if (el && !ok) el.classList.add('worker-hide-section');
+  });
+}
+
+function syncWorkerKindButtons() {
+  const kind = (document.getElementById('wrAssetKind')?.value || '').trim();
+  const vehicleBtn = document.getElementById('workerKindVehicleBtn');
+  const machineBtn = document.getElementById('workerKindMachineBtn');
+  if (vehicleBtn) vehicleBtn.classList.toggle('is-active', kind === 'vehicle');
+  if (machineBtn) machineBtn.classList.toggle('is-active', kind === 'machine');
+}
+
+function syncWorkerCompanyCompactLabel() {
+  const compact = document.getElementById('workerCompanyCompactLabel');
+  const current = currentWorker?.company_name || '';
+  if (compact) compact.textContent = current || 'Firma';
+}
+
+function syncQuickWorkerEntriesFromSelectedAsset() {
+  const asset = getSelectedWorkerContextAsset();
+  if (!asset) return;
+  const searchValue = getAssetCode(asset) || getAssetRegistration(asset) || getAssetName(asset) || '';
+  const isVehicle = isVehicleAsset(asset);
+  const isMachine = isMachineAsset(asset);
+
+  const defectInput = document.getElementById('wrDefectAssetName');
+  if (defectInput && !String(defectInput.value || '').trim()) defectInput.value = searchValue;
+  try { updateDefectAssetSmartResult(); } catch(e) {}
+
+  if (document.getElementById('secFuel') && !document.getElementById('secFuel')?.classList.contains('worker-hide-section')) {
+    if (!document.querySelector('#fuelEntries .fuel-entry')) addFuelEntry({ asset_kind: isVehicle ? 'vehicle' : 'machine' });
+    const fuelEntry = document.querySelector('#fuelEntries .fuel-entry');
+    if (fuelEntry) {
+      const kindSel = fuelEntry.querySelector('.f-asset-kind');
+      const input = fuelEntry.querySelector('.f-asset-search');
+      if (kindSel) kindSel.value = isVehicle ? 'vehicle' : (isMachine ? 'machine' : 'other');
+      if (input && !String(input.value || '').trim()) input.value = searchValue;
+      try { refreshOneFuelAssetSelect(fuelEntry); } catch(e) {}
+    }
+  }
+
+  if (isVehicle && document.getElementById('secVehicles') && !document.getElementById('secVehicles')?.classList.contains('worker-hide-section')) {
+    if (!document.querySelector('#vehicleEntries .vehicle-entry')) addVehicleEntry({});
+    const vehicleEntry = document.querySelector('#vehicleEntries .vehicle-entry');
+    if (vehicleEntry) {
+      const input = vehicleEntry.querySelector('.v-search');
+      if (input && !String(input.value || '').trim()) input.value = searchValue;
+      try { refreshOneVehicleSelect(vehicleEntry); } catch(e) {}
+      try { applyVehicleLastKmToEntry(vehicleEntry); } catch(e) {}
+    }
+  }
+}
+
+function submitWorkerModuleFromQuickSection(moduleValue) {
+  if (!moduleValue) return false;
+  const ok = selectWorkerModuleValue(moduleValue, { addDefaults: true });
+  if (!ok) {
+    toast('Ova rubrika nije dozvoljena za izabrano sredstvo ili korisnika.', true);
+    return false;
+  }
+  const btn = document.getElementById('submitReportBtn');
+  if (btn) btn.click();
+  return true;
+}
+
+function initWorkerModernUi() {
+  const view = document.getElementById('viewWorkerForm');
+  if (!view || view.dataset.workerModernReady === '1') return;
+  view.dataset.workerModernReady = '1';
+
+  const vehicleBtn = document.getElementById('workerKindVehicleBtn');
+  const machineBtn = document.getElementById('workerKindMachineBtn');
+  const kindSelect = document.getElementById('wrAssetKind');
+  const assetSelect = document.getElementById('wrAssetSelect');
+  const fuelSendBtn = document.getElementById('workerFuelSendBtn');
+  const toursSendBtn = document.getElementById('workerToursSendBtn');
+
+  if (vehicleBtn && kindSelect) vehicleBtn.addEventListener('click', () => { kindSelect.value = 'vehicle'; kindSelect.dispatchEvent(new Event('change', { bubbles: true })); syncWorkerKindButtons(); });
+  if (machineBtn && kindSelect) machineBtn.addEventListener('click', () => { kindSelect.value = 'machine'; kindSelect.dispatchEvent(new Event('change', { bubbles: true })); syncWorkerKindButtons(); });
+  if (kindSelect) kindSelect.addEventListener('change', () => { syncWorkerKindButtons(); setWorkerModernSectionMode(); });
+  if (assetSelect) assetSelect.addEventListener('change', () => { syncQuickWorkerEntriesFromSelectedAsset(); });
+
+  ['secFuel','secVehicles','secDefects'].forEach((id) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    section.addEventListener('focusin', () => {
+      const map = { secFuel:'fuel_entry', secVehicles:'truck_tours', secDefects:'defect_report' };
+      try { selectWorkerModuleValue(map[id], { addDefaults: false }); } catch(e) {}
+    });
+  });
+
+  if (fuelSendBtn) fuelSendBtn.addEventListener('click', () => submitWorkerModuleFromQuickSection('fuel_entry'));
+  if (toursSendBtn) toursSendBtn.addEventListener('click', () => submitWorkerModuleFromQuickSection('truck_tours'));
+
+  syncWorkerKindButtons();
+  syncWorkerCompanyCompactLabel();
+  setWorkerModernSectionMode();
+}
+
 function updateLeaveRequestVisibility() {
   const type = $("#wrLeaveType")?.value || "slobodan_dan";
   const single = $("#leaveSingleDayBox");
@@ -17054,10 +17164,14 @@ function bindEvents() {
   if ($("#wrAssetKind")) $("#wrAssetKind").addEventListener("change", () => {
     refreshWorkerAssetContextControls({ keepSelected: false });
     refreshWorkerModuleSelector(currentWorker?.permissions || {});
+    syncWorkerKindButtons();
+    setWorkerModernSectionMode(currentWorker?.permissions || {});
+    syncQuickWorkerEntriesFromSelectedAsset();
   });
   if ($("#wrAssetSelect")) $("#wrAssetSelect").addEventListener("change", () => {
     renderSelectedAssetRubricsPreview(getSelectedWorkerContextAsset());
     refreshWorkerModuleSelector(currentWorker?.permissions || {});
+    syncQuickWorkerEntriesFromSelectedAsset();
   });
   if ($("#wrModuleSelect")) $("#wrModuleSelect").addEventListener("change", () => {
     updateWorkerModuleSelectedLabel();
@@ -18157,6 +18271,11 @@ async function openWorkerForm() {
   applyWorkerModuleSelection({ addDefaults: true });
   renderStoredFieldTankerEntries();
   updateLeaveRequestVisibility();
+  initWorkerModernUi();
+  syncWorkerCompanyCompactLabel();
+  syncWorkerKindButtons();
+  setWorkerModernSectionMode(perms);
+  setTimeout(() => { try { syncQuickWorkerEntriesFromSelectedAsset(); } catch(e) {} }, 120);
 }
 
 

@@ -1494,39 +1494,59 @@
       </div>
 
       <div id="normalWorkerFormCard" class="card worker-compact-card">
-        <div class="worker-simple-top">
+        <div class="worker-mobile-hero">
+        <div class="worker-mobile-brand-row">
+          <div class="worker-mobile-brand-left">
+            <div class="worker-mobile-logo">A</div>
+            <div>
+              <div class="worker-mobile-app-name"><span>Ask</span>Create.app</div>
+              <div class="worker-mobile-role">Radnik</div>
+            </div>
+          </div>
+          <div class="worker-online-pill"><span class="worker-online-dot"></span>Online</div>
+        </div>
+
+        <div class="worker-company-line">
+          <span class="worker-company-icon">🏢</span>
+          <strong id="workerCompanyCompactLabel">Start Work Inženjering</strong>
+        </div>
+
+        <div class="worker-simple-top worker-date-top">
           <label>Datum</label>
           <input id="wrDate" type="date" />
         </div>
 
-        <div id="workerAssetContextBox" class="worker-asset-context-box">
-          <div class="worker-asset-context-grid">
-            <div>
-              <label>Šta danas koristiš</label>
-              <select id="wrAssetKind">
-                <option value="">Izaberi...</option>
-                <option value="vehicle">Vozilo</option>
-                <option value="machine">Mašina</option>
-              </select>
-            </div>
-            <div>
-              <label id="wrAssetSelectLabel">Vozilo / mašina iz Direkcije</label>
-              <select id="wrAssetSelect">
-                <option value="">Prvo izaberi Vozilo ili Mašina</option>
-              </select>
-            </div>
+        <div id="workerAssetContextBox" class="worker-asset-context-box worker-mobile-context-box">
+          <div class="worker-mobile-label">Šta danas koristiš</div>
+          <select id="wrAssetKind" class="worker-kind-native-select">
+            <option value="">Izaberi...</option>
+            <option value="vehicle">Vozilo</option>
+            <option value="machine">Mašina</option>
+          </select>
+
+          <div class="worker-kind-switch" role="tablist" aria-label="Vrsta sredstva">
+            <button id="workerKindVehicleBtn" class="worker-kind-btn" type="button">🚚 Vozilo</button>
+            <button id="workerKindMachineBtn" class="worker-kind-btn" type="button">🚜 Mašina</button>
           </div>
-          <div id="wrAssetContextInfo" class="asset-smart-result">Izaberi vozilo ili mašinu iz Direkcije, pa će se pojaviti samo rubrike koje to sredstvo ima.</div>
+
+          <div class="worker-mobile-select-block">
+            <label id="wrAssetSelectLabel">Izaberi iz Direkcije</label>
+            <select id="wrAssetSelect">
+              <option value="">Prvo izaberi Vozilo ili Mašina</option>
+            </select>
+          </div>
+          <div id="wrAssetContextInfo" class="asset-smart-result worker-mobile-helper">Izaberi vozilo ili mašinu iz Direkcije, pa popuni gorivo, ture ili kvar.</div>
           <div id="wrAssetRubricsPreview" class="worker-asset-rubrics-preview"></div>
         </div>
 
-        <div id="workerModuleChooser" class="worker-module-chooser worker-module-chooser-simple">
+        <div id="workerModuleChooser" class="worker-module-chooser worker-module-chooser-simple worker-module-logic-only">
           <label>Rubrika za popunjavanje</label>
           <select id="wrModuleSelect">
             <option value="">Prvo izaberi vozilo ili mašinu...</option>
           </select>
           <div id="wrModuleSelectedLabel" class="worker-selected-rubric hidden">Izabrana rubrika: —</div>
         </div>
+      </div>
 
         <div id="secWorkerSite" class="dyn-section">
           <label>Ime gradilišta</label>
@@ -1559,9 +1579,9 @@
         </div>
 
         <div id="secVehicles" class="dyn-section">
-          <h4>Evidencija rada vozila</h4>
+          <h4>2. Ture / materijal</h4>
           <div id="vehicleEntries" class="entry-list"></div>
-          <button id="addVehicleBtn" class="secondary" type="button" onclick="addVehicleEntry()">+ Dodaj vozilo</button>
+          <div class="worker-inline-actions"><button id="addVehicleBtn" class="secondary" type="button" onclick="addVehicleEntry()">+ Dodaj stavku</button><button id="workerToursSendBtn" class="primary" type="button">Pošalji</button></div>
         </div>
 
         <div id="secLowloader" class="dyn-section">
@@ -1577,10 +1597,10 @@
         </div>
 
         <div id="secFuel" class="dyn-section">
-          <h4>⛽ Gorivo odmah</h4>
+          <h4>1. Gorivo</h4>
           <p class="hint">Ovo se šalje odmah u karticu Gorivo. Ne čeka kraj smene i ne ulazi u Dnevnik rada danas.</p>
           <div id="fuelEntries" class="entry-list"></div>
-          <button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje goriva</button>
+          <div class="worker-inline-actions"><button id="addFuelBtn" class="secondary" type="button" onclick="addFuelEntry()">+ Dodaj sipanje</button><button id="workerFuelSendBtn" class="primary" type="button">Pošalji</button></div>
         </div>
 
 
@@ -1679,7 +1699,7 @@
         </div>
 
         <div id="secDefects" class="dyn-section">
-          <h4>Evidencija kvara</h4>
+          <h4>3. Kvarovi</h4>
           <p class="hint">Ovo je važno da Odgovorno lice mehanizacije odmah zna da li mašina staje ili može da radi do popravke.</p>
 
           <label>Sredstvo u kvaru / interni broj</label>
@@ -1725,7 +1745,7 @@
             <option value="ne">Ne</option>
           </select>
 
-          <button id="sendDefectNowBtn" class="danger-btn" type="button">🚨 Evidentiraj kvar odmah</button>
+          <button id="sendDefectNowBtn" class="danger-btn" type="button">Prijavi</button>
           <p class="hint">Ako je kvar hitan, prvo obavesti odgovorno lice. Ova prijava ostaje kao evidencija za Upravu i tehničku službu.</p>
         </div>
 
