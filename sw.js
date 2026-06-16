@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1742-sef-slozi-radnike-po-gradilistu";
+const CACHE_NAME = "askcreate-v1743-sef-excel-pregled-a4";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1742-sef-slozi-radnike-po-gradilistu",
-  "./script.js?v=1742-sef-slozi-radnike-po-gradilistu",
-  "./manifest.json?v=1742-sef-slozi-radnike-po-gradilistu",
+  "./style.css?v=1743-sef-excel-pregled-a4",
+  "./script.js?v=1743-sef-excel-pregled-a4",
+  "./manifest.json?v=1743-sef-excel-pregled-a4",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

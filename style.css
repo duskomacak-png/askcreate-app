@@ -9218,3 +9218,73 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
   font-weight: 800;
   color: #991b1b;
 }
+
+/* v1743 — šef gradilišta: Excel-uređen pregled radničkih izveštaja u A4 prikazu */
+.site-boss-excel-overview {
+  margin-top: 10px;
+  color: #111827;
+}
+.site-boss-excel-overview h4 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #111827;
+}
+.site-boss-excel-block {
+  margin: 10px 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.site-boss-excel-block h5 {
+  margin: 0;
+  padding: 8px 10px;
+  background: #f3f4f6;
+  border-bottom: 1px solid #d1d5db;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.site-boss-excel-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.site-boss-excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #111827;
+}
+.site-boss-excel-table th,
+.site-boss-excel-table td {
+  border: 1px solid #e5e7eb;
+  padding: 5px 6px;
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+}
+.site-boss-excel-table th {
+  background: #f9fafb;
+  font-weight: 800;
+  color: #111827;
+}
+.site-boss-excel-block.export h5 { background: #fff7ed; }
+.site-boss-excel-block.import h5 { background: #ecfdf5; }
+.site-boss-excel-block.internal h5 { background: #eff6ff; }
+.site-boss-excel-block.machines h5 { background: #f5f3ff; }
+.site-boss-excel-block.fuel h5 { background: #fefce8; }
+.site-boss-excel-block.defects h5 { background: #fef2f2; }
+.site-boss-excel-block.totals h5 { background: #f3f4f6; }
+.site-boss-excel-block.totals .site-boss-excel-table td,
+.site-boss-excel-block.totals .site-boss-excel-table th {
+  font-weight: 700;
+}
+@media print {
+  .site-boss-excel-scroll { overflow: visible; }
+  .site-boss-excel-table { font-size: 9px; }
+  .site-boss-excel-table th,
+  .site-boss-excel-table td { padding: 3px 4px; }
+  .site-boss-excel-block { break-inside: avoid; }
+}

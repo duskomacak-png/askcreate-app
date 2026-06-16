@@ -5110,6 +5110,157 @@ function renderSiteBossStructuredSummary(summary = {}) {
   return `<div class="site-boss-auto-summary"><h4>Sažetak radničkih izveštaja za isti datum i gradilište</h4>${blocks}${summary.defects_count ? `<p><b>Kvarovi:</b> ${escapeHtml(summary.defects_count)} prijava</p>` : ""}<p class="report-empty">Šef gradilišta proverava ovaj sažetak, levo dopunjava radnike/sate, stvarnu ugradnju i sve što fali.</p></div>`;
 }
 
+
+// v1743 — šef gradilišta: Excel-uređen A4 pregled radničkih izveštaja
+function siteBossRouteFlowFromVehicleRow(row = [], selectedSite = "") {
+  const site = normalizeSearch(selectedSite || "");
+  const rowSite = normalizeSearch(row[0] || "");
+  const routeText = String(row[8] || "");
+  const route = normalizeSearch(routeText);
+  if (route.includes("lokal") || route.includes("krug")) return "internal";
+  if (route.includes("depon")) return "exported";
+  if (routeText.includes("→")) {
+    const parts = routeText.split("→").map(x => normalizeSearch(x.trim()));
+    const from = parts[0] || "";
+    const to = parts[1] || "";
+    if (site && to && (to.includes(site) || site.includes(to))) return "imported";
+    if (site && from && (from.includes(site) || site.includes(from))) return "exported";
+  }
+  const actionMatch = siteBossFlowFromAction(routeText);
+  if (actionMatch !== "other") return actionMatch;
+  if (site && rowSite && (rowSite.includes(site) || site.includes(rowSite))) return "internal";
+  return "other";
+}
+
+function siteBossExcelQtyParts(text = "") {
+  const split = officeSplitQuantityText(text || "");
+  return { value: siteBossNum(split.value), unit: split.unit || "" };
+}
+
+function siteBossAddTotal(map, key, qty = 0, unit = "", tours = 0) {
+  const k = key || "—";
+  if (!map.has(k)) map.set(k, { material:k, unit:unit || "", qty:0, tours:0 });
+  const item = map.get(k);
+  item.qty += siteBossNum(qty);
+  item.tours += siteBossNum(tours);
+  if (!item.unit && unit) item.unit = unit;
+}
+
+function siteBossExcelTable(title, headers, rows, opts = {}) {
+  const body = rows && rows.length
+    ? rows.map(r => `<tr>${r.map(c => `<td>${escapeHtml(c == null ? "" : String(c))}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="${headers.length}" class="muted">Nema stavki.</td></tr>`;
+  return `<div class="site-boss-excel-block ${opts.className || ""}">
+    <h5>${escapeHtml(title)}</h5>
+    <div class="site-boss-excel-scroll"><table class="site-boss-excel-table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>
+  </div>`;
+}
+
+function siteBossExcelTotalsTable(title, totalsMap) {
+  const rows = Array.from(totalsMap.values()).map(x => [x.material, x.tours ? String(Math.round(x.tours * 100) / 100) : "—", siteBossFormatQty(x.qty, x.unit)]);
+  return siteBossExcelTable(title, ["Materijal", "Ture", "Ukupno"], rows, { className:"totals" });
+}
+
+function renderSiteBossExcelStyleOverview(overview = null) {
+  const o = overview || siteLogImportedWorkerOverview;
+  if (!o) return "";
+  const selectedSite = o.site || "";
+  const imported = [];
+  const exported = [];
+  const internal = [];
+  const importTotals = new Map();
+  const exportTotals = new Map();
+  const internalTotals = new Map();
+
+  (Array.isArray(o.vehicles) ? o.vehicles : []).forEach(r => {
+    const flow = siteBossRouteFlowFromVehicleRow(r, selectedSite);
+    const qty = siteBossExcelQtyParts(r[10] || "");
+    const material = r[5] || "—";
+    const row = [
+      r[1] || "—",        // interni broj
+      r[2] || "—",        // tablice
+      r[3] || "—",        // naziv
+      r[4] || "—",        // vozač
+      material,
+      r[8] || "—",        // relacija
+      r[9] || "—",        // ture
+      r[10] || (qty.value ? siteBossFormatQty(qty.value, qty.unit) : "—"),
+      r[7] || "—"         // km kraj / stanje
+    ];
+    if (flow === "imported") {
+      imported.push(row);
+      siteBossAddTotal(importTotals, material, qty.value, qty.unit, r[9]);
+    } else if (flow === "exported") {
+      exported.push(row);
+      siteBossAddTotal(exportTotals, material, qty.value, qty.unit, r[9]);
+    } else if (flow === "internal") {
+      internal.push(row);
+      siteBossAddTotal(internalTotals, material, qty.value, qty.unit, r[9]);
+    }
+  });
+
+  // Dodatne materijalne stavke ako postoje nezavisno od vozila.
+  (Array.isArray(o.materials) ? o.materials : []).forEach(r => {
+    const flow = siteBossFlowFromAction(r[1] || "");
+    const material = r[2] || "—";
+    const qtyText = r[4] ? siteBossFormatQty(r[4], r[5]) : "—";
+    const row = ["—", "—", "Ručna materijalna stavka", "—", material, r[1] || "—", r[3] || "—", qtyText, r[6] || "—"];
+    if (flow === "imported") {
+      imported.push(row);
+      siteBossAddTotal(importTotals, material, r[4], r[5], r[3]);
+    } else if (flow === "exported") {
+      exported.push(row);
+      siteBossAddTotal(exportTotals, material, r[4], r[5], r[3]);
+    } else if (flow === "internal") {
+      internal.push(row);
+      siteBossAddTotal(internalTotals, material, r[4], r[5], r[3]);
+    }
+  });
+
+  const fuelByAsset = new Map();
+  (Array.isArray(o.fuels) ? o.fuels : []).forEach(f => {
+    const key = normalizeSearch([f[1], f[2]].filter(Boolean).join(" ")) || normalizeSearch(f[2] || "");
+    if (!key) return;
+    const old = fuelByAsset.get(key) || { liters:0, rows:[] };
+    old.liters += siteBossNum(f[3]);
+    old.rows.push(f);
+    fuelByAsset.set(key, old);
+  });
+
+  const machineRows = (Array.isArray(o.machines) ? o.machines : []).map(r => {
+    const key = normalizeSearch([r[1], r[2]].filter(Boolean).join(" ")) || normalizeSearch(r[2] || "");
+    const fuel = fuelByAsset.get(key);
+    return [
+      r[1] || "—",
+      r[2] || "—",
+      r[3] || "—",
+      r[4] || "—",
+      r[5] || "—",
+      r[6] || "—",
+      fuel ? `${Math.round(fuel.liters * 100) / 100} L` : "—",
+      r[8] || "—"
+    ];
+  });
+
+  const fuelRows = (Array.isArray(o.fuels) ? o.fuels : []).map(r => [r[1] || "—", r[2] || "—", r[3] || "—", r[4] || "—", r[5] || "—", r[6] || "—", r[7] || "—"]);
+
+  const defectRows = (Array.isArray(o.defects) ? o.defects : []).map(r => [r[1] || "—", r[2] || "—", r[3] || "—", r[4] || "—", r[5] || "—"]);
+
+  return `<div class="site-boss-excel-overview">
+    <h4>Excel pregled radničkih izveštaja — ${escapeHtml(formatDateOnlyLocal(o.date) || o.date || "—")} · ${escapeHtml(selectedSite || "—")}</h4>
+    ${siteBossExcelTable("Materijal — IZVOZ sa gradilišta", ["Br.", "Tablice", "Vozilo", "Vozač", "Materijal", "Relacija", "Ture", "Količina", "KM/stanje"], exported, { className:"export" })}
+    ${siteBossExcelTotalsTable("Ukupno izvezeno po materijalu", exportTotals)}
+    ${siteBossExcelTable("Materijal — UVOZ na gradilište", ["Br.", "Tablice", "Vozilo", "Vozač", "Materijal", "Relacija", "Ture", "Količina", "KM/stanje"], imported, { className:"import" })}
+    ${siteBossExcelTotalsTable("Ukupno uvezeno po materijalu", importTotals)}
+    ${siteBossExcelTable("Materijal — U KRUGU gradilišta", ["Br.", "Tablice", "Vozilo", "Vozač", "Materijal", "Relacija", "Ture", "Količina", "KM/stanje"], internal, { className:"internal" })}
+    ${siteBossExcelTotalsTable("Ukupno u krugu po materijalu", internalTotals)}
+    ${siteBossExcelTable("Mašine — MTČ, gorivo i opis rada", ["Br.", "Mašina", "Rukovalac", "Poč. MTČ", "Zav. MTČ", "Ukupno MTČ", "Sipano goriva", "Opis rada"], machineRows, { className:"machines" })}
+    ${siteBossExcelTable("Gorivo — detalji sipanja", ["Br.", "Sredstvo", "Litara", "KM", "MTČ", "Sipao/cisterna", "Primio"], fuelRows, { className:"fuel" })}
+    ${siteBossExcelTable("Kvarovi / napomene", ["Br.", "Sredstvo", "Opis", "Hitnost", "Status"], defectRows, { className:"defects" })}
+    <p class="report-empty">Ovaj pregled je složen iz radničkih izveštaja za isti datum i isto gradilište. Šef gradilišta levo dopunjava ručne radnike/sate, stvarnu ugradnju i sve stavke koje nisu prošle kroz aplikaciju.</p>
+  </div>`;
+}
+
 function vehicleTourOfficeRows(v = {}, reportSite = "") {
   const items = Array.isArray(v.tour_items) ? v.tour_items : [];
   const baseVehicle = v.name || v.vehicle || "";
@@ -13822,8 +13973,8 @@ function renderSiteLogImportedOverviewSection(overview = null) {
   const summary = o.summary || siteBossBuildStructuredSummary(o);
   return `<div class="report-section site-log-imported-overview"><h4>Automatski pregled radničkih izveštaja za izabrano gradilište</h4>
     <p class="report-empty">Datum rada: <b>${escapeHtml(formatDateOnlyLocal(o.date) || o.date || "—")}</b> · Gradilište: <b>${escapeHtml(o.site || "—")}</b> · Pronađeno izveštaja: <b>${escapeHtml(o.reports_count || 0)}</b></p>
-    ${renderSiteBossStructuredSummary(summary)}
-    <details class="site-boss-raw-details"><summary>Prikaži detaljne stavke koje su ušle u sažetak</summary>
+    ${renderSiteBossExcelStyleOverview(o)}
+    <details class="site-boss-raw-details"><summary>Prikaži sirove stavke koje su ušle u sažetak</summary>
       <h5>Vozila / ture / materijal</h5>${siteLogTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","Relacija","Ture","Ukupno"], o.vehicles || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[8],r[9],r[10]])}
       <h5>Materijalne stavke</h5>${siteLogTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], o.materials || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6]])}
       <h5>Mašine / MTČ</h5>${siteLogTable(["Gradilište","Broj","Mašina","Rukovalac","Ukupno MTČ","Rad"], o.machines || [], r => [r[0],r[1],r[2],r[3],r[6],r[8]])}
