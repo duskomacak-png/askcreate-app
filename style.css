@@ -11153,3 +11153,137 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
   padding:0!important;
   border:0!important;
 }
+
+
+/* === AskCreate v1765: finalno čišćenje radničkog toka === */
+#viewWorkerForm.worker-clean-mode > .dashboard-head{display:none!important;}
+#workerCleanScreen .clean-worker-identity{
+  background:#fff!important;
+  border:1px solid #e5e7eb!important;
+  border-left:5px solid #dc2626!important;
+  border-radius:14px!important;
+  padding:8px 10px!important;
+  margin:0 0 10px!important;
+  color:#111827!important;
+}
+#workerCleanScreen .clean-worker-identity b{
+  display:block!important;
+  font-size:16px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+}
+#workerCleanScreen .clean-worker-identity span{
+  display:block!important;
+  margin-top:2px!important;
+  font-size:13px!important;
+  line-height:1.15!important;
+  font-weight:800!important;
+  color:#4b5563!important;
+  -webkit-text-fill-color:#4b5563!important;
+}
+#workerCleanScreen .clean-picked,
+#workerCleanScreen .worker-select-visible-value,
+#normalWorkerFormCard.worker-clean-card .worker-select-visible-value{
+  display:none!important;
+  visibility:hidden!important;
+  height:0!important;
+  overflow:hidden!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+}
+#workerCleanScreen .clean-title{
+  font-size:23px!important;
+  margin:0 0 10px!important;
+}
+#workerCleanScreen .clean-kind-grid{gap:8px!important;margin-bottom:9px!important;}
+#workerCleanScreen .clean-kind-btn{min-height:78px!important;border-radius:16px!important;gap:5px!important;}
+#workerCleanScreen .clean-kind-btn svg{width:48px!important;height:32px!important;}
+#workerCleanScreen .clean-kind-btn b{font-size:21px!important;}
+#workerCleanScreen .clean-asset-select{
+  height:50px!important;
+  min-height:50px!important;
+  font-size:17px!important;
+  border-radius:15px!important;
+  margin-bottom:8px!important;
+}
+#workerCleanScreen .clean-card{
+  padding:12px!important;
+  border-radius:17px!important;
+  margin-bottom:9px!important;
+  border-left-width:5px!important;
+}
+#workerCleanScreen .clean-card h3{
+  font-size:22px!important;
+  margin-bottom:8px!important;
+}
+#workerCleanScreen .clean-mini-note{font-size:13px!important;margin:-2px 0 8px!important;}
+#workerCleanScreen label{
+  font-size:15px!important;
+  margin-bottom:7px!important;
+}
+#workerCleanScreen input,
+#workerCleanScreen select{
+  height:48px!important;
+  min-height:48px!important;
+  font-size:17px!important;
+  border-radius:14px!important;
+  margin-top:5px!important;
+  padding:0 12px!important;
+}
+#workerCleanScreen .clean-two{gap:9px!important;}
+#workerCleanScreen .clean-send,
+#workerCleanScreen .clean-secondary{
+  height:50px!important;
+  min-height:50px!important;
+  font-size:18px!important;
+  border-radius:14px!important;
+}
+#workerCleanScreen .clean-dest-grid{
+  gap:7px!important;
+  margin-bottom:8px!important;
+}
+#workerCleanScreen .clean-dest-grid button{
+  min-height:48px!important;
+  font-size:13.5px!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  background:#fff!important;
+  border:1px solid #fecaca!important;
+  border-radius:14px!important;
+  font-weight:950!important;
+}
+#workerCleanScreen .clean-dest-grid button.active{
+  background:#dc2626!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  border-color:#dc2626!important;
+}
+#workerCleanScreen .clean-image-button{
+  background:#fff!important;
+  color:#dc2626!important;
+  -webkit-text-fill-color:#dc2626!important;
+  border:2px solid #fecaca!important;
+  font-size:16px!important;
+  line-height:1!important;
+  text-align:center!important;
+}
+#workerCleanScreen .clean-image-button span{
+  font-weight:950!important;
+  margin-left:4px!important;
+}
+#workerCleanScreen .clean-actions{grid-template-columns:1fr 1fr!important;gap:9px!important;align-items:center!important;}
+@media(max-width:420px){
+  #viewWorkerForm.worker-clean-mode #normalWorkerFormCard.worker-clean-card{padding:8px!important;}
+  #workerCleanScreen .clean-worker-identity{padding:7px 9px!important;margin-bottom:8px!important;}
+  #workerCleanScreen .clean-title{font-size:22px!important;}
+  #workerCleanScreen .clean-kind-btn{min-height:74px!important;}
+  #workerCleanScreen .clean-kind-btn svg{width:44px!important;height:30px!important;}
+  #workerCleanScreen .clean-kind-btn b{font-size:20px!important;}
+  #workerCleanScreen .clean-card h3{font-size:20px!important;}
+  #workerCleanScreen input,#workerCleanScreen select{height:46px!important;min-height:46px!important;font-size:16px!important;}
+  #workerCleanScreen .clean-send,#workerCleanScreen .clean-secondary{height:48px!important;min-height:48px!important;font-size:17px!important;}
+  #workerCleanScreen .clean-dest-grid button{font-size:12.5px!important;}
+}

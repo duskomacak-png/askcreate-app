@@ -19125,6 +19125,7 @@ function copySupportEmail() {
     const box = document.createElement('div');
     box.id = 'workerCleanScreen';
     box.innerHTML = `
+      <div class="clean-worker-identity"><b id="cleanWorkerWelcome">Dobrodošli</b><span id="cleanWorkerMeta">Firma · Uloga</span></div>
       <h2 class="clean-title">Izaberi vozilo ili mašinu</h2>
       <div class="clean-kind-grid">
         <button type="button" class="clean-kind-btn" data-kind="vehicle" aria-label="Vozilo">
@@ -19137,7 +19138,7 @@ function copySupportEmail() {
         </button>
       </div>
       <select id="cleanWorkerAssetSelect" class="clean-asset-select"><option value="">Prvo izaberi Vozilo ili Mašina</option></select>
-      <div id="cleanPickedAsset" class="clean-picked hidden"></div>
+      <div id="cleanPickedAsset" class="clean-picked hidden" aria-hidden="true"></div>
 
       <div id="cleanForms" class="hidden">
         <section class="clean-card" id="cleanFuelCard">
@@ -19160,9 +19161,9 @@ function copySupportEmail() {
           <label>Odredište</label>
           <input id="cleanDestKind" type="hidden" value="current">
           <div class="clean-dest-grid">
-            <button type="button" data-dest="site">Drugo gradilište</button>
-            <button type="button" data-dest="landfill">Deponija</button>
-            <button type="button" data-dest="current" class="active">U krugu</button>
+            <button type="button" data-dest="site" aria-label="Drugo gradilište">Drugo</button>
+            <button type="button" data-dest="landfill" aria-label="Deponija">Deponija</button>
+            <button type="button" data-dest="current" class="active" aria-label="U krugu gradilišta">U krugu</button>
           </div>
           <label id="cleanToSiteWrap" class="hidden">Drugo gradilište<select id="cleanTourToSite"></select></label>
           <label id="cleanDepotWrap" class="hidden">Deponija<select id="cleanTourDepot"></select></label>
@@ -19189,7 +19190,7 @@ function copySupportEmail() {
           <label>Kratak opis<input id="cleanDefectText" placeholder="kratak opis kvara"></label>
           <div class="clean-two clean-actions">
             <input id="cleanDefectImages" type="file" accept="image/*" multiple class="clean-file">
-            <label for="cleanDefectImages" class="clean-secondary">Slike <span id="cleanImageCount">0/5</span></label>
+            <label for="cleanDefectImages" class="clean-secondary clean-image-button">📷 Dodaj slike <span id="cleanImageCount">0/5</span></label>
             <button type="button" class="clean-send" id="cleanSendDefect">Prijavi</button>
           </div>
         </section>
@@ -19211,11 +19212,17 @@ function copySupportEmail() {
       sel.classList.toggle('ready', !!kind);
       if(!kind) sel.innerHTML = '<option value="">Prvo izaberi Vozilo ili Mašina</option>';
     }
+    const welcome = qs('#cleanWorkerWelcome');
+    const meta = qs('#cleanWorkerMeta');
+    if(welcome) welcome.textContent = 'Dobrodošli, ' + (currentWorker?.full_name || 'Zaposleni');
+    if(meta) meta.textContent = ((currentWorker?.company_name || currentWorker?.company_code || 'Firma') + ' · ' + (currentWorker?.function_title || 'Radnik'));
     const picked = qs('#cleanPickedAsset');
     if(picked){
-      picked.classList.toggle('hidden', !hasAsset);
-      picked.textContent = hasAsset ? ('Izabrano: ' + currentAssetLabel()) : '';
+      picked.classList.add('hidden');
+      picked.setAttribute('aria-hidden','true');
+      picked.textContent = '';
     }
+    qsa('#workerCleanScreen .worker-select-visible-value, #normalWorkerFormCard .worker-select-visible-value').forEach(el => { try { el.remove(); } catch(e){ el.classList.add('hidden'); } });
     qs('#cleanForms')?.classList.toggle('hidden', !hasAsset);
     const isMachine = kind === 'machine';
     qs('#cleanFuelTitle') && (qs('#cleanFuelTitle').textContent = isMachine ? 'Gorivo mašine' : 'Gorivo vozila');
@@ -19300,6 +19307,8 @@ function copySupportEmail() {
       }
     });
     qsa('#viewWorkerForm > .dashboard-head,#viewWorkerForm > #workerReturnedReports').forEach(el=>el.classList.add('clean-hide-old'));
+    qsa('#workerCleanScreen .worker-select-visible-value, #normalWorkerFormCard .worker-select-visible-value').forEach(el=>{ try{el.remove();}catch(e){el.classList.add('hidden');} });
+    const picked=qs('#cleanPickedAsset'); if(picked){picked.classList.add('hidden'); picked.textContent='';}
   }
   function boot(){
     // neutralizuj stare boot funkcije koje vraćaju quick/stable ekran posle logina
