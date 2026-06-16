@@ -9631,3 +9631,39 @@ body.worker-field-theme #viewWorkerForm .worker-current-asset-mini{
   -webkit-text-fill-color:#111827!important;
   font-weight:900!important;
 }
+
+
+/* === AskCreate v1747: radnik — bez duplog prikaza vozila i bez praznog belog dugmeta === */
+body.worker-field-theme #viewWorkerForm .vehicle-entry .asset-smart-result.v-picked.ok,
+body.worker-field-theme #viewWorkerForm .vehicle-entry .asset-smart-result.worker-duplicate-found,
+#viewWorkerForm .vehicle-entry .asset-smart-result.v-picked.ok.worker-duplicate-found{
+  display:none!important;
+}
+
+/* Ako nema teksta u Save dugmetu zbog keša/starih podataka, ne sme ostati prazna bela kutija. */
+body.worker-field-theme #viewWorkerForm #saveDraftBtn:empty{
+  display:none!important;
+}
+body.worker-field-theme #viewWorkerForm #saveDraftBtn{
+  color:#344054!important;
+  -webkit-text-fill-color:#344054!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm #submitReportBtn{
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+}
+
+/* Jedan jedini čitljiv prikaz izabranog sredstva. */
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card,
+body.worker-field-theme #viewWorkerForm .worker-asset-selected-summary,
+body.worker-field-theme #viewWorkerForm .asset-picked-summary{
+  background:#ffffff!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  border:1px solid #d0d5dd!important;
+  border-left:6px solid #dc2626!important;
+  border-radius:16px!important;
+  font-weight:900!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
+}

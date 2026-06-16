@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1746-radnik-sredstvo-citljivo";
+const CACHE_NAME = "askcreate-v1747-radnik-bez-duplog-vozila";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1746-radnik-sredstvo-citljivo",
-  "./script.js?v=1746-radnik-sredstvo-citljivo",
-  "./manifest.json?v=1746-radnik-sredstvo-citljivo",
+  "./style.css?v=1747-radnik-bez-duplog-vozila",
+  "./script.js?v=1747-radnik-bez-duplog-vozila",
+  "./manifest.json?v=1747-radnik-bez-duplog-vozila",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

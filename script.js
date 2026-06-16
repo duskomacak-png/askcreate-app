@@ -10075,8 +10075,10 @@ function updateVehicleSmartResult(entryEl, asset, manualValue) {
   const result = entryEl.querySelector(".v-picked");
   if (!result) return;
   if (asset) {
-    result.className = "asset-smart-result v-picked ok";
-    result.textContent = `Pronađeno vozilo: ${formatAssetLabel(asset)}`;
+    // AskCreate v1747: ne ponavljamo isto vozilo dva puta.
+    // Dovoljan je jedan jasan prikaz "Izabrano" ispod.
+    result.className = "asset-smart-result v-picked ok worker-duplicate-found hidden-by-rule";
+    result.textContent = "";
     return;
   }
   const value = String(manualValue || "").trim();
@@ -10559,7 +10561,7 @@ function addVehicleEntry(values = {}) {
 
     <label>Vozilo / interni broj</label>
     <input class="v-search asset-code-search smart-asset-input" placeholder="upiši broj, tablice ili naziv vozila, npr. 2 ili KAM-05" value="${escapeHtml(initialSearch)}" />
-    <div class="asset-smart-result v-picked">Pronadjeno vozilo će se pokazati ispod.</div>
+    <div class="asset-smart-result v-picked hidden-by-rule"></div>
     <button class="secondary small-btn refresh-vehicle-assets" type="button">Osveži vozila iz Uprave</button>
 
     <select class="v-name hidden-asset-select" aria-hidden="true" tabindex="-1">${buildVehicleOptionsHtml(selectedName)}</select>
