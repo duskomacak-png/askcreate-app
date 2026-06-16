@@ -10132,3 +10132,67 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
   #workerQuickScreen .worker-quick-tours-bottom{grid-template-columns:1fr .45fr .7fr!important;gap:5px!important;}
   #workerQuickScreen .worker-quick-dest button{font-size:12px!important;}
 }
+
+/* v1753 — stabilniji i kompaktniji radnik jedan displej */
+#workerQuickScreen .worker-quick-send,
+#workerQuickScreen .worker-quick-secondary,
+#workerQuickScreen .worker-quick-dest button,
+#workerQuickScreen .worker-quick-kind button{
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+#workerQuickScreen .worker-quick-send{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-width: 88px !important;
+}
+#workerQuickScreen #qWorkerToursCard{
+  min-height: 0 !important;
+}
+#workerQuickScreen .worker-quick-extra-destination{
+  min-height: 54px !important;
+}
+#workerQuickScreen .worker-quick-defect-actions .worker-quick-secondary,
+#workerQuickScreen .worker-quick-defect-actions .worker-quick-send{
+  min-width: 0 !important;
+}
+#workerQuickScreen .worker-quick-tours-bottom{
+  display:grid !important;
+  grid-template-columns: minmax(0,1fr) 72px 96px !important;
+  gap:6px !important;
+  align-items:end !important;
+}
+#workerQuickScreen .worker-quick-dest button{
+  padding:8px 2px !important;
+  font-size:12px !important;
+}
+#workerQuickScreen .worker-quick-card-title{
+  font-size:17px !important;
+}
+#workerQuickScreen .worker-quick-company{
+  font-size:18px !important;
+}
+#workerQuickScreen .worker-quick-kind button{
+  font-size:16px !important;
+  padding:10px 8px !important;
+}
+#workerQuickScreen .worker-quick-fuel-grid{
+  grid-template-columns: 1.1fr .72fr .72fr .86fr !important;
+}
+@media (max-width:430px){
+  #workerQuickScreen .worker-quick-tours-bottom{
+    grid-template-columns:minmax(0,1fr) 64px 88px !important;
+    gap:5px !important;
+  }
+  #workerQuickScreen .worker-quick-fuel-grid{
+    grid-template-columns:1fr .68fr .68fr .82fr !important;
+    gap:5px !important;
+  }
+  #workerQuickScreen .worker-quick-send{
+    min-width:84px !important;
+    font-size:14px !important;
+    padding:8px 8px !important;
+  }
+}

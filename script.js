@@ -18752,21 +18752,42 @@ function copySupportEmail() {
     }, 100);
   }
   function quickRefreshSelects(){
-    const qAsset = q$("#qWorkerAssetSelect");
+    const qAsset = q$("#qWorkerAssetSelect") ;
     const realAsset = q$("#wrAssetSelect");
     if (qAsset && realAsset) {
-      const old = qAsset.value;
-      qAsset.innerHTML = makeOptionsFrom(realAsset);
-      qAsset.value = realAsset.value || old || "";
+      const old = qAsset.value || realAsset.value || "";
+      const html = makeOptionsFrom(realAsset);
+      if (qAsset.innerHTML !== html) qAsset.innerHTML = html;
+      qAsset.value = realAsset.value || old || qAsset.value || "";
     }
     const qSite = q$("#qWorkerTourSite");
-    if (qSite) qSite.innerHTML = (typeof buildTruckTourSiteOptionsHtml === "function") ? buildTruckTourSiteOptionsHtml(qSite.value || "") : makeOptionsFrom(q$("#wrSiteName"));
+    if (qSite) {
+      const old = qSite.value || "";
+      const html = (typeof buildTruckTourSiteOptionsHtml === "function") ? buildTruckTourSiteOptionsHtml(old) : makeOptionsFrom(q$("#wrSiteName"));
+      if (qSite.innerHTML !== html) qSite.innerHTML = html;
+      if (old) qSite.value = old;
+    }
     const qToSite = q$("#qWorkerToSite");
-    if (qToSite) qToSite.innerHTML = (typeof buildTruckTourSiteOptionsHtml === "function") ? buildTruckTourSiteOptionsHtml(qToSite.value || "") : makeOptionsFrom(q$("#wrSiteName"));
+    if (qToSite) {
+      const old = qToSite.value || "";
+      const html = (typeof buildTruckTourSiteOptionsHtml === "function") ? buildTruckTourSiteOptionsHtml(old) : makeOptionsFrom(q$("#wrSiteName"));
+      if (qToSite.innerHTML !== html) qToSite.innerHTML = html;
+      if (old) qToSite.value = old;
+    }
     const qDepot = q$("#qWorkerDepot");
-    if (qDepot && typeof buildWorkerDepotOptionsHtml === "function") qDepot.innerHTML = buildWorkerDepotOptionsHtml(qDepot.value || "");
+    if (qDepot && typeof buildWorkerDepotOptionsHtml === "function") {
+      const old = qDepot.value || "";
+      const html = buildWorkerDepotOptionsHtml(old);
+      if (qDepot.innerHTML !== html) qDepot.innerHTML = html;
+      if (old) qDepot.value = old;
+    }
     const qMaterial = q$("#qWorkerMaterial");
-    if (qMaterial && typeof buildWorkerMaterialOptionsHtml === "function") qMaterial.innerHTML = buildWorkerMaterialOptionsHtml(qMaterial.value || "");
+    if (qMaterial && typeof buildWorkerMaterialOptionsHtml === "function") {
+      const old = qMaterial.value || "";
+      const html = buildWorkerMaterialOptionsHtml(old);
+      if (qMaterial.innerHTML !== html) qMaterial.innerHTML = html;
+      if (old) qMaterial.value = old;
+    }
     quickUpdateLabels();
     quickUpdateDestinationVisibility();
   }
@@ -18885,7 +18906,7 @@ function copySupportEmail() {
     const assetReal = q$("#wrAssetSelect");
     if (assetReal) new MutationObserver(() => quickRefreshSelects()).observe(assetReal, { childList:true, subtree:true, attributes:true });
     ["#wrAssetKind", "#wrAssetSelect", "#wrDate"].forEach(sel => q$(sel)?.addEventListener("change", () => setTimeout(() => { quickRefreshSelects(); quickUpdateLabels(); }, 100)));
-    setInterval(() => { if (q$("#workerQuickScreen")) quickRefreshSelects(); }, 2500);
+    window.__workerQuickRefreshTimer && clearInterval(window.__workerQuickRefreshTimer);
     quickRefreshSelects();
   }
   function initQuickScreenWhenReady(){
