@@ -10369,3 +10369,109 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
 }
 #viewWorkerForm.worker-quick-mode #normalWorkerFormCard::-webkit-scrollbar,
 #normalWorkerFormCard.quick-screen-active::-webkit-scrollbar{display:none!important;}
+
+/* === AskCreate v1755: Radnik mobile popravka - čitljivo, bez 5cm mikrokartice === */
+#viewWorkerForm.worker-quick-mode{
+  overflow-x:hidden !important;
+  padding-left:8px !important;
+  padding-right:8px !important;
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+#normalWorkerFormCard.quick-screen-active{
+  width: min(100%, 390px) !important;
+  max-width: 390px !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  margin: 8px auto 18px !important;
+  padding: 12px !important;
+  border-radius: 20px !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
+}
+#workerQuickScreen.worker-quick-screen{
+  width:100% !important;
+  max-width:100% !important;
+  gap:10px !important;
+}
+#workerQuickScreen .worker-quick-head{gap:8px!important;align-items:center!important;}
+#workerQuickScreen .worker-quick-brand strong{font-size:20px!important;line-height:1.05!important;}
+#workerQuickScreen .worker-quick-brand span{font-size:13px!important;line-height:1.15!important;}
+#workerQuickScreen .worker-quick-online{font-size:13px!important;padding:6px 10px!important;}
+#workerQuickScreen .worker-quick-company{font-size:21px!important;line-height:1.08!important;margin:0!important;}
+#workerQuickScreen .worker-quick-kind{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;}
+#workerQuickScreen .worker-quick-kind button{min-height:48px!important;padding:10px 8px!important;font-size:18px!important;border-radius:14px!important;}
+#workerQuickScreen .worker-quick-field label,
+#workerQuickScreen .worker-quick-card label{font-size:16px!important;line-height:1.15!important;margin:0 0 6px!important;white-space:normal!important;word-break:normal!important;}
+#workerQuickScreen .worker-quick-field select,
+#workerQuickScreen .worker-quick-card select,
+#workerQuickScreen .worker-quick-card input,
+#workerQuickScreen .worker-quick-card textarea{min-height:52px!important;height:52px!important;padding:10px 12px!important;border-radius:17px!important;font-size:17px!important;line-height:1.1!important;width:100%!important;max-width:100%!important;}
+#workerQuickScreen .worker-quick-card{padding:12px!important;border-radius:18px!important;margin:0!important;}
+#workerQuickScreen .worker-quick-card-title{font-size:21px!important;gap:8px!important;margin:0 0 12px!important;line-height:1.1!important;}
+#workerQuickScreen .worker-quick-card-title .ico{width:34px!important;height:34px!important;min-width:34px!important;font-size:20px!important;}
+#workerQuickScreen .worker-quick-fuel-grid{display:grid!important;grid-template-columns:1.05fr .62fr .72fr!important;gap:8px!important;align-items:end!important;}
+#workerQuickScreen .worker-quick-fuel-grid > .worker-quick-send{grid-column:1 / -1!important;justify-self:center!important;width:130px!important;}
+#workerQuickScreen .worker-quick-fuel-type{height:52px!important;border-radius:14px!important;display:grid!important;grid-template-columns:1fr 1fr!important;overflow:hidden!important;}
+#workerQuickScreen .worker-quick-fuel-type button,
+#workerQuickScreen .worker-quick-dest button{min-height:52px!important;height:52px!important;padding:8px 4px!important;font-size:14px!important;line-height:1!important;white-space:nowrap!important;}
+#workerQuickScreen .worker-quick-send,
+#workerQuickScreen .worker-quick-secondary{min-height:50px!important;height:50px!important;min-width:0!important;padding:10px 12px!important;border-radius:15px!important;font-size:18px!important;line-height:1!important;white-space:nowrap!important;display:flex!important;align-items:center!important;justify-content:center!important;}
+#workerQuickScreen .worker-quick-tours-grid{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;}
+#workerQuickScreen .worker-quick-dest{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;border-radius:16px!important;overflow:hidden!important;}
+#workerQuickScreen .worker-quick-tours-bottom{display:grid!important;grid-template-columns:minmax(0,1fr) 76px!important;gap:8px!important;margin-top:10px!important;align-items:end!important;}
+#workerQuickScreen .worker-quick-tours-bottom > .worker-quick-send{grid-column:1 / -1!important;justify-self:center!important;width:130px!important;}
+#workerQuickScreen .worker-quick-extra-destination{min-height:0!important;margin-top:10px!important;}
+#workerQuickScreen .worker-quick-defect-actions{display:grid!important;grid-template-columns:1fr 112px!important;gap:8px!important;margin-top:10px!important;}
+#workerQuickScreen .worker-quick-note{font-size:14px!important;line-height:1.25!important;padding-top:10px!important;margin-top:2px!important;}
+#workerQuickScreen .worker-quick-note strong{font-size:16px!important;}
+#workerQuickScreen .worker-quick-note span{font-size:14px!important;}
+@media (max-width:360px){
+  #viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+  #normalWorkerFormCard.quick-screen-active{max-width:100%!important;padding:10px!important;}
+  #workerQuickScreen .worker-quick-company{font-size:19px!important;}
+  #workerQuickScreen .worker-quick-kind button{font-size:16px!important;}
+  #workerQuickScreen .worker-quick-card-title{font-size:19px!important;}
+  #workerQuickScreen .worker-quick-field select,
+  #workerQuickScreen .worker-quick-card select,
+  #workerQuickScreen .worker-quick-card input{font-size:16px!important;}
+  #workerQuickScreen .worker-quick-fuel-grid{grid-template-columns:1fr 62px 70px!important;gap:6px!important;}
+  #workerQuickScreen .worker-quick-defect-actions{grid-template-columns:1fr!important;}
+}
+
+
+/* === AskCreate v1756: Radnik - samo DIZEL + stabilan čitljiv mobilni unos === */
+#workerQuickScreen .worker-quick-fuel-type.only-diesel{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+}
+#workerQuickScreen .worker-quick-fuel-type.only-diesel button{
+  width:100%!important;
+  font-size:16px!important;
+}
+#workerQuickScreen .worker-quick-fuel-grid{
+  grid-template-columns:minmax(0,1fr) 82px 82px!important;
+  gap:8px!important;
+  align-items:end!important;
+}
+#workerQuickScreen .worker-quick-fuel-grid > .worker-quick-send{
+  grid-column:1 / -1!important;
+  justify-self:center!important;
+  width:136px!important;
+}
+#workerQuickScreen .worker-quick-card label{
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+  hyphens:none!important;
+}
+#workerQuickScreen .worker-quick-field select,
+#workerQuickScreen .worker-quick-card select,
+#workerQuickScreen .worker-quick-card input{
+  text-overflow:ellipsis!important;
+}
+@media (max-width:360px){
+  #workerQuickScreen .worker-quick-fuel-grid{
+    grid-template-columns:minmax(0,1fr) 68px 72px!important;
+    gap:6px!important;
+  }
+  #workerQuickScreen .worker-quick-fuel-type.only-diesel button{font-size:14px!important;}
+}

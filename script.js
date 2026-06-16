@@ -13311,8 +13311,7 @@ function addFuelEntry(values = {}) {
 
     <label>Vrsta goriva</label>
     <select class="f-fuel-type">
-      <option value="diesel" ${(values.fuel_type || values.type || "diesel") === "diesel" ? "selected" : ""}>Dizel</option>
-      <option value="petrol" ${(values.fuel_type || values.type || "") === "petrol" ? "selected" : ""}>Benzin</option>
+      <option value="diesel" selected>Dizel</option>
     </select>
 
     <label>Napomena <span class="muted">(opciono)</span></label>
@@ -18701,7 +18700,7 @@ function copySupportEmail() {
     const kind = q$("#wrAssetKind")?.value || "vehicle";
     const reading = q$("#qWorkerFuelReading")?.value || "";
     const liters = q$("#qWorkerFuelLiters")?.value || "";
-    const fuelType = q$("#qWorkerFuelType")?.value || "diesel";
+    const fuelType = "diesel";
     const km = entry.querySelector(".f-km");
     const mtc = entry.querySelector(".f-mtc");
     if (kind === "machine") {
@@ -18755,10 +18754,22 @@ function copySupportEmail() {
     const qAsset = q$("#qWorkerAssetSelect") ;
     const realAsset = q$("#wrAssetSelect");
     if (qAsset && realAsset) {
+      try { if (typeof refreshWorkerAssetContextControls === "function") refreshWorkerAssetContextControls({ keepSelected: true }); } catch(e) {}
+      const kind = q$("#wrAssetKind")?.value || "";
       const old = qAsset.value || realAsset.value || "";
-      const html = makeOptionsFrom(realAsset);
+      let html = "";
+      if (kind && typeof getWorkerAssetsForKind === "function" && typeof formatAssetLabel === "function") {
+        const assets = getWorkerAssetsForKind(kind) || [];
+        const chooseText = kind === "vehicle" ? "Odaberi vozilo" : "Odaberi mašinu";
+        const emptyText = kind === "vehicle" ? "Nema vozila u Direkciji" : "Nema mašina u Direkciji";
+        html = `<option value="">${escapeHtml(assets.length ? chooseText : emptyText)}</option>` + assets.map(a => `<option value="${escapeHtml(a.id || "")}">${escapeHtml(formatAssetLabel(a))}</option>`).join("");
+      } else {
+        html = `<option value="">Odaberi vozilo ili mašinu</option>`;
+      }
       if (qAsset.innerHTML !== html) qAsset.innerHTML = html;
-      qAsset.value = realAsset.value || old || qAsset.value || "";
+      const wanted = realAsset.value || old || "";
+      if (wanted && Array.from(qAsset.options || []).some(o => o.value === wanted)) qAsset.value = wanted;
+      else qAsset.value = "";
     }
     const qSite = q$("#qWorkerTourSite");
     if (qSite) {
@@ -18812,6 +18823,7 @@ function copySupportEmail() {
     q$("#qWorkerToSiteWrap")?.classList.toggle("worker-quick-hidden", kind !== "site");
   }
   function quickSetFuelType(type){
+    type = "diesel";
     setValueAndFire(q$("#qWorkerFuelType"), type);
     qa(".q-fuel-type-btn").forEach(b => b.classList.toggle("active", b.dataset.fuel === type));
   }
@@ -18833,18 +18845,17 @@ function copySupportEmail() {
       </div>
       <div class="worker-quick-field">
         <label id="qWorkerAssetLabel">Odaberi vozilo ili mašinu</label>
-        <select id="qWorkerAssetSelect"><option value="">Klikni Vozilo ili Mašina</option></select>
+        <select id="qWorkerAssetSelect"><option value="">Odaberi vozilo ili mašinu</option></select>
         <div id="qWorkerAssetSummary" class="worker-quick-hidden"></div>
       </div>
       <div class="worker-quick-card" id="qWorkerFuelCard">
         <div class="worker-quick-card-title"><span class="ico">⛽</span><span id="qWorkerFuelTitle">1. Gorivo</span></div>
         <div class="worker-quick-fuel-grid">
           <div>
-            <label>Dizel / Benzin</label>
+            <label>Gorivo</label>
             <input id="qWorkerFuelType" type="hidden" value="diesel" />
-            <div class="worker-quick-fuel-type">
+            <div class="worker-quick-fuel-type only-diesel">
               <button type="button" class="q-fuel-type-btn active" data-fuel="diesel">Dizel</button>
-              <button type="button" class="q-fuel-type-btn" data-fuel="petrol">Benzin</button>
             </div>
           </div>
           <div><label id="qWorkerFuelReadingLabel">KM</label><input id="qWorkerFuelReading" inputmode="decimal" placeholder="150200" /></div>
@@ -18885,7 +18896,9 @@ function copySupportEmail() {
     qa(".q-kind-btn", box).forEach(btn => btn.addEventListener("click", () => {
       const real = q$("#wrAssetKind");
       setValueAndFire(real, btn.dataset.kind || "vehicle");
-      setTimeout(() => { quickRefreshSelects(); quickUpdateLabels(); }, 160);
+      try { if (typeof refreshWorkerAssetContextControls === "function") refreshWorkerAssetContextControls({ keepSelected: false }); } catch(e) {}
+      setValueAndFire(q$("#wrAssetSelect"), "");
+      setTimeout(() => { quickRefreshSelects(); quickUpdateLabels(); }, 80);
     }));
     q$("#qWorkerAssetSelect", box)?.addEventListener("change", (e) => {
       setValueAndFire(q$("#wrAssetSelect"), e.target.value || "");

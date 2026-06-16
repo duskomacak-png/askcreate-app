@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1754-radnik-5x10cm";
+const CACHE_NAME = "askcreate-v1756-dizel-only-mobile-stable";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1754-radnik-5x10cm",
-  "./script.js?v=1754-radnik-5x10cm",
-  "./manifest.json?v=1754-radnik-5x10cm",
+  "./style.css?v=1756-dizel-only-mobile-stable",
+  "./script.js?v=1756-dizel-only-mobile-stable",
+  "./manifest.json?v=1756-dizel-only-mobile-stable",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
