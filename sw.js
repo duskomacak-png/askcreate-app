@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1764-radnik-one-screen";
+const CACHE_NAME = "askcreate-v1750-klasifikacija-izvestaja";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1764-radnik-one-screen",
-  "./script.js?v=1764-radnik-one-screen",
-  "./manifest.json?v=1764-radnik-one-screen",
+  "./style.css?v=1748-gorivo-radnik-jednostavno",
+  "./script.js?v=1748-gorivo-radnik-jednostavno",
+  "./manifest.json?v=1748-gorivo-radnik-jednostavno",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
@@ -48,20 +48,13 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith((async () => {
-    const isNavigation = event.request.mode === "navigate" ||
-      (event.request.headers.get("accept") || "").includes("text/html");
-
-    if (!isNavigation) {
-      const cachedAsset = await caches.match(event.request);
-      if (cachedAsset) return cachedAsset;
-      return fetch(event.request);
-    }
+    const cached = await caches.match(event.request);
+    if (cached) return cached;
 
     try {
-      const fresh = await fetch(event.request);
-      return fresh;
+      return await fetch(event.request);
     } catch (e) {
-      return (await caches.match("./index.html")) || Response.error();
+      return caches.match("./index.html");
     }
   })());
 });

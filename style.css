@@ -9219,206 +9219,1157 @@ body.worker-field-theme.worker-desktop-panel.site-log-mode #siteLogPanel > .site
   color: #991b1b;
 }
 
-
-/* v1763 — radnički mobilni prikaz kao referentni mockup */
-#viewWorkerForm.worker-mobile-panel{max-width:520px!important;padding:12px 12px 96px!important;background:#f3f4f6!important;}
-#viewWorkerForm.worker-mobile-panel > .dashboard-head{background:#fff!important;border:1px solid #e5e7eb!important;border-radius:22px!important;padding:18px!important;gap:12px!important;box-shadow:0 10px 28px rgba(15,23,42,.06)!important;}
-#viewWorkerForm.worker-mobile-panel #workerHello{font-size:34px!important;line-height:1.05!important;font-weight:900!important;letter-spacing:-.03em!important;}
-#viewWorkerForm.worker-mobile-panel #workerCompanyLabel{font-size:18px!important;color:#6b7280!important;}
-#viewWorkerForm.worker-mobile-panel #workerLogoutBtn{border-radius:16px!important;min-height:52px!important;padding:0 22px!important;font-size:17px!important;}
-#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard{border-radius:28px!important;padding:16px!important;border:1px solid #ececec!important;box-shadow:0 14px 34px rgba(15,23,42,.06)!important;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-hero{display:grid;gap:14px;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-brand-left{display:flex;align-items:center;gap:12px;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-logo{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(180deg,#ef4444,#dc2626);color:#fff;font-size:28px;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-app-name{font-size:18px;font-weight:900;color:#111827;line-height:1.1;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-app-name span{color:#dc2626;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-role{font-size:13px;font-weight:700;color:#6b7280;margin-top:2px;}
-#viewWorkerForm.worker-mobile-panel .worker-online-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:999px;padding:9px 12px;font-size:14px;font-weight:800;}
-#viewWorkerForm.worker-mobile-panel .worker-online-dot{width:10px;height:10px;border-radius:999px;background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.15);}
-#viewWorkerForm.worker-mobile-panel .worker-company-line{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:900;color:#111827;}
-#viewWorkerForm.worker-mobile-panel .worker-company-icon{font-size:22px;}
-#viewWorkerForm.worker-mobile-panel .worker-date-top{margin:0!important;}
-#viewWorkerForm.worker-mobile-panel .worker-date-top input{max-width:240px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-context-box{display:grid;gap:12px;border:1px solid #ececec!important;background:#fff!important;padding:0!important;margin:0!important;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-label{font-size:14px;font-weight:800;color:#6b7280;margin-bottom:-2px;}
-#viewWorkerForm.worker-mobile-panel .worker-kind-native-select{position:absolute!important;left:-9999px!important;opacity:0!important;pointer-events:none!important;}
-#viewWorkerForm.worker-mobile-panel .worker-kind-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-#viewWorkerForm.worker-mobile-panel .worker-kind-btn{min-height:64px!important;border-radius:18px!important;border:1px solid #d1d5db!important;background:#fff!important;color:#111827!important;font-size:20px!important;font-weight:900!important;padding:14px 16px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-kind-btn.is-active{background:linear-gradient(180deg,#ef4444,#dc2626)!important;border-color:#b91c1c!important;color:#fff!important;-webkit-text-fill-color:#fff!important;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-select-block label{font-size:14px!important;color:#6b7280!important;margin-bottom:8px!important;}
-#viewWorkerForm.worker-mobile-panel #wrAssetSelect{height:60px!important;border-radius:18px!important;font-size:18px!important;padding:0 16px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-helper{margin:0!important;border-radius:16px!important;background:#f9fafb!important;border:1px solid #e5e7eb!important;color:#374151!important;}
-#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only{display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secFuel,
-#viewWorkerForm.worker-mobile-panel #secVehicles,
-#viewWorkerForm.worker-mobile-panel #secDefects{display:block!important;}
-#viewWorkerForm.worker-mobile-panel .worker-hide-section{display:none!important;}
-#viewWorkerForm.worker-mobile-panel .dyn-section{border:1px solid #e5e7eb!important;border-radius:20px!important;padding:16px!important;background:#fff!important;margin:14px 0!important;}
-#viewWorkerForm.worker-mobile-panel .dyn-section h4{font-size:22px!important;margin-bottom:14px!important;color:#111827!important;}
-#viewWorkerForm.worker-mobile-panel .dyn-section label{font-size:13px!important;color:#374151!important;font-weight:800!important;}
-#viewWorkerForm.worker-mobile-panel .dyn-section input,
-#viewWorkerForm.worker-mobile-panel .dyn-section select,
-#viewWorkerForm.worker-mobile-panel .dyn-section textarea{height:52px!important;border-radius:14px!important;font-size:17px!important;}
-#viewWorkerForm.worker-mobile-panel .dyn-section textarea{min-height:64px!important;padding-top:12px!important;}
-#viewWorkerForm.worker-mobile-panel .entry-card{border-radius:18px!important;background:#fff!important;border:1px solid #ececec!important;padding:14px!important;}
-#viewWorkerForm.worker-mobile-panel .entry-card-head strong{font-size:18px!important;}
-#viewWorkerForm.worker-mobile-panel .mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
-#viewWorkerForm.worker-mobile-panel .truck-km-box{grid-template-columns:1fr 1fr!important;gap:10px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-inline-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
-#viewWorkerForm.worker-mobile-panel .worker-inline-actions button{width:100%!important;}
-#viewWorkerForm.worker-mobile-panel #sendDefectNowBtn{width:100%!important;min-height:52px!important;border-radius:16px!important;font-size:18px!important;}
-#viewWorkerForm.worker-mobile-panel .remove-entry{min-height:38px!important;font-size:13px!important;}
-#viewWorkerForm.worker-mobile-panel .asset-smart-result{border-radius:14px!important;}
-#viewWorkerForm.worker-mobile-panel .truck-summary-line{grid-template-columns:1fr 1fr!important;gap:8px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-asset-rubrics-preview{display:flex;flex-wrap:wrap;gap:8px;}
-#viewWorkerForm.worker-mobile-panel .asset-feature-badge{padding:6px 10px;border-radius:999px;background:#fff5f5;border:1px solid #fecaca;color:#b91c1c;font-size:12px;font-weight:800;}
-#viewWorkerForm.worker-mobile-panel .row:last-child{display:none!important;}
-@media(max-width:420px){
-  #viewWorkerForm.worker-mobile-panel{padding:10px 10px 90px!important;}
-  #viewWorkerForm.worker-mobile-panel #workerHello{font-size:28px!important;}
-  #viewWorkerForm.worker-mobile-panel .worker-company-line{font-size:18px!important;}
-  #viewWorkerForm.worker-mobile-panel .worker-kind-btn{font-size:18px!important;min-height:58px!important;}
-  #viewWorkerForm.worker-mobile-panel .truck-km-box,
-  #viewWorkerForm.worker-mobile-panel .mini-grid,
-  #viewWorkerForm.worker-mobile-panel .worker-inline-actions,
-  #viewWorkerForm.worker-mobile-panel .truck-summary-line{grid-template-columns:1fr!important;}
+/* v1744 — šef gradilišta: Excel-uređen pregled radničkih izveštaja u A4 prikazu */
+.site-boss-excel-overview {
+  margin-top: 10px;
+  color: #111827;
+}
+.site-boss-excel-overview h4 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #111827;
+}
+.site-boss-excel-block {
+  margin: 10px 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.site-boss-excel-block h5 {
+  margin: 0;
+  padding: 8px 10px;
+  background: #f3f4f6;
+  border-bottom: 1px solid #d1d5db;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+.site-boss-excel-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+.site-boss-excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #111827;
+}
+.site-boss-excel-table th,
+.site-boss-excel-table td {
+  border: 1px solid #e5e7eb;
+  padding: 5px 6px;
+  vertical-align: top;
+  text-align: left;
+  white-space: normal;
+}
+.site-boss-excel-table th {
+  background: #f9fafb;
+  font-weight: 800;
+  color: #111827;
+}
+.site-boss-excel-block.export h5 { background: #fff7ed; }
+.site-boss-excel-block.import h5 { background: #ecfdf5; }
+.site-boss-excel-block.internal h5 { background: #eff6ff; }
+.site-boss-excel-block.machines h5 { background: #f5f3ff; }
+.site-boss-excel-block.fuel h5 { background: #fefce8; }
+.site-boss-excel-block.defects h5 { background: #fef2f2; }
+.site-boss-excel-block.totals h5 { background: #f3f4f6; }
+.site-boss-excel-block.totals .site-boss-excel-table td,
+.site-boss-excel-block.totals .site-boss-excel-table th {
+  font-weight: 700;
+}
+@media print {
+  .site-boss-excel-scroll { overflow: visible; }
+  .site-boss-excel-table { font-size: 9px; }
+  .site-boss-excel-table th,
+  .site-boss-excel-table td { padding: 3px 4px; }
+  .site-boss-excel-block { break-inside: avoid; }
 }
 
-
-/* v1764 — RADNIK: jedan stalni mobilni ekran, bez skakanja i bez biranja rubrike */
-#viewWorkerForm.worker-mobile-panel #workerModuleChooser.worker-module-logic-only,
-#viewWorkerForm.worker-mobile-panel #workerModuleChooser,
-#viewWorkerForm.worker-mobile-panel #wrModuleFlowBox,
-#viewWorkerForm.worker-mobile-panel #wrAssetAutoActions,
-#viewWorkerForm.worker-mobile-panel #saveDraftBtn,
-#viewWorkerForm.worker-mobile-panel #submitReportBtn,
-#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard > .row:last-child{
-  display:none!important;
-}
-#viewWorkerForm.worker-mobile-panel #secFuel,
-#viewWorkerForm.worker-mobile-panel #secVehicles,
-#viewWorkerForm.worker-mobile-panel #secDefects{
-  display:block!important;
-  opacity:1!important;
-  visibility:visible!important;
-}
-#viewWorkerForm.worker-mobile-panel .worker-hide-section{display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secWorkers,
-#viewWorkerForm.worker-mobile-panel #secMachines,
-#viewWorkerForm.worker-mobile-panel #secLowloader,
-#viewWorkerForm.worker-mobile-panel #secWaterTanker,
-#viewWorkerForm.worker-mobile-panel #secFieldTanker,
-#viewWorkerForm.worker-mobile-panel #secMaterials,
-#viewWorkerForm.worker-mobile-panel #secSignature,
-#viewWorkerForm.worker-mobile-panel #secLeaveRequest,
-#viewWorkerForm.worker-mobile-panel #secWarehouse,
-#viewWorkerForm.worker-mobile-panel #secWorkerSite{
-  display:none!important;
-}
-#viewWorkerForm.worker-mobile-panel #normalWorkerFormCard{
-  max-width:440px!important;
-  margin-left:auto!important;
-  margin-right:auto!important;
-  padding:18px!important;
-  border-radius:26px!important;
-}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-brand-row{margin-bottom:2px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-date-top{display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secFuel .entry-card-head,
-#viewWorkerForm.worker-mobile-panel #secVehicles .entry-card-head,
-#viewWorkerForm.worker-mobile-panel #secDefects .hint,
-#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(1),
-#viewWorkerForm.worker-mobile-panel #wrDefectAssetName,
-#viewWorkerForm.worker-mobile-panel #wrDefectAssetPicked,
-#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(2),
-#viewWorkerForm.worker-mobile-panel #wrDefectSiteName,
-#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(3),
-#viewWorkerForm.worker-mobile-panel #wrDefectSiteManual,
-#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(6),
-#viewWorkerForm.worker-mobile-panel #wrDefectStopsWork,
-#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(7),
-#viewWorkerForm.worker-mobile-panel #wrDefectUrgency,
-#viewWorkerForm.worker-mobile-panel #secDefects > label:nth-of-type(8),
-#viewWorkerForm.worker-mobile-panel #wrDefectCalledMechanic{
-  display:none!important;
-}
-#viewWorkerForm.worker-mobile-panel #secFuel .fuel-entry,
-#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-entry{
+/* === AskCreate v1745: radnik moderni jednostavan tok === */
+body.worker-field-theme #viewWorkerForm #normalWorkerFormCard{
+  background:#f8fafc!important;
   border:0!important;
+  box-shadow:none!important;
+  padding:12px!important;
+  max-width:760px!important;
+  margin:0 auto 100px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-simple-top,
+body.worker-field-theme #viewWorkerForm #workerAssetContextBox,
+body.worker-field-theme #viewWorkerForm .worker-asset-auto-actions,
+body.worker-field-theme #viewWorkerForm #workerModuleChooser,
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section{
+  background:#fff!important;
+  border:1px solid #d0d5dd!important;
+  border-radius:22px!important;
+  padding:16px!important;
+  box-shadow:0 10px 26px rgba(15,23,42,.06)!important;
+  margin:12px 0!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-simple-top label,
+body.worker-field-theme #viewWorkerForm #workerAssetContextBox label,
+body.worker-field-theme #viewWorkerForm .dyn-section label{
+  color:#111827!important;
+  font-weight:900!important;
+  font-size:14px!important;
+}
+body.worker-field-theme #viewWorkerForm input,
+body.worker-field-theme #viewWorkerForm select,
+body.worker-field-theme #viewWorkerForm textarea{
+  background:#fff!important;
+  color:#111827!important;
+  border:1px solid #cbd5e1!important;
+  border-radius:16px!important;
+  min-height:48px!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+}
+body.worker-field-theme #viewWorkerForm input:focus,
+body.worker-field-theme #viewWorkerForm select:focus,
+body.worker-field-theme #viewWorkerForm textarea:focus{
+  border-color:#dc2626!important;
+  box-shadow:0 0 0 3px rgba(220,38,38,.12)!important;
+  outline:none!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-asset-context-grid{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:12px!important;
+}
+@media (min-width:760px){
+  body.worker-field-theme #viewWorkerForm .worker-asset-context-grid{grid-template-columns:1fr 1.35fr!important;}
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result.worker-step-help{
+  margin-top:12px!important;
+  border-radius:16px!important;
+  padding:12px!important;
+  font-weight:800!important;
+  color:#475467!important;
+  background:#f9fafb!important;
+  border:1px solid #eaecf0!important;
+}
+body.worker-field-theme #viewWorkerForm .asset-smart-result.ok.worker-step-help{
+  color:#065f46!important;
+  background:#ecfdf5!important;
+  border-color:#bbf7d0!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card{
+  margin-top:12px!important;
+  padding:14px!important;
+  border:1px solid #e5e7eb!important;
+  border-left:5px solid #dc2626!important;
+  border-radius:18px!important;
+  background:#ffffff!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-head,
+body.worker-field-theme #viewWorkerForm .worker-step-title,
+body.worker-field-theme #viewWorkerForm .worker-active-step-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  gap:10px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-step-pill{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 auto!important;
+  width:28px!important;
+  height:28px!important;
+  border-radius:999px!important;
+  background:#dc2626!important;
+  color:#fff!important;
+  font-weight:900!important;
+  font-size:14px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-head strong,
+body.worker-field-theme #viewWorkerForm .worker-step-title strong,
+body.worker-field-theme #viewWorkerForm .worker-active-step-head strong{
+  color:#111827!important;
+  font-size:18px!important;
+  line-height:1.2!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-head small,
+body.worker-field-theme #viewWorkerForm .worker-step-title small,
+body.worker-field-theme #viewWorkerForm .worker-active-step-head small{
+  display:block!important;
+  margin-top:3px!important;
+  color:#667085!important;
+  font-weight:800!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-badges{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:7px!important;
+  margin-top:12px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-badges span,
+body.worker-field-theme #viewWorkerForm .asset-feature-badge{
+  display:inline-flex!important;
+  align-items:center!important;
+  border-radius:999px!important;
+  padding:6px 10px!important;
+  background:#fff7f7!important;
+  color:#b42318!important;
+  border:1px solid #fecaca!important;
+  font-weight:850!important;
+  font-size:13px!important;
+}
+body.worker-field-theme #viewWorkerForm #workerModuleChooser{
   padding:0!important;
-  margin:0!important;
+  border:0!important;
+  box-shadow:none!important;
   background:transparent!important;
 }
-#viewWorkerForm.worker-mobile-panel #secFuel .worker-fuel-source-grid,
-#viewWorkerForm.worker-mobile-panel #secFuel .worker-fuel-source-grid + label,
-#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-kind,
-#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-kind + label,
-#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-search,
-#viewWorkerForm.worker-mobile-panel #secFuel .f-picked,
-#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-select,
-#viewWorkerForm.worker-mobile-panel #secFuel .f-asset-custom,
-#viewWorkerForm.worker-mobile-panel #secFuel .f-by,
-#viewWorkerForm.worker-mobile-panel #secFuel label:has(+ .f-by),
-#viewWorkerForm.worker-mobile-panel #secFuel p.hint{
+body.worker-field-theme #viewWorkerForm #workerModuleChooser > label,
+body.worker-field-theme #viewWorkerForm #wrModuleSelect,
+body.worker-field-theme #viewWorkerForm #wrModuleSelectedLabel{
   display:none!important;
 }
-#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid{
+body.worker-field-theme #viewWorkerForm .worker-action-grid{
   display:grid!important;
-  grid-template-columns:1fr 1fr!important;
-  gap:12px!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+  margin-top:12px!important;
+}
+@media (min-width:620px){
+  body.worker-field-theme #viewWorkerForm .worker-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+body.worker-field-theme #viewWorkerForm .worker-action-chip{
+  min-height:54px!important;
+  border-radius:18px!important;
+  border:1px solid #d0d5dd!important;
+  background:#fff!important;
+  color:#111827!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  padding:12px 14px!important;
+  font-weight:950!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-action-chip.primary,
+body.worker-field-theme #viewWorkerForm .worker-action-chip.active{
+  background:linear-gradient(135deg,#dc2626,#ef4444)!important;
+  color:#fff!important;
+  border-color:#dc2626!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-action-chip small{
+  color:inherit!important;
+  opacity:.9!important;
+  font-size:12px!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-current-asset-mini,
+body.worker-field-theme #viewWorkerForm .worker-active-step-asset{
+  margin-top:10px!important;
+  padding:10px 12px!important;
+  border-radius:14px!important;
+  background:#f9fafb!important;
+  border:1px solid #e5e7eb!important;
+  color:#344054!important;
+  font-weight:900!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-module-flow{
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-active-step-card{
+  background:#fff7f7!important;
+  border:1px solid #fecaca!important;
+  border-left:6px solid #dc2626!important;
+  border-radius:20px!important;
+  padding:14px!important;
+  box-shadow:0 10px 24px rgba(220,38,38,.08)!important;
+}
+body.worker-field-theme #viewWorkerForm .worker-close-module-btn{
+  margin-top:12px!important;
+  width:100%!important;
+  min-height:46px!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  color:#b42318!important;
+  border:1px solid #fca5a5!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section{
+  border-left:6px solid #dc2626!important;
+}
+body.worker-field-theme #viewWorkerForm .dyn-section.active.worker-active-module-section > h4{
+  font-size:20px!important;
+  margin-bottom:12px!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card{
+  background:#fff!important;
+  border:1px solid #e5e7eb!important;
+  border-radius:20px!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.05)!important;
+  padding:14px!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card-head{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin-bottom:10px!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card-head strong{
+  color:#111827!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm .entry-card-head .remove-entry,
+body.worker-field-theme #viewWorkerForm button.remove-entry{
+  background:#fff!important;
+  color:#b42318!important;
+  border:1px solid #fca5a5!important;
+  border-radius:14px!important;
+  font-weight:950!important;
+  min-height:40px!important;
+}
+body.worker-field-theme #viewWorkerForm #secSignature{display:none!important;}
+body.worker-field-theme #viewWorkerForm .row:has(#saveDraftBtn){
+  position:sticky!important;
+  bottom:0!important;
+  z-index:50!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:10px!important;
+  background:rgba(248,250,252,.94)!important;
+  backdrop-filter:blur(10px)!important;
+  border-top:1px solid #e5e7eb!important;
+  padding:12px!important;
+  margin:20px -12px -12px!important;
+}
+@media (min-width:520px){
+  body.worker-field-theme #viewWorkerForm .row:has(#saveDraftBtn){grid-template-columns:1fr 1fr!important;}
+}
+body.worker-field-theme #viewWorkerForm #saveDraftBtn,
+body.worker-field-theme #viewWorkerForm #submitReportBtn{
+  min-height:54px!important;
+  border-radius:18px!important;
+  font-size:16px!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm #submitReportBtn{
+  background:linear-gradient(135deg,#dc2626,#ef4444)!important;
+  color:#fff!important;
+  border:0!important;
+}
+body.worker-field-theme #viewWorkerForm #saveDraftBtn{
+  background:#fff!important;
+  color:#344054!important;
+  border:1px solid #d0d5dd!important;
+}
+
+
+/* === AskCreate v1746: radnik — čitljiv prikaz izabranog sredstva i bez bledih zelenih kartica === */
+body.worker-field-theme #viewWorkerForm .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .dyn-section .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .entry-card .asset-smart-result,
+body.worker-field-theme #viewWorkerForm .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .dyn-section .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .entry-card .asset-smart-result.ok{
+  background:#ffffff!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  border:1px solid #d0d5dd!important;
+  border-left:5px solid #dc2626!important;
+  border-radius:16px!important;
+  font-weight:900!important;
+  opacity:1!important;
+  text-shadow:none!important;
+}
+
+body.worker-field-theme #viewWorkerForm .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .dyn-section .asset-smart-result.ok,
+body.worker-field-theme #viewWorkerForm .entry-card .asset-smart-result.ok{
+  background:#f8fafc!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card{
+  background:#ffffff!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  border:1px solid #d0d5dd!important;
+  border-left:6px solid #dc2626!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card strong{
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  font-weight:950!important;
+  font-size:18px!important;
+  line-height:1.25!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card small{
+  color:#475467!important;
+  -webkit-text-fill-color:#475467!important;
+  font-weight:800!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-badges span{
+  background:#fff5f5!important;
+  border:1px solid #fecaca!important;
+  color:#b42318!important;
+  -webkit-text-fill-color:#b42318!important;
+  font-weight:900!important;
+}
+
+body.worker-field-theme #viewWorkerForm .worker-current-asset-mini{
+  background:#f8fafc!important;
+  border:1px solid #d0d5dd!important;
+  border-left:5px solid #dc2626!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  font-weight:900!important;
+}
+
+
+/* === AskCreate v1747: radnik — bez duplog prikaza vozila i bez praznog belog dugmeta === */
+body.worker-field-theme #viewWorkerForm .vehicle-entry .asset-smart-result.v-picked.ok,
+body.worker-field-theme #viewWorkerForm .vehicle-entry .asset-smart-result.worker-duplicate-found,
+#viewWorkerForm .vehicle-entry .asset-smart-result.v-picked.ok.worker-duplicate-found{
+  display:none!important;
+}
+
+/* Ako nema teksta u Save dugmetu zbog keša/starih podataka, ne sme ostati prazna bela kutija. */
+body.worker-field-theme #viewWorkerForm #saveDraftBtn:empty{
+  display:none!important;
+}
+body.worker-field-theme #viewWorkerForm #saveDraftBtn{
+  color:#344054!important;
+  -webkit-text-fill-color:#344054!important;
+  font-weight:950!important;
+}
+body.worker-field-theme #viewWorkerForm #submitReportBtn{
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+}
+
+/* Jedan jedini čitljiv prikaz izabranog sredstva. */
+body.worker-field-theme #viewWorkerForm .worker-selected-asset-card,
+body.worker-field-theme #viewWorkerForm .worker-asset-selected-summary,
+body.worker-field-theme #viewWorkerForm .asset-picked-summary{
+  background:#ffffff!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  border:1px solid #d0d5dd!important;
+  border-left:6px solid #dc2626!important;
+  border-radius:16px!important;
+  font-weight:900!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
+}
+
+/* v1748 — gorivo radnik jednostavno + gradilište lupa */
+.worker-simple-fuel-entry .entry-card-head strong { color:#111827; }
+.worker-simple-fuel-asset {
+  border: 1px solid #d7dde5;
+  border-left: 6px solid #e03131;
+  border-radius: 16px;
+  background: #fff;
+  padding: 12px 14px;
+  margin: 10px 0 14px;
+  display: grid;
+  gap: 3px;
+}
+.worker-simple-fuel-asset span {
+  color:#6b7280;
+  font-weight:800;
+  font-size:.85rem;
+  text-transform: uppercase;
+  letter-spacing:.03em;
+}
+.worker-simple-fuel-asset strong {
+  color:#111827;
+  font-weight:900;
+  line-height:1.25;
+}
+.worker-simple-fuel-asset small { color:#4b5563; font-weight:700; }
+.worker-site-search-wrap { position:relative; }
+.worker-site-search-wrap .worker-site-search-icon {
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  opacity:.75;
+  pointer-events:none;
+}
+.worker-site-search-wrap input.f-site-search {
+  padding-left:44px !important;
+  background:#fff !important;
+  color:#111827 !important;
+  border:1px solid #cfd6df !important;
+}
+.worker-simple-fuel-entry .hint {
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#7c2d12;
+  border-radius:14px;
+  padding:10px 12px;
+}
+
+/* v1749 — jednostavan tok goriva radnika */
+.worker-one-shot-fuel .entry-card-head,
+.worker-one-shot-fuel .remove-entry,
+#addFuelBtn.hidden { display: none !important; }
+.worker-simple-fuel-title {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.worker-simple-fuel-title strong {
+  font-size: 1.2rem;
+  color: #111827;
+}
+.worker-simple-fuel-title small {
+  color: #6b7280;
+  font-weight: 700;
+}
+.worker-one-shot-fuel .worker-simple-fuel-asset {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-left: 6px solid #dc2626;
+  border-radius: 18px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  color: #111827;
+}
+.worker-one-shot-fuel .worker-simple-fuel-asset span {
+  display:block;
+  color:#6b7280;
+  font-size:.85rem;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.worker-one-shot-fuel .worker-simple-fuel-asset strong {
+  display:block;
+  color:#111827;
+  font-size:1.05rem;
+  line-height:1.35;
+  margin-top:3px;
+}
+.worker-one-shot-fuel .worker-simple-fuel-asset small {
+  display:block;
+  color:#374151;
+  margin-top:5px;
+  font-weight:700;
+}
+.worker-fuel-simple-grid { align-items: end; }
+
+/* v1751 - Radnik kompaktan displej kao predlog sa slike */
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 18px;
+  border-radius: 28px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 18px 45px rgba(15,23,42,.08);
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard > :not(#workerQuickScreen) {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.worker-quick-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: #111827;
+}
+.worker-quick-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding: 2px 2px 6px;
+}
+.worker-quick-brand strong {
+  display:block;
+  font-size: 23px;
+  line-height:1.1;
+  letter-spacing: -.02em;
+}
+.worker-quick-brand span {
+  display:block;
+  color:#6b7280;
+  font-weight:700;
+  margin-top:2px;
+}
+.worker-quick-online {
+  background:#ecfdf5;
+  color:#166534;
+  border:1px solid #bbf7d0;
+  border-radius:999px;
+  font-weight:900;
+  padding:7px 11px;
+  white-space:nowrap;
+  font-size:13px;
+}
+.worker-quick-company {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size: 22px;
+  font-weight: 950;
+  line-height:1.15;
+  margin: 2px 0 4px;
+}
+.worker-quick-kind {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.worker-quick-kind button,
+.worker-quick-action-row button,
+.worker-quick-mini-action,
+.worker-quick-send,
+.worker-quick-secondary,
+.worker-quick-dest button {
+  min-height: 0;
+  border-radius: 14px;
+  border:1px solid #d1d5db;
+  background:#fff;
+  color:#111827;
+  font-weight:950;
+  box-shadow:none;
+  cursor:pointer;
+}
+.worker-quick-kind button {
+  padding:15px 12px;
+  font-size: 20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+}
+.worker-quick-kind button.active,
+.worker-quick-action-row button.active,
+.worker-quick-dest button.active,
+.worker-quick-send {
+  background: linear-gradient(135deg,#dc2626,#ef4444) !important;
+  color:#fff !important;
+  border-color:#dc2626 !important;
+}
+.worker-quick-field label,
+.worker-quick-card label {
+  display:block;
+  font-size:13px;
+  font-weight:900;
+  color:#374151;
+  margin:0 0 5px;
+}
+.worker-quick-field select,
+.worker-quick-card select,
+.worker-quick-card input,
+.worker-quick-card textarea {
+  width:100%;
+  border:1px solid #cfd6df;
+  background:#fff;
+  color:#111827;
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:16px;
+  font-weight:800;
+  min-height: 44px;
+  box-shadow:none;
+}
+.worker-quick-card {
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  padding:12px;
+  background:#fff;
+  box-shadow: 0 10px 24px rgba(15,23,42,.04);
+}
+.worker-quick-card-title {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:20px;
+  font-weight:950;
+  margin:0 0 10px;
+}
+.worker-quick-card-title .ico {
+  width:32px;
+  height:32px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#dc2626;
+  background:#fef2f2;
+}
+.worker-quick-fuel-grid {
+  display:grid;
+  grid-template-columns:1.25fr .85fr .7fr .9fr;
+  gap:8px;
+  align-items:end;
+}
+.worker-quick-fuel-type {
+  display:flex;
+  gap:0;
+  border:1px solid #d1d5db;
+  border-radius:12px;
+  overflow:hidden;
+  height:44px;
+}
+.worker-quick-fuel-type button {
+  flex:1;
+  border:0;
+  border-radius:0;
+  background:#fff;
+  color:#111827;
+  font-weight:950;
+  padding:0 8px;
+}
+.worker-quick-fuel-type button.active { background:#dc2626; color:#fff; }
+.worker-quick-send {
+  height:44px;
+  padding:0 16px;
+  font-size:16px;
+}
+.worker-quick-secondary,
+.worker-quick-mini-action {
+  height:40px;
+  padding:0 14px;
+  color:#dc2626;
+  background:#fff;
+  border-color:#fecaca;
+  font-size:15px;
+}
+.worker-quick-center { display:flex; justify-content:center; margin-top:8px; }
+.worker-quick-tours-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.worker-quick-dest {
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:6px;
+}
+.worker-quick-dest button {
+  height:42px;
+  padding:0 6px;
+  font-size:14px;
+}
+.worker-quick-tours-bottom {
+  display:grid;
+  grid-template-columns:1.15fr .42fr .55fr;
+  gap:8px;
+  align-items:end;
+  margin-top:8px;
+}
+.worker-quick-extra-destination { margin-top:8px; }
+.worker-quick-defect-grid {
+  display:grid;
+  grid-template-columns:1fr .55fr;
+  gap:8px;
+  align-items:end;
+}
+.worker-quick-defect-actions {
+  display:flex;
+  gap:8px;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:8px;
+}
+.worker-quick-note {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  color:#6b7280;
+  font-weight:800;
+  border-top:1px solid #e5e7eb;
+  padding-top:12px;
+  font-size:14px;
+}
+.worker-quick-note strong { color:#374151; font-size:15px; }
+.worker-quick-hidden { display:none !important; }
+@media (max-width: 460px) {
+  #viewWorkerForm.worker-quick-mode #normalWorkerFormCard { padding: 12px; border-radius: 22px; }
+  .worker-quick-brand strong { font-size: 20px; }
+  .worker-quick-company { font-size: 20px; }
+  .worker-quick-kind button { font-size:18px; padding:13px 8px; }
+  .worker-quick-fuel-grid { grid-template-columns: 1fr 1fr; }
+  .worker-quick-fuel-grid .worker-quick-send { grid-column: 2 / 3; }
+  .worker-quick-tours-grid { grid-template-columns:1fr; }
+  .worker-quick-dest { grid-template-columns:1fr 1fr 1fr; }
+  .worker-quick-tours-bottom { grid-template-columns:1fr .45fr; }
+  .worker-quick-tours-bottom .worker-quick-send { grid-column:2; }
+}
+
+/* === AskCreate v1752: radnik jedan displej — bez starog prikaza === */
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+#normalWorkerFormCard.quick-screen-active{
+  max-width: 560px !important;
+  width: min(100%, 560px) !important;
+  margin: 0 auto !important;
+  padding: 14px !important;
+  border-radius: 24px !important;
+  background: #fff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 14px 38px rgba(15,23,42,.08) !important;
+  overflow: visible !important;
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard > :not(#workerQuickScreen),
+#normalWorkerFormCard.quick-screen-active > :not(#workerQuickScreen){
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+#viewWorkerForm.worker-quick-mode #workerQuickScreen,
+#normalWorkerFormCard.quick-screen-active #workerQuickScreen{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  position:relative !important;
+  width:100% !important;
+  height:auto !important;
+  overflow:visible !important;
+  pointer-events:auto !important;
+}
+#workerQuickScreen .worker-select-visible-value{display:none!important;}
+#workerQuickScreen.worker-quick-screen{
+  gap: 9px !important;
+  color:#111827 !important;
+}
+#workerQuickScreen .worker-quick-head{padding:0 0 2px!important;}
+#workerQuickScreen .worker-quick-brand strong{font-size:22px!important;}
+#workerQuickScreen .worker-quick-brand span{font-size:14px!important;}
+#workerQuickScreen .worker-quick-company{font-size:20px!important;margin:0!important;}
+#workerQuickScreen .worker-quick-kind{gap:8px!important;}
+#workerQuickScreen .worker-quick-kind button{padding:12px 10px!important;font-size:18px!important;border-radius:13px!important;}
+#workerQuickScreen .worker-quick-field label,
+#workerQuickScreen .worker-quick-card label{font-size:12px!important;margin:0 0 4px!important;}
+#workerQuickScreen .worker-quick-field select,
+#workerQuickScreen .worker-quick-card select,
+#workerQuickScreen .worker-quick-card input,
+#workerQuickScreen .worker-quick-card textarea{
+  min-height:38px!important;
+  padding:8px 10px!important;
+  border-radius:10px!important;
+  font-size:14px!important;
+  font-weight:750!important;
+  color:#111827!important;
+  -webkit-text-fill-color:#111827!important;
+  background:#fff!important;
+}
+#workerQuickScreen .worker-quick-card{
+  padding:10px!important;
+  border:1px solid #e5e7eb!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 5px 14px rgba(15,23,42,.045)!important;
+}
+#workerQuickScreen .worker-quick-card-title{
+  display:flex!important;align-items:center!important;gap:8px!important;
+  font-size:18px!important;font-weight:950!important;margin:0 0 8px!important;
+}
+#workerQuickScreen .worker-quick-card-title .ico{
+  width:28px!important;height:28px!important;border-radius:999px!important;background:#fee2e2!important;color:#dc2626!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:16px!important;
+}
+#workerQuickScreen .worker-quick-fuel-grid{
+  display:grid!important;
+  grid-template-columns: 1.25fr .75fr .75fr .78fr!important;
+  gap:7px!important;
   align-items:end!important;
 }
-#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-mtc),
-#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-km){display:block!important;}
-#viewWorkerForm.worker-mobile-panel #secFuel.worker-kind-vehicle .mini-grid > div:has(.f-mtc){display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secFuel.worker-kind-machine .mini-grid > div:has(.f-km){display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:first-child{order:2;}
-#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-km),
-#viewWorkerForm.worker-mobile-panel #secFuel .mini-grid > div:has(.f-mtc){order:1;}
-#viewWorkerForm.worker-mobile-panel #secFuel .f-liters + *{display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secFuel label{font-size:14px!important;}
-#viewWorkerForm.worker-mobile-panel #secFuel label:has(+ .f-liters)::after{content:' dizela';}
-#viewWorkerForm.worker-mobile-panel #secVehicles .v-search,
-#viewWorkerForm.worker-mobile-panel #secVehicles .v-picked,
-#viewWorkerForm.worker-mobile-panel #secVehicles .refresh-vehicle-assets,
-#viewWorkerForm.worker-mobile-panel #secVehicles .hidden-asset-select,
-#viewWorkerForm.worker-mobile-panel #secVehicles .hidden-asset-custom,
-#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-entry > label:first-of-type,
-#viewWorkerForm.worker-mobile-panel #secVehicles .truck-summary-line,
-#viewWorkerForm.worker-mobile-panel #secVehicles .add-tour-row{
-  display:none!important;
+#workerQuickScreen .worker-quick-fuel-type{display:grid!important;grid-template-columns:1fr 1fr!important;border:1px solid #d1d5db!important;border-radius:10px!important;overflow:hidden!important;}
+#workerQuickScreen .worker-quick-fuel-type button{border:0!important;border-radius:0!important;padding:8px 7px!important;min-height:38px!important;font-size:14px!important;font-weight:900!important;background:#fff!important;color:#111827!important;}
+#workerQuickScreen .worker-quick-fuel-type button.active{background:#dc2626!important;color:#fff!important;}
+#workerQuickScreen .worker-quick-send{
+  min-height:38px!important;padding:8px 10px!important;border-radius:10px!important;font-size:15px!important;font-weight:950!important;
+  background:#dc2626!important;color:#fff!important;border:1px solid #dc2626!important;
 }
-#viewWorkerForm.worker-mobile-panel #secVehicles .truck-km-box{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;margin-bottom:12px!important;}
-#viewWorkerForm.worker-mobile-panel #secVehicles.worker-kind-machine{display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-tour-row{border:0!important;padding:0!important;margin:0!important;background:transparent!important;}
-#viewWorkerForm.worker-mobile-panel #secVehicles .vehicle-tour-head,
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-quantity-preview,
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-manual-quantity-wrap,
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box h4,
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box .from-current-preview,
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box .to-current-preview,
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-note,
-#viewWorkerForm.worker-mobile-panel #secVehicles label:has(+ .tour-note){display:none!important;}
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-count-box{display:grid!important;grid-template-columns:1.4fr .65fr!important;gap:10px!important;}
-#viewWorkerForm.worker-mobile-panel #secVehicles .tour-route-box{margin-top:10px!important;}
-#viewWorkerForm.worker-mobile-panel #secVehicles .to-kind{display:grid!important;}
-#viewWorkerForm.worker-mobile-panel #secVehicles .to-site-wrap,
-#viewWorkerForm.worker-mobile-panel #secVehicles .to-landfill-wrap{margin-top:10px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-inline-actions{display:flex!important;justify-content:flex-end!important;gap:10px!important;}
-#viewWorkerForm.worker-mobile-panel .worker-inline-actions .secondary{display:none!important;}
-#viewWorkerForm.worker-mobile-panel .worker-inline-actions .primary{width:min(180px,100%)!important;min-height:52px!important;border-radius:16px!important;font-size:18px!important;}
-#viewWorkerForm.worker-mobile-panel #secDefects #wrDefect{min-height:58px!important;height:58px!important;}
-#viewWorkerForm.worker-mobile-panel #wrDefectImages{display:none!important;}
-#viewWorkerForm.worker-mobile-panel #wrDefectImagesPreview{margin:0!important;}
-#viewWorkerForm.worker-mobile-panel #wrDefectImagesPreview:before{content:'📷 Dodaj slike';display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 18px;border:1px solid #d1d5db;border-radius:14px;background:#fff;color:#111827;font-weight:900;}
-#viewWorkerForm.worker-mobile-panel #sendDefectNowBtn{width:min(180px,100%)!important;float:right!important;background:linear-gradient(180deg,#ef4444,#dc2626)!important;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-footer-note{display:block!important;text-align:center;color:#6b7280;font-size:13px;font-weight:700;margin-top:18px;border-top:1px solid #e5e7eb;padding-top:16px;}
-#viewWorkerForm.worker-mobile-panel .worker-mobile-footer-note b{display:block;color:#374151;font-size:16px;margin-bottom:2px;}
-@media(max-width:420px){
-  #viewWorkerForm.worker-mobile-panel #normalWorkerFormCard{padding:14px!important;}
-  #viewWorkerForm.worker-mobile-panel #secFuel .mini-grid,
-  #viewWorkerForm.worker-mobile-panel #secVehicles .truck-km-box,
-  #viewWorkerForm.worker-mobile-panel #secVehicles .tour-count-box{grid-template-columns:1fr 1fr!important;gap:8px!important;}
-  #viewWorkerForm.worker-mobile-panel .dyn-section{padding:13px!important;}
+#workerQuickScreen .worker-quick-center{display:none!important;}
+#workerQuickScreen .worker-quick-tours-grid{display:grid!important;grid-template-columns:1.05fr 1.2fr!important;gap:7px!important;align-items:end!important;}
+#workerQuickScreen .worker-quick-dest{display:grid!important;grid-template-columns:1fr 1fr 1fr!important;border:1px solid #d1d5db!important;border-radius:10px!important;overflow:hidden!important;}
+#workerQuickScreen .worker-quick-dest button{font-size:13px!important;font-weight:900!important;padding:8px 4px!important;min-height:38px!important;border:0!important;border-left:1px solid #d1d5db!important;border-radius:0!important;background:#fff!important;color:#111827!important;}
+#workerQuickScreen .worker-quick-dest button:first-child{border-left:0!important;}
+#workerQuickScreen .worker-quick-dest button.active{background:#dc2626!important;color:#fff!important;}
+#workerQuickScreen .worker-quick-tours-bottom{display:grid!important;grid-template-columns:1.25fr .42fr .7fr!important;gap:7px!important;align-items:end!important;margin-top:7px!important;}
+#workerQuickScreen .worker-quick-extra-destination{margin-top:7px!important;}
+#workerQuickScreen .worker-quick-hidden{display:none!important;}
+#workerQuickScreen .worker-quick-defect-actions{display:grid!important;grid-template-columns:1fr .75fr!important;gap:8px!important;margin-top:7px!important;align-items:center!important;}
+#workerQuickScreen .worker-quick-secondary{
+  min-height:38px!important;border-radius:10px!important;border:1px solid #d1d5db!important;background:#fff!important;color:#111827!important;font-weight:900!important;padding:8px 10px!important;
+}
+#workerQuickScreen .worker-quick-note{text-align:center;color:#6b7280!important;font-size:13px!important;border-top:1px solid #e5e7eb!important;padding-top:8px!important;}
+#workerQuickScreen .worker-quick-note strong{display:block;color:#374151!important;font-size:14px!important;}
+#workerQuickScreen .worker-quick-note span{display:block;margin-top:2px;}
+@media (max-width:430px){
+  #viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+  #normalWorkerFormCard.quick-screen-active{padding:10px!important;border-radius:18px!important;}
+  #workerQuickScreen.worker-quick-screen{gap:7px!important;}
+  #workerQuickScreen .worker-quick-company{font-size:18px!important;}
+  #workerQuickScreen .worker-quick-kind button{font-size:16px!important;padding:10px 8px!important;}
+  #workerQuickScreen .worker-quick-card{padding:8px!important;}
+  #workerQuickScreen .worker-quick-card-title{font-size:16px!important;margin-bottom:6px!important;}
+  #workerQuickScreen .worker-quick-fuel-grid{grid-template-columns:1fr .7fr .7fr .72fr!important;gap:5px!important;}
+  #workerQuickScreen .worker-quick-tours-grid{grid-template-columns:1fr!important;}
+  #workerQuickScreen .worker-quick-tours-bottom{grid-template-columns:1fr .45fr .7fr!important;gap:5px!important;}
+  #workerQuickScreen .worker-quick-dest button{font-size:12px!important;}
+}
+
+/* v1753 — stabilniji i kompaktniji radnik jedan displej */
+#workerQuickScreen .worker-quick-send,
+#workerQuickScreen .worker-quick-secondary,
+#workerQuickScreen .worker-quick-dest button,
+#workerQuickScreen .worker-quick-kind button{
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  text-align: center !important;
+}
+#workerQuickScreen .worker-quick-send{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-width: 88px !important;
+}
+#workerQuickScreen #qWorkerToursCard{
+  min-height: 0 !important;
+}
+#workerQuickScreen .worker-quick-extra-destination{
+  min-height: 54px !important;
+}
+#workerQuickScreen .worker-quick-defect-actions .worker-quick-secondary,
+#workerQuickScreen .worker-quick-defect-actions .worker-quick-send{
+  min-width: 0 !important;
+}
+#workerQuickScreen .worker-quick-tours-bottom{
+  display:grid !important;
+  grid-template-columns: minmax(0,1fr) 72px 96px !important;
+  gap:6px !important;
+  align-items:end !important;
+}
+#workerQuickScreen .worker-quick-dest button{
+  padding:8px 2px !important;
+  font-size:12px !important;
+}
+#workerQuickScreen .worker-quick-card-title{
+  font-size:17px !important;
+}
+#workerQuickScreen .worker-quick-company{
+  font-size:18px !important;
+}
+#workerQuickScreen .worker-quick-kind button{
+  font-size:16px !important;
+  padding:10px 8px !important;
+}
+#workerQuickScreen .worker-quick-fuel-grid{
+  grid-template-columns: 1.1fr .72fr .72fr .86fr !important;
+}
+@media (max-width:430px){
+  #workerQuickScreen .worker-quick-tours-bottom{
+    grid-template-columns:minmax(0,1fr) 64px 88px !important;
+    gap:5px !important;
+  }
+  #workerQuickScreen .worker-quick-fuel-grid{
+    grid-template-columns:1fr .68fr .68fr .82fr !important;
+    gap:5px !important;
+  }
+  #workerQuickScreen .worker-quick-send{
+    min-width:84px !important;
+    font-size:14px !important;
+    padding:8px 8px !important;
+  }
+}
+
+
+/* === AskCreate v1754: radnik pravi jedan displej — manje skrola === */
+#viewWorkerForm.worker-quick-mode{
+  max-width: 430px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 4px 6px 8px !important;
+  background: #f8fafc !important;
+}
+#viewWorkerForm.worker-quick-mode > .dashboard-head{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+#viewWorkerForm.worker-quick-mode > *:not(#normalWorkerFormCard):not(.dashboard-head){
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+#normalWorkerFormCard.quick-screen-active{
+  max-width: 430px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 7px !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  border: 1px solid #e5e7eb !important;
+}
+#workerQuickScreen.worker-quick-screen{ gap: 5px !important; }
+#workerQuickScreen .worker-quick-head{
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  gap: 6px !important;
+  align-items: center !important;
+  padding: 0 !important;
+}
+#workerQuickScreen .worker-quick-brand strong{ font-size: 18px !important; line-height: 1 !important; }
+#workerQuickScreen .worker-quick-brand span{ font-size: 12px !important; margin-top: 0 !important; }
+#workerQuickScreen .worker-quick-online{ padding: 5px 8px !important; font-size: 12px !important; }
+#workerQuickScreen .worker-quick-company{
+  font-size: 16px !important;
+  line-height: 1.05 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+#workerQuickScreen .worker-quick-kind{ gap: 6px !important; }
+#workerQuickScreen .worker-quick-kind button{
+  min-height: 38px !important;
+  padding: 8px 6px !important;
+  border-radius: 11px !important;
+  font-size: 15px !important;
+}
+#workerQuickScreen .worker-quick-field label,
+#workerQuickScreen .worker-quick-card label{
+  font-size: 11px !important;
+  margin: 0 0 2px !important;
+}
+#workerQuickScreen .worker-quick-field select,
+#workerQuickScreen .worker-quick-card select,
+#workerQuickScreen .worker-quick-card input,
+#workerQuickScreen .worker-quick-card textarea{
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 6px 8px !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+#workerQuickScreen .worker-quick-card{
+  padding: 7px !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+#workerQuickScreen .worker-quick-card-title{
+  font-size: 15px !important;
+  margin: 0 0 5px !important;
+  gap: 6px !important;
+}
+#workerQuickScreen .worker-quick-card-title .ico{
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 13px !important;
+}
+#workerQuickScreen .worker-quick-fuel-grid{
+  grid-template-columns: 1fr .65fr .65fr .8fr !important;
+  gap: 4px !important;
+}
+#workerQuickScreen .worker-quick-fuel-type{ height: 34px !important; border-radius: 9px !important; }
+#workerQuickScreen .worker-quick-fuel-type button{
+  min-height: 34px !important;
+  padding: 6px 4px !important;
+  font-size: 12px !important;
+}
+#workerQuickScreen .worker-quick-send{
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 6px 7px !important;
+  font-size: 13px !important;
+  border-radius: 9px !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#workerQuickScreen .worker-quick-center{ display: none !important; }
+#workerQuickScreen .worker-quick-tours-grid{
+  grid-template-columns: 1fr 1.15fr !important;
+  gap: 4px !important;
+}
+#workerQuickScreen .worker-quick-dest{
+  grid-template-columns: 1fr 1fr 1fr !important;
+  border-radius: 9px !important;
+}
+#workerQuickScreen .worker-quick-dest button{
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 5px 2px !important;
+  font-size: 11px !important;
+  line-height: 1.05 !important;
+}
+#workerQuickScreen .worker-quick-extra-destination{ min-height: 42px !important; margin-top: 4px !important; }
+#workerQuickScreen .worker-quick-extra-destination.worker-quick-hidden{
+  display: none !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+}
+#workerQuickScreen .worker-quick-tours-bottom{
+  grid-template-columns: minmax(0,1fr) 54px 76px !important;
+  gap: 4px !important;
+  margin-top: 4px !important;
+}
+#workerQuickScreen .worker-quick-defect-actions{
+  grid-template-columns: 1fr .72fr !important;
+  gap: 5px !important;
+  margin-top: 5px !important;
+}
+#workerQuickScreen .worker-quick-secondary{
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 6px 7px !important;
+  font-size: 13px !important;
+  border-radius: 9px !important;
+  white-space: nowrap !important;
+}
+#workerQuickScreen .worker-quick-note{
+  font-size: 11px !important;
+  padding-top: 5px !important;
+  line-height: 1.15 !important;
+}
+#workerQuickScreen .worker-quick-note strong{ font-size: 12px !important; }
+#workerQuickScreen .worker-quick-note span{ font-size: 11px !important; margin-top: 1px !important; }
+
+@media (max-width: 390px){
+  #viewWorkerForm.worker-quick-mode{padding:3px 4px 6px!important;}
+  #normalWorkerFormCard.quick-screen-active{padding:6px!important;}
+  #workerQuickScreen .worker-quick-brand strong{font-size:17px!important;}
+  #workerQuickScreen .worker-quick-company{font-size:15px!important;}
+  #workerQuickScreen .worker-quick-kind button{font-size:14px!important;}
+  #workerQuickScreen .worker-quick-card-title{font-size:14px!important;}
+  #workerQuickScreen .worker-quick-fuel-grid{grid-template-columns:1fr .58fr .58fr .72fr!important;}
+  #workerQuickScreen .worker-quick-tours-bottom{grid-template-columns:minmax(0,1fr) 50px 70px!important;}
+  #workerQuickScreen .worker-quick-dest button{font-size:10.5px!important;}
 }

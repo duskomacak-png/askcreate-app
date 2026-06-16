@@ -13,6 +13,6 @@ ALTER TABLE public.assets
 COMMENT ON COLUMN public.assets.asset_features IS 'Namene/mogućnosti sredstva: kipper, lowloader, fuel_tanker, water_tanker, service_vehicle, fixed_fuel_pump, allow_images.';
 COMMENT ON COLUMN public.assets.fuel_tank_capacity IS 'Kapacitet cisterne/pumpe za gorivo u litrima.';
 COMMENT ON COLUMN public.assets.fuel_tank_label IS 'Oznaka cisterne/pumpe za gorivo: mala, velika, pumpa_baza, ostalo.';
-COMMENT ON COLUMN public.assets.fuel_types IS 'Vrsta goriva koju sredstvo nosi/sipa: samo dizel.';
+COMMENT ON COLUMN public.assets.fuel_types IS 'Vrste goriva koje sredstvo nosi/sipa: dizel, benzin, adblue, ostalo.';
 COMMENT ON COLUMN public.assets.water_tank_capacity IS 'Kapacitet cisterne za vodu u litrima.';
 COMMENT ON COLUMN public.assets.water_tank_label IS 'Oznaka cisterne za vodu: mala, velika, prikolica, ostalo.';
