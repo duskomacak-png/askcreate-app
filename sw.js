@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1743-sef-excel-pregled-a4";
+const CACHE_NAME = "askcreate-v1744-cisti-tok-sef-gradilista";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1743-sef-excel-pregled-a4",
-  "./script.js?v=1743-sef-excel-pregled-a4",
-  "./manifest.json?v=1743-sef-excel-pregled-a4",
+  "./style.css?v=1744-cisti-tok-sef-gradilista",
+  "./script.js?v=1744-cisti-tok-sef-gradilista",
+  "./manifest.json?v=1744-cisti-tok-sef-gradilista",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

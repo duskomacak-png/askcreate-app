@@ -5035,21 +5035,14 @@ function siteBossBuildStructuredSummary(data = {}) {
     const material = r[2] || "Materijal";
     siteBossAddGrouped(matsByFlow[flow] || matsByFlow.other, material, { tours:r[3], quantity:r[4], unit:r[5], note:r[6] });
   });
-  // Ako je količina ostala samo u tabeli vozila, dopuni materijal iz redova vozila.
   (Array.isArray(data.vehicles) ? data.vehicles : []).forEach(r => {
     const material = r[5] || "";
     if (!material) return;
     const qty = officeSplitQuantityText(r[10] || "");
-    const route = String(r[8] || "").toLowerCase();
-    let flow = "other";
-    if (route.includes("→")) {
-      const parts = route.split("→").map(x => normalizeSearch(x.trim()));
-      // Ako je u relaciji cilj izabrano gradilište, to je uvoz; ako je polazište izabrano gradilište, izvoz.
-      const target = normalizeSearch((data.site || siteLogImportedWorkerOverview?.site || $("#siteLogSite")?.value || ""));
-    }
+    const route = String(r[8] || "");
     const actionFromMaterial = (Array.isArray(data.materials) ? data.materials : []).find(m => normalizeSearch(m[2] || "") === normalizeSearch(material) && siteBossNum(m[3]) === siteBossNum(r[9]));
-    flow = siteBossFlowFromAction(actionFromMaterial?.[1] || route || "");
-    if (flow === "other" && route.includes("depon")) flow = "exported";
+    let flow = siteBossFlowFromAction(actionFromMaterial?.[1] || route || "");
+    if (flow === "other" && normalizeSearch(route).includes("depon")) flow = "exported";
     siteBossAddGrouped(matsByFlow[flow] || matsByFlow.other, material, { tours:r[9], quantity:qty.value, unit:qty.unit, note:r[8] });
   });
   const machines = new Map();
@@ -5057,10 +5050,10 @@ function siteBossBuildStructuredSummary(data = {}) {
     const label = [r[1], r[2]].filter(Boolean).join(" · ") || r[2] || "Mašina";
     siteBossAddGrouped(machines, label, { quantity:r[6], unit:"MTČ", note:r[8] });
   });
-  const fuels = new Map();
-  (Array.isArray(data.fuels) ? data.fuels : []).forEach(r => {
-    const label = [r[1], r[2]].filter(Boolean).join(" · ") || r[2] || "Sredstvo";
-    siteBossAddGrouped(fuels, label, { quantity:r[3], unit:"L", note:[r[6], r[7]].filter(Boolean).join(" / ") });
+  const lowloaders = new Map();
+  (Array.isArray(data.lowloaders) ? data.lowloaders : []).forEach(r => {
+    const label = [r[1], r[2]].filter(Boolean).join(" · ") || r[2] || "Labudica";
+    siteBossAddGrouped(lowloaders, label, { quantity:1, unit:"prevoz", note:[r[4], r[5]].filter(Boolean).join(" → ") || r[9] });
   });
   const workers = new Map();
   (Array.isArray(data.workers) ? data.workers : []).forEach(r => {
@@ -5079,9 +5072,8 @@ function siteBossBuildStructuredSummary(data = {}) {
       other: toRows(matsByFlow.other)
     },
     machines: toRows(machines),
-    fuels: toRows(fuels),
-    workers: toRows(workers),
-    defects_count: Array.isArray(data.defects) ? data.defects.length : 0
+    lowloaders: toRows(lowloaders),
+    workers: toRows(workers)
   };
 }
 
@@ -5103,15 +5095,15 @@ function renderSiteBossStructuredSummary(summary = {}) {
     siteBossSummaryList("Izvezeno sa gradilišta", mats.exported || []),
     siteBossSummaryList("U krugu gradilišta", mats.internal || []),
     siteBossSummaryList("Rad mašina / MTČ", summary.machines || []),
-    siteBossSummaryList("Sipanje goriva", summary.fuels || []),
+    siteBossSummaryList("Labudica / transport mašina", summary.lowloaders || []),
     siteBossSummaryList("Radnici iz radničkih prijava", summary.workers || [])
   ].filter(Boolean).join("");
-  if (!blocks && !summary.defects_count) return `<p class="report-empty">Nema automatski pronađenih stavki za izabrani datum i gradilište.</p>`;
-  return `<div class="site-boss-auto-summary"><h4>Sažetak radničkih izveštaja za isti datum i gradilište</h4>${blocks}${summary.defects_count ? `<p><b>Kvarovi:</b> ${escapeHtml(summary.defects_count)} prijava</p>` : ""}<p class="report-empty">Šef gradilišta proverava ovaj sažetak, levo dopunjava radnike/sate, stvarnu ugradnju i sve što fali.</p></div>`;
+  if (!blocks) return `<p class="report-empty">Nema automatski pronađenih stavki za izabrani datum i gradilište.</p>`;
+  return `<div class="site-boss-auto-summary"><h4>Sažetak radničkih izveštaja za isti datum i gradilište</h4>${blocks}<p class="report-empty">Šef gradilišta proverava ovaj sažetak, levo dopunjava radnike/sate, stvarnu ugradnju i sve što fali.</p></div>`;
 }
 
 
-// v1743 — šef gradilišta: Excel-uređen A4 pregled radničkih izveštaja
+// v1744 — šef gradilišta: čist tok bez kvarova i goriva — šef gradilišta: Excel-uređen A4 pregled radničkih izveštaja
 function siteBossRouteFlowFromVehicleRow(row = [], selectedSite = "") {
   const site = normalizeSearch(selectedSite || "");
   const rowSite = normalizeSearch(row[0] || "");
@@ -5177,15 +5169,15 @@ function renderSiteBossExcelStyleOverview(overview = null) {
     const qty = siteBossExcelQtyParts(r[10] || "");
     const material = r[5] || "—";
     const row = [
-      r[1] || "—",        // interni broj
-      r[2] || "—",        // tablice
-      r[3] || "—",        // naziv
-      r[4] || "—",        // vozač
+      r[1] || "—",
+      r[2] || "—",
+      r[3] || "—",
+      r[4] || "—",
       material,
-      r[8] || "—",        // relacija
-      r[9] || "—",        // ture
+      r[8] || "—",
+      r[9] || "—",
       r[10] || (qty.value ? siteBossFormatQty(qty.value, qty.unit) : "—"),
-      r[7] || "—"         // km kraj / stanje
+      r[7] || "—"
     ];
     if (flow === "imported") {
       imported.push(row);
@@ -5199,7 +5191,6 @@ function renderSiteBossExcelStyleOverview(overview = null) {
     }
   });
 
-  // Dodatne materijalne stavke ako postoje nezavisno od vozila.
   (Array.isArray(o.materials) ? o.materials : []).forEach(r => {
     const flow = siteBossFlowFromAction(r[1] || "");
     const material = r[2] || "—";
@@ -5217,34 +5208,25 @@ function renderSiteBossExcelStyleOverview(overview = null) {
     }
   });
 
-  const fuelByAsset = new Map();
-  (Array.isArray(o.fuels) ? o.fuels : []).forEach(f => {
-    const key = normalizeSearch([f[1], f[2]].filter(Boolean).join(" ")) || normalizeSearch(f[2] || "");
-    if (!key) return;
-    const old = fuelByAsset.get(key) || { liters:0, rows:[] };
-    old.liters += siteBossNum(f[3]);
-    old.rows.push(f);
-    fuelByAsset.set(key, old);
-  });
+  const machineRows = (Array.isArray(o.machines) ? o.machines : []).map(r => [
+    r[1] || "—",
+    r[2] || "—",
+    r[3] || "—",
+    r[4] || "—",
+    r[5] || "—",
+    r[6] || "—",
+    r[8] || "—"
+  ]);
 
-  const machineRows = (Array.isArray(o.machines) ? o.machines : []).map(r => {
-    const key = normalizeSearch([r[1], r[2]].filter(Boolean).join(" ")) || normalizeSearch(r[2] || "");
-    const fuel = fuelByAsset.get(key);
-    return [
-      r[1] || "—",
-      r[2] || "—",
-      r[3] || "—",
-      r[4] || "—",
-      r[5] || "—",
-      r[6] || "—",
-      fuel ? `${Math.round(fuel.liters * 100) / 100} L` : "—",
-      r[8] || "—"
-    ];
-  });
-
-  const fuelRows = (Array.isArray(o.fuels) ? o.fuels : []).map(r => [r[1] || "—", r[2] || "—", r[3] || "—", r[4] || "—", r[5] || "—", r[6] || "—", r[7] || "—"]);
-
-  const defectRows = (Array.isArray(o.defects) ? o.defects : []).map(r => [r[1] || "—", r[2] || "—", r[3] || "—", r[4] || "—", r[5] || "—"]);
+  const lowloaderRows = (Array.isArray(o.lowloaders) ? o.lowloaders : []).map(r => [
+    r[1] || "—",
+    r[2] || "—",
+    r[3] || "—",
+    r[4] || "—",
+    r[5] || "—",
+    r[8] || "—",
+    r[9] || "—"
+  ]);
 
   return `<div class="site-boss-excel-overview">
     <h4>Excel pregled radničkih izveštaja — ${escapeHtml(formatDateOnlyLocal(o.date) || o.date || "—")} · ${escapeHtml(selectedSite || "—")}</h4>
@@ -5254,10 +5236,9 @@ function renderSiteBossExcelStyleOverview(overview = null) {
     ${siteBossExcelTotalsTable("Ukupno uvezeno po materijalu", importTotals)}
     ${siteBossExcelTable("Materijal — U KRUGU gradilišta", ["Br.", "Tablice", "Vozilo", "Vozač", "Materijal", "Relacija", "Ture", "Količina", "KM/stanje"], internal, { className:"internal" })}
     ${siteBossExcelTotalsTable("Ukupno u krugu po materijalu", internalTotals)}
-    ${siteBossExcelTable("Mašine — MTČ, gorivo i opis rada", ["Br.", "Mašina", "Rukovalac", "Poč. MTČ", "Zav. MTČ", "Ukupno MTČ", "Sipano goriva", "Opis rada"], machineRows, { className:"machines" })}
-    ${siteBossExcelTable("Gorivo — detalji sipanja", ["Br.", "Sredstvo", "Litara", "KM", "MTČ", "Sipao/cisterna", "Primio"], fuelRows, { className:"fuel" })}
-    ${siteBossExcelTable("Kvarovi / napomene", ["Br.", "Sredstvo", "Opis", "Hitnost", "Status"], defectRows, { className:"defects" })}
-    <p class="report-empty">Ovaj pregled je složen iz radničkih izveštaja za isti datum i isto gradilište. Šef gradilišta levo dopunjava ručne radnike/sate, stvarnu ugradnju i sve stavke koje nisu prošle kroz aplikaciju.</p>
+    ${siteBossExcelTable("Mašine — MTČ i opis rada", ["Br.", "Mašina", "Rukovalac", "Poč. MTČ", "Zav. MTČ", "Ukupno MTČ", "Opis rada"], machineRows, { className:"machines" })}
+    ${siteBossExcelTable("Labudica — dovezla/odvezla mašinu", ["Tablice", "Mašina", "Vozač", "Od", "Do", "KM", "Napomena"], lowloaderRows, { className:"lowloader" })}
+    <p class="report-empty">Šef gradilišta vidi samo materijal, mašine i labudicu za izabrani datum i gradilište. Kvarovi idu šefu mehanizacije/Direkciji/Direktoru, a gorivo Direkciji/Direktoru.</p>
   </div>`;
 }
 
@@ -5736,22 +5717,26 @@ function siteBossMetricSet(data = null, loadingText = "—") {
   const box = $("#siteBossOverviewMetrics");
   if (!box) return;
   if (!data) {
-    box.innerHTML = `<span>Izveštaji: ${escapeHtml(loadingText)}</span><span>Radnici: ${escapeHtml(loadingText)}</span><span>MTČ: ${escapeHtml(loadingText)}</span><span>KM: ${escapeHtml(loadingText)}</span><span>Gorivo: ${escapeHtml(loadingText)}</span><span>Materijal: ${escapeHtml(loadingText)}</span>`;
+    box.innerHTML = `<span>Izveštaji: ${escapeHtml(loadingText)}</span><span>Radnici: ${escapeHtml(loadingText)}</span><span>MTČ: ${escapeHtml(loadingText)}</span><span>Vozila/ture: ${escapeHtml(loadingText)}</span><span>Materijal: ${escapeHtml(loadingText)}</span><span>Labudica: ${escapeHtml(loadingText)}</span>`;
     return;
   }
-  const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
-  const totalMtc = data.machines.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
-  const totalKm = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(decimalDiffText(r[5], r[6])) + parseDecimalInput(r[6] && !r[5] ? r[6] : 0), 0);
-  const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
-  const totalM3 = data.materials.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0)
-    + data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[9]), 0);
+  const workers = Array.isArray(data.workers) ? data.workers : [];
+  const machines = Array.isArray(data.machines) ? data.machines : [];
+  const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
+  const materials = Array.isArray(data.materials) ? data.materials : [];
+  const lowloaders = Array.isArray(data.lowloaders) ? data.lowloaders : [];
+  const totalHours = workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
+  const totalMtc = machines.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
+  const totalTours = vehicles.reduce((sum, r) => sum + parseDecimalInput(r[9]), 0);
+  const totalQty = materials.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0)
+    + vehicles.reduce((sum, r) => sum + parseDecimalInput(officeSplitQuantityText(r[10] || "").value), 0);
   box.innerHTML = `
-    <span>Izveštaji: ${data.reports.length}</span>
-    <span>Radnici: ${data.workers.length}${totalHours ? ` · ${Math.round(totalHours * 100) / 100} h` : ""}</span>
+    <span>Izveštaji: ${workers.length + machines.length + vehicles.length + lowloaders.length}</span>
+    <span>Radnici: ${workers.length}${totalHours ? ` · ${Math.round(totalHours * 100) / 100} h` : ""}</span>
     <span>MTČ: ${Math.round(totalMtc * 100) / 100}</span>
-    <span>KM: ${Math.round(totalKm * 100) / 100}</span>
-    <span>Gorivo: ${Math.round(totalFuel * 100) / 100} L</span>
-    <span>Materijal: ${Math.round(totalM3 * 100) / 100} m³</span>`;
+    <span>Vozila/ture: ${Math.round(totalTours * 100) / 100}</span>
+    <span>Materijal: ${Math.round(totalQty * 100) / 100}</span>
+    <span>Labudica: ${lowloaders.length}</span>`;
 }
 
 function siteBossImmediateReportSite(r = {}) {
@@ -5760,38 +5745,11 @@ function siteBossImmediateReportSite(r = {}) {
 }
 
 function siteBossAugmentImmediateReports(overview = {}, reports = [], site = "") {
-  const target = site || "";
-  const fuels = Array.isArray(overview.fuels) ? overview.fuels : [];
-  const defects = Array.isArray(overview.defects) ? overview.defects : [];
-  (Array.isArray(reports) ? reports : []).forEach(r => {
-    if (!r || isArchivedReport(r)) return;
-    const d = r.data || {};
-    const reportPerson = officePersonLabel(r);
-    const reportSite = siteBossImmediateReportSite(r) || target || "—";
-
-    if (isFuelDashboardOnlyReport(r)) {
-      const ownFuels = Array.isArray(d.fuel_entries) ? d.fuel_entries : [];
-      ownFuels.forEach(f => {
-        if (!officeEntryMatchesSite(f, reportSite, target)) return;
-        const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
-        fuels.push([entrySite, f.asset_code || "", f.asset_name || f.machine || f.vehicle || f.other || "", f.liters || "", f.km || f.current_km || "", f.mtc || f.current_mtc || "", f.by || reportPerson, f.receiver || d.fuel_receiver || "", fuelSourceText(f)]);
-      });
-      const tankerFuels = Array.isArray(d.field_tanker_entries) ? d.field_tanker_entries : (Array.isArray(d.tanker_fuel_entries) ? d.tanker_fuel_entries : []);
-      tankerFuels.forEach(f => {
-        if (!officeEntryMatchesSite(f, reportSite, target)) return;
-        const entrySite = officeEntrySiteName(f, reportSite) || reportSite;
-        fuels.push([entrySite, f.asset_code || "", f.asset_name || f.machine || f.vehicle || f.other || "", f.liters || "", f.km || f.current_km || "", f.mtc || f.current_mtc || "", f.tanker_asset_name || f.tanker_vehicle || f.cistern_vehicle || reportPerson, f.receiver || f.received_by || "", fuelSourceText(f)]);
-      });
-    }
-
-    if (isDefectOnlyReport(r) || (hasDefectData(r) && !hasDailyReportData(r))) {
-      const defectSite = d.defect_site_name || d.site_name || reportSite;
-      if (!officeEntryMatchesSite({ site_name: defectSite }, reportSite, target)) return;
-      defects.push([defectSite || reportSite, d.defect_asset_code || "", d.defect_asset_name || d.defect_machine || d.machine || d.vehicle || d.defect_manual_asset_name || "", d.defect || d.defect_description || d.problem_description || "", d.defect_urgency || "", d.mechanic_status || d.defect_status || r.status || "novo"]);
-    }
-  });
-  overview.fuels = fuels;
-  overview.defects = defects;
+  // Šef gradilišta namerno ne dobija kvarove ni gorivo.
+  // Kvarovi idu: šef mehanizacije + Direkcija + Direktor.
+  // Gorivo ide: Direkcija + Direktor.
+  overview.fuels = [];
+  overview.defects = [];
   return overview;
 }
 
@@ -5808,17 +5766,15 @@ function siteBossBuildOverviewFromReports(reports = [], date = today(), site = "
 
 function siteBossOverviewSummaryText(data = siteBossOverviewCache, date = $("#siteLogDate")?.value || today(), site = $("#siteLogSite")?.value || "") {
   if (!data) return "";
-  const totalHours = data.workers.reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
-  const totalMtc = data.machines.reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
-  const totalFuel = data.fuels.reduce((sum, r) => sum + parseDecimalInput(r[3]), 0);
-  const totalTours = data.vehicles.reduce((sum, r) => sum + parseDecimalInput(r[8]), 0);
+  const totalHours = (Array.isArray(data.workers) ? data.workers : []).reduce((sum, r) => sum + parseDecimalInput(r[4]), 0);
+  const totalMtc = (Array.isArray(data.machines) ? data.machines : []).reduce((sum, r) => sum + parseDecimalInput(r[6]), 0);
+  const totalTours = (Array.isArray(data.vehicles) ? data.vehicles : []).reduce((sum, r) => sum + parseDecimalInput(r[9]), 0);
   const parts = [];
-  parts.push(`Dana ${formatDateOnlyLocal(date) || date} na gradilištu ${site || "izabrano gradilište"} evidentirano je ${data.workers.length} radničkih stavki${totalHours ? ` sa ukupno ${Math.round(totalHours * 100) / 100} sati` : ""}.`);
-  if (data.machines.length) parts.push(`Angažovano je ${data.machines.length} mašinskih stavki${totalMtc ? ` sa ukupno ${Math.round(totalMtc * 100) / 100} MTČ` : ""}.`);
-  if (data.vehicles.length) parts.push(`Evidentirano je ${data.vehicles.length} voznih/kamionskih stavki${totalTours ? ` i ${Math.round(totalTours * 100) / 100} tura` : ""}.`);
-  if (data.fuels.length) parts.push(`Ukupno goriva po izveštajima: ${Math.round(totalFuel * 100) / 100} L.`);
-  if (data.materials.length) parts.push(`Materijalne stavke: ${data.materials.length}.`);
-  if (data.defects.length) parts.push(`Prijavljeni kvarovi/problemi: ${data.defects.length}.`);
+  parts.push(`Dana ${formatDateOnlyLocal(date) || date} na gradilištu ${site || "izabrano gradilište"} složeni su radnički podaci samo za to gradilište.`);
+  if (data.machines?.length) parts.push(`Mašinske stavke: ${data.machines.length}${totalMtc ? ` · ukupno ${Math.round(totalMtc * 100) / 100} MTČ` : ""}.`);
+  if (data.vehicles?.length) parts.push(`Vozila/ture: ${data.vehicles.length}${totalTours ? ` · ukupno ${Math.round(totalTours * 100) / 100} tura` : ""}.`);
+  if (data.lowloaders?.length) parts.push(`Labudica/transport mašine: ${data.lowloaders.length} stavki.`);
+  if (data.workers?.length) parts.push(`Radničke stavke: ${data.workers.length}${totalHours ? ` · ${Math.round(totalHours * 100) / 100} h` : ""}.`);
   return parts.join(" ");
 }
 
@@ -5827,14 +5783,14 @@ function renderSiteBossOverview(data, date, site) {
   if (!box) return;
   siteBossOverviewCache = data;
   siteBossMetricSet(data);
-  const header = `<div class="office-form-titlebar"><div><b>Pregled za šefa gradilišta</b><span>${escapeHtml(formatDateOnlyLocal(date) || date)} · ${escapeHtml(site || "Sva gradilišta")}</span></div><div class="office-badges"><span>${data.reports.length} izveštaja</span><span>${data.defects.length} kvarova</span></div></div>`;
+  const header = `<div class="office-form-titlebar"><div><b>Pregled za šefa gradilišta</b><span>${escapeHtml(formatDateOnlyLocal(date) || date)} · ${escapeHtml(site || "Izabrano gradilište")}</span></div><div class="office-badges"><span>${(data.workers?.length || 0) + (data.machines?.length || 0) + (data.vehicles?.length || 0) + (data.lowloaders?.length || 0)} stavki</span><span>bez kvarova i goriva</span></div></div>`;
   box.innerHTML = header + `
-    <section><h4>👷 Radnici i sati</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workers)}</section>
-    <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ poč.","MTČ kraj","Ukupno MTČ","KM","Rad"], data.machines)}</section>
-    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","KM poč.","KM kraj","Relacija","Ture","Ukupno"], data.vehicles)}</section>
-    <section><h4>⛽ Gorivo</h4>${officeTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], data.fuels)}</section>
-    <section><h4>📦 Materijal</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials)}</section>
-    <section><h4>🛠️ Kvarovi</h4>${officeTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], data.defects)}</section>`;
+    <section><h4>🚜 Mašine / MTČ</h4>${officeTable(["Gradilište","Broj","Mašina","Operator","MTČ poč.","MTČ kraj","Ukupno MTČ","KM","Rad"], data.machines || [])}</section>
+    <section><h4>🚚 Vozila / ture</h4>${officeTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","KM poč.","KM kraj","Relacija","Ture","Ukupno"], data.vehicles || [])}</section>
+    <section><h4>🚛 Labudica / transport mašine</h4>${officeTable(["Gradilište","Tablice","Mašina","Vozač","Od","Do","KM poč.","KM kraj","Ukupno KM","Napomena"], data.lowloaders || [])}</section>
+    <section><h4>📦 Materijal</h4>${officeTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], data.materials || [])}</section>
+    <section><h4>👷 Radnici iz radničkih prijava</h4>${officeTable(["Gradilište","Evid. broj","Radnik","Radno mesto","Sati","Opis"], data.workers || [])}</section>
+    <p class="report-empty">Šef gradilišta ovde ne vidi kvarove ni gorivo. Kvarovi idu mehanizaciji/Direkciji/Direktoru, a gorivo Direkciji/Direktoru.</p>`;
 }
 
 async function refreshSiteBossOverview() {
@@ -13959,9 +13915,12 @@ function buildSiteBossImportedOverview(data = siteBossOverviewCache, date = $("#
     workers: Array.isArray(data.workers) ? data.workers : [],
     machines: Array.isArray(data.machines) ? data.machines : [],
     vehicles: Array.isArray(data.vehicles) ? data.vehicles : [],
-    fuels: Array.isArray(data.fuels) ? data.fuels : [],
+    lowloaders: Array.isArray(data.lowloaders) ? data.lowloaders : [],
+    waters: Array.isArray(data.waters) ? data.waters : [],
+    // Šef gradilišta ne dobija gorivo ni kvarove u svom dnevniku.
+    fuels: [],
     materials: Array.isArray(data.materials) ? data.materials : [],
-    defects: Array.isArray(data.defects) ? data.defects : []
+    defects: []
   };
   base.summary = siteBossBuildStructuredSummary({ ...base, site });
   return base;
@@ -13970,7 +13929,6 @@ function buildSiteBossImportedOverview(data = siteBossOverviewCache, date = $("#
 function renderSiteLogImportedOverviewSection(overview = null) {
   const o = overview || siteLogImportedWorkerOverview;
   if (!o) return "";
-  const summary = o.summary || siteBossBuildStructuredSummary(o);
   return `<div class="report-section site-log-imported-overview"><h4>Automatski pregled radničkih izveštaja za izabrano gradilište</h4>
     <p class="report-empty">Datum rada: <b>${escapeHtml(formatDateOnlyLocal(o.date) || o.date || "—")}</b> · Gradilište: <b>${escapeHtml(o.site || "—")}</b> · Pronađeno izveštaja: <b>${escapeHtml(o.reports_count || 0)}</b></p>
     ${renderSiteBossExcelStyleOverview(o)}
@@ -13978,8 +13936,7 @@ function renderSiteLogImportedOverviewSection(overview = null) {
       <h5>Vozila / ture / materijal</h5>${siteLogTable(["Gradilište","Broj","Tablice","Naziv","Vozač","Materijal","Relacija","Ture","Ukupno"], o.vehicles || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[8],r[9],r[10]])}
       <h5>Materijalne stavke</h5>${siteLogTable(["Gradilište","Radnja","Materijal","Ture","Količina","Jed.","Napomena"], o.materials || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6]])}
       <h5>Mašine / MTČ</h5>${siteLogTable(["Gradilište","Broj","Mašina","Rukovalac","Ukupno MTČ","Rad"], o.machines || [], r => [r[0],r[1],r[2],r[3],r[6],r[8]])}
-      <h5>Gorivo</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Litara","KM","MTČ","Sipao/cisterna","Primio"], o.fuels || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7]])}
-      <h5>Kvarovi</h5>${siteLogTable(["Gradilište","Broj","Sredstvo","Opis","Hitnost","Status"], o.defects || [], r => [r[0],r[1],r[2],r[3],r[4],r[5]])}
+      <h5>Labudica / transport mašine</h5>${siteLogTable(["Gradilište","Tablice","Mašina","Vozač","Od","Do","KM","Napomena"], o.lowloaders || [], r => [r[0],r[1],r[2],r[3],r[4],r[5],r[8],r[9]])}
     </details>
   </div>`;
 }
