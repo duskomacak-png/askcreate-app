@@ -9824,6 +9824,29 @@ function buildLowloaderSiteOptionsHtml(selectedValue = "") {
   return options.join("");
 }
 
+
+function findWorkerSiteByInput(value = "") {
+  const q = normalizeSearch(value);
+  if (!q) return null;
+  const sites = Array.isArray(workerSiteOptions) ? workerSiteOptions : [];
+  return sites.find(site => {
+    const name = site.name || site.site_name || site.title || "";
+    const loc = site.location ? ` ${site.location}` : "";
+    const label = `${name}${loc}`;
+    return normalizeSearch(name) === q || normalizeSearch(label) === q || normalizeSearch(name).includes(q) || normalizeSearch(label).includes(q);
+  }) || null;
+}
+
+function workerFuelSiteDatalistOptionsHtml() {
+  const sites = Array.isArray(workerSiteOptions) ? workerSiteOptions : [];
+  return sites.map(site => {
+    const name = site.name || site.site_name || site.title || "";
+    const loc = site.location ? ` · ${site.location}` : "";
+    const label = String(name + loc).trim();
+    return name ? `<option value="${escapeHtml(name)}" label="${escapeHtml(label)}"></option>` : "";
+  }).join("");
+}
+
 function refreshDefectSiteDatalist() {
   // v1.31.0: Na telefonu datalist ne otvara uvek lepo listu.
   // Zato za kvar koristimo pravi SELECT iz gradilišta Uprave + posebno polje za ručnu lokaciju.
@@ -13208,128 +13231,128 @@ function addFuelEntry(values = {}) {
   const list = $("#fuelEntries");
   if (!list) return;
   const idx = list.querySelectorAll(".fuel-entry").length + 1;
-  const kind = values.asset_kind || values.asset_type || values.kind || (values.other ? "other" : (values.vehicle ? "vehicle" : "machine"));
-  const selectedAsset = values.asset_name || values.machine || values.vehicle || "";
-  const manualAsset = values.asset_custom || values.machine_custom || values.vehicle_custom || "";
+  const selectedContextAsset = getSelectedWorkerContextAsset();
+  const fallbackKind = values.asset_kind || values.asset_type || values.kind || (values.other ? "other" : (values.vehicle ? "vehicle" : "machine"));
+  const fallbackSearch = values.asset_code || values.fuel_asset_code || values.asset_name || values.machine || values.vehicle || values.other || values.asset_custom || "";
+  const fallbackAsset = fallbackSearch ? findFuelAssetForSmartInput(fallbackSearch, fallbackKind) : null;
+  const asset = selectedContextAsset || fallbackAsset || null;
+  const assetKind = asset ? (getCanonicalAssetKind(asset) || fallbackKind) : fallbackKind;
+  const assetCode = asset ? (getAssetCode(asset) || "") : (values.asset_code || values.fuel_asset_code || "");
+  const assetName = asset ? (getAssetName(asset) || fallbackSearch || "") : (values.asset_name || values.machine || values.vehicle || values.other || fallbackSearch || "");
+  const assetReg = asset ? (getAssetRegistration(asset) || "") : (values.asset_registration || values.registration || "");
+  const assetLabel = asset ? formatAssetLabel(asset) : (assetName || fallbackSearch || "Izabrano sredstvo");
   const oldReading = values.reading || values.mtc_km || "";
-  const kmValue = values.km || values.current_km || values.kilometers || values.odometer || (kind === "vehicle" ? oldReading : "");
-  const mtcValue = values.mtc || values.current_mtc || values.machine_mtc || (kind === "machine" ? oldReading : "");
+  const kmValue = values.km || values.current_km || values.kilometers || values.odometer || (assetKind === "vehicle" ? oldReading : "");
+  const mtcValue = values.mtc || values.current_mtc || values.machine_mtc || (assetKind === "machine" ? oldReading : "");
+  const uid = `${Date.now()}_${Math.random().toString(36).slice(2)}_${idx}`;
+  const selectedSite = values.site_name || values.site || values.fuel_site_name || "";
   const div = document.createElement("div");
-  div.className = "entry-card fuel-entry";
+  div.className = "entry-card fuel-entry worker-simple-fuel-entry";
   div.innerHTML = `
     <div class="entry-card-head">
-      <strong>Sipanje goriva ${idx}</strong>
+      <strong>Gorivo za izabrano sredstvo</strong>
       <button type="button" class="remove-entry">Ukloni</button>
     </div>
 
-
-    <div class="grid two">
-      <div>
-        <label>Izvor goriva</label>
-        <select class="f-source-type">
-          <option value="fixed_pump" ${(values.source_type || values.fuel_source_type || "") === "fixed_pump" ? "selected" : ""}>Fiksna pumpa u bazi</option>
-          <option value="small_tanker" ${(values.source_type || values.fuel_source_type || "") === "small_tanker" ? "selected" : ""}>Mala pokretna cisterna</option>
-          <option value="fuel_tanker" ${(values.source_type || values.fuel_source_type || "") === "fuel_tanker" ? "selected" : ""}>Cisterna za gorivo</option>
-          <option value="gas_station" ${(values.source_type || values.fuel_source_type || "") === "gas_station" ? "selected" : ""}>Benzinska pumpa / račun</option>
-          <option value="canister" ${(values.source_type || values.fuel_source_type || "") === "canister" ? "selected" : ""}>Kanister / ručno</option>
-          <option value="other" ${(values.source_type || values.fuel_source_type || "") === "other" ? "selected" : ""}>Ostalo</option>
-        </select>
-      </div>
-      <div>
-        <label>Naziv izvora / lokacija</label>
-        <input class="f-source-name" placeholder="npr. Pumpa baza, mala cisterna 1000 L" value="${escapeHtml(values.source_name || values.fuel_source || values.location || "")}" />
-      </div>
+    <div class="worker-simple-fuel-asset"
+      data-asset-id="${escapeHtml(asset?.id || "")}" 
+      data-asset-kind="${escapeHtml(assetKind)}"
+      data-asset-code="${escapeHtml(assetCode)}"
+      data-asset-name="${escapeHtml(assetName)}"
+      data-asset-registration="${escapeHtml(assetReg)}">
+      <span>Sredstvo</span>
+      <strong>${escapeHtml(assetLabel)}</strong>
+      <small>${escapeHtml(currentWorker?.full_name ? `Radnik: ${currentWorker.full_name}` : "Radnik se upisuje automatski")}</small>
     </div>
 
-    <label>Vrsta sredstva</label>
-    <select class="f-asset-kind">
-      <option value="machine" ${kind === "machine" ? "selected" : ""}>Mašina</option>
-      <option value="vehicle" ${kind === "vehicle" ? "selected" : ""}>Vozilo</option>
-      <option value="other" ${kind === "other" ? "selected" : ""}>Oprema / ostalo</option>
-    </select>
-
-    <label>Sredstvo / interni broj</label>
-    <input class="f-asset-search asset-code-search smart-asset-input" placeholder="upiši broj, naziv ili tablice" value="${escapeHtml(values.asset_code || values.fuel_asset_code || manualAsset || selectedAsset || "")}" />
-    <div class="asset-smart-result f-picked">Upiši interni broj, naziv ili tablice sredstva.</div>
-    <select class="f-asset-select hidden-asset-select" aria-hidden="true" tabindex="-1"></select>
-    <input class="f-asset-custom hidden-asset-custom" type="hidden" value="${escapeHtml(manualAsset)}" />
+    <label>Gradilište gde je sipano</label>
+    <div class="worker-site-search-wrap">
+      <span class="worker-site-search-icon">🔍</span>
+      <input class="f-site-search" list="fuelSiteList-${uid}" placeholder="kucaj npr. z za Zmaj Zemun" value="${escapeHtml(selectedSite)}" />
+      <datalist id="fuelSiteList-${uid}">${workerFuelSiteDatalistOptionsHtml()}</datalist>
+    </div>
+    <p class="field-hint">Gradilište se bira iz liste Direkcije. Počni da kucaš i izaberi ponuđeno gradilište.</p>
 
     <div class="mini-grid">
-      <div>
-        <label>Litara</label>
-        <input class="f-liters" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 120" value="${escapeHtml(values.liters || "")}" />
+      <div class="fuel-km-box">
+        <label>Trenutna kilometraža</label>
+        <input class="f-km numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="za vozilo, npr. 150200" value="${escapeHtml(kmValue)}" />
+      </div>
+      <div class="fuel-mtc-box">
+        <label>Trenutni MTČ</label>
+        <input class="f-mtc numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="za mašinu, npr. 1255.0" value="${escapeHtml(mtcValue)}" />
       </div>
       <div>
-        <label>KM</label>
-        <input class="f-km numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 85320" value="${escapeHtml(kmValue)}" />
-      </div>
-      <div>
-        <label>MTČ</label>
-        <input class="f-mtc numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 1255.0" value="${escapeHtml(mtcValue)}" />
+        <label>Sipano litara</label>
+        <input class="f-liters numeric-text" type="text" inputmode="decimal" autocomplete="off" placeholder="npr. 80" value="${escapeHtml(values.liters || "")}" />
       </div>
     </div>
 
-    <label>Ko je sipao</label>
-    <input class="f-by" placeholder="npr. Marko" value="${escapeHtml(values.by || "")}" />
+    <label>Vrsta goriva</label>
+    <select class="f-fuel-type">
+      <option value="diesel" ${(values.fuel_type || values.type || "diesel") === "diesel" ? "selected" : ""}>Dizel</option>
+      <option value="petrol" ${(values.fuel_type || values.type || "") === "petrol" ? "selected" : ""}>Benzin</option>
+      <option value="adblue" ${(values.fuel_type || values.type || "") === "adblue" ? "selected" : ""}>AdBlue</option>
+      <option value="other" ${(values.fuel_type || values.type || "") === "other" ? "selected" : ""}>Ostalo</option>
+    </select>
 
-    <p class="hint">Za vozilo upiši KM. Za mašinu ili ostalu opremu upiši MTČ ako postoji. </p>
+    <label>Napomena <span class="muted">(opciono)</span></label>
+    <input class="f-note" placeholder="kratka napomena" value="${escapeHtml(values.note || values.fuel_note || "")}" />
+
+    <p class="hint">Ovo je gorivo radnika za izabrano vozilo/mašinu. Ne bira se mala/velika cisterna. Cisterne imaju posebnu rubriku „Cisterna goriva“.</p>
   `;
 
   div.querySelector(".remove-entry").addEventListener("click", () => div.remove());
-  div.querySelector(".f-asset-kind")?.addEventListener("change", () => refreshOneFuelAssetSelect(div));
-  div.querySelector(".f-asset-search")?.addEventListener("input", () => refreshOneFuelAssetSelect(div));
   list.appendChild(div);
   preventNumberInputScrollChanges(div);
-  refreshOneFuelAssetSelect(div);
-
-  if (selectedAsset) {
-    const sel = div.querySelector(".f-asset-select");
-    if (Array.from(sel.options).some(o => o.value === selectedAsset)) sel.value = selectedAsset;
-  }
 }
 
 function getFuelEntries() {
   return $$("#fuelEntries .fuel-entry").map((el, i) => {
-    const kind = el.querySelector(".f-asset-kind")?.value || "machine";
-    const selected = el.querySelector(".f-asset-select")?.value || "";
-    const custom = el.querySelector(".f-asset-custom")?.value.trim() || "";
-    const select = el.querySelector(".f-asset-select");
-    const option = select?.options ? select.options[select.selectedIndex] : null;
-    const assetName = custom || selected;
+    const assetBox = el.querySelector(".worker-simple-fuel-asset");
+    const kind = assetBox?.dataset?.assetKind || el.querySelector(".f-asset-kind")?.value || "machine";
+    const siteInput = el.querySelector(".f-site-search")?.value.trim() || "";
+    const site = findWorkerSiteByInput(siteInput);
     const km = el.querySelector(".f-km")?.value.trim() || "";
     const mtc = el.querySelector(".f-mtc")?.value.trim() || "";
-    const oldReading = el.querySelector(".f-reading")?.value.trim() || "";
-    const reading = mtc || km || oldReading; // backward-compatible summary for older report/excel code
+    const reading = mtc || km;
+    const assetName = assetBox?.dataset?.assetName || el.querySelector(".f-asset-select")?.value || el.querySelector(".f-asset-search")?.value.trim() || "";
+    const assetCode = assetBox?.dataset?.assetCode || "";
+    const assetReg = assetBox?.dataset?.assetRegistration || "";
     return {
       no: i + 1,
+      site_id: site?.id || "",
+      site_name: site?.name || siteInput,
+      fuel_site_name: site?.name || siteInput,
       asset_kind: kind,
       asset_type: kind,
-      asset_id: custom ? null : (option?.dataset?.assetId || null),
-      asset_code: custom ? "" : (option?.dataset?.assetCode || ""),
+      asset_id: assetBox?.dataset?.assetId || null,
+      asset_code: assetCode,
+      fuel_asset_code: assetCode,
       asset_name: assetName,
-      asset_custom: custom,
+      asset_registration: assetReg,
+      registration: assetReg,
       machine: kind === "machine" ? assetName : "",
-      machine_custom: kind === "machine" ? custom : "",
       vehicle: kind === "vehicle" ? assetName : "",
-      vehicle_custom: kind === "vehicle" ? custom : "",
       other: kind === "other" ? assetName : "",
-      other_custom: kind === "other" ? custom : "",
       liters: el.querySelector(".f-liters")?.value || "",
+      fuel_type: el.querySelector(".f-fuel-type")?.value || "diesel",
       km,
       current_km: km,
       mtc,
       current_mtc: mtc,
       reading,
       mtc_km: reading,
-      by: el.querySelector(".f-by")?.value.trim() || "",
-      source_type: el.querySelector(".f-source-type")?.value || "",
-      fuel_source_type: el.querySelector(".f-source-type")?.value || "",
-      source_name: el.querySelector(".f-source-name")?.value.trim() || "",
-      fuel_source: el.querySelector(".f-source-name")?.value.trim() || "",
-      fuel_location: el.querySelector(".f-source-name")?.value.trim() || "",
-      receiver: currentWorker?.full_name || ""
+      by: currentWorker?.full_name || "",
+      receiver: currentWorker?.full_name || "",
+      source_type: "worker_self_refuel",
+      fuel_source_type: "worker_self_refuel",
+      source_name: site?.name || siteInput,
+      fuel_source: site?.name || siteInput,
+      fuel_location: site?.name || siteInput,
+      note: el.querySelector(".f-note")?.value.trim() || ""
     };
-  }).filter(f => f.asset_name || f.liters || f.km || f.mtc || f.reading || f.by);
+  }).filter(f => f.asset_name || f.liters || f.km || f.mtc || f.reading || f.site_name || f.note);
 }
 
 function refreshFuelMachineOptions() {

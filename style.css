@@ -9667,3 +9667,51 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
   font-weight:900!important;
   box-shadow:0 8px 20px rgba(15,23,42,.06)!important;
 }
+
+/* v1748 — gorivo radnik jednostavno + gradilište lupa */
+.worker-simple-fuel-entry .entry-card-head strong { color:#111827; }
+.worker-simple-fuel-asset {
+  border: 1px solid #d7dde5;
+  border-left: 6px solid #e03131;
+  border-radius: 16px;
+  background: #fff;
+  padding: 12px 14px;
+  margin: 10px 0 14px;
+  display: grid;
+  gap: 3px;
+}
+.worker-simple-fuel-asset span {
+  color:#6b7280;
+  font-weight:800;
+  font-size:.85rem;
+  text-transform: uppercase;
+  letter-spacing:.03em;
+}
+.worker-simple-fuel-asset strong {
+  color:#111827;
+  font-weight:900;
+  line-height:1.25;
+}
+.worker-simple-fuel-asset small { color:#4b5563; font-weight:700; }
+.worker-site-search-wrap { position:relative; }
+.worker-site-search-wrap .worker-site-search-icon {
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  opacity:.75;
+  pointer-events:none;
+}
+.worker-site-search-wrap input.f-site-search {
+  padding-left:44px !important;
+  background:#fff !important;
+  color:#111827 !important;
+  border:1px solid #cfd6df !important;
+}
+.worker-simple-fuel-entry .hint {
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#7c2d12;
+  border-radius:14px;
+  padding:10px 12px;
+}
