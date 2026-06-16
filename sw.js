@@ -1,10 +1,10 @@
-const CACHE_NAME = "askcreate-v1756-dizel-only-mobile-stable";
+const CACHE_NAME = "askcreate-v1758-final-radnik-samo-dizel";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./style.css?v=1756-dizel-only-mobile-stable",
-  "./script.js?v=1756-dizel-only-mobile-stable",
-  "./manifest.json?v=1756-dizel-only-mobile-stable",
+  "./style.css?v=1757-final-radnik-samo-dizel",
+  "./script.js?v=1757-final-radnik-samo-dizel",
+  "./manifest.json?v=1757-final-radnik-samo-dizel",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

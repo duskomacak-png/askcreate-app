@@ -45,7 +45,7 @@ COMMENT ON COLUMN public.assets.fuel_tolerance_percent IS 'Dozvoljeno odstupanje
 COMMENT ON COLUMN public.assets.asset_features IS 'Rubrike/mogucnosti sredstva: kipper, lowloader, fuel_tanker, water_tanker, service_vehicle, fixed_fuel_pump, images.';
 COMMENT ON COLUMN public.assets.fuel_tank_capacity IS 'Kapacitet cisterne ili pumpe za gorivo u litrima.';
 COMMENT ON COLUMN public.assets.fuel_tank_label IS 'Oznaka gorivne cisterne/pumpe: mala, velika, fiksna_pumpa, ostalo.';
-COMMENT ON COLUMN public.assets.fuel_types IS 'Vrste goriva: diesel, petrol, adblue, other.';
+COMMENT ON COLUMN public.assets.fuel_types IS 'Vrsta goriva: samo diesel.';
 COMMENT ON COLUMN public.assets.water_tank_capacity IS 'Kapacitet cisterne za vodu u litrima.';
 COMMENT ON COLUMN public.assets.water_tank_label IS 'Oznaka vodene cisterne: mala, velika, prikolica, ostalo.';
 

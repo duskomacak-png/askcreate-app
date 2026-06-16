@@ -10370,7 +10370,7 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
 #viewWorkerForm.worker-quick-mode #normalWorkerFormCard::-webkit-scrollbar,
 #normalWorkerFormCard.quick-screen-active::-webkit-scrollbar{display:none!important;}
 
-/* === AskCreate v1755: Radnik mobile popravka - čitljivo, bez 5cm mikrokartice === */
+/* === AskCreate v1758: Radnik mobile popravka - čitljivo, bez 5cm mikrokartice === */
 #viewWorkerForm.worker-quick-mode{
   overflow-x:hidden !important;
   padding-left:8px !important;
@@ -10439,39 +10439,41 @@ body.worker-field-theme #viewWorkerForm .asset-picked-summary{
 }
 
 
-/* === AskCreate v1756: Radnik - samo DIZEL + stabilan čitljiv mobilni unos === */
-#workerQuickScreen .worker-quick-fuel-type.only-diesel{
+/* === AskCreate v1758: Radnik final — samo dizel, jedan jasan mobilni ekran === */
+#workerQuickScreen .worker-quick-fuel-type{display:none!important;}
+#workerQuickScreen .worker-quick-fuel-grid.worker-quick-diesel-only{
   display:grid!important;
-  grid-template-columns:1fr!important;
-}
-#workerQuickScreen .worker-quick-fuel-type.only-diesel button{
-  width:100%!important;
-  font-size:16px!important;
-}
-#workerQuickScreen .worker-quick-fuel-grid{
-  grid-template-columns:minmax(0,1fr) 82px 82px!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) 110px!important;
   gap:8px!important;
   align-items:end!important;
 }
-#workerQuickScreen .worker-quick-fuel-grid > .worker-quick-send{
-  grid-column:1 / -1!important;
-  justify-self:center!important;
-  width:136px!important;
+#workerQuickScreen .worker-quick-fuel-grid.worker-quick-diesel-only > .worker-quick-send{
+  grid-column:auto!important;
+  justify-self:stretch!important;
+  width:auto!important;
 }
-#workerQuickScreen .worker-quick-card label{
-  overflow-wrap:normal!important;
-  word-break:normal!important;
-  hyphens:none!important;
+#workerQuickScreen #qWorkerFuelLiters,
+#workerQuickScreen #qWorkerFuelReading{
+  text-align:center!important;
 }
-#workerQuickScreen .worker-quick-field select,
-#workerQuickScreen .worker-quick-card select,
-#workerQuickScreen .worker-quick-card input{
-  text-overflow:ellipsis!important;
+#workerQuickScreen .worker-quick-card-title span:last-child{
+  overflow-wrap:anywhere!important;
 }
-@media (max-width:360px){
-  #workerQuickScreen .worker-quick-fuel-grid{
-    grid-template-columns:minmax(0,1fr) 68px 72px!important;
-    gap:6px!important;
+#workerQuickScreen .worker-quick-field select{
+  white-space:normal!important;
+}
+#viewWorkerForm.worker-quick-mode #normalWorkerFormCard,
+#normalWorkerFormCard.quick-screen-active{
+  width:min(100%, 410px)!important;
+  max-width:410px!important;
+}
+@media (max-width:380px){
+  #workerQuickScreen .worker-quick-fuel-grid.worker-quick-diesel-only{
+    grid-template-columns:1fr 1fr!important;
   }
-  #workerQuickScreen .worker-quick-fuel-type.only-diesel button{font-size:14px!important;}
+  #workerQuickScreen .worker-quick-fuel-grid.worker-quick-diesel-only > .worker-quick-send{
+    grid-column:1 / -1!important;
+    width:130px!important;
+    justify-self:center!important;
+  }
 }

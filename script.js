@@ -2571,9 +2571,7 @@ const ASSET_FEATURE_DEFINITIONS = [
 
 const ASSET_FUEL_TYPE_LABELS = {
   dizel: "Dizel",
-  benzin: "Benzin",
-  adblue: "AdBlue",
-  ostalo: "Ostalo"
+  diesel: "Dizel"
 };
 
 const ASSET_TANK_LABELS = {
@@ -4961,7 +4959,7 @@ function fuelSourceTypeLabel(value = "") {
   if (v === "fixed_base_pump") return "Fiksna pumpa u bazi";
   if (v === "small_mobile_tanker") return "Mala pokretna cisterna";
   if (v === "fuel_tanker") return "Cisterna za gorivo";
-  if (v === "gas_station") return "Benzinska pumpa / račun";
+  if (v === "gas_station") return "Pumpa / račun";
   if (v === "canister") return "Kanister / ručno";
   if (v === "other") return "Ostalo";
   return value || "";
@@ -6163,9 +6161,8 @@ function tankerConsumptionTableHtml(entries = [], report = {}, compact = false) 
 
 function fuelKindLabel(value = "") {
   const v = String(value || "").toLowerCase();
-  if (v === "diesel") return "Dizel";
-  if (v === "petrol") return "Benzin";
-  return value || "";
+  if (v === "diesel" || v === "dizel") return "Dizel";
+  return "";
 }
 
 function fuelWorkerAssetsTitle(entries = []) {
@@ -13309,10 +13306,7 @@ function addFuelEntry(values = {}) {
       </div>
     </div>
 
-    <label>Vrsta goriva</label>
-    <select class="f-fuel-type">
-      <option value="diesel" selected>Dizel</option>
-    </select>
+    <input class="f-fuel-type" type="hidden" value="diesel" />
 
     <label>Napomena <span class="muted">(opciono)</span></label>
     <input class="f-note" placeholder="kratka napomena" value="${escapeHtml(values.note || values.fuel_note || "")}" />
@@ -13335,7 +13329,7 @@ function getFuelEntries() {
     const assetName = assetBox?.dataset?.assetName || "";
     const assetCode = assetBox?.dataset?.assetCode || "";
     const assetReg = assetBox?.dataset?.assetRegistration || "";
-    const fuelType = el.querySelector(".f-fuel-type")?.value || "diesel";
+    const fuelType = "diesel";
     return {
       no: i + 1,
       asset_kind: kind,
@@ -18639,7 +18633,7 @@ function copySupportEmail() {
     const asset = (typeof getSelectedWorkerContextAsset === "function") ? getSelectedWorkerContextAsset() : null;
     if (asset && typeof formatAssetLabel === "function") return formatAssetLabel(asset);
     const opt = q$("#wrAssetSelect")?.selectedOptions?.[0];
-    return opt?.textContent?.trim() || "Izaberi iz Direkcije";
+    return opt?.textContent?.trim() || "Odaberi vozilo ili mašinu";
   }
   function ensureQuickVehicleEntry(){
     let card = q$("#vehicleEntries .vehicle-entry");
@@ -18823,9 +18817,8 @@ function copySupportEmail() {
     q$("#qWorkerToSiteWrap")?.classList.toggle("worker-quick-hidden", kind !== "site");
   }
   function quickSetFuelType(type){
-    type = "diesel";
-    setValueAndFire(q$("#qWorkerFuelType"), type);
-    qa(".q-fuel-type-btn").forEach(b => b.classList.toggle("active", b.dataset.fuel === type));
+    setValueAndFire(q$("#qWorkerFuelType"), "diesel");
+    qa(".q-fuel-type-btn").forEach(b => b.classList.toggle("active", b.dataset.fuel === "diesel"));
   }
   function buildQuickScreen(){
     const card = q$("#normalWorkerFormCard");
@@ -18850,16 +18843,10 @@ function copySupportEmail() {
       </div>
       <div class="worker-quick-card" id="qWorkerFuelCard">
         <div class="worker-quick-card-title"><span class="ico">⛽</span><span id="qWorkerFuelTitle">1. Gorivo</span></div>
-        <div class="worker-quick-fuel-grid">
-          <div>
-            <label>Gorivo</label>
-            <input id="qWorkerFuelType" type="hidden" value="diesel" />
-            <div class="worker-quick-fuel-type only-diesel">
-              <button type="button" class="q-fuel-type-btn active" data-fuel="diesel">Dizel</button>
-            </div>
-          </div>
+        <div class="worker-quick-fuel-grid worker-quick-diesel-only">
+          <input id="qWorkerFuelType" type="hidden" value="diesel" />
           <div><label id="qWorkerFuelReadingLabel">KM</label><input id="qWorkerFuelReading" inputmode="decimal" placeholder="150200" /></div>
-          <div><label>Litara</label><input id="qWorkerFuelLiters" inputmode="decimal" placeholder="120" /></div>
+          <div><label>Litara dizela</label><input id="qWorkerFuelLiters" inputmode="decimal" placeholder="120" /></div>
           <button type="button" class="worker-quick-send" data-submit-module="fuel_entry">Pošalji</button>
         </div>
         <div class="worker-quick-center"><button type="button" class="worker-quick-secondary" id="qAddFuelBtn">+ Dodaj gorivo</button></div>
